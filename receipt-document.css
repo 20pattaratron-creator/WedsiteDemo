@@ -2032,3 +2032,13 @@
 .rcp-source-invoice-status{background:#fff0f7!important;color:#96315f!important}.rcp-source-invoice-status strong{color:#a92765!important}
 .rcp-linked-selector-head,.rcp-linked-context{background:linear-gradient(120deg,#fff6fa,#fff0f7)!important;border-color:#efc8da!important}
 .rcp-linked-branch-badge,.rcp-linked-context b{color:var(--rcp-blue-dark)!important;border-color:#efc1d6!important}
+
+/* Evidence thumbnails copied from the main receipt record */
+.rcp-source-evidence-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:10px}
+.rcp-source-evidence-item{min-width:0;padding:8px;border:1px solid #efc8da;border-radius:10px;background:#fff8fb;text-align:center}
+.rcp-source-evidence-item img{width:100%;height:92px;object-fit:cover;border-radius:7px;border:1px solid #efd2df;background:#fff}
+.rcp-source-evidence-icon{height:92px;display:grid;place-items:center;border-radius:7px;background:#fff0f7;color:#c94580;font-weight:900;font-size:20px}
+.rcp-source-evidence-name{margin-top:6px;font-size:10px;font-weight:700;color:#4b3340;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcp-source-evidence-item a{display:inline-block;margin-top:4px;font-size:10px;color:#c94580;font-weight:800;text-decoration:none}
+.rcp-source-evidence-item small,.rcp-source-evidence-empty{font-size:10px;color:#866778}
+.rcp-source-evidence-empty{padding:12px;border:1px dashed #efc8da;border-radius:9px;background:#fffafd;text-align:center}

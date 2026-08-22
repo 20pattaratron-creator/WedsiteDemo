@@ -383,7 +383,7 @@ function clearEditState(type){
   const banner=document.getElementById(prefix+'-edit-banner');
   const saveBtn=document.getElementById(prefix+'-save-btn');
   if(banner)banner.style.display='none';
-  if(saveBtn)saveBtn.textContent=type==='quote'?'💾 บันทึกใบเสนอราคา':type==='invoice'?'💾 บันทึกหลักฐานใบส่งสินค้า':type==='receipt'?'💾 บันทึกหลักฐานใบเสร็จรับเงิน':'💾 บันทึกสั่งผลิตสินค้า';
+  if(saveBtn)saveBtn.textContent=type==='quote'?'💾 บันทึกใบเสนอราคา':type==='invoice'?'💾 บันทึกใบส่งสินค้า / ใบกำกับภาษี':type==='receipt'?'💾 บันทึกใบเสร็จรับเงิน':'💾 บันทึกสั่งผลิตสินค้า';
 }
 function beginEditState(type,meta){
   editState[type]=meta;
@@ -1018,7 +1018,7 @@ function initDropdowns(){
   ['analytics-month','ql-month','il-month','rl-month','oil-month','orl-month','el-month','pl-month'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  ['i-prod-filter-month','r-inv-filter-month'].forEach(id=>populateMonthSel(id,false));
+  ['p-quote-filter-month','i-quote-filter-month','i-prod-filter-month','r-inv-filter-month'].forEach(id=>populateMonthSel(id,false));
   ['i-prod-filter-year','r-inv-filter-year'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=now.getFullYear();});
   document.getElementById('dash-month').value=-1;
 }
@@ -1068,10 +1068,10 @@ function go(id,el){
     // On mobile the sidebar is a horizontal bottom menu; keep the selected item visible.
     try { el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); } catch (_) {}
   }
-  const m={dashboard:renderDash,analytics:renderDataAnalytics,'quote-list':renderQLList,'invoice-list':renderIList,'receipt-list':()=>{populateInvRefs();renderRList();},'issued-invoice-list':renderIssuedInvoiceList,'issued-receipt-list':renderIssuedReceiptList,'expense-list':renderEList,'production-list':renderPList,'linked-flow':renderLinkedFlow,'receipt-form':populateInvRefs,'invoice-form':populateProductionRefs};
+  const m={dashboard:renderDash,analytics:renderDataAnalytics,'quote-list':renderQLList,'invoice-list':renderIList,'receipt-list':()=>{populateInvRefs();renderRList();},'issued-invoice-list':renderIssuedInvoiceList,'issued-receipt-list':renderIssuedReceiptList,'expense-list':renderEList,'production-list':renderPList,'linked-flow':renderLinkedFlow,'receipt-form':populateInvRefs,'invoice-form':()=>{populateQuoteRefs('i');populateProductionRefs();},'production-form':()=>populateQuoteRefs('p')};
   if(m[id])m[id]();
   if(id==='quote-form')refreshAutoQuoteNumber();
-  if(['dashboard','analytics','quote-list','invoice-list','receipt-list','issued-invoice-list','issued-receipt-list','expense-list','production-list','linked-flow','quote-form','invoice-form','receipt-form'].includes(id)){
+  if(['dashboard','analytics','quote-list','invoice-list','receipt-list','issued-invoice-list','issued-receipt-list','expense-list','production-list','linked-flow','quote-form','production-form','invoice-form','receipt-form'].includes(id)){
     scheduleCloudSync(getCurrentSelectedYear());
   }
   if (window.innerWidth <= 900) {
@@ -1119,7 +1119,8 @@ function selBr(form,b){
   }
   applyBranchUi(form,b);
   if(form==='r')populateInvRefs();
-  if(form==='i')populateProductionRefs();
+  if(form==='i'){populateQuoteRefs('i');populateProductionRefs();}
+  if(form==='p')populateQuoteRefs('p');
 }
 function getBr(form){
   const locked = getLockedUserBranch();
@@ -1245,7 +1246,7 @@ const DELIVERY_TARGET_STORAGE_KEY='comform_delivery_targets_v2';
 const DEFAULT_COMPANY_MONTHLY_TARGET=1600000;
 
 // มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน
-// เพราะฐานข้อมูลนำเข้าจาก Excel ไม่มีหลักฐานใบส่งสินค้าแยกต่างหาก
+// เพราะฐานข้อมูลนำเข้าจาก Excel ไม่มีใบส่งสินค้า / ใบกำกับภาษีแยกต่างหาก
 // ช่วงดังกล่าวจึงกำหนดให้ทั้งยอดจริงและเป้าหมายส่งสินค้าเท่ากับยอดขาย
 const HISTORICAL_SALES_DELIVERY_MIRROR=Object.freeze({
   enabled:true,
@@ -1449,7 +1450,7 @@ function renderDeliveryTargetDashboard(){
     <div class="target-progress-values"><span>${chartMoney(m.actual)}</span><span>${m.target?chartMoney(m.target):'ยังไม่กำหนดเป้าหมาย'}</span></div>`;
   document.getElementById('target-chart').innerHTML=renderTargetSvg(m);
   document.getElementById('target-chart-note').textContent=m.mirroredFromSales
-    ?'มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อให้ยอดและเป้าหมายทั้งสองส่วนเท่ากัน โดยไม่สร้างหลักฐานใบส่งสินค้าซ้ำใน Firebase'
+    ?'มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อให้ยอดและเป้าหมายทั้งสองส่วนเท่ากัน โดยไม่สร้างใบส่งสินค้า / ใบกำกับภาษีซ้ำใน Firebase'
     :'คำนวณเฉพาะวันจันทร์–ศุกร์ ยังไม่หักวันหยุดนักขัตฤกษ์หรือวันหยุดพิเศษของบริษัท';
 
   document.getElementById('target-workday-summary').innerHTML=`
@@ -1610,7 +1611,7 @@ function renderSalesTargetDashboard(){
   document.getElementById('sales-target-chart').innerHTML=renderTargetSvg(m).replace('ยอดส่งจริงสะสม','ยอดขายจริงสะสม');
   document.getElementById('sales-target-chart-note').textContent=m.deliveryModel?.mirroredFromSales
     ?'มกราคม–มิถุนายน 2569 ยอดส่งสินค้าใช้ยอดเดียวกับยอดขายย้อนหลัง เพื่อให้ยอดและเป้าหมายเท่ากันโดยไม่สร้างเอกสารซ้ำใน Firebase'
-    :'ยอดขายคำนวณจากมูลค่าขายก่อน VAT ของใบสั่งผลิต ส่วนยอดส่งสินค้าคำนวณจากหลักฐานใบส่งสินค้า จึงไม่รวมตัวเลขสองชุดเข้าด้วยกัน';
+    :'ยอดขายคำนวณจากมูลค่าขายก่อน VAT ของใบสั่งผลิต ส่วนยอดส่งสินค้าคำนวณจากใบส่งสินค้า / ใบกำกับภาษี จึงไม่รวมตัวเลขสองชุดเข้าด้วยกัน';
 
   document.getElementById('sales-target-workday-summary').innerHTML=`
     <div class="target-workday-grid">
@@ -1857,7 +1858,7 @@ function renderProductionDeliveryComparison(){
   const gapDetail=d.gap>0?'มูลค่าสั่งผลิตที่ยังมากกว่ายอดส่งสินค้า':d.gap<0?'ยอดส่งสินค้าสูงกว่ายอดสั่งผลิตในช่วงที่เลือก':'ยอดทั้งสองส่วนสมดุลกัน';
   metrics.innerHTML=
     flowMetric('ยอดสั่งผลิตที่ขาย',chartMoney(d.productionTotal),`${d.productionCount} ใบสั่งผลิต`,'production')+
-    flowMetric('ยอดส่งสินค้า',chartMoney(d.deliveryTotal),d.rows.some(r=>r.mirrored)?'ม.ค.–มิ.ย. 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้า':'ยอดขายก่อน VAT จากบิลใบส่งสินค้า','delivery')+
+    flowMetric('ยอดส่งสินค้า',chartMoney(d.deliveryTotal),d.rows.some(r=>r.mirrored)?'ม.ค.–มิ.ย. 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้า':'ยอดขายก่อน VAT จากใบส่งสินค้า / ใบกำกับภาษี','delivery')+
     flowMetric('ส่วนต่างคงเหลือ',chartMoney(Math.abs(d.gap)),gapDetail,gapClass)+
     flowMetric('อัตราส่งสินค้าเทียบสั่งผลิต',`${d.deliveryRate.toFixed(1)}%`,`เชื่อมบิลแล้ว ${d.linkedCount}/${d.productionCount} ใบ`,'rate');
 
@@ -1870,7 +1871,7 @@ function renderProductionDeliveryComparison(){
       <div class="flow-bar-line"><span class="flow-bar delivery" style="width:${Math.max(r.delivery?2:0,r.delivery/max*100)}%"></span><b>${chartMoney(r.delivery)}</b></div>
     </div>
   </div>`).join('');
-  document.getElementById('flow-chart-note').textContent='เดือน ม.ค.–มิ.ย. 2569 ระบบให้ยอดส่งสินค้าเท่ากับยอดขาย/สั่งผลิตย้อนหลัง ส่วนเดือนอื่นใช้ยอดก่อน VAT จากหลักฐานใบส่งสินค้า';
+  document.getElementById('flow-chart-note').textContent='เดือน ม.ค.–มิ.ย. 2569 ระบบให้ยอดส่งสินค้าเท่ากับยอดขาย/สั่งผลิตย้อนหลัง ส่วนเดือนอื่นใช้ยอดก่อน VAT จากใบส่งสินค้า / ใบกำกับภาษี';
 
   const rate=Math.max(0,Math.min(100,d.linkRate));
   document.getElementById('flow-conversion').innerHTML=`
@@ -2000,7 +2001,7 @@ function renderCustomerChart(){
   const rows=customerRows(year,mVal,dashBranches(),source,mode);
   renderBarRows('dash-customer-chart',rows,{fillClass:'green',mode});
   const total=rows.reduce((s,r)=>s+safeNum(r.value),0);
-  const srcLabel={all:'บิลใบส่งสินค้า + ใบสั่งผลิต',invoices:'บิลใบส่งสินค้า',productions:'ใบสั่งผลิต'}[source];
+  const srcLabel={all:'ใบส่งสินค้า / ใบกำกับภาษี + ใบสั่งผลิต',invoices:'ใบส่งสินค้า / ใบกำกับภาษี',productions:'ใบสั่งผลิต'}[source];
   const monthText=mVal===-1?'ทั้งปี':MONTHS[mVal];
   const summary=document.getElementById('dash-customer-summary');
   if(summary)summary.innerHTML=`แสดงลูกค้า Top 10 จาก <b>${srcLabel}</b> ช่วง ${monthText} พ.ศ. ${yearLabelDual(year)}<br>${mode==='count'?'จำนวนเอกสารรวม':'มูลค่ารวมในกราฟ'}: <b>${mode==='count'?chartCount(total):chartMoney(total)}</b>`;
@@ -2373,7 +2374,7 @@ function customerBusinessAction(row){
   const actions=[];
   let level='ติดตามปกติ';
   if(uncollected>0){level='ติดตามเครดิต';actions.push('ติดตามการชำระเงินและวันครบกำหนดเครดิต');}
-  if(deliveryGap>0){level=level==='ติดตามปกติ'?'ติดตามการส่งสินค้า':level;actions.push('ตรวจงานที่ยังไม่ออกหลักฐานใบส่งสินค้า');}
+  if(deliveryGap>0){level=level==='ติดตามปกติ'?'ติดตามการส่งสินค้า':level;actions.push('ตรวจงานที่ยังไม่ออกใบส่งสินค้า / ใบกำกับภาษี');}
   if(margin>0&&margin<10){level='ตรวจราคา/ต้นทุน';actions.push('ตรวจต้นทุน ราคาขาย และคอมมิชชัน เพราะ Margin ต่ำ');}
   if(row.abc==='A')actions.push('จัดเป็นลูกค้าหลัก ควรดูแลความสัมพันธ์และรอบการสั่งซ้ำ');
   if(!actions.length)actions.push('รักษาระดับบริการและติดตามโอกาสสั่งซื้อซ้ำ');
@@ -2519,7 +2520,7 @@ function buildDeliveryControlRows(data){
     const days=analyticsDaysFromToday(dueDate);
     const hasInvoice=Boolean(inv);
     let state='normal',text='รอถึงกำหนด';
-    if(hasInvoice){state='done';text='มีหลักฐานใบส่งสินค้าแล้ว';}
+    if(hasInvoice){state='done';text='มีใบส่งสินค้า / ใบกำกับภาษีแล้ว';}
     else if(!dueDate){state='none';text='ยังไม่ระบุระยะเวลาส่งสินค้า';}
     else if(days<0){state='overdue';text=`เลยกำหนดส่ง ${Math.abs(days)} วัน`;}
     else if(days===0){state='dueToday';text='ครบกำหนดส่งวันนี้';}
@@ -2570,9 +2571,9 @@ function renderAnalyticsExplainPanel(){
   const el=document.getElementById('analytics-explain-panel');if(!el)return;
   el.innerHTML=`<div class="analytics-explain-grid">
     <div><b>1) ยอดขาย</b><p>อ่านจากรายการสั่งผลิตเป็นหลัก เพื่อสะท้อนงานที่เกิดขึ้นจริงในธุรกิจ หากเป็นเดือน ม.ค.–มิ.ย. 2569 ระบบใช้ยอดขายย้อนหลังช่วยแทนยอดส่งสินค้าใน Dashboard</p></div>
-    <div><b>2) ยอดส่งสินค้า</b><p>อ่านจากหลักฐานใบส่งสินค้า ยกเว้นช่วงข้อมูลย้อนหลังเดือน 1–6 พ.ศ. 2569 (ค.ศ. 2026) ที่กำหนดให้ยอดส่งสินค้าเท่ากับยอดขาย เพื่อไม่สร้างเอกสารซ้ำ</p></div>
-    <div><b>3) ยอดค้างรับเงิน</b><p>คำนวณจากยอดหลักฐานใบส่งสินค้า ลบยอดหลักฐานใบเสร็จรับเงินที่อ้างอิงบิลเดียวกัน ใช้ดูว่าควรติดตามเงินจากลูกค้ารายใดก่อน</p></div>
-    <div><b>4) เครดิตลูกค้า</b><p>ใช้วันครบกำหนดจากบิลใบส่งสินค้า แบ่งเป็น ใกล้ครบกำหนด, ครบกำหนดวันนี้, เกินกำหนด 1–7, 8–15, 16–30 และเกิน 30 วัน</p></div>
+    <div><b>2) ยอดส่งสินค้า</b><p>อ่านจากใบส่งสินค้า / ใบกำกับภาษี ยกเว้นช่วงข้อมูลย้อนหลังเดือน 1–6 พ.ศ. 2569 (ค.ศ. 2026) ที่กำหนดให้ยอดส่งสินค้าเท่ากับยอดขาย เพื่อไม่สร้างเอกสารซ้ำ</p></div>
+    <div><b>3) ยอดค้างรับเงิน</b><p>คำนวณจากยอดใบส่งสินค้า / ใบกำกับภาษี ลบยอดใบเสร็จรับเงินที่อ้างอิงบิลเดียวกัน ใช้ดูว่าควรติดตามเงินจากลูกค้ารายใดก่อน</p></div>
+    <div><b>4) เครดิตลูกค้า</b><p>ใช้วันครบกำหนดจากใบส่งสินค้า / ใบกำกับภาษี แบ่งเป็น ใกล้ครบกำหนด, ครบกำหนดวันนี้, เกินกำหนด 1–7, 8–15, 16–30 และเกิน 30 วัน</p></div>
     <div><b>5) ระยะเวลาส่งสินค้า</b><p>ใช้วันที่สั่งผลิตบวกจำนวนวันส่งสินค้า เช่น 45 วัน เพื่อหางานที่ใกล้ส่งหรือเลยกำหนด ช่วยลดปัญหาส่งสินค้าไม่ทัน</p></div>
     <div><b>6) เครดิตผู้ผลิต</b><p>ค่าเริ่มต้นอิงระยะเวลาส่งสินค้า เช่น เลือกส่ง 30 วัน ระบบจะตั้งวันครบกำหนดชำระผู้ผลิตเป็น 30 วันหลังวันที่สั่งผลิต</p></div>
     <div><b>7) Data Quality</b><p>ตรวจเลขเอกสารซ้ำ วันที่หาย ลูกค้าหาย ยอดเป็นศูนย์ VAT ไม่ชัดเจน และเอกสารไม่เชื่อมกัน ก่อนนำตัวเลขไปตัดสินใจ</p></div>
@@ -2584,7 +2585,7 @@ function buildAnalyticsInsights(kpis,quality,trend,abcRows,filter){
   if(quality.total===0)insights.push({type:'warn',title:'ยังไม่มีข้อมูลในช่วงนี้',text:'กรุณาเลือกเดือน/ปีหรือสาขาที่มีข้อมูลก่อนวิเคราะห์'});
   if(quality.score<90)insights.push({type:'warn',title:'ควรตรวจคุณภาพข้อมูล',text:`คะแนน Data Quality ${quality.score}/100 พบปัญหา ${quality.issues} จุด ก่อนใช้ตัวเลขวางแผนควรตรวจข้อมูลวันที่ ลูกค้า จำนวนเงิน VAT และการเชื่อมเอกสาร`});
   if(kpis.sales>0&&kpis.netMargin<10)insights.push({type:'danger',title:'กำไรสุทธิต่ำ',text:`Net Margin อยู่ที่ ${percentText(kpis.netMargin)} ควรตรวจต้นทุน ค่าคอมมิชชัน ค่าใช้จ่าย และราคาขายเฉลี่ย`});
-  if(kpis.sales>0&&kpis.deliveryRate<70)insights.push({type:'warn',title:'ยอดส่งสินค้าต่ำกว่ายอดขาย',text:`Delivery Rate ${percentText(kpis.deliveryRate)} อาจมีงานค้างส่งหรือเอกสารหลักฐานใบส่งสินค้ายังไม่ได้บันทึก`});
+  if(kpis.sales>0&&kpis.deliveryRate<70)insights.push({type:'warn',title:'ยอดส่งสินค้าต่ำกว่ายอดขาย',text:`Delivery Rate ${percentText(kpis.deliveryRate)} อาจมีงานค้างส่งหรือเอกสารใบส่งสินค้า / ใบกำกับภาษียังไม่ได้บันทึก`});
   if(kpis.delivery>0&&kpis.collectionRate<75)insights.push({type:'warn',title:'ยอดเก็บเงินตามใบเสร็จยังต่ำ',text:`Collection Rate ${percentText(kpis.collectionRate)} ควรติดตามใบเสร็จหรือสถานะรับชำระจากลูกค้า`});
   if(trend.avg3>0&&trend.current&&safeNum(trend.current.value)<trend.avg3*0.7)insights.push({type:'danger',title:'ยอดขายต่ำกว่าค่าเฉลี่ย 3 เดือน',text:`เดือน ${trend.current.label} มียอด ${chartMoney(trend.current.value)} ต่ำกว่าค่าเฉลี่ยย้อนหลัง ${chartMoney(trend.avg3)}`});
   if(trend.volatility>45)insights.push({type:'warn',title:'ยอดขายผันผวนสูง',text:`Coefficient of Variation ประมาณ ${percentText(trend.volatility)} ควรดูสาเหตุจากลูกค้ารายใหญ่ งานโปรเจกต์ หรือฤดูกาล`});
@@ -2777,7 +2778,7 @@ function renderDataAnalytics(){
   ],branchRows);
 
   analyticsRenderTable('analytics-ar-table',[
-    {label:'บิลใบส่งสินค้า',html:r=>escapeHtml(r.docNo)},
+    {label:'ใบส่งสินค้า / ใบกำกับภาษี',html:r=>escapeHtml(r.docNo)},
     {label:'ลูกค้า',html:r=>escapeHtml(r.customer)},
     {label:'เครดิต',html:r=>escapeHtml(r.creditTerm)},
     {label:'ครบกำหนด',html:r=>escapeHtml(r.dueText)},
@@ -2795,7 +2796,7 @@ function renderDataAnalytics(){
     {label:'ระยะเวลา',html:r=>escapeHtml(r.lead)},
     {label:'กำหนดส่ง',html:r=>escapeHtml(r.dueText)},
     {label:'สถานะ',html:r=>analyticsAttentionBadge(r.state,r.text)},
-    {label:'หลักฐานใบส่งสินค้า',html:r=>r.invoiceNo?escapeHtml(r.invoiceNo):'-'},
+    {label:'ใบส่งสินค้า / ใบกำกับภาษี',html:r=>r.invoiceNo?escapeHtml(r.invoiceNo):'-'},
     {label:'มูลค่างาน',html:r=>chartMoney(r.amount),cls:'num'}
   ],deliveryControlRows.filter(r=>r.state!=='done').slice(0,25),'ยังไม่พบงานค้างส่งในช่วงที่เลือก');
   const deliveryControlSummary=document.getElementById('analytics-delivery-control-summary');
@@ -2832,7 +2833,7 @@ async function refreshDataAnalytics(force=false){
 // ============================================================
 const ATTACHMENT_META={
   'q-att':{form:'q',docType:'quotes',label:'ใบเสนอราคา'},
-  'i-att':{form:'i',docType:'invoices',label:'บิลใบส่งสินค้า'},
+  'i-att':{form:'i',docType:'invoices',label:'ใบส่งสินค้า / ใบกำกับภาษี'},
   'r-att':{form:'r',docType:'receipts',label:'ใบเสร็จรับเงิน'},
   'e-att':{form:'e',docType:'expenses',label:'ค่าใช้จ่าย'},
   'p-att':{form:'p',docType:'productions',label:'ใบสั่งผลิต'}
@@ -3318,7 +3319,7 @@ function getRItems(){return Array.from(document.querySelectorAll('#r-items-body 
 // PRODUCTION ORDER — ฟอร์มสั่งผลิตสินค้า
 // ============================================================
 function getPUnitOptions(selected='กล่อง'){
-  // ใช้รายการหน่วยมาตรฐานเดียวกับหน้าบิลใบส่งสินค้า
+  // ใช้รายการหน่วยมาตรฐานเดียวกับหน้าใบส่งสินค้า / ใบกำกับภาษี
   const standardUnits=['กล่อง','ชุด','เครื่อง','ดวง','ม้วน','ตลับ','อัน','แผ่น','ขวด','ถุง','เล่ม','ซอง','อื่น ๆ'];
   // รองรับข้อมูลเก่าที่เคยบันทึกหน่วยอื่นไว้ โดยไม่ทำให้ค่าหายตอนเปิดดู
   const units=standardUnits.includes(selected)?standardUnits:[selected,...standardUnits];
@@ -3767,6 +3768,25 @@ async function updateProductionSupplierPaymentStatus(br,y,m,id,status){
     }
   }
 }
+async function linkQuoteToChild(sourceQuote,childType,childRecord){
+  if(!sourceQuote||!childRecord)return false;
+  const d=loadFor(sourceQuote.b,Number(sourceQuote.y),Number(sourceQuote.m));
+  const q=(d.quotes||[]).find(x=>String(x.id)===String(sourceQuote.id)||String(x.no)===String(sourceQuote.no));
+  if(!q)return false;
+  const patch={workflowUpdatedAt:new Date().toISOString()};
+  if(childType==='production'){
+    Object.assign(patch,{productionId:childRecord.id,productionNo:childRecord.no,productionStatus:'created'});
+  }else if(childType==='invoice'){
+    Object.assign(patch,{invoiceId:childRecord.id,invoiceNo:childRecord.no,invoiceStatus:'created'});
+  }
+  Object.assign(q,patch);saveFor(sourceQuote.b,Number(sourceQuote.y),Number(sourceQuote.m),d);
+  if(window.FirebaseService?.updateBusinessDoc){
+    try{await window.FirebaseService.updateBusinessDoc('quotes',q.id,sourceQuote.b,Number(sourceQuote.y),Number(sourceQuote.m),patch,q.firebaseId||sourceQuote.firebaseId||'');}
+    catch(err){console.error('Firebase update quotation workflow link error:',err);}
+  }
+  return true;
+}
+
 async function saveProduction(){
   const b=getBr('p');if(!b)return;
   const state=editState.production;
@@ -3789,8 +3809,10 @@ async function saveProduction(){
   if(items.some(x=>!x.product||!x.qty||!x.costEntered||!x.saleEntered||x.saleValue<=0)){alert('กรุณากรอกชื่อสินค้า จำนวน ราคาต้นทุน และราคาขายที่มากกว่า 0 ให้ครบทุกแถว');return;}
   const totals=calcP();const{year,month}=dateToYM(date);
   const original=state?.original||{};
+  const sourceQuote=getSelectedQuoteRef('p');const sourceQuoteDoc=sourceQuote?loadQuoteRef(sourceQuote)?.q:null;
   let productionRecord={
     id:state?original.id:Date.now(),schemaVersion:3,no,date:isoDateCEFromValue(date),maker,...makerPresetMeta,customer:cust,...getCustomerAgencyFromForm('p'),job,items,
+    sourceQuoteId:sourceQuote?.id||original.sourceQuoteId||'',sourceQuoteNo:sourceQuote?.no||original.sourceQuoteNo||'',sourceQuoteBranch:sourceQuote?.b||original.sourceQuoteBranch||'',sourceQuoteYear:sourceQuote?.y??original.sourceQuoteYear??'',sourceQuoteMonth:sourceQuote?.m??original.sourceQuoteMonth??'',sourceQuoteFirebaseId:sourceQuoteDoc?.firebaseId||original.sourceQuoteFirebaseId||'',
     qty:items.reduce((sum,x)=>sum+x.qty,0),unit:items.length===1?items[0].unit:'',
     costMode:items.length===1?items[0].costMode:'mixed',costValue:items.length===1?items[0].costValue:0,costUnit:items.length===1?items[0].costUnit:0,costLump:items.length===1?items[0].costLump:0,costTotal:totals.costTotal,
     costSubtotal:totals.costSubtotal,costUseVat:totals.costUseVat,costVatMode:totals.costVatMode,costVatAmt:totals.costVat,costGrandTotal:totals.costGrandTotal,
@@ -3815,8 +3837,9 @@ async function saveProduction(){
     }
     const d=loadFor(b,year,month);if(!d.productions)d.productions=[];
     d.productions.push(productionRecord);saveFor(b,year,month,d);
+    if(sourceQuote)await linkQuoteToChild(sourceQuote,'production',productionRecord);
     saveCloudRecord('saveProduction',productionRecord,b,year,month,'สั่งผลิตสินค้า');
-    clearAttachedFiles('p-att');resetProduction();onYearChange();renderDash();renderPList();populateProductionRefs();alert('บันทึกสั่งผลิตสินค้าเรียบร้อย! สามารถดึงรายการนี้ไปสร้างบิลใบส่งสินค้าได้');
+    clearAttachedFiles('p-att');resetProduction();onYearChange();renderDash();renderPList();populateProductionRefs();alert('บันทึกสั่งผลิตสินค้าเรียบร้อย! สามารถดึงรายการนี้ไปสร้างใบส่งสินค้า / ใบกำกับภาษีได้');
   }catch(err){
     console.error('Save/edit production error:',err);
     alert('แก้ไขรายการสั่งผลิตไม่สำเร็จ: '+(err?.message||err));
@@ -3826,6 +3849,7 @@ function resetProduction(){
   clearEditState('production');
   formBranch.p=null;['p-br-kk','p-br-ub'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='br-opt';});document.getElementById('p-br-warn')?.classList.remove('show');
   ['p-no','p-maker','p-cust','p-job','p-sale-raw','p-sub-total','p-vat-total','p-total','p-cost-raw','p-cost-total','p-cost-subtotal','p-cost-vat-total','p-cost-grandtotal','p-cr','p-ca','p-profit','p-note','p-delivery-lead-days','p-delivery-due-date','p-supplier-credit','p-supplier-due-date','p-supplier-payment-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['p-source-quote-ref','p-quote-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   applyCustomerAgencyToForm('p','');
   populateProductionDeliveryLeadOptions(PRODUCTION_DELIVERY_LEAD_DAYS,'',false);
   renderProductionMakerPresetHint(null);
@@ -3876,8 +3900,8 @@ function renderPList(){
       <td><span class="badge b-blue">${escapeHtml(p.no||'-')}</span></td><td>${bbr(p.branch)}</td><td>${escapeHtml(formatThaiDate(p.date))}</td><td>${escapeHtml(p.maker||'-')}</td><td>${escapeHtml(p.customer||'-')}</td><td>${escapeHtml(p.job||'-')}</td><td>${escapeHtml(productionDeliveryLeadLabel(p.deliveryLeadDays||p.shippingLeadDays))}</td><td>${escapeHtml(formatThaiDate(getProductionDeliveryDueDate(p))||'-')}</td>
       <td class="tn">฿${fmt(costTotal)}</td><td class="tn">฿${fmt(costGrand)}</td><td>${escapeHtml(productionSupplierCreditLabel(p.supplierCreditTerm,p))}</td><td>${productionSupplierDueBadge(p)}</td><td>${productionSupplierPaymentStatusSelect(p)}</td><td class="tn">฿${fmt(saleNet)}</td><td class="tn">฿${fmt(p.vatAmt)}</td><td class="tn"><b>฿${fmt(grand)}</b></td><td class="tn">฿${fmt(p.commAmt)}</td><td class="tn ${safeNum(p.profit)>=0?'pos':'neg'}">฿${fmt(p.profit)}</td>
       <td>${vatModeLabel(p)}</td>
-      <td>${linked?`<span class="badge b-green">✅ ออกบิลแล้ว ${escapeHtml(linked.no||'')}</span>`:'<span class="badge b-amber">⏳ ยังไม่ออกบิล</span>'}</td>
-      <td style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-view btn-sm" onclick="showDetailById('production','${p.branch}',${p._y},${p._m},'${p.id}')">ดู</button>${!p.historicalSalesImport?`<button class="btn btn-amber btn-sm" title="แก้ไขรายการสั่งผลิต" onclick="editProduction('${p.branch}',${p._y},${p._m},'${p.id}')">✏️ แก้ไข</button>`:''}${(!linked&&!p.historicalSalesImport)?`<button class="btn btn-green btn-sm" onclick="useProductionForInvoice('${p.branch}',${p._y},${p._m},'${p.id}')">สร้างบิล</button>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc('${p.branch}',${p._y},${p._m},'productions',${p.id})">ลบ</button></td>
+      <td>${linked?`<span class="badge b-green">✅ ออกใบส่งสินค้าแล้ว ${escapeHtml(linked.no||'')}</span>`:'<span class="badge b-amber">⏳ ยังไม่ออกใบส่งสินค้า</span>'}</td>
+      <td style="display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-view btn-sm" onclick="showDetailById('production','${p.branch}',${p._y},${p._m},'${p.id}')">ดู</button>${!p.historicalSalesImport?`<button class="btn btn-amber btn-sm" title="แก้ไขรายการสั่งผลิต" onclick="editProduction('${p.branch}',${p._y},${p._m},'${p.id}')">✏️ แก้ไข</button>`:''}${(!linked&&!p.historicalSalesImport)?`<button class="btn btn-green btn-sm" onclick="useProductionForInvoice('${p.branch}',${p._y},${p._m},'${p.id}')">สร้างใบส่ง/ภาษี</button>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc('${p.branch}',${p._y},${p._m},'productions',${p.id})">ลบ</button></td>
     </tr>`;
   }).join('');
 }
@@ -3907,6 +3931,7 @@ function editProduction(branch,year,month,id){
     product:p.product||p.job||'',qty:p.qty||1,unit:p.unit||'กล่อง',costMode:p.costMode||'unit',costValue:p.costValue??p.costUnit??0,costUnit:p.costUnit??0,costLump:p.costLump??0,saleMode:p.saleMode||'unit',saleValue:p.saleValue??p.priceUnit??0,priceUnit:p.priceUnit??0,saleLump:p.saleLump??0
   }];
   sourceItems.forEach(addPItem);calcP();loadExistingAttachments('p-att',p.attachments);
+  if(p.sourceQuoteNo){const ref={b:p.sourceQuoteBranch||branch,y:Number(p.sourceQuoteYear||year),m:Number(p.sourceQuoteMonth??month),id:p.sourceQuoteId||'',no:p.sourceQuoteNo,firebaseId:p.sourceQuoteFirebaseId||''};const hidden=document.getElementById('p-source-quote-ref');if(hidden)hidden.value=JSON.stringify(ref);populateQuoteRefs('p');}
   beginEditState('production',{type:'productions',branch,year:Number(year),month:Number(month),id:p.id,firebaseId:p.firebaseId||'',no:p.no,original:p});
   navToPanel('production-form');window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -3919,15 +3944,16 @@ function editQuote(branch,year,month,id){
 }
 function editInvoice(branch,year,month,id){
   const found=findLocalRecord('invoices',branch,year,month,id);const inv=found.record;
-  if(!inv){alert('ไม่พบหลักฐานใบส่งสินค้าที่ต้องการแก้ไข');return;}
+  if(!inv){alert('ไม่พบใบส่งสินค้า / ใบกำกับภาษีที่ต้องการแก้ไข');return;}
   resetF('invoice');applyBranchUi('i',branch);setInputValue('i-no',inv.no);setInputValue('i-date',inv.date);setInputValue('i-cust',inv.customer);applyCustomerAgencyToForm('i',inv);setInputValue('i-sales',inv.salesPerson);setInputValue('i-credit-term',inv.creditTerm);setInputValue('i-due-date',inv.dueDate);setInputValue('i-vat',Number(inv.useVat||0));setInputValue('i-comm-mode',inv.commMode||'percent');setInputValue('i-cr',inv.commRate||0);setInputValue('i-ca',inv.commAmt||0);setInputValue('i-note',inv.note);
   toggleCommMode('i');document.getElementById('i-items-body').innerHTML='';(inv.items||[]).forEach(addIItem);if(!(inv.items||[]).length)addIItem();calcI();loadExistingAttachments('i-att',inv.attachments);
   const prodRef=document.getElementById('i-prod-ref');if(prodRef)prodRef.disabled=true;
+  if(inv.sourceQuoteNo){const ref={b:inv.sourceQuoteBranch||branch,y:Number(inv.sourceQuoteYear||year),m:Number(inv.sourceQuoteMonth??month),id:inv.sourceQuoteId||'',no:inv.sourceQuoteNo,firebaseId:inv.sourceQuoteFirebaseId||''};const hidden=document.getElementById('i-source-quote-ref');if(hidden)hidden.value=JSON.stringify(ref);populateQuoteRefs('i');const qref=document.getElementById('i-quote-ref');if(qref)qref.disabled=true;}
   beginEditState('invoice',{type:'invoices',branch,year:Number(year),month:Number(month),id:inv.id,firebaseId:inv.firebaseId||'',no:inv.no,original:inv});navToPanel('invoice-form');window.scrollTo({top:0,behavior:'smooth'});
 }
 function editReceipt(branch,year,month,id){
   const found=findLocalRecord('receipts',branch,year,month,id);const r=found.record;
-  if(!r){alert('ไม่พบหลักฐานใบเสร็จรับเงินที่ต้องการแก้ไข');return;}
+  if(!r){alert('ไม่พบใบเสร็จรับเงินที่ต้องการแก้ไข');return;}
   resetF('receipt');applyBranchUi('r',branch);setInputValue('r-no',r.no);setInputValue('r-date',r.date);setInputValue('r-inv-no',r.invNo);setInputValue('r-sales',r.salesPerson);setInputValue('r-cust',r.customer);applyCustomerAgencyToForm('r',r);setInputValue('r-vat',Number(r.useVat||0));setInputValue('r-comm-mode',r.commMode||'percent');setInputValue('r-cr',r.commRate||0);setInputValue('r-ca',r.commAmt||0);setInputValue('r-note',r.note);
   toggleCommMode('r');document.getElementById('r-items-body').innerHTML='';(r.items||[]).forEach(it=>addRItem(it));if(!(r.items||[]).length)addRItem();calcR();loadExistingAttachments('r-att',r.attachments);
   const invRef=document.getElementById('r-inv-ref');if(invRef)invRef.disabled=true;
@@ -4058,24 +4084,28 @@ async function saveInvoice(){
   const useVat=parseInt(document.getElementById('i-vat')?.value||0),vat=calculateVatSummary(rawSaleTotal,useVat);
   const cr=parseFloat(document.getElementById('i-cr').value)||0,commMode=getCommMode('i'),comm=commMode==='manual'?parseMoney(document.getElementById('i-ca').value):vat.subtotal*cr/100;
   const sourceProduction=getSelectedProductionRef();
+  const directSourceQuote=getSelectedQuoteRef('i');
   const creditTerm=document.getElementById('i-credit-term')?.value||'';
   const dueDate=document.getElementById('i-due-date')?.value||calculateInvoiceDueDate(date,creditTerm);
   const{year,month}=dateToYM(date);const d=loadFor(b,year,month);
   const sourceProductionDoc=sourceProduction?loadProductionRef(sourceProduction)?.p:null;
+  const sourceQuote=directSourceQuote||((sourceProductionDoc?.sourceQuoteNo)?{b:sourceProductionDoc.sourceQuoteBranch||b,y:sourceProductionDoc.sourceQuoteYear??year,m:sourceProductionDoc.sourceQuoteMonth??month,id:sourceProductionDoc.sourceQuoteId||'',no:sourceProductionDoc.sourceQuoteNo,firebaseId:sourceProductionDoc.sourceQuoteFirebaseId||''}:null);
+  const sourceQuoteDoc=sourceQuote?loadQuoteRef(sourceQuote)?.q:null;
   let invoiceRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,...getCustomerAgencyFromForm('i'),salesPerson:document.getElementById('i-sales').value.trim(),creditTerm,dueDate,items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,paymentStatus:'pending',paid:false,isPaid:false,paidAt:'',paidBy:'',
     sourceProductionId:sourceProduction?.id||'',sourceProductionNo:sourceProduction?.no||'',sourceProductionBranch:sourceProduction?.b||'',sourceProductionYear:sourceProduction?.y??'',sourceProductionMonth:sourceProduction?.m??'',sourceProductionRawCostTotal:safeNum(sourceProductionDoc?.costTotal ?? sourceProductionDoc?.costRawTotal),
+    sourceQuoteId:sourceQuote?.id||'',sourceQuoteNo:sourceQuote?.no||'',sourceQuoteBranch:sourceQuote?.b||'',sourceQuoteYear:sourceQuote?.y??'',sourceQuoteMonth:sourceQuote?.m??'',sourceQuoteFirebaseId:sourceQuoteDoc?.firebaseId||sourceQuote?.firebaseId||'',
     note:document.getElementById('i-note').value.trim(),attachments:attachedFiles['i-att']||[]};
   invoiceRecord=withThaiCalendarMeta(invoiceRecord,year,month);
   try{
     if(state){
       // รักษาสถานะชำระเงินและความสัมพันธ์เดิมไว้
-      Object.assign(invoiceRecord,{paymentStatus:state.original.paymentStatus||invoiceRecord.paymentStatus,paid:!!state.original.paid,isPaid:!!state.original.isPaid,paidAt:state.original.paidAt||'',paidBy:state.original.paidBy||'',paidReceiptNo:state.original.paidReceiptNo||'',paidReceiptId:state.original.paidReceiptId||'',sourceProductionId:state.original.sourceProductionId||invoiceRecord.sourceProductionId,sourceProductionNo:state.original.sourceProductionNo||invoiceRecord.sourceProductionNo,sourceProductionBranch:state.original.sourceProductionBranch||invoiceRecord.sourceProductionBranch,sourceProductionYear:state.original.sourceProductionYear??invoiceRecord.sourceProductionYear,sourceProductionMonth:state.original.sourceProductionMonth??invoiceRecord.sourceProductionMonth});
-      await commitDocumentEdit('invoice',invoiceRecord);alert('แก้ไขหลักฐานใบส่งสินค้าเรียบร้อย');
+      Object.assign(invoiceRecord,{paymentStatus:state.original.paymentStatus||invoiceRecord.paymentStatus,paid:!!state.original.paid,isPaid:!!state.original.isPaid,paidAt:state.original.paidAt||'',paidBy:state.original.paidBy||'',paidReceiptNo:state.original.paidReceiptNo||'',paidReceiptId:state.original.paidReceiptId||'',sourceProductionId:state.original.sourceProductionId||invoiceRecord.sourceProductionId,sourceProductionNo:state.original.sourceProductionNo||invoiceRecord.sourceProductionNo,sourceProductionBranch:state.original.sourceProductionBranch||invoiceRecord.sourceProductionBranch,sourceProductionYear:state.original.sourceProductionYear??invoiceRecord.sourceProductionYear,sourceProductionMonth:state.original.sourceProductionMonth??invoiceRecord.sourceProductionMonth,sourceQuoteId:state.original.sourceQuoteId||invoiceRecord.sourceQuoteId,sourceQuoteNo:state.original.sourceQuoteNo||invoiceRecord.sourceQuoteNo,sourceQuoteBranch:state.original.sourceQuoteBranch||invoiceRecord.sourceQuoteBranch,sourceQuoteYear:state.original.sourceQuoteYear??invoiceRecord.sourceQuoteYear,sourceQuoteMonth:state.original.sourceQuoteMonth??invoiceRecord.sourceQuoteMonth,sourceQuoteFirebaseId:state.original.sourceQuoteFirebaseId||invoiceRecord.sourceQuoteFirebaseId});
+      await commitDocumentEdit('invoice',invoiceRecord);alert('แก้ไขใบส่งสินค้า / ใบกำกับภาษีเรียบร้อย');
     }else{
-      d.invoices.push(invoiceRecord);saveFor(b,year,month,d);if(sourceProduction)linkProductionToInvoice(sourceProduction,invoiceRecord);saveCloudRecord('saveInvoice',invoiceRecord,b,year,month,'บิลใบส่งสินค้า');alert(sourceProduction?'บันทึกบิลใบส่งสินค้าและเชื่อมกับใบสั่งผลิตเรียบร้อย!':'บันทึกบิลใบส่งสินค้าเรียบร้อย!');
+      d.invoices.push(invoiceRecord);saveFor(b,year,month,d);if(sourceProduction)await linkProductionToInvoice(sourceProduction,invoiceRecord);if(sourceQuote)await linkQuoteToChild(sourceQuote,'invoice',invoiceRecord);saveCloudRecord('saveInvoice',invoiceRecord,b,year,month,'ใบส่งสินค้า / ใบกำกับภาษี');alert(sourceProduction?'บันทึกใบส่งสินค้า / ใบกำกับภาษีและเชื่อมกับใบสั่งผลิตเรียบร้อย!':(sourceQuote?'บันทึกใบส่งสินค้า / ใบกำกับภาษีและเชื่อมกับใบเสนอราคาเรียบร้อย!':'บันทึกใบส่งสินค้า / ใบกำกับภาษีเรียบร้อย!'));
     }
     clearAttachedFiles('i-att');resetF('invoice');onYearChange();renderDash();renderPList();renderIList();
-  }catch(err){console.error(err);alert('แก้ไขหลักฐานใบส่งสินค้าไม่สำเร็จ: '+(err?.message||err));}
+  }catch(err){console.error(err);alert('แก้ไขใบส่งสินค้า / ใบกำกับภาษีไม่สำเร็จ: '+(err?.message||err));}
 }
 
 
@@ -4137,13 +4167,13 @@ async function saveReceipt(){
     let paymentResult={found:false,cloudOk:true};
     if(state){
       Object.assign(receiptRecord,{invoiceId:state.original.invoiceId||receiptRecord.invoiceId,invoiceBranch:state.original.invoiceBranch||receiptRecord.invoiceBranch,invoiceYear:state.original.invoiceYear??receiptRecord.invoiceYear,invoiceMonth:state.original.invoiceMonth??receiptRecord.invoiceMonth});
-      await commitDocumentEdit('receipt',receiptRecord);alert('แก้ไขหลักฐานใบเสร็จรับเงินเรียบร้อย');
+      await commitDocumentEdit('receipt',receiptRecord);alert('แก้ไขใบเสร็จรับเงินเรียบร้อย');
     }else{
       d.receipts.push(receiptRecord);saveFor(b,year,month,d);paymentResult=await markInvoicePaidByReceipt(b,invNo,selectedInvoice,receiptRecord);saveCloudRecord('saveReceipt',receiptRecord,b,year,month,'ใบเสร็จรับเงิน');
       const message=paymentResult.found?(paymentResult.cloudOk?'บันทึกใบเสร็จเรียบร้อย และปรับบิลอ้างอิงเป็น “ชำระเงินแล้ว” อัตโนมัติ':'บันทึกใบเสร็จและเปลี่ยนสถานะในเครื่องแล้ว แต่ส่งสถานะชำระเงินขึ้น Firebase ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต/Rules'):(invNo?'บันทึกใบเสร็จเรียบร้อย แต่ไม่พบบิลอ้างอิง กรุณาตรวจเลขบิล':'บันทึกใบเสร็จรับเงินเรียบร้อย!');alert(message);
     }
     clearAttachedFiles('r-att');resetF('receipt');onYearChange();renderDash();renderIList();renderRList();populateInvRefs();
-  }catch(err){console.error(err);alert('แก้ไขหลักฐานใบเสร็จรับเงินไม่สำเร็จ: '+(err?.message||err));}
+  }catch(err){console.error(err);alert('แก้ไขใบเสร็จรับเงินไม่สำเร็จ: '+(err?.message||err));}
 }
 
 
@@ -4170,7 +4200,7 @@ function resetF(t){
   document.getElementById(f+'-br-ub').className='br-opt';
   document.getElementById(f+'-br-warn').classList.remove('show');
   if(t==='quote'){['q-cust','q-sales','q-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('q','');document.getElementById('q-date').value=todayStr;document.getElementById('q-items-body').innerHTML='';['q-sub','q-vat-amt','q-total'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('q-att');refreshAutoQuoteNumber(true);}
-  if(t==='invoice'){['i-no','i-cust','i-sales','i-cr','i-note','i-credit-term','i-due-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');populateProductionRefs();}
+  if(t==='invoice'){['i-no','i-cust','i-sales','i-cr','i-note','i-credit-term','i-due-date','i-source-quote-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');const quoteRef=document.getElementById('i-quote-ref');if(quoteRef){quoteRef.value='';quoteRef.disabled=false;}const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';const quoteHint=document.getElementById('i-quote-link-hint');if(quoteHint)quoteHint.textContent='สามารถสร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคาได้โดยตรง หรือเชื่อมผ่านใบสั่งผลิตด้านล่าง';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');populateQuoteRefs('i');populateProductionRefs();}
   if(t==='receipt'){['r-no','r-cust','r-sales','r-inv-no','r-cr','r-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('r','');const rRef=document.getElementById('r-inv-ref');if(rRef){rRef.value='';rRef.disabled=false;}document.getElementById('r-comm-mode').value='percent';toggleCommMode('r');const rVat=document.getElementById('r-vat');if(rVat)rVat.value='0';document.getElementById('r-date').value=todayStr;document.getElementById('r-items-body').innerHTML='';['r-st','r-subtotal','r-vat-amt','r-grand-total','r-ct','r-ca','r-pf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});clearAttachedFiles('r-att');populateInvRefs();}
   if(t==='expense'){['e-desc','e-by','e-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('e-amount').value='';document.getElementById('e-date').value=todayStr;clearAttachedFiles('e-att');}
 }
@@ -4178,6 +4208,92 @@ function resetF(t){
 // ============================================================
 // POPULATE PRODUCTION / INVOICE REFERENCES
 // ============================================================
+function quoteRefValue(b,y,m,q){return JSON.stringify({b,y,m,id:q.id,no:q.no,firebaseId:q.firebaseId||''});}
+function getSelectedQuoteRef(prefix){
+  const hidden=document.getElementById(prefix+'-source-quote-ref')?.value||'';
+  const selected=document.getElementById(prefix+'-quote-ref')?.value||'';
+  const value=selected||hidden;
+  if(!value)return null;
+  try{return JSON.parse(value);}catch(_){return null;}
+}
+function loadQuoteRef(ref){
+  if(!ref)return null;
+  const d=loadFor(ref.b,Number(ref.y),Number(ref.m));
+  const q=(d.quotes||[]).find(x=>String(x.id)===String(ref.id)||String(x.no)===String(ref.no));
+  return q?{q,d}:null;
+}
+function populateQuoteRefs(prefix){
+  const sel=document.getElementById(prefix+'-quote-ref');if(!sel)return;
+  const current=sel.value;sel.innerHTML='<option value="">-- เลือกใบเสนอราคา --</option>';
+  const br=formBranch[prefix]||'';updateLinkedSourceBranchBadge(prefix+'-quote-source-branch',br);
+  const branches=br?[br]:['khonkaen','ubon'];
+  const filter=getLinkedRefFilters(prefix+'-quote');
+  const years=Number.isFinite(filter.year)?[filter.year]:allYears();
+  const months=filter.month===null?Array.from({length:12},(_,i)=>i):[filter.month];
+  let shown=0,approved=0;
+  branches.forEach(b=>years.forEach(y=>months.forEach(m=>{
+    const d=loadFor(b,y,m);(d.quotes||[]).forEach(q=>{
+      if(!refTextMatch(q,filter.search))return;
+      shown++;if(q.approved)approved++;
+      const o=document.createElement('option');o.value=quoteRefValue(b,y,m,q);
+      o.textContent=`[${BRANCH_TH[b]}] ${q.no} | ${q.customer||'-'} | ${formatThaiDate(q.date)} | ฿${fmt(q.total||0)} | ${q.approved?'✅ อนุมัติแล้ว':'⏳ รออนุมัติ'}`;
+      sel.appendChild(o);
+    });
+  })));
+  if([...sel.options].some(o=>o.value===current))sel.value=current;
+  const hint=document.getElementById(prefix+'-quote-link-hint');
+  if(hint&&!sel.value)hint.textContent=`พบใบเสนอราคา ${shown} รายการ (${approved} รายการอนุมัติแล้ว) จากช่วงที่เลือก${filter.search?` • ค้นหา: ${filter.search}`:''}`;
+}
+function quoteItemsForTransfer(q){
+  return (q.items||[]).map(it=>({
+    product:it.product||'',productCode:it.productCode||'',productCategory:it.productCategory||'',qty:safeNum(it.qty),unit:it.unit||'ชิ้น',priceUnit:safeNum(it.priceUnit),saleValue:safeNum(it.priceUnit),saleTotal:safeNum(it.total)||(safeNum(it.qty)*safeNum(it.priceUnit))
+  }));
+}
+function fillProductionFromQuote(){
+  const ref=getSelectedQuoteRef('p');if(!ref)return;
+  const found=loadQuoteRef(ref);if(!found)return alert('ไม่พบใบเสนอราคาที่เลือก');
+  const q=found.q;selBr('p',ref.b);
+  const refJson=quoteRefValue(ref.b,Number(ref.y),Number(ref.m),q);
+  const hidden=document.getElementById('p-source-quote-ref');if(hidden)hidden.value=refJson;
+  const select=document.getElementById('p-quote-ref');if(select&&[...select.options].some(o=>o.value===refJson))select.value=refJson;
+  setInputValue('p-cust',q.customer||'');applyCustomerAgencyToForm('p',q);
+  if(!document.getElementById('p-job')?.value)setInputValue('p-job',`งานตามใบเสนอราคา ${q.no}`);
+  const body=document.getElementById('p-items-body');if(body)body.innerHTML='';
+  const items=quoteItemsForTransfer(q);
+  (items.length?items:[{product:'',qty:1,unit:'ชิ้น',priceUnit:0}]).forEach(it=>addPItem({...it,costMode:'unit',costValue:'',saleValue:it.priceUnit}));
+  setRadioValue('p-vat',Number(q.useVat||0));calcP();
+  const note=document.getElementById('p-note');if(note&&!note.value)note.value=`อ้างอิงใบเสนอราคา ${q.no}${q.note?` — ${q.note}`:''}`;
+  const hint=document.getElementById('p-quote-link-hint');if(hint)hint.textContent=`เชื่อมกับ ${q.no} • ${q.customer||'-'} • ดึง ${items.length} รายการแล้ว กรุณากรอกผู้ผลิตและราคาต้นทุนก่อนบันทึก`;
+}
+function fillInvoiceFromQuote(){
+  const ref=getSelectedQuoteRef('i');if(!ref)return;
+  const found=loadQuoteRef(ref);if(!found)return alert('ไม่พบใบเสนอราคาที่เลือก');
+  const q=found.q;selBr('i',ref.b);
+  const refJson=quoteRefValue(ref.b,Number(ref.y),Number(ref.m),q);
+  const hidden=document.getElementById('i-source-quote-ref');if(hidden)hidden.value=refJson;
+  const select=document.getElementById('i-quote-ref');if(select&&[...select.options].some(o=>o.value===refJson))select.value=refJson;
+  setInputValue('i-cust',q.customer||'');applyCustomerAgencyToForm('i',q);setInputValue('i-sales',q.salesPerson||'');setInputValue('i-vat',Number(q.useVat||0));
+  const body=document.getElementById('i-items-body');if(body)body.innerHTML='';
+  const items=quoteItemsForTransfer(q);(items.length?items:[{product:'',qty:1,unit:'ชิ้น',priceUnit:0}]).forEach(it=>addIItem({...it,costMode:'unit',costValue:0}));
+  const note=document.getElementById('i-note');if(note&&!note.value)note.value=`อ้างอิงใบเสนอราคา ${q.no}${q.note?` — ${q.note}`:''}`;
+  const hint=document.getElementById('i-quote-link-hint');if(hint)hint.textContent=`เชื่อมกับ ${q.no} • ${q.customer||'-'} • ดึง ${items.length} รายการแล้ว`;
+  calcI();
+}
+function useQuoteForProduction(b,y,m,id){
+  const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("production-form"));
+  go('production-form',nav);selBr('p',b);populateQuoteRefs('p');
+  const sel=document.getElementById('p-quote-ref');if(!sel)return;
+  const option=[...sel.options].find(o=>{try{const r=JSON.parse(o.value);return String(r.id)===String(id)&&r.b===b&&Number(r.y)===Number(y)&&Number(r.m)===Number(m);}catch(_){return false;}});
+  if(option){sel.value=option.value;fillProductionFromQuote();}
+}
+function useQuoteForInvoice(b,y,m,id){
+  const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("invoice-form"));
+  go('invoice-form',nav);selBr('i',b);populateQuoteRefs('i');
+  const sel=document.getElementById('i-quote-ref');if(!sel)return;
+  const option=[...sel.options].find(o=>{try{const r=JSON.parse(o.value);return String(r.id)===String(id)&&r.b===b&&Number(r.y)===Number(y)&&Number(r.m)===Number(m);}catch(_){return false;}});
+  if(option){sel.value=option.value;fillInvoiceFromQuote();}
+}
+
 function productionRefValue(b,y,m,p){return JSON.stringify({b,y,m,id:p.id,no:p.no});}
 function linkedFilterMonthOptionsReady(){
   ['i-prod-filter-month','r-inv-filter-month'].forEach(id=>{
@@ -4208,7 +4324,7 @@ function refTextMatch(doc={},search=''){
 }
 function populateProductionRefs(){
   const sel=document.getElementById('i-prod-ref');if(!sel)return;
-  const current=sel.value;sel.innerHTML='<option value="">-- เลือกใบสั่งผลิตเพื่อสร้างบิล --</option>';
+  const current=sel.value;sel.innerHTML='<option value="">-- เลือกใบสั่งผลิตเพื่อสร้างใบส่งสินค้า / ใบกำกับภาษี --</option>';
   const br=formBranch.i;updateLinkedSourceBranchBadge('i-prod-source-branch',br);
   const branches=br?[br]:['khonkaen','ubon'];const linkMap=buildProductionInvoiceLinkMap();
   const filter=getLinkedRefFilters('i-prod');
@@ -4225,7 +4341,7 @@ function populateProductionRefs(){
       const linked=!!(p.invoiceStatus==='created'||p.invoiceNo||linkedInv);const linkedNo=p.invoiceNo||linkedInv?.no||'';
       const lead=p.deliveryLeadDays||p.shippingLeadDays;
       const leadText=lead?` | ส่ง ${lead} วัน`:'';
-      o.textContent=`[${BRANCH_TH[b]}] ${p.no} | ${p.customer||'-'} | ${p.job||'-'}${leadText}${linked?` | ✅ ออกบิลแล้ว ${linkedNo}`:' | ⏳ ยังไม่ออกบิล'}`;
+      o.textContent=`[${BRANCH_TH[b]}] ${p.no} | ${p.customer||'-'} | ${p.job||'-'}${leadText}${linked?` | ✅ ออกใบส่งสินค้าแล้ว ${linkedNo}`:' | ⏳ ยังไม่ออกใบส่งสินค้า'}`;
       o.disabled=linked;sel.appendChild(o);
     });
   })));
@@ -4318,7 +4434,7 @@ function populateInvRefs(){
   })));
   if([...sel.options].some(o=>o.value===current))sel.value=current;
   const hint=document.getElementById('r-inv-link-hint');
-  if(hint&&!sel.value)hint.textContent=`พบหลักฐานใบส่งสินค้า ${shown} รายการ จากช่วงที่เลือก${filter.search?` (ค้นหา: ${filter.search})`:''} — เลือกบิลเพื่อเติมข้อมูลใบเสร็จรับเงินอัตโนมัติ`;
+  if(hint&&!sel.value)hint.textContent=`พบใบส่งสินค้า / ใบกำกับภาษี ${shown} รายการ จากช่วงที่เลือก${filter.search?` (ค้นหา: ${filter.search})`:''} — เลือกบิลเพื่อเติมข้อมูลใบเสร็จรับเงินอัตโนมัติ`;
 }
 function fillFromInv(){
   const val=document.getElementById('r-inv-ref').value;if(!val)return;
@@ -4358,10 +4474,12 @@ function renderQLList(){
     <td>${bbr(q.branch)}</td><td>${formatThaiDate(q.date)}</td><td>${q.customer}</td><td>${q.salesPerson||'-'}</td>
     <td class="tn">฿${fmt(q.total)}</td>
     <td>${q.useVat?'<span class="badge b-blue">มี VAT</span>':'<span class="badge b-gray">ไม่มี</span>'}</td>
-    <td>${q.approved?'<span class="qs-approved">✅ อนุมัติแล้ว</span>':'<span class="qs-pending">⏳ รอ</span>'}</td>
+    <td><div>${q.approved?'<span class="qs-approved">✅ อนุมัติแล้ว</span>':'<span class="qs-pending">⏳ รออนุมัติ</span>'}</div>${q.productionNo?`<small style="display:block;margin-top:4px">🏭 ${escapeHtml(q.productionNo)}</small>`:''}${q.invoiceNo?`<small style="display:block;margin-top:2px">🚚 ${escapeHtml(q.invoiceNo)}</small>`:''}</td>
     <td><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px"><input type="checkbox" ${q.approved?'checked':''} onchange="toggleApprove('${q.branch}',${q._y},${q._m},${q.id},this.checked)"> อนุมัติ</label></td>
     <td style="display:flex;gap:4px">
-      <button class="btn btn-primary btn-sm" title="เปิดใบเสนอราคาแบบเอกสาร" onclick="window.openQuoteDocument?.('${q.branch}',${q._y},${q._m},'${q.id}')">📄 เอกสาร</button>
+      <button class="btn btn-primary btn-sm" title="เปิดต้นฉบับ/สำเนาใบเสนอราคา และดาวน์โหลด PDF" onclick="window.openQuoteDocument?.('${q.branch}',${q._y},${q._m},'${q.id}')">📄 ต้นฉบับ/สำเนา/PDF</button>
+      <button class="btn btn-sm" title="สร้างรายการสั่งผลิตจากใบเสนอราคานี้" onclick="useQuoteForProduction('${q.branch}',${q._y},${q._m},'${q.id}')">🏭 สั่งผลิต</button>
+      <button class="btn btn-green btn-sm" title="สร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคานี้" onclick="useQuoteForInvoice('${q.branch}',${q._y},${q._m},'${q.id}')">🚚 ใบส่ง/ภาษี</button>
       <button class="btn btn-view btn-sm" title="ดูรายละเอียดข้อมูล" onclick="showDetailById('quote','${q.branch}',${q._y},${q._m},'${q.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       <button class="btn btn-amber btn-sm" onclick="editQuote('${q.branch}',${q._y},${q._m},'${q.id}')">✏️ แก้ไข</button>
       <button class="btn btn-danger btn-sm" onclick="delDoc('${q.branch}',${q._y},${q._m},'quotes',${q.id})">ลบ</button>
@@ -4598,20 +4716,123 @@ function renderIList(){
       ${item.idx===0?`<label class="pay-toggle">${invoicePaymentBadge(inv)}<span class="pay-check"><input type="checkbox" ${invoicePaymentChecked(inv)} onchange="toggleInvoicePaid('${inv.branch}',${inv._y},${inv._m},'${inv.id}',this.checked)"> ชำระแล้ว</span></label>`:''}
     </td>
     <td style="display:flex;gap:4px">
-      ${item.idx===0?`<button class="btn btn-view btn-sm" onclick="showDetailById('invoice','${inv.branch}',${inv._y},${inv._m},'${inv.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="btn btn-amber btn-sm" title="แก้ไขข้อมูล" onclick="editInvoice('${inv.branch}',${inv._y},${inv._m},'${inv.id}')">✏️ แก้ไข</button><button class="btn btn-sm" title="ออกใบเสร็จจากบิลนี้" onclick="issueReceiptFromInvoice('${inv.branch}',${inv._y},${inv._m},'${inv.id}')">🧾 ออกใบเสร็จ</button><button class="btn btn-danger btn-sm" onclick="delDoc('${inv.branch}',${inv._y},${inv._m},'invoices',${inv.id})">ลบ</button>`:''}
+      ${item.idx===0?`<button class="btn btn-primary btn-sm" title="เปิดต้นฉบับ/สำเนาใบส่งสินค้า / ใบกำกับภาษีสำหรับพิมพ์และ PDF" onclick="openDeliveryDocumentFromInvoice('${inv.branch}',${inv._y},${inv._m},'${inv.id}')">📄 ต้นฉบับ/สำเนา/PDF</button><button class="btn btn-view btn-sm" onclick="showDetailById('invoice','${inv.branch}',${inv._y},${inv._m},'${inv.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="btn btn-amber btn-sm" title="แก้ไขข้อมูล" onclick="editInvoice('${inv.branch}',${inv._y},${inv._m},'${inv.id}')">✏️ แก้ไข</button><button class="btn btn-sm" title="ออกใบเสร็จจากบิลนี้" onclick="issueReceiptFromInvoice('${inv.branch}',${inv._y},${inv._m},'${inv.id}')">🧾 ออกใบเสร็จ</button><button class="btn btn-danger btn-sm" onclick="delDoc('${inv.branch}',${inv._y},${inv._m},'invoices',${inv.id})">ลบ</button>`:''}
     </td>
   </tr>`;}).join('');
 }
 
 
-function issueReceiptFromInvoice(branch,year,month,id){
-  const d=loadFor(branch,year,month);
+
+function previewQuoteDocumentFromForm(){
+  const b=getBr('q'); if(!b)return;
+  const date=document.getElementById('q-date')?.value||todayStr;
+  const customer=document.getElementById('q-cust')?.value.trim()||'';
+  const no=(document.getElementById('q-no')?.value.trim()||refreshAutoQuoteNumber());
+  const items=getQItems();
+  if(!customer){alert('กรุณากรอกชื่อลูกค้าก่อนเปิดตัวอย่างใบเสนอราคา');return;}
+  if(!items.length){alert('กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ');return;}
+  const subtotal=items.reduce((sum,item)=>sum+safeNum(item.total),0);
+  const useVat=parseInt(document.getElementById('q-vat')?.value||0);
+  const vatAmt=useVat?subtotal*.07:0;
+  const ym=dateToYM(date);
+  const draft={
+    id:'preview-quote',no,date:isoDateCEFromValue(date),branch:b,customer,
+    ...getCustomerAgencyFromForm('q'),
+    salesPerson:document.getElementById('q-sales')?.value.trim()||'',items,
+    subtotal,useVat,vatAmt,total:subtotal+vatAmt,
+    note:document.getElementById('q-note')?.value.trim()||'',
+    attachments:attachedFiles['q-att']||[],approved:false
+  };
+  if(!window.ComformQuotationDocument?.loadFromData){alert('ไม่พบโมดูลเอกสารใบเสนอราคา กรุณาโหลดหน้าเว็บใหม่');return;}
+  window.ComformQuotationDocument.loadFromData(draft,{b,y:ym.year,m:ym.month,previewOnly:true});
+}
+
+function previewDeliveryDocumentFromForm(){
+  const b=getBr('i'); if(!b)return;
+  const no=document.getElementById('i-no')?.value.trim()||'';
+  const date=document.getElementById('i-date')?.value||todayStr;
+  const customer=document.getElementById('i-cust')?.value.trim()||'';
+  const items=getIItems();
+  if(!no||!customer){alert('กรุณากรอกเลขที่เอกสารและชื่อลูกค้าก่อนเปิดตัวอย่าง');return;}
+  if(!items.length){alert('กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ');return;}
+  const useVat=parseInt(document.getElementById('i-vat')?.value||0);
+  const ym=dateToYM(date);
+  const sourceProduction=getSelectedProductionRef();
+  const sourceQuote=getSelectedQuoteRef('i');
+  const draft={
+    id:'preview-invoice',no,date:isoDateCEFromValue(date),branch:b,customer,
+    ...getCustomerAgencyFromForm('i'),
+    salesPerson:document.getElementById('i-sales')?.value.trim()||'',
+    dueDate:document.getElementById('i-due-date')?.value||'',
+    creditTerm:document.getElementById('i-credit-term')?.value||'',
+    items,useVat,note:document.getElementById('i-note')?.value.trim()||'',
+    attachments:attachedFiles['i-att']||[],
+    sourceProductionNo:sourceProduction?.no||'',sourceProductionId:sourceProduction?.id||'',
+    sourceQuoteNo:sourceQuote?.no||'',sourceQuoteId:sourceQuote?.id||''
+  };
+  if(!window.ComformDeliveryTaxDocument?.loadFromInvoice){alert('ไม่พบโมดูลใบส่งสินค้า / ใบกำกับภาษี กรุณาโหลดหน้าเว็บใหม่');return;}
+  window.go?.('delivery-tax-doc',null);
+  window.ComformDeliveryTaxDocument.loadFromInvoice(draft,{b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true});
+}
+
+function previewReceiptDocumentFromForm(){
+  const b=getBr('r'); if(!b)return;
+  const no=document.getElementById('r-no')?.value.trim()||'';
+  const date=document.getElementById('r-date')?.value||todayStr;
+  const customer=document.getElementById('r-cust')?.value.trim()||'';
+  const items=getRItems();
+  if(!no||!customer){alert('กรุณากรอกเลขที่ใบเสร็จและชื่อลูกค้าก่อนเปิดตัวอย่าง');return;}
+  if(!items.length){alert('กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ');return;}
+  const useVat=parseInt(document.getElementById('r-vat')?.value||0);
+  const ym=dateToYM(date);
+  const selectedInvoice=getSelectedInvoiceRef();
+  const invNo=document.getElementById('r-inv-no')?.value.trim()||(selectedInvoice?.no||'');
+  const draft={
+    id:'preview-receipt',no,date:isoDateCEFromValue(date),branch:b,customer,
+    ...getCustomerAgencyFromForm('r'),
+    salesPerson:document.getElementById('r-sales')?.value.trim()||'',
+    invNo,invoiceId:selectedInvoice?.id||'',invoiceYear:selectedInvoice?.y??'',invoiceMonth:selectedInvoice?.m??'',
+    items,useVat,note:document.getElementById('r-note')?.value.trim()||'',
+    attachments:attachedFiles['r-att']||[]
+  };
+  if(!window.ComformReceiptDocument?.loadFromReceipt){alert('ไม่พบโมดูลเอกสารใบเสร็จรับเงิน กรุณาโหลดหน้าเว็บใหม่');return;}
+  window.go?.('receipt-doc',null);
+  window.ComformReceiptDocument.loadFromReceipt(draft,{b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true});
+}
+
+function openDeliveryDocumentFromInvoice(branch,year,month,id){
+  const d=loadFor(branch,Number(year),Number(month));
   const inv=(d.invoices||[]).find(x=>String(x.id)===String(id));
-  if(!inv){alert('ไม่พบข้อมูลบิลใบส่งสินค้านี้');return;}
-  if(!window.ComformReceiptDocument?.loadFromInvoice){alert('ไม่พบหน้าออกใบเสร็จรับเงิน กรุณาโหลดหน้าเว็บใหม่แล้วลองอีกครั้ง');return;}
-  const navEl=document.querySelector('.rcp-nav-item')||document.querySelector('.sidebar .nav-item');
-  window.go?.('receipt-doc',navEl);
-  window.ComformReceiptDocument.loadFromInvoice(inv,{b:branch,y:year,m:month,id:inv.id,no:inv.no});
+  if(!inv){alert('ไม่พบใบส่งสินค้า / ใบกำกับภาษีนี้');return;}
+  if(!window.ComformDeliveryTaxDocument?.loadFromInvoice){alert('ไม่พบโมดูลเอกสารใบส่งสินค้า / ใบกำกับภาษี กรุณาโหลดหน้าเว็บใหม่แล้วลองอีกครั้ง');return;}
+  window.go?.('delivery-tax-doc',null);
+  window.ComformDeliveryTaxDocument.loadFromInvoice(inv,{b:branch,y:Number(year),m:Number(month),id:inv.id,no:inv.no});
+}
+function openReceiptDocumentFromReceipt(branch,year,month,id){
+  const d=loadFor(branch,Number(year),Number(month));
+  const receipt=(d.receipts||[]).find(x=>String(x.id)===String(id));
+  if(!receipt){alert('ไม่พบใบเสร็จรับเงินนี้');return;}
+  if(!window.ComformReceiptDocument?.loadFromReceipt){alert('ไม่พบโมดูลเอกสารใบเสร็จรับเงิน กรุณาโหลดหน้าเว็บใหม่แล้วลองอีกครั้ง');return;}
+  window.go?.('receipt-doc',null);
+  window.ComformReceiptDocument.loadFromReceipt(receipt,{b:branch,y:Number(year),m:Number(month),id:receipt.id,no:receipt.no});
+}
+
+function issueReceiptFromInvoice(branch,year,month,id){
+  const d=loadFor(branch,Number(year),Number(month));
+  const inv=(d.invoices||[]).find(x=>String(x.id)===String(id));
+  if(!inv){alert('ไม่พบข้อมูลใบส่งสินค้า / ใบกำกับภาษีนี้');return;}
+  const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("receipt-form"));
+  go('receipt-form',nav||null);selBr('r',branch);
+  const yearEl=document.getElementById('r-inv-filter-year');if(yearEl)yearEl.value=String(year);
+  const monthEl=document.getElementById('r-inv-filter-month');if(monthEl)monthEl.value=String(month);
+  populateInvRefs();
+  const sel=document.getElementById('r-inv-ref');if(!sel)return;
+  const option=[...sel.options].find(o=>{try{const r=JSON.parse(o.value);return String(r.id)===String(id)&&r.b===branch&&Number(r.y)===Number(year)&&Number(r.m)===Number(month);}catch(_){return false;}});
+  if(option){sel.value=option.value;fillFromInv();}
+  else{
+    setInputValue('r-inv-no',inv.no||'');setInputValue('r-cust',inv.customer||'');applyCustomerAgencyToForm('r',inv);setInputValue('r-sales',inv.salesPerson||'');
+    alert('เปิดฟอร์มใบเสร็จรับเงินแล้ว แต่ไม่พบตัวเลือกอ้างอิงในรายการ จึงเติมข้อมูลหลักให้แทน กรุณาตรวจสอบก่อนบันทึก');
+  }
 }
 
 function renderRList(){
@@ -4631,6 +4852,7 @@ function renderRList(){
     <td class="tn">฿${fmt(r.total ?? r.saleTotal)}</td>
     <td class="tn ${r.profit>=0?'pos':'neg'}">฿${fmt(r.profit)}</td>
     <td style="display:flex;gap:4px">
+      <button class="btn btn-primary btn-sm" title="เปิดต้นฉบับ/สำเนาใบเสร็จรับเงินสำหรับพิมพ์และ PDF" onclick="openReceiptDocumentFromReceipt('${r.branch}',${r._y},${r._m},'${r.id}')">📄 ต้นฉบับ/สำเนา/PDF</button>
       <button class="btn btn-view btn-sm" onclick="showDetailById('receipt','${r.branch}',${r._y},${r._m},'${r.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       <button class="btn btn-amber btn-sm" onclick="editReceipt('${r.branch}',${r._y},${r._m},'${r.id}')">✏️ แก้ไข</button>
       <button class="btn btn-danger btn-sm" onclick="delDoc('${r.branch}',${r._y},${r._m},'receipts',${r.id})">ลบ</button>
@@ -4788,10 +5010,10 @@ function showDetail(type,doc){
   }
   if(type==='production'){
     title=`🏭 สั่งผลิตสินค้า — ${doc.no}`;
-    body=dr('เลขที่',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('ผู้รับผลิต/ผู้สั่งผลิต',doc.maker)+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('ชื่องาน',doc.job)+dr('ระยะเวลาในการส่งสินค้า',productionDeliveryLeadLabel(doc.deliveryLeadDays||doc.shippingLeadDays))+dr('กำหนดส่งสินค้า',formatThaiDate(getProductionDeliveryDueDate(doc))||'-')+dr('จำนวน',fmt(doc.qty))+dr('รูปแบบต้นทุน',getPCostSummary(doc))+dr('ต้นทุนรวมจากรายการ (ใช้คำนวณกำไร/ส่งบิล)','฿'+fmt(doc.costTotal ?? doc.costRawTotal ?? (doc.schemaVersion===2?0:doc.subtotal)))+dr('ต้นทุนรวม + VAT 7%','฿'+fmt(doc.costGrandTotal ?? ((doc.costTotal ?? doc.costRawTotal ?? 0)+safeNum(doc.costVatAmt))))+dr('รูปแบบ VAT ต้นทุน (ข้อมูลประกอบ)',doc.costUseVat?'รวม VAT 7%':'ไม่รวม VAT 7%')+dr('VAT 7% ต้นทุน (ข้อมูลประกอบ)','฿'+fmt(doc.costVatAmt||0))+dr('เครดิตการชำระผู้ผลิต',productionSupplierCreditLabel(doc.supplierCreditTerm,doc))+dr('วันเริ่มนับเครดิตผู้ผลิต',formatThaiDate(getProductionSupplierCreditBaseDate(doc.date,doc.supplierCreditTerm||'deliveryLead',doc.deliveryLeadDays||doc.shippingLeadDays,getProductionDeliveryDueDate(doc)))||'-')+dr('วิธีคำนวณเครดิตผู้ผลิต',productionSupplierCreditFormulaLabel(doc))+dr('วันครบกำหนดชำระผู้ผลิต',formatThaiDate(getProductionSupplierDueDate(doc))||'-')+dr('การแจ้งเตือนกำหนดชำระ',productionSupplierDueInfo(doc).text)+dr('สถานะชำระผู้ผลิต',productionSupplierPaymentStatusLabel(doc.supplierPaymentStatus))+dr('หมายเหตุการชำระผู้ผลิต',doc.supplierPaymentNote||'-')+dr('ราคาขายต่อหน่วย',getPSaleSummary(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal ?? doc.total))+dr('รูปแบบ VAT ยอดขาย',vatModeLabel(doc))+dr('ยอดขายก่อน VAT','฿'+fmt(doc.subtotal))+dr('VAT 7% ยอดขาย','฿'+fmt(doc.vatAmt))+dr('ยอดขายรวมทั้งสิ้น','฿'+fmt(doc.total))+dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไร',`<span class="${safeNum(doc.profit)>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`)+dr('บิลใบส่งสินค้า',doc.invoiceNo?`✅ ${doc.invoiceNo}`:'ยังไม่ออกบิล')+dr('หมายเหตุ',doc.note);
+    body=dr('เลขที่',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('ผู้รับผลิต/ผู้สั่งผลิต',doc.maker)+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('ชื่องาน',doc.job)+dr('ระยะเวลาในการส่งสินค้า',productionDeliveryLeadLabel(doc.deliveryLeadDays||doc.shippingLeadDays))+dr('กำหนดส่งสินค้า',formatThaiDate(getProductionDeliveryDueDate(doc))||'-')+dr('จำนวน',fmt(doc.qty))+dr('รูปแบบต้นทุน',getPCostSummary(doc))+dr('ต้นทุนรวมจากรายการ (ใช้คำนวณกำไร/ส่งบิล)','฿'+fmt(doc.costTotal ?? doc.costRawTotal ?? (doc.schemaVersion===2?0:doc.subtotal)))+dr('ต้นทุนรวม + VAT 7%','฿'+fmt(doc.costGrandTotal ?? ((doc.costTotal ?? doc.costRawTotal ?? 0)+safeNum(doc.costVatAmt))))+dr('รูปแบบ VAT ต้นทุน (ข้อมูลประกอบ)',doc.costUseVat?'รวม VAT 7%':'ไม่รวม VAT 7%')+dr('VAT 7% ต้นทุน (ข้อมูลประกอบ)','฿'+fmt(doc.costVatAmt||0))+dr('เครดิตการชำระผู้ผลิต',productionSupplierCreditLabel(doc.supplierCreditTerm,doc))+dr('วันเริ่มนับเครดิตผู้ผลิต',formatThaiDate(getProductionSupplierCreditBaseDate(doc.date,doc.supplierCreditTerm||'deliveryLead',doc.deliveryLeadDays||doc.shippingLeadDays,getProductionDeliveryDueDate(doc)))||'-')+dr('วิธีคำนวณเครดิตผู้ผลิต',productionSupplierCreditFormulaLabel(doc))+dr('วันครบกำหนดชำระผู้ผลิต',formatThaiDate(getProductionSupplierDueDate(doc))||'-')+dr('การแจ้งเตือนกำหนดชำระ',productionSupplierDueInfo(doc).text)+dr('สถานะชำระผู้ผลิต',productionSupplierPaymentStatusLabel(doc.supplierPaymentStatus))+dr('หมายเหตุการชำระผู้ผลิต',doc.supplierPaymentNote||'-')+dr('ราคาขายต่อหน่วย',getPSaleSummary(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal ?? doc.total))+dr('รูปแบบ VAT ยอดขาย',vatModeLabel(doc))+dr('ยอดขายก่อน VAT','฿'+fmt(doc.subtotal))+dr('VAT 7% ยอดขาย','฿'+fmt(doc.vatAmt))+dr('ยอดขายรวมทั้งสิ้น','฿'+fmt(doc.total))+dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไร',`<span class="${safeNum(doc.profit)>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`)+dr('ใบส่งสินค้า / ใบกำกับภาษี',doc.invoiceNo?`✅ ${doc.invoiceNo}`:'ยังไม่ออกบิล')+dr('หมายเหตุ',doc.note);
   }
   if(type==='invoice'){
-    title=`🧾 บิลใบส่งสินค้า — ${doc.no}`;
+    title=`🧾 ใบส่งสินค้า / ใบกำกับภาษี — ${doc.no}`;
     const subTotal=Number(doc.subtotal ?? doc.saleTotal ?? 0);
     const vatAmt=Number(doc.vatAmt||0);
     const grandTotal=Number(doc.total ?? (subTotal+vatAmt));
@@ -4804,7 +5026,7 @@ function showDetail(type,doc){
     const receiptSubtotal=Number(doc.subtotal ?? doc.saleTotal ?? 0);
     const receiptVat=Number(doc.vatAmt||0);
     const receiptTotal=Number(doc.total ?? doc.saleTotal ?? (receiptSubtotal+receiptVat));
-    body=dr('เลขที่ใบเสร็จ',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('เลขบิลอ้างอิง',doc.invNo)+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('พนักงานขาย',doc.salesPerson)+
+    body=dr('เลขที่ใบเสร็จ',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('เลขใบส่งสินค้า / ใบกำกับภาษีอ้างอิง',doc.invNo)+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('พนักงานขาย',doc.salesPerson)+
       dr('รูปแบบ VAT',vatModeLabel(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal))+dr('ยอดก่อน VAT','฿'+fmt(receiptSubtotal))+dr('VAT 7%','฿'+fmt(receiptVat))+dr('ยอดรวมทั้งสิ้น','฿'+fmt(receiptTotal))+dr('ต้นทุนรวม','฿'+fmt(doc.costTotal))+
       dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไรสุทธิ',`<span class="${doc.profit>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`)+dr('หมายเหตุ',doc.note);
   }
@@ -5090,7 +5312,7 @@ function exportXLSX(type,options={}){
           ]));
         });
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'บิลใบส่งสินค้า');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ใบส่งสินค้า / ใบกำกับภาษี');
     }
 
     if(type==='all'||type==='quotes'){
@@ -5290,7 +5512,7 @@ async function repairHistoricalImportData(){
   const statusEl=document.getElementById('import-json-status');
   const ok=confirm(
     'ระบบจะตรวจและซ่อมข้อมูลเก่าใน Firebase ได้แก่\n'+
-    'ใบเสนอราคา, หลักฐานใบส่งสินค้า, หลักฐานใบเสร็จรับเงิน, เอกสารออกจริง, สั่งผลิต, ค่าใช้จ่าย และ salesArchive\n\n'+
+    'ใบเสนอราคา, ใบส่งสินค้า / ใบกำกับภาษี, ใบเสร็จรับเงิน, เอกสารออกจริง, สั่งผลิต, ค่าใช้จ่าย และ salesArchive\n\n'+
     'ระบบจะแก้เฉพาะเอกสารที่ branch/year/month/attachments ผิดโครงสร้าง หรือยังไม่มี yearBE/dateThai สำหรับแสดงผล พ.ศ.\n'+
     'ควรสำรอง Firestore ก่อน และต้องเปิด systemSettings/security.recoveryMode = true ชั่วคราวก่อนซ่อม\nหลังซ่อมเสร็จให้ปิด recoveryMode กลับเป็น false\n\nดำเนินการต่อหรือไม่?'
   );
@@ -5574,6 +5796,16 @@ function exposeInlineHandlers() {
     saveExpense,
     fillFromInv,
     fillFromProduction,
+    populateQuoteRefs,
+    fillProductionFromQuote,
+    fillInvoiceFromQuote,
+    useQuoteForProduction,
+    useQuoteForInvoice,
+    previewQuoteDocumentFromForm,
+    previewDeliveryDocumentFromForm,
+    previewReceiptDocumentFromForm,
+    openDeliveryDocumentFromInvoice,
+    openReceiptDocumentFromReceipt,
     populateProductionRefs,
     populateInvRefs,
     useProductionForInvoice,
@@ -5650,8 +5882,8 @@ try {
 // ============================================================
 // LINKED DOCUMENT WORKFLOW CENTER
 // New business view:
-// รายการสั่งผลิต → ระยะเวลาในการส่งสินค้า → หลักฐานใบส่งสินค้า
-// → เครดิตการชำระของลูกค้า → หลักฐานใบเสร็จรับเงิน
+// ใบเสนอราคา → รายการสั่งผลิต → ระยะเวลาในการส่งสินค้า → ใบส่งสินค้า / ใบกำกับภาษี
+// → เครดิตการชำระของลูกค้า → ใบเสร็จรับเงิน
 // ============================================================
 let linkedBranch = '';
 
@@ -5686,16 +5918,24 @@ function linkedReceiptMatchesProduction(receipt={},production={}){
   return (pid&&String(receipt.sourceProductionId||receipt.sourceProductionFirebaseId||'')===pid)||linkedMatchNo(receipt.sourceProductionNo,pno)||linkedMatchNo(receipt.productionNo,pno);
 }
 function buildLinkedChains(year){
+  const quotes=allLinkedRows('quotes',year);
   const productions=allLinkedRows('productions',year).filter(x=>!x.historicalSalesImport);
   const invoices=allLinkedRows('invoices',year);
   const receipts=allLinkedRows('receipts',year);
   const issuedInvoices=allLinkedRows('issuedInvoices',year);
   const issuedReceipts=allLinkedRows('issuedReceipts',year);
+  const usedQuotes=new Set();
   const usedInvoices=new Set();
   const usedReceipts=new Set();
   const chains=[];
   productions.forEach(prod=>{
     const pno=linkedDocNo(prod), pid=String(prod.firebaseId||prod.id||'');
+    const quote=quotes.find(q=>{
+      const qid=String(q.firebaseId||q.id||'');
+      const ok=(prod.sourceQuoteId&&String(prod.sourceQuoteId)===String(q.id))||(prod.sourceQuoteFirebaseId&&String(prod.sourceQuoteFirebaseId)===qid)||linkedMatchNo(prod.sourceQuoteNo,linkedDocNo(q));
+      if(ok)usedQuotes.add(String(q.firebaseId||q.id||linkedDocNo(q)));
+      return ok;
+    })||null;
     const invoice=invoices.find(inv=>{
       const ok=(pid&&String(inv.sourceProductionId||inv.sourceProductionFirebaseId||'')===pid)||linkedMatchNo(inv.sourceProductionNo,pno)||linkedMatchNo(prod.invoiceNo,linkedDocNo(inv));
       if(ok)usedInvoices.add(String(inv.firebaseId||inv.id||linkedDocNo(inv)));
@@ -5707,23 +5947,33 @@ function buildLinkedChains(year){
     if(receipt)usedReceipts.add(String(receipt.firebaseId||receipt.id||linkedDocNo(receipt)));
     const rno=linkedDocNo(receipt||{});
     const issuedReceipt=issuedReceipts.find(x=>linkedMatchNo(x.sourceInvoiceNo,ino)||linkedMatchNo(x.invNo,ino)||linkedMatchNo(x.sourceReceiptNo,rno)||linkedMatchNo(linkedDocNo(x),rno))||null;
-    chains.push({production:prod,invoice,issuedInvoice,receipt,issuedReceipt,branch:prod.branch||invoice?.branch||receipt?.branch||'',year:linkedDocYear(prod),monthIndex:linkedDocMonth(prod),customer:prod.customer||invoice?.customer||receipt?.customer||'',value:linkedMoney(prod)||linkedMoney(invoice||{})||linkedMoney(receipt||{})});
+    chains.push({quote,production:prod,invoice,issuedInvoice,receipt,issuedReceipt,branch:prod.branch||quote?.branch||invoice?.branch||receipt?.branch||'',year:linkedDocYear(prod),monthIndex:linkedDocMonth(prod),customer:prod.customer||quote?.customer||invoice?.customer||receipt?.customer||'',value:linkedMoney(prod)||linkedMoney(quote||{})||linkedMoney(invoice||{})||linkedMoney(receipt||{})});
   });
   // Keep invoice-only / receipt-only records visible so users can still discover older data that was not linked to a production record.
   invoices.forEach(inv=>{
     const key=String(inv.firebaseId||inv.id||linkedDocNo(inv)); if(usedInvoices.has(key))return;
     const ino=linkedDocNo(inv);
+    const quote=quotes.find(q=>{
+      const qid=String(q.firebaseId||q.id||'');
+      const ok=(inv.sourceQuoteId&&String(inv.sourceQuoteId)===String(q.id))||(inv.sourceQuoteFirebaseId&&String(inv.sourceQuoteFirebaseId)===qid)||linkedMatchNo(inv.sourceQuoteNo,linkedDocNo(q));
+      if(ok)usedQuotes.add(String(q.firebaseId||q.id||linkedDocNo(q)));
+      return ok;
+    })||null;
     const issuedInvoice=issuedInvoices.find(x=>linkedMatchNo(x.sourceInvoiceNo,ino)||linkedMatchNo(linkedDocNo(x),ino))||null;
     const receipt=receipts.find(x=>linkedReceiptMatchesInvoice(x,inv,issuedInvoice))||null;
     if(receipt)usedReceipts.add(String(receipt.firebaseId||receipt.id||linkedDocNo(receipt)));
     const issuedReceipt=issuedReceipts.find(x=>linkedMatchNo(x.sourceInvoiceNo,ino)||linkedMatchNo(x.invNo,ino)||linkedMatchNo(x.sourceReceiptNo,linkedDocNo(receipt||{})))||null;
-    chains.push({production:null,invoice:inv,issuedInvoice,receipt,issuedReceipt,branch:inv.branch||receipt?.branch||'',year:linkedDocYear(inv),monthIndex:linkedDocMonth(inv),customer:inv.customer||receipt?.customer||'',value:linkedMoney(inv)||linkedMoney(receipt||{})});
+    chains.push({quote,production:null,invoice:inv,issuedInvoice,receipt,issuedReceipt,branch:inv.branch||quote?.branch||receipt?.branch||'',year:linkedDocYear(inv),monthIndex:linkedDocMonth(inv),customer:inv.customer||quote?.customer||receipt?.customer||'',value:linkedMoney(inv)||linkedMoney(quote||{})||linkedMoney(receipt||{})});
   });
   receipts.forEach(receipt=>{
     const key=String(receipt.firebaseId||receipt.id||linkedDocNo(receipt)); if(usedReceipts.has(key))return;
     const rno=linkedDocNo(receipt);
     const issuedReceipt=issuedReceipts.find(x=>linkedMatchNo(x.sourceReceiptNo,rno)||linkedMatchNo(linkedDocNo(x),rno))||null;
-    chains.push({production:null,invoice:null,issuedInvoice:null,receipt,issuedReceipt,branch:receipt.branch||'',year:linkedDocYear(receipt),monthIndex:linkedDocMonth(receipt),customer:receipt.customer||'',value:linkedMoney(receipt)});
+    chains.push({quote:null,production:null,invoice:null,issuedInvoice:null,receipt,issuedReceipt,branch:receipt.branch||'',year:linkedDocYear(receipt),monthIndex:linkedDocMonth(receipt),customer:receipt.customer||'',value:linkedMoney(receipt)});
+  });
+  quotes.forEach(quote=>{
+    const key=String(quote.firebaseId||quote.id||linkedDocNo(quote));if(usedQuotes.has(key))return;
+    chains.push({quote,production:null,invoice:null,issuedInvoice:null,receipt:null,issuedReceipt:null,branch:quote.branch||'',year:linkedDocYear(quote),monthIndex:linkedDocMonth(quote),customer:quote.customer||'',value:linkedMoney(quote)});
   });
   return chains;
 }
@@ -5790,7 +6040,7 @@ function setLinkedBranch(branch,button){
   renderLinkedFlow();
 }
 function linkedStatus(chain){
-  if(!linkedHasDeliveryLead(chain))return'pending-lead-time';
+  if(chain.production&&!linkedHasDeliveryLead(chain))return'pending-lead-time';
   if(!chain.invoice)return'pending-invoice';
   if(!linkedHasCustomerCredit(chain))return'pending-credit';
   if(!chain.receipt)return'pending-receipt';
@@ -5803,8 +6053,8 @@ function renderLinkedFlow(){
   const q=String(document.getElementById('linked-search')?.value||'').trim().toLowerCase();
   const status=document.getElementById('linked-status')?.value||'';
   let rows=buildLinkedChains(year).filter(x=>(!linkedBranch||x.branch===linkedBranch)&&(month===''||x.monthIndex===Number(month))&&(!status||linkedStatus(x)===status));
-  if(q)rows=rows.filter(x=>[x.customer,x.production?.no,x.production?.job,x.invoice?.no,x.receipt?.no,x.issuedInvoice?.no,x.issuedReceipt?.no,x.invoice?.creditTerm,x.invoice?.dueDate,getProductionDeliveryDueDate(x.production),(x.production?.items||[]).map(i=>i.product).join(' '),(x.receipt?.items||[]).map(i=>i.product).join(' ')].join(' ').toLowerCase().includes(q));
-  rows.sort((a,b)=>String(b.production?.date||b.receipt?.date||b.invoice?.date||'').localeCompare(String(a.production?.date||a.receipt?.date||a.invoice?.date||'')));
+  if(q)rows=rows.filter(x=>[x.customer,x.quote?.no,(x.quote?.items||[]).map(i=>i.product).join(' '),x.production?.no,x.production?.job,x.invoice?.no,x.receipt?.no,x.issuedInvoice?.no,x.issuedReceipt?.no,x.invoice?.creditTerm,x.invoice?.dueDate,getProductionDeliveryDueDate(x.production),(x.production?.items||[]).map(i=>i.product).join(' '),(x.receipt?.items||[]).map(i=>i.product).join(' ')].join(' ').toLowerCase().includes(q));
+  rows.sort((a,b)=>String(b.production?.date||b.invoice?.date||b.receipt?.date||b.quote?.date||'').localeCompare(String(a.production?.date||a.invoice?.date||a.receipt?.date||a.quote?.date||'')));
   const summary=document.getElementById('linked-summary'),list=document.getElementById('linked-flow-list'),empty=document.getElementById('linked-empty'); if(!summary||!list||!empty)return;
   const complete=rows.filter(x=>linkedStatus(x)==='complete').length;
   const pendingLead=rows.filter(x=>linkedStatus(x)==='pending-lead-time').length;
@@ -5812,12 +6062,12 @@ function renderLinkedFlow(){
   const pendingCredit=rows.filter(x=>linkedStatus(x)==='pending-credit').length;
   const pendingReceipt=rows.filter(x=>linkedStatus(x)==='pending-receipt').length;
   const total=rows.reduce((s,x)=>s+x.value,0);
-  summary.innerHTML=`<div><small>ทั้งหมด</small><b>${rows.length}</b><span>สายงาน</span></div><div><small>ครบทุกขั้นตอน</small><b>${complete}</b><span>รายการ</span></div><div><small>รอระยะเวลาส่ง</small><b>${pendingLead}</b><span>รายการ</span></div><div><small>รอหลักฐานใบส่งสินค้า</small><b>${pendingInvoice}</b><span>รายการ</span></div><div><small>รอเครดิตลูกค้า</small><b>${pendingCredit}</b><span>รายการ</span></div><div><small>รอหลักฐานใบเสร็จรับเงิน</small><b>${pendingReceipt}</b><span>รายการ</span></div><div><small>มูลค่ารวม</small><b>${fmt(total)}</b><span>บาท</span></div>`;
-  list.innerHTML=rows.map((x,i)=>`<article class="linked-chain-card"><div class="linked-chain-head"><div><span class="linked-index">${i+1}</span><b>${escapeHtml(x.customer||'ไม่ระบุลูกค้า')}</b><small>${escapeHtml(BRANCH_TH[x.branch]||x.branch||'-')} · ${MONTHS[x.monthIndex]||'-'} พ.ศ. ${yearLabelDual(x.year)}</small></div><strong>฿${fmt(x.value)}</strong></div><div class="linked-stages">${linkedStage('รายการสั่งผลิต',x.production,'production','production-list')}<i>→</i>${linkedDeliveryLeadStage(x)}<i>→</i>${linkedStage('หลักฐานใบส่งสินค้า',x.invoice,'invoice','invoice-list')}<i>→</i>${linkedCustomerCreditStage(x)}<i>→</i>${linkedStage('หลักฐานใบเสร็จรับเงิน',x.receipt,'receipt','receipt-list')}</div></article>`).join('');
+  summary.innerHTML=`<div><small>ทั้งหมด</small><b>${rows.length}</b><span>สายงาน</span></div><div><small>ครบทุกขั้นตอน</small><b>${complete}</b><span>รายการ</span></div><div><small>รอระยะเวลาส่ง</small><b>${pendingLead}</b><span>รายการ</span></div><div><small>รอใบส่งสินค้า / ใบกำกับภาษี</small><b>${pendingInvoice}</b><span>รายการ</span></div><div><small>รอเครดิตลูกค้า</small><b>${pendingCredit}</b><span>รายการ</span></div><div><small>รอใบเสร็จรับเงิน</small><b>${pendingReceipt}</b><span>รายการ</span></div><div><small>มูลค่ารวม</small><b>${fmt(total)}</b><span>บาท</span></div>`;
+  list.innerHTML=rows.map((x,i)=>`<article class="linked-chain-card"><div class="linked-chain-head"><div><span class="linked-index">${i+1}</span><b>${escapeHtml(x.customer||'ไม่ระบุลูกค้า')}</b><small>${escapeHtml(BRANCH_TH[x.branch]||x.branch||'-')} · ${MONTHS[x.monthIndex]||'-'} พ.ศ. ${yearLabelDual(x.year)}</small></div><strong>฿${fmt(x.value)}</strong></div><div class="linked-stages">${linkedStage('ใบเสนอราคา',x.quote,'quote','quote-list')}<i>→</i>${linkedStage('รายการสั่งผลิต',x.production,'production','production-list')}<i>→</i>${linkedDeliveryLeadStage(x)}<i>→</i>${linkedStage('ใบส่งสินค้า / ใบกำกับภาษี',x.invoice,'invoice','invoice-list')}<i>→</i>${linkedCustomerCreditStage(x)}<i>→</i>${linkedStage('ใบเสร็จรับเงิน',x.receipt,'receipt','receipt-list')}</div></article>`).join('');
   empty.hidden=rows.length>0;
 }
 function openLinkedList(panel,branch,year,month){
-  const map={'production-list':['pl-br','pl-year','pl-month'],'invoice-list':['il-br','il-year','il-month'],'receipt-list':['rl-br','rl-year','rl-month'],'issued-invoice-list':['oil-br','oil-year','oil-month'],'issued-receipt-list':['orl-br','orl-year','orl-month']};
+  const map={'quote-list':['ql-br','ql-year','ql-month'],'production-list':['pl-br','pl-year','pl-month'],'invoice-list':['il-br','il-year','il-month'],'receipt-list':['rl-br','rl-year','rl-month'],'issued-invoice-list':['oil-br','oil-year','oil-month'],'issued-receipt-list':['orl-br','orl-year','orl-month']};
   const ids=map[panel]||[]; if(ids[0]&&document.getElementById(ids[0]))document.getElementById(ids[0]).value=branch||''; if(ids[1]&&document.getElementById(ids[1]))document.getElementById(ids[1]).value=String(year); if(ids[2]&&document.getElementById(ids[2]))document.getElementById(ids[2]).value=String(month);
   const nav=[...document.querySelectorAll('.nav-item')].find(x=>String(x.getAttribute('onclick')||'').includes(`'${panel}'`)); go(panel,nav||null);
 }

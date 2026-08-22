@@ -33,16 +33,16 @@ const PAGE_TYPES = [
   {
     id: 'original',
     tab: 'ต้นฉบับ/ORIGINAL',
-    titleTh: 'ใบแจ้งหนี้/ใบส่งสินค้า/ใบกำกับภาษี',
-    titleEn: '(INVOICE / DELIVERY ORDER / TAX INVOICE)',
+    titleTh: 'ใบส่งสินค้า/ใบกำกับภาษี',
+    titleEn: '(DELIVERY ORDER / TAX INVOICE)',
     audience: 'สำหรับลูกค้า/CUSTOMER',
     note: '(เอกสารออกเป็นชุด)'
   },
   {
     id: 'copy',
     tab: 'สำเนา/COPY',
-    titleTh: 'ใบแจ้งหนี้/ใบส่งสินค้า/ใบกำกับภาษี',
-    titleEn: '(INVOICE / DELIVERY ORDER / TAX INVOICE)',
+    titleTh: 'ใบส่งสินค้า/ใบกำกับภาษี',
+    titleEn: '(DELIVERY ORDER / TAX INVOICE)',
     audience: 'สำหรับบัญชี/ACCOUNT',
     note: '(เอกสารออกเป็นชุด)'
   },
@@ -69,6 +69,7 @@ function createDefaultState() {
   const today = new Date();
   const iso = today.toISOString().slice(0, 10);
   return {
+    previewOnly: false,
     branch: 'khonkaen',
     company: { ...BRANCH_DEFAULTS.khonkaen },
     customerName: '',
@@ -88,7 +89,16 @@ function createDefaultState() {
     buyerName: '',
     vatEnabled: true,
     note: '',
+    attachments: [],
     sourceProductionNo: '',
+    sourceProductionFirebaseId: '',
+    sourceInvoiceNo: '',
+    sourceInvoiceId: '',
+    sourceInvoiceFirebaseId: '',
+    sourceInvoiceBranch: '',
+    sourceInvoiceYear: '',
+    sourceInvoiceMonth: '',
+    sourceQuoteNo: '',
     items: [createItem()]
   };
 }
@@ -253,7 +263,7 @@ function mountFeature() {
   if (document.getElementById('panel-delivery-tax-doc')) return;
 
   const sidebar = document.querySelector('.sidebar');
-  if (sidebar && !sidebar.querySelector('.dtd-billing-sec')) {
+  if (false && sidebar && !sidebar.querySelector('.dtd-billing-sec')) {
     const productionSec = [...sidebar.querySelectorAll('.nav-sec')].find(el => el.textContent.includes('ฝ่ายผลิต'));
     const sec = document.createElement('div');
     sec.className = 'nav-sec dtd-billing-sec';
@@ -265,7 +275,7 @@ function mountFeature() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h8M9 17h8"/>
       </svg>
-      ออกใบส่งสินค้า/ภาษี
+      ใบส่งสินค้า / ใบกำกับภาษี
     `;
     nav.addEventListener('click', () => {
       window.go?.('delivery-tax-doc', nav);
@@ -307,14 +317,16 @@ function renderAppShell() {
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
             <div class="dtd-company-mini">บริษัท ตัวอย่าง จำกัด</div>
-            <h2>ออกใบส่งสินค้า / ใบกำกับภาษี</h2>
+            <h2>ใบส่งสินค้า / ใบกำกับภาษี</h2>
           </div>
         </div>
         <div class="dtd-toolbar-actions">
-          <button type="button" class="dtd-btn dtd-btn-primary" data-action="save">💾 บันทึก</button>
-          <button type="button" class="dtd-btn" data-action="print">🖨️ พิมพ์</button>
-          <button type="button" class="dtd-btn" data-action="pdf">📄 สร้าง PDF</button>
-          <button type="button" class="dtd-btn" data-action="download">⬇ ดาวน์โหลด PDF</button>
+          <button type="button" class="dtd-btn" data-action="back-source">← กลับหน้ากรอกข้อมูล</button>
+          <button type="button" class="dtd-btn dtd-btn-primary" data-action="save" ${state.previewOnly ? 'disabled title="กรุณาบันทึกข้อมูลใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง"' : ''}>💾 บันทึกเอกสาร</button>
+          <button type="button" class="dtd-btn" data-action="print-current">🖨️ พิมพ์หน้าที่เลือก</button>
+          <button type="button" class="dtd-btn" data-action="print-set">🖨️ พิมพ์ชุด</button>
+          <button type="button" class="dtd-btn" data-action="pdf-current">⬇ PDF หน้าที่เลือก</button>
+          <button type="button" class="dtd-btn dtd-btn-primary" data-action="pdf-set">📄 PDF ต้นฉบับ + สำเนา</button>
         </div>
       </div>
 
@@ -324,6 +336,7 @@ function renderAppShell() {
           ${documentSectionHtml()}
           ${itemsSectionHtml()}
           ${summarySectionHtml()}
+          ${sourceEvidenceHtml()}
           ${templateUploadHtml()}
         </section>
 
@@ -422,6 +435,47 @@ function applyProductionRef(value) {
   renderAppShell();
   bindEvents();
   renderAll();
+}
+
+function loadFromInvoice(inv = {}, ref = {}) {
+  state.previewOnly = Boolean(ref.previewOnly);
+  const branch = ref.b || inv.branch || state.branch || 'khonkaen';
+  if (BRANCH_DEFAULTS[branch]) {
+    state.branch = branch;
+    state.company = { ...BRANCH_DEFAULTS[branch] };
+  }
+  state.customerName = inv.customer || '';
+  state.docNo = inv.no || state.docNo;
+  state.date = inv.date || state.date;
+  state.dueDate = inv.dueDate || state.dueDate;
+  state.salesperson = inv.salesPerson || '';
+  state.vatEnabled = Number(inv.useVat || 0) === 1;
+  state.note = inv.note || '';
+  state.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
+  state.sourceProductionNo = inv.sourceProductionNo || '';
+  state.sourceProductionFirebaseId = inv.sourceProductionFirebaseId || '';
+  state.sourceQuoteNo = inv.sourceQuoteNo || '';
+  state.sourceInvoiceNo = inv.no || ref.no || '';
+  state.sourceInvoiceId = inv.id || ref.id || '';
+  state.sourceInvoiceFirebaseId = inv.firebaseId || '';
+  state.sourceInvoiceBranch = branch;
+  state.sourceInvoiceYear = ref.y ?? inv.year ?? '';
+  state.sourceInvoiceMonth = ref.m ?? inv.month ?? '';
+  const items = Array.isArray(inv.items) ? inv.items : [];
+  state.items = items.length ? items.slice(0, MAX_ITEMS).map(it => ({
+    productCode: it.productCode || '',
+    product: it.product || '',
+    unit: it.unit || 'ชิ้น',
+    qty: Number(it.qty) || 1,
+    priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
+  })) : [createItem()];
+  persistDraft();
+  renderAppShell();
+  bindEvents();
+  renderAll();
+  applyLockedBranch();
+  loadProductionOptions();
+  setTimeout(() => document.getElementById('delivery-tax-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
 }
 
 function customerSectionHtml() {
@@ -544,10 +598,29 @@ function summarySectionHtml() {
   `;
 }
 
+function sourceEvidenceHtml() {
+  const files = Array.isArray(state.attachments) ? state.attachments : [];
+  const cards = files.map(file => {
+    const name = file.originalName || file.name || 'ไฟล์แนบ';
+    const type = file.type || file.mimeType || '';
+    const imageSrc = type.startsWith('image/') ? (file.previewUrl || file.data || '') : '';
+    const driveLink = file.webViewLink || '';
+    return `<div class="dtd-source-evidence-item">
+      ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(name)}">` : `<div class="dtd-source-evidence-icon">${type.includes('pdf') ? 'PDF' : '📎'}</div>`}
+      <div class="dtd-source-evidence-name">${escapeHtml(name)}</div>
+      ${driveLink ? `<a href="${escapeHtml(driveLink)}" target="_blank" rel="noopener">เปิดหลักฐาน</a>` : '<small>หลักฐานจากข้อมูลต้นทาง</small>'}
+    </div>`;
+  }).join('');
+  return `<div class="dtd-form-section dtd-source-evidence-section">
+    ${sectionHeader(5, 'หลักฐานที่แนบมากับใบส่งสินค้า')}
+    ${files.length ? `<div class="dtd-source-evidence-grid">${cards}</div>` : '<div class="dtd-source-evidence-empty">ยังไม่มีรูปภาพหรือ PDF หลักฐานในข้อมูลต้นทาง</div>'}
+  </div>`;
+}
+
 function templateUploadHtml() {
   return `
     <div class="dtd-form-section">
-      ${sectionHeader(5, 'แนบเอกสารต้นแบบ')}
+      ${sectionHeader(6, 'แนบเอกสารต้นแบบ')}
       <label class="dtd-template-upload">
         <input type="file" id="dtd-template-file" accept="application/pdf,.pdf">
         <span class="dtd-upload-icon">☁</span>
@@ -650,9 +723,15 @@ function bindEvents() {
     if (action === 'clear-date') clearOptionalDate(button.dataset.fieldTarget);
     if (action === 'add-item') addItem();
     if (action === 'remove-item') removeItem(Number(button.dataset.index));
+    if (action === 'back-source') {
+      window.go?.('invoice-form', document.querySelector('.nav-item[onclick*="invoice-form"]'));
+      return;
+    }
     if (action === 'save') await saveDocumentToSystem(button);
-    if (action === 'print') printDocuments();
-    if (action === 'pdf' || action === 'download') await downloadPdf(button);
+    if (action === 'print-current') printDocuments('current');
+    if (action === 'print-set') printDocuments('all');
+    if (action === 'pdf-current') await downloadPdf(button, 'current');
+    if (action === 'pdf-set') await downloadPdf(button, 'all');
     if (action === 'show-template') showUploadedTemplate();
   });
 
@@ -1040,6 +1119,7 @@ function validateBeforeSave() {
 }
 
 async function saveDocumentToSystem(button) {
+  if (state.previewOnly) { alert('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง'); return; }
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1098,7 +1178,11 @@ async function saveDocumentToSystem(button) {
       paidBy: old?.paidBy || '',
       note: state.note,
       sourceProductionNo: state.sourceProductionNo || '',
-      attachments: old?.attachments || [],
+      sourceQuoteNo: state.sourceQuoteNo || '',
+      sourceInvoiceNo: state.sourceInvoiceNo || state.docNo || '',
+      sourceInvoiceId: state.sourceInvoiceId || '',
+      sourceInvoiceFirebaseId: state.sourceInvoiceFirebaseId || '',
+      attachments: state.attachments?.length ? state.attachments : (old?.attachments || []),
       branch: state.branch,
       year,
       month,
@@ -1109,6 +1193,25 @@ async function saveDocumentToSystem(button) {
     if (existingIndex >= 0) pack.issuedInvoices[existingIndex] = record;
     else pack.issuedInvoices.push(record);
     localStorage.setItem(key, JSON.stringify(pack));
+
+    // เมื่อเอกสารนี้ถูกเปิดจากฟอร์มใบส่งสินค้าเดิม ให้บันทึกสถานะกลับไปยังรายการต้นทาง
+    // เพื่อให้หน้าเดียวกันทำหน้าที่ทั้งเก็บข้อมูลธุรกิจและพิมพ์เอกสาร โดยไม่ต้องมีเมนูซ้ำ
+    if (state.sourceInvoiceNo && state.sourceInvoiceBranch && state.sourceInvoiceYear !== '' && state.sourceInvoiceMonth !== '') {
+      try {
+        const sourceKey = `biz2_${state.sourceInvoiceBranch}_${Number(state.sourceInvoiceYear)}_${String(Number(state.sourceInvoiceMonth) + 1).padStart(2, '0')}`;
+        const sourcePack = JSON.parse(localStorage.getItem(sourceKey) || '{}');
+        const sourceInv = (sourcePack.invoices || []).find(row => String(row.id) === String(state.sourceInvoiceId) || String(row.no) === String(state.sourceInvoiceNo));
+        if (sourceInv) {
+          sourceInv.issuedDocumentNo = state.docNo;
+          sourceInv.issuedDocumentId = record.id;
+          sourceInv.issuedDocumentStatus = 'issued';
+          sourceInv.issuedDocumentUpdatedAt = new Date().toISOString();
+          localStorage.setItem(sourceKey, JSON.stringify(sourcePack));
+        }
+      } catch (linkError) {
+        console.warn('เชื่อมสถานะเอกสารกลับไปยังใบส่งสินค้าเดิมไม่สำเร็จ', linkError);
+      }
+    }
 
     let cloudError = null;
     const service = window.FirebaseService;
@@ -1124,6 +1227,18 @@ async function saveDocumentToSystem(button) {
             const saved = refreshed.issuedInvoices.find(inv => String(inv.id) === String(record.id));
             if (saved) saved.firebaseId = ref.id;
             localStorage.setItem(key, JSON.stringify(refreshed));
+          }
+        }
+        if (state.sourceInvoiceFirebaseId && service.updateBusinessDoc && state.sourceInvoiceBranch) {
+          try {
+            await service.updateBusinessDoc('invoices', state.sourceInvoiceId || null, state.sourceInvoiceBranch, Number(state.sourceInvoiceYear), Number(state.sourceInvoiceMonth), {
+              issuedDocumentNo: state.docNo,
+              issuedDocumentId: record.id,
+              issuedDocumentStatus: 'issued',
+              issuedDocumentUpdatedAt: new Date().toISOString()
+            }, state.sourceInvoiceFirebaseId);
+          } catch (linkError) {
+            console.error('อัปเดตสถานะเอกสารใบส่งสินค้าต้นทางไม่สำเร็จ', linkError);
           }
         }
         if (state.sourceProductionFirebaseId && service.updateBusinessDoc) {
@@ -1158,11 +1273,12 @@ async function saveDocumentToSystem(button) {
   }
 }
 
-function createOffscreenPages() {
+function createOffscreenPages(mode = 'all') {
   const container = document.createElement('div');
   container.className = 'dtd-pdf-stage';
   container.setAttribute('aria-hidden', 'true');
-  container.innerHTML = PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
+  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
+  container.innerHTML = mode === 'current' ? documentPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
   document.body.appendChild(container);
   return container;
 }
@@ -1185,7 +1301,7 @@ async function waitForPdfStageAssets(stage) {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function downloadPdf(button) {
+async function downloadPdf(button, mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1197,7 +1313,7 @@ async function downloadPdf(button) {
   let stage;
   try {
     await ensurePdfLogoDataUrl();
-    stage = createOffscreenPages();
+    stage = createOffscreenPages(mode);
     await waitForPdfStageAssets(stage);
     const pages = [...stage.querySelectorAll('.dtd-document-page')];
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
@@ -1213,7 +1329,8 @@ async function downloadPdf(button) {
       if (index > 0) pdf.addPage('a4', 'portrait');
       pdf.addImage(image, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
     }
-    const filename = `${safeFilename(state.docNo || 'delivery-tax-invoice')}.pdf`;
+    const suffix = mode === 'current' ? `_${activePage}` : '_original-copy-set';
+    const filename = `${safeFilename(state.docNo || 'delivery-tax-invoice')}${suffix}.pdf`;
     pdf.save(filename);
   } catch (error) {
     console.error(error);
@@ -1225,7 +1342,7 @@ async function downloadPdf(button) {
   }
 }
 
-function printDocuments() {
+function printDocuments(mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1237,7 +1354,8 @@ function printDocuments() {
     return;
   }
   const cssUrl = new URL('./delivery-tax-document.css', window.location.href).href;
-  const html = PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
+  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
+  const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.dtd-document-page{page-break-after:always;margin:0 auto}.dtd-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -1268,6 +1386,20 @@ function showUploadedTemplate() {
   box.innerHTML = `<div class="dtd-template-preview-head"><b>PDF ต้นแบบจากเครื่อง</b><button type="button" onclick="this.closest('.dtd-template-preview').hidden=true">ปิด</button></div><iframe src="${uploadedTemplateUrl}" title="PDF ต้นแบบ"></iframe>`;
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+window.ComformDeliveryTaxDocument = {
+  loadFromInvoice,
+  open() {
+    window.go?.('delivery-tax-doc', null);
+    renderAll();
+  },
+  downloadPdf(mode = 'all') {
+    const button = document.querySelector('#delivery-tax-app [data-action="pdf-set"]') || { textContent: 'PDF', disabled: false };
+    return downloadPdf(button, mode);
+  },
+  print(mode = 'all') { return printDocuments(mode); },
+  getState() { return JSON.parse(JSON.stringify(state)); }
+};
 
 window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('delivery-tax-app')) applyLockedBranch();

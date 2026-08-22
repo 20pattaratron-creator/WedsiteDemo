@@ -1717,3 +1717,13 @@ tr:nth-child(even) td{background:#fbfdff!important}tr:hover td{background:#f0fbf
 /* Product Master / Seasonality */
 .p-product-preset{width:100%;margin-bottom:6px;border:1px solid rgba(34,211,238,.35);border-radius:8px;padding:7px 9px;background:rgba(255,255,255,.96)}
 .analytics-product-season-card .chart-summary b{color:var(--primary,#172554)}
+
+/* Unified printable-document actions */
+.document-action-hint{
+  margin:14px 0 8px;padding:10px 12px;border:1px solid #f0c9da;border-radius:10px;
+  background:linear-gradient(120deg,#fff8fb,#fff1f7);color:#7e3158;font-size:12px;line-height:1.5
+}
+.document-action-hint.blue{border-color:#c8ddf3;background:linear-gradient(120deg,#f7fbff,#edf6ff);color:#225f95}
+.document-action-hint.pink{border-color:#efc1d6;background:linear-gradient(120deg,#fff8fb,#fff0f7);color:#96315f}
+.document-preview-btn{font-weight:800!important}
+@media(max-width:760px){.form-actions .document-preview-btn{width:100%}}

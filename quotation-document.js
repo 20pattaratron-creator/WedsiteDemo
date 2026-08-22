@@ -4,7 +4,12 @@ import { jsPDF } from 'jspdf';
 const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
 const QUOTE_CSS_URL = new URL('./quotation-document.css', import.meta.url).href;
 const ITEMS_PER_PAGE = 10;
+const QUOTE_COPY_TYPES = [
+  { id: 'original', tab: 'ต้นฉบับ / ORIGINAL', labelTh: 'ต้นฉบับ', labelEn: 'ORIGINAL', audience: 'สำหรับลูกค้า / CUSTOMER' },
+  { id: 'copy', tab: 'สำเนา / COPY', labelTh: 'สำเนา', labelEn: 'COPY', audience: 'สำหรับเก็บเอกสาร / FILE COPY' }
+];
 let currentQuote = null;
+let activeQuoteCopy = 'original';
 
 const BRANCH_DEFAULTS = {
   khonkaen: {
@@ -124,7 +129,7 @@ function splitItems(items) {
   return pages;
 }
 
-function headerHtml(quote, pageNo, totalPages) {
+function headerHtml(quote, pageNo, totalPages, copyType = QUOTE_COPY_TYPES[0]) {
   const branch = branchInfo(quote.branch);
   return `
     <header class="qdoc-header">
@@ -139,8 +144,10 @@ function headerHtml(quote, pageNo, totalPages) {
         </div>
       </div>
       <div class="qdoc-title-block">
+        <div class="qdoc-copy-badge ${copyType.id === 'copy' ? 'copy' : 'original'}">${escapeHtml(copyType.labelTh)} / ${escapeHtml(copyType.labelEn)}</div>
         <div class="qdoc-title-th">ใบเสนอราคา</div>
         <div class="qdoc-title-en">QUOTATION</div>
+        <div class="qdoc-audience">${escapeHtml(copyType.audience)}</div>
         <div class="qdoc-page-counter">หน้า ${pageNo} / ${totalPages}</div>
       </div>
     </header>`;
@@ -244,12 +251,13 @@ function footerHtml(quote) {
     </footer>`;
 }
 
-function pageHtml(quote, pageItems, pageNo, totalPages) {
+function pageHtml(quote, pageItems, pageNo, totalPages, copyType = QUOTE_COPY_TYPES[0]) {
   const isLast = pageNo === totalPages;
   return `
-    <article class="qdoc-document-page">
+    <article class="qdoc-document-page qdoc-copy-${copyType.id}">
+      <div class="qdoc-copy-watermark">${escapeHtml(copyType.labelEn)}</div>
       <div class="qdoc-accent qdoc-accent-top"></div>
-      ${headerHtml(quote, pageNo, totalPages)}
+      ${headerHtml(quote, pageNo, totalPages, copyType)}
       ${infoHtml(quote)}
       ${itemsTableHtml(pageItems, pageNo)}
       ${isLast ? summaryHtml(quote) : continuationHtml(pageNo, totalPages)}
@@ -258,9 +266,14 @@ function pageHtml(quote, pageItems, pageNo, totalPages) {
     </article>`;
 }
 
-function documentPagesHtml(quote) {
+function documentPagesHtml(quote, copyType = null) {
+  const selected = copyType || QUOTE_COPY_TYPES.find(item => item.id === activeQuoteCopy) || QUOTE_COPY_TYPES[0];
   const pages = splitItems(safeItems(quote));
-  return pages.map((pageItems, index) => pageHtml(quote, pageItems, index + 1, pages.length)).join('');
+  return pages.map((pageItems, index) => pageHtml(quote, pageItems, index + 1, pages.length, selected)).join('');
+}
+
+function allQuoteCopiesHtml(quote) {
+  return QUOTE_COPY_TYPES.map(copyType => documentPagesHtml(quote, copyType)).join('');
 }
 
 function mountFeature() {
@@ -278,11 +291,14 @@ function mountFeature() {
           <div><small>บริษัท ตัวอย่าง จำกัด</small><h2>ใบเสนอราคา / Quotation</h2><p>ใช้ข้อมูลเดิมจากฟอร์มใบเสนอราคา โดยไม่เพิ่มขั้นตอนการกรอก</p></div>
         </div>
         <div class="qdoc-toolbar-actions">
-          <button type="button" class="qdoc-btn" data-qdoc-action="back">← กลับรายการ</button>
-          <button type="button" class="qdoc-btn" data-qdoc-action="print">🖨️ พิมพ์</button>
-          <button type="button" class="qdoc-btn qdoc-btn-primary" data-qdoc-action="pdf">📄 ดาวน์โหลด PDF</button>
+          <button type="button" class="qdoc-btn" data-qdoc-action="back">← กลับใบเสนอราคา</button>
+          <button type="button" class="qdoc-btn" data-qdoc-action="print-current">🖨️ พิมพ์หน้าที่เลือก</button>
+          <button type="button" class="qdoc-btn" data-qdoc-action="print-set">🖨️ พิมพ์ชุด</button>
+          <button type="button" class="qdoc-btn" data-qdoc-action="pdf-current">⬇ PDF หน้าที่เลือก</button>
+          <button type="button" class="qdoc-btn qdoc-btn-primary" data-qdoc-action="pdf-set">📄 PDF ต้นฉบับ + สำเนา</button>
         </div>
       </div>
+      <div class="qdoc-preview-tabs" id="qdoc-preview-tabs"></div>
       <div class="qdoc-preview-wrap"><div id="qdoc-preview"></div></div>
     </div>`;
   main.appendChild(panel);
@@ -290,23 +306,73 @@ function mountFeature() {
     const action = event.target.closest('[data-qdoc-action]')?.dataset.qdocAction;
     if (!action) return;
     if (action === 'back') {
-      window.go?.('quote-list', document.querySelector('.nav-item[onclick*="quote-list"]'));
-    } else if (action === 'print') {
-      printQuote();
-    } else if (action === 'pdf') {
-      downloadQuotePdf(event.target.closest('button'));
+      const target = currentQuote?._previewOnly ? 'quote-form' : 'quote-list';
+      window.go?.(target, document.querySelector(`.nav-item[onclick*="${target}"]`));
+    } else if (action === 'print-current') {
+      printQuote('current');
+    } else if (action === 'print-set') {
+      printQuote('all');
+    } else if (action === 'pdf-current') {
+      downloadQuotePdf(event.target.closest('button'), 'current');
+    } else if (action === 'pdf-set') {
+      downloadQuotePdf(event.target.closest('button'), 'all');
     }
   });
+  renderQuoteCopyTabs();
+}
+
+function renderQuoteCopyTabs() {
+  const tabs = document.getElementById('qdoc-preview-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = QUOTE_COPY_TYPES.map(copyType => `<button type="button" class="${activeQuoteCopy === copyType.id ? 'active' : ''}" data-qdoc-copy="${copyType.id}">${copyType.tab}</button>`).join('');
+  tabs.querySelectorAll('[data-qdoc-copy]').forEach(button => button.addEventListener('click', () => {
+    activeQuoteCopy = button.dataset.qdocCopy || 'original';
+    renderQuoteCopyTabs();
+    renderCurrentQuote();
+  }));
+}
+
+function quoteEvidenceHtml(quote) {
+  const files = Array.isArray(quote?.attachments) ? quote.attachments : [];
+  if (!files.length) return '';
+  const cards = files.map(file => {
+    const name = file.originalName || file.name || 'ไฟล์แนบ';
+    const type = file.type || file.mimeType || '';
+    const imageSrc = type.startsWith('image/') ? (file.previewUrl || file.data || '') : '';
+    const driveLink = file.webViewLink || '';
+    return `<div class="qdoc-evidence-item">
+      ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(name)}">` : `<div class="qdoc-evidence-icon">${type.includes('pdf') ? 'PDF' : '📎'}</div>`}
+      <div class="qdoc-evidence-name">${escapeHtml(name)}</div>
+      ${driveLink ? `<a href="${escapeHtml(driveLink)}" target="_blank" rel="noopener">เปิดหลักฐาน</a>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="qdoc-evidence-panel"><div class="qdoc-evidence-title">📎 หลักฐาน/เอกสารที่แนบกับใบเสนอราคา (${files.length} ไฟล์)</div><div class="qdoc-evidence-grid">${cards}</div></div>`;
 }
 
 function renderCurrentQuote() {
   const preview = document.getElementById('qdoc-preview');
   if (!preview) return;
+  renderQuoteCopyTabs();
   if (!currentQuote) {
     preview.innerHTML = '<div class="qdoc-empty">ยังไม่ได้เลือกใบเสนอราคา</div>';
     return;
   }
-  preview.innerHTML = `<div class="qdoc-pages-stack">${documentPagesHtml(currentQuote)}</div>`;
+  preview.innerHTML = `${quoteEvidenceHtml(currentQuote)}<div class="qdoc-pages-stack">${documentPagesHtml(currentQuote)}</div>`;
+}
+
+function loadQuoteDocumentFromData(quote = {}, ref = {}) {
+  mountFeature();
+  currentQuote = {
+    ...quote,
+    branch: ref.b || quote.branch || 'ubon',
+    _y: Number(ref.y ?? quote.year ?? new Date().getFullYear()),
+    _m: Number(ref.m ?? quote.month ?? new Date().getMonth()),
+    _previewOnly: Boolean(ref.previewOnly)
+  };
+  activeQuoteCopy = 'original';
+  renderCurrentQuote();
+  window.go?.('quotation-document', null);
+  setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
 }
 
 function openQuoteDocument(branch, year, month, id) {
@@ -316,7 +382,8 @@ function openQuoteDocument(branch, year, month, id) {
     alert('ไม่พบใบเสนอราคาที่ต้องการแสดง อาจถูกลบหรือย้ายไปเดือนอื่นแล้ว');
     return;
   }
-  currentQuote = { ...quote, branch, _y: Number(year), _m: Number(month) };
+  currentQuote = { ...quote, branch, _y: Number(year), _m: Number(month), _previewOnly: false };
+  activeQuoteCopy = 'original';
   renderCurrentQuote();
   window.go?.('quotation-document', null);
   setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
@@ -338,13 +405,13 @@ async function waitForAssets(root) {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function downloadQuotePdf(button) {
+async function downloadQuotePdf(button, mode = 'all') {
   if (!currentQuote) return;
   const originalText = button?.textContent || '';
   if (button) { button.disabled = true; button.textContent = 'กำลังสร้าง PDF...'; }
   const stage = document.createElement('div');
   stage.className = 'qdoc-pdf-stage';
-  stage.innerHTML = documentPagesHtml(currentQuote);
+  stage.innerHTML = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
   document.body.appendChild(stage);
   try {
     await waitForAssets(stage);
@@ -362,7 +429,8 @@ async function downloadQuotePdf(button) {
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
     }
     const safeName = String(currentQuote.no || 'quotation').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 100);
-    pdf.save(`${safeName}.pdf`);
+    const suffix = mode === 'current' ? `_${activeQuoteCopy}` : '_original-copy';
+    pdf.save(`${safeName}${suffix}.pdf`);
   } catch (error) {
     console.error(error);
     alert(`สร้าง PDF ใบเสนอราคาไม่สำเร็จ: ${error?.message || error}`);
@@ -372,7 +440,7 @@ async function downloadQuotePdf(button) {
   }
 }
 
-function printQuote() {
+function printQuote(mode = 'all') {
   if (!currentQuote) return;
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) {
@@ -380,7 +448,7 @@ function printQuote() {
     return;
   }
   const cssUrl = QUOTE_CSS_URL;
-  const html = documentPagesHtml(currentQuote);
+  const html = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(currentQuote.no || 'Quotation')}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.qdoc-document-page{page-break-after:always;margin:0 auto}.qdoc-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -388,6 +456,11 @@ function printQuote() {
 window.openQuoteDocument = openQuoteDocument;
 window.downloadQuotePdf = downloadQuotePdf;
 window.printQuote = printQuote;
+window.ComformQuotationDocument = {
+  loadFromData: loadQuoteDocumentFromData,
+  openFromStorage: openQuoteDocument,
+  getCurrentQuote() { return currentQuote ? JSON.parse(JSON.stringify(currentQuote)) : null; }
+};
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();

@@ -37,8 +37,8 @@
   <div class="nav-item" onclick="go('analytics',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/><circle cx="7" cy="15" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>Business Analytics</div>
   <div class="nav-sec">เอกสารขาย</div>
   <div class="nav-item" onclick="go('quote-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>ใบเสนอราคา</div>
-  <div class="nav-item" onclick="go('invoice-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>หลักฐานใบส่งสินค้า</div>
-  <div class="nav-item" onclick="go('receipt-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>หลักฐานใบเสร็จรับเงิน</div>
+  <div class="nav-item" onclick="go('invoice-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
+  <div class="nav-item" onclick="go('receipt-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>ใบเสร็จรับเงิน</div>
   <div class="nav-sec">ฝ่ายผลิต</div>
   <div class="nav-item" onclick="go('production-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8 4V7l8 4v10"/><path d="M9 17h1M14 17h1M19 17h1"/></svg>สั่งผลิตสินค้า</div>
   <div class="nav-item" onclick="go('production-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>รายการสั่งผลิต</div>
@@ -48,10 +48,8 @@
   <div class="nav-item" onclick="go('linked-flow',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 11l3.5-4M13.5 7L17 11M17 13l-3.5 4M10.5 17L7 13"/></svg>ศูนย์เชื่อมโยงเอกสาร</div>
   <div class="nav-sec">ค้นหา & รายการ</div>
   <div class="nav-item" onclick="go('quote-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>ใบเสนอราคา</div>
-  <div class="nav-item" onclick="go('invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>หลักฐานใบส่งสินค้า</div>
-  <div class="nav-item" onclick="go('receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>หลักฐานใบเสร็จรับเงิน</div>
-  <div class="nav-item" onclick="go('issued-invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>ข้อมูลออกบิลใบส่งของ</div>
-  <div class="nav-item" onclick="go('issued-receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>ข้อมูลออกใบเสร็จรับเงิน</div>
+  <div class="nav-item" onclick="go('invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
+  <div class="nav-item" onclick="go('receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>ใบเสร็จรับเงิน</div>
   <div class="nav-item" onclick="go('expense-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>ค่าใช้จ่าย</div>
   <div class="nav-sec">ไฟล์</div>
   <div class="nav-item" onclick="go('files',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Export / Import</div>
@@ -485,8 +483,10 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="q-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint"><b>เอกสารพร้อมพิมพ์:</b> เปิดดูต้นฉบับ/สำเนา ตรวจรูปแบบ A4 และดาวน์โหลด PDF ได้ก่อนหรือหลังบันทึก</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('quote')">ล้างฟอร์ม</button>
+    <button class="btn btn-ghost document-preview-btn" type="button" onclick="previewQuoteDocumentFromForm()">👁 ตัวอย่าง / ต้นฉบับ / สำเนา / PDF</button>
     <button id="q-save-btn" class="btn btn-primary" onclick="saveQuote()">💾 บันทึกใบเสนอราคา</button>
   </div>
 </div></div>
@@ -494,9 +494,9 @@
 <!-- INVOICE FORM -->
 <div id="panel-invoice-form" class="panel"><div class="card">
   <div id="i-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('invoice')">ยกเลิกการแก้ไข</button></div>
-  <div class="card-title">📎 หลักฐานใบส่งสินค้า / ยอดขาย</div>
+  <div class="card-title">🚚 ใบส่งสินค้า / ใบกำกับภาษี</div>
   <div class="fg">
-    <div class="ff"><label>เลขที่บิล *</label><input type="text" id="i-no" placeholder="INV-2568-001"></div>
+    <div class="ff"><label>เลขที่ใบส่งสินค้า / ใบกำกับภาษี *</label><input type="text" id="i-no" placeholder="INV690801"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="i-date" onchange="updateInvoiceDueDate()"></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
@@ -506,10 +506,31 @@
       </div>
       <div class="br-warn" id="i-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
+    <input type="hidden" id="i-source-quote-ref" value="">
+    <div class="ff ff-full production-invoice-link-card linked-source-card quote-link-card">
+      <div class="linked-source-head">
+        <div>
+          <label>เชื่อมข้อมูลจากใบเสนอราคา</label>
+          <small>เลือกใบเสนอราคาที่อนุมัติแล้วเพื่อดึงลูกค้า พนักงานขาย รายการสินค้า และ VAT อัตโนมัติ</small>
+        </div>
+        <span id="i-quote-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
+      </div>
+      <div class="linked-source-filter-row">
+        <label><span>ปี</span><input id="i-quote-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateQuoteRefs('i')"></label>
+        <label><span>เดือน</span><select id="i-quote-filter-month" onchange="populateQuoteRefs('i')"><option value="">ทุกเดือน</option></select></label>
+        <label class="linked-source-search"><span>ค้นหา</span><input id="i-quote-filter-search" type="search" placeholder="เลขที่ใบเสนอราคา / ลูกค้า / สินค้า" oninput="populateQuoteRefs('i')"></label>
+        <button type="button" class="btn btn-primary" onclick="populateQuoteRefs('i')">รีเฟรช</button>
+      </div>
+      <div class="production-invoice-link-row">
+        <select id="i-quote-ref" onchange="fillInvoiceFromQuote()"><option value="">-- เลือกใบเสนอราคา --</option></select>
+        <button type="button" class="btn btn-primary" onclick="fillInvoiceFromQuote()">ดึงข้อมูลใบเสนอราคา</button>
+      </div>
+      <small id="i-quote-link-hint">สามารถสร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคาได้โดยตรง หรือเชื่อมผ่านใบสั่งผลิตด้านล่าง</small>
+    </div>
     <div class="ff ff-full production-invoice-link-card linked-source-card">
       <div class="linked-source-head">
         <div>
-          <label>เชื่อมข้อมูลจากใบสั่งผลิต</label>
+          <label>หรือเชื่อมข้อมูลจากใบสั่งผลิต</label>
           <small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small>
         </div>
         <span id="i-prod-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
@@ -568,9 +589,9 @@
     <div class="ff"><label>อัตราค่าคอมมิสชัน (%)</label><input type="number" id="i-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcI()"></div>
     <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="i-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcI()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="i-pf" class="ro" readonly></div>
-    <div class="fdiv"></div><div class="fsec">หลักฐาน</div>
+    <div class="fdiv"></div><div class="fsec">หลักฐานใบส่งสินค้า / เอกสารเพิ่มเติม</div>
     <div class="ff-full">
-      <div class="upload-zone pasteable-upload-zone" data-attachment-key="i-att" onclick="document.getElementById('i-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับหลักฐานใบส่งสินค้า">
+      <div class="upload-zone pasteable-upload-zone" data-attachment-key="i-att" onclick="document.getElementById('i-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับใบส่งสินค้า / ใบกำกับภาษี">
         <span class="proof-upload-icon">📎</span>
         <span class="proof-upload-text">แนบรูปภาพหรือ PDF</span>
         <span class="proof-paste-sub">คลิกเลือกไฟล์ ลาก PDF/รูปภาพมาวาง หรือกด Ctrl+V เพื่อวางรูปจาก Clipboard</span>
@@ -580,16 +601,18 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="i-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint blue"><b>เอกสารพร้อมพิมพ์:</b> ตัวอย่างด้านเอกสารรองรับโลโก้ ต้นฉบับ/ORIGINAL สำเนา/COPY สำเนาส่งภายใน พิมพ์ และ PDF</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('invoice')">ล้างฟอร์ม</button>
-    <button id="i-save-btn" class="btn btn-green" onclick="saveInvoice()">💾 บันทึกหลักฐานใบส่งสินค้า</button>
+    <button class="btn btn-primary document-preview-btn" type="button" onclick="previewDeliveryDocumentFromForm()">👁 ตัวอย่างต้นฉบับ / สำเนา / PDF</button>
+    <button id="i-save-btn" class="btn btn-green" onclick="saveInvoice()">💾 บันทึกใบส่งสินค้า / ใบกำกับภาษี</button>
   </div>
 </div></div>
 
 <!-- RECEIPT FORM -->
 <div id="panel-receipt-form" class="panel"><div class="card">
   <div id="r-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('receipt')">ยกเลิกการแก้ไข</button></div>
-  <div class="card-title">📎 หลักฐานใบเสร็จรับเงิน</div>
+  <div class="card-title">🧾 ใบเสร็จรับเงิน</div>
   <div class="fg">
     <div class="ff"><label>เลขที่ใบเสร็จ *</label><input type="text" id="r-no" placeholder="REC-2568-001"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="r-date"></div>
@@ -604,7 +627,7 @@
     <div class="ff ff-full production-invoice-link-card linked-source-card receipt-invoice-link-card">
       <div class="linked-source-head">
         <div>
-          <label>ดึงข้อมูลจากหลักฐานใบส่งสินค้า</label>
+          <label>ดึงข้อมูลจากใบส่งสินค้า / ใบกำกับภาษี</label>
           <small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small>
         </div>
         <span id="r-inv-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
@@ -619,9 +642,9 @@
         <select id="r-inv-ref" onchange="fillFromInv()"><option value="">-- เลือกจากบิลที่มี --</option></select>
         <button type="button" class="btn btn-purple" onclick="fillFromInv()">ดึงข้อมูลจากบิล</button>
       </div>
-      <small id="r-inv-link-hint">เลือกหลักฐานใบส่งสินค้าเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชั่นอัตโนมัติ</small>
+      <small id="r-inv-link-hint">เลือกใบส่งสินค้า / ใบกำกับภาษีเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชั่นอัตโนมัติ</small>
     </div>
-    <div class="ff"><label>หรือกรอกเลขบิลเอง</label><input type="text" id="r-inv-no" placeholder="เลขบิลอ้างอิง"></div>
+    <div class="ff"><label>หรือกรอกเลขใบส่งสินค้า / ใบกำกับภาษีเอง</label><input type="text" id="r-inv-no" placeholder="เลขใบส่งสินค้า / ใบกำกับภาษีอ้างอิง"></div>
     <div class="fg-row-break" aria-hidden="true"></div>
     <div class="ff"><label>ชื่อพนักงานขาย</label><input type="text" id="r-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="r-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('r')"></div>
@@ -649,7 +672,7 @@
     <div class="ff"><label>ค่าคอมมิสชัน (%)</label><input type="number" id="r-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcR()"></div>
     <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="r-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcR()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="r-pf" class="ro" readonly></div>
-    <div class="fdiv"></div><div class="fsec">หลักฐาน / เอกสารเพิ่มเติม</div>
+    <div class="fdiv"></div><div class="fsec">หลักฐานใบเสร็จรับเงิน / เอกสารเพิ่มเติม</div>
     <div class="ff-full proof-upload-field">
       <div class="upload-zone large-proof-upload" data-attachment-key="r-att" onclick="document.getElementById('r-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับใบเสร็จรับเงิน">
         <span class="proof-upload-icon">📎</span>
@@ -662,9 +685,11 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="r-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint pink"><b>เอกสารพร้อมพิมพ์:</b> ตัวอย่างสีชมพูพร้อมโลโก้ ต้นฉบับ/ORIGINAL สำเนาบัญชี สำเนาเก็บหลักฐาน พิมพ์ และ PDF</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('receipt')">ล้างฟอร์ม</button>
-    <button id="r-save-btn" class="btn btn-purple" onclick="saveReceipt()">💾 บันทึกหลักฐานใบเสร็จรับเงิน</button>
+    <button class="btn btn-purple document-preview-btn" type="button" onclick="previewReceiptDocumentFromForm()">👁 ตัวอย่างต้นฉบับ / สำเนา / PDF</button>
+    <button id="r-save-btn" class="btn btn-purple" onclick="saveReceipt()">💾 บันทึกใบเสร็จรับเงิน</button>
   </div>
 </div></div>
 
@@ -683,6 +708,27 @@
         <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="p-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
+    </div>
+    <input type="hidden" id="p-source-quote-ref" value="">
+    <div class="ff ff-full production-invoice-link-card linked-source-card quote-link-card">
+      <div class="linked-source-head">
+        <div>
+          <label>สร้างสั่งผลิตจากใบเสนอราคา</label>
+          <small>ดึงลูกค้า รายการสินค้า จำนวน ราคาขาย และ VAT จากใบเสนอราคา โดยกรอกราคาต้นทุน/ผู้ผลิตเพิ่มเติมในขั้นตอนสั่งผลิต</small>
+        </div>
+        <span id="p-quote-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
+      </div>
+      <div class="linked-source-filter-row">
+        <label><span>ปี</span><input id="p-quote-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateQuoteRefs('p')"></label>
+        <label><span>เดือน</span><select id="p-quote-filter-month" onchange="populateQuoteRefs('p')"><option value="">ทุกเดือน</option></select></label>
+        <label class="linked-source-search"><span>ค้นหา</span><input id="p-quote-filter-search" type="search" placeholder="เลขที่ใบเสนอราคา / ลูกค้า / สินค้า" oninput="populateQuoteRefs('p')"></label>
+        <button type="button" class="btn btn-primary" onclick="populateQuoteRefs('p')">รีเฟรช</button>
+      </div>
+      <div class="production-invoice-link-row">
+        <select id="p-quote-ref" onchange="fillProductionFromQuote()"><option value="">-- เลือกใบเสนอราคา --</option></select>
+        <button type="button" class="btn btn-primary" onclick="fillProductionFromQuote()">ดึงข้อมูลใบเสนอราคา</button>
+      </div>
+      <small id="p-quote-link-hint">แนะนำให้เลือกใบเสนอราคาที่อนุมัติแล้ว เพื่อให้สายเอกสารติดตามได้ครบตั้งแต่เสนอราคา → ผลิต → ส่งสินค้า → รับชำระ</small>
     </div>
     <div class="ff"><label>ผู้รับผลิต / ผู้สั่งผลิต *</label><input type="text" id="p-maker" list="production-maker-options" placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้ผลิตเอง" oninput="handleProductionMakerChange()" onchange="handleProductionMakerChange()"><datalist id="production-maker-options"><option value="คอมฟอร์มกรุงเทพ"></option><option value="จันชนา"></option><option value="68 computer"></option><option value="สุเทพการพิมพ์"></option><option value="PK"></option><option value="วิทยา"></option><option value="เมดิแคร์พลัส"></option><option value="เจ้าพระยา 41"></option><option value="โพรดิวส์ลาเบล"></option><option value="PW IT"></option><option value="ยูนิ - สมาร์ท"></option></datalist><small id="p-maker-preset-hint" class="section-hint">เลือกรายชื่อผู้ผลิตเพื่อให้ระบบจำกัดระยะเวลาส่งสินค้าและตั้งเครดิตผู้ผลิตให้อัตโนมัติ หรือพิมพ์ชื่ออื่นเองได้</small></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="p-cust" placeholder="ชื่อลูกค้า" oninput="autoDetectCustomerAgency('p')"></div>
@@ -932,7 +978,7 @@
 
 <!-- INVOICE LIST -->
 <div id="panel-invoice-list" class="panel"><div class="card">
-  <div class="card-title"><span>รายการหลักฐานใบส่งสินค้า</span>
+  <div class="card-title"><span>รายการใบส่งสินค้า / ใบกำกับภาษี</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="exportXLSX('invoices')">⬇ Excel</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
@@ -960,7 +1006,7 @@
   </div>
   <div class="tbl-wrap"><table class="invoice-report-table"><thead><tr>
     <th>วันที่ขาย</th>
-    <th>เลขที่บิล</th>
+    <th>เลขที่ใบส่ง/ภาษี</th>
     <th>พนักงานขาย</th>
     <th>ชื่อลูกค้า</th>
     <th>รายการสินค้า</th>
@@ -985,7 +1031,7 @@
 
 <!-- RECEIPT LIST -->
 <div id="panel-receipt-list" class="panel"><div class="card">
-  <div class="card-title"><span>รายการหลักฐานใบเสร็จรับเงิน</span>
+  <div class="card-title"><span>รายการใบเสร็จรับเงิน</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="exportXLSX('receipts')">⬇ Excel</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
@@ -1002,7 +1048,7 @@
       <input type="text" id="rl-search" placeholder="พิมพ์เลขที่..." oninput="renderRList()" style="min-width:130px">
     </div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>เลขบิล</th><th>ลูกค้า</th><th>พนักงาน</th><th class="tn">ยอดขาย</th><th class="tn">กำไร</th><th></th></tr></thead><tbody id="rtbl"></tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>เลขใบส่ง/ภาษี</th><th>ลูกค้า</th><th>พนักงาน</th><th class="tn">ยอดขาย</th><th class="tn">กำไร</th><th></th></tr></thead><tbody id="rtbl"></tbody></table></div>
   <div id="rempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
 
@@ -1059,7 +1105,7 @@
     <div>
       <div class="linked-eyebrow">DOCUMENT WORKFLOW</div>
       <h2>ศูนย์เชื่อมโยงเอกสาร</h2>
-      <p>ติดตามสายงานตั้งแต่รายการสั่งผลิต → ระยะเวลาในการส่งสินค้า → หลักฐานใบส่งสินค้า → เครดิตการชำระของลูกค้า → หลักฐานใบเสร็จรับเงิน โดยกรองตามสาขา เดือน และปี</p>
+      <p>ติดตามสายงานตั้งแต่ใบเสนอราคา → สั่งผลิตสินค้า → ระยะเวลาในการส่งสินค้า → ใบส่งสินค้า / ใบกำกับภาษี → เครดิตการชำระของลูกค้า → ใบเสร็จรับเงิน โดยกรองตามสาขา เดือน และปี</p>
     </div>
     <button type="button" class="btn btn-ghost" onclick="refreshLinkedFlow(true)">↻ ดึงข้อมูลล่าสุด</button>
   </div>
@@ -1073,7 +1119,7 @@
       <label><span>ปี</span><select id="linked-year" onchange="renderLinkedFlow()"></select></label>
       <label><span>เดือน</span><select id="linked-month" onchange="renderLinkedFlow()"><option value="">ทุกเดือน</option></select></label>
       <label class="linked-search"><span>ค้นหา</span><input id="linked-search" type="search" placeholder="เลขที่เอกสาร / ลูกค้า / งาน / สินค้า" oninput="renderLinkedFlow()"></label>
-      <label><span>สถานะ</span><select id="linked-status" onchange="renderLinkedFlow()"><option value="">ทุกสถานะ</option><option value="complete">ครบทุกขั้นตอน</option><option value="pending-lead-time">รอระยะเวลาส่งสินค้า</option><option value="pending-invoice">รอหลักฐานใบส่งสินค้า</option><option value="pending-credit">รอเครดิตลูกค้า</option><option value="pending-receipt">รอหลักฐานใบเสร็จรับเงิน</option></select></label>
+      <label><span>สถานะ</span><select id="linked-status" onchange="renderLinkedFlow()"><option value="">ทุกสถานะ</option><option value="complete">ครบทุกขั้นตอน</option><option value="pending-lead-time">รอระยะเวลาส่งสินค้า</option><option value="pending-invoice">รอใบส่งสินค้า / ใบกำกับภาษี</option><option value="pending-credit">รอเครดิตลูกค้า</option><option value="pending-receipt">รอใบเสร็จรับเงิน</option></select></label>
     </div>
   </div>
   <div id="linked-summary" class="linked-summary"></div>
