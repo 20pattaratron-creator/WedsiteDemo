@@ -1,5 +1,5 @@
 // =====================================================================
-// firebase-auth.js — ระบบ Login สำหรับ Example Company ERP
+// firebase-auth.js — ระบบ Login สำหรับ Comform Esan ERP
 // =====================================================================
 // ไฟล์นี้ใช้คู่กับ index.html
 // ทำหน้าที่:
@@ -74,9 +74,9 @@ function renderLoginScreen() {
   overlay.id = "auth-overlay";
   overlay.innerHTML = `
     <div id="auth-box">
-      <img src="${logoUrl}" alt="Example Company">
-      <h1>บริษัท ตัวอย่าง จำกัด</h1>
-      <p class="sub">เข้าสู่ระบบเพื่อใช้งาน — Example Company ERP</p>
+      <img src="${logoUrl}" alt="Comform Esan">
+      <h1>บริษัท คอมฟอร์มอีสาน จำกัด</h1>
+      <p class="sub">เข้าสู่ระบบเพื่อใช้งาน — Comform Esan ERP</p>
       <input type="email" id="auth-email" placeholder="อีเมลพนักงาน" autocomplete="username">
       <div class="auth-password-wrap">
         <input type="password" id="auth-password" placeholder="รหัสผ่าน" autocomplete="current-password">
@@ -163,9 +163,9 @@ function renderUserBar(profile, email) {
   const branchLabel = profile?.branch === "all"
     ? "ผู้ดูแลระบบ (ทุกสาขา)"
     : profile?.branch === "khonkaen"
-      ? "สาขาที่ 00001"
+      ? "สาขาขอนแก่น"
       : profile?.branch === "ubon"
-        ? "สาขาสำนักงานใหญ่"
+        ? "สาขาอุบล"
         : "ไม่ระบุสาขา";
   bar.innerHTML = `
     <span>👤 ${profile?.displayName || email} · ${branchLabel}</span>

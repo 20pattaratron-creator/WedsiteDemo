@@ -10,18 +10,18 @@ let pdfLogoDataUrl = '';
 
 const BRANCH_DEFAULTS = {
   khonkaen: {
-    label: 'สาขาที่ 00001',
-    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาที่ 00001)',
-    companyNameEn: 'EXAMPLE CO., LTD. (BRANCH 00001)',
+    label: 'สาขาขอนแก่น',
+    companyNameTh: 'บริษัท คอมฟอร์มอีสาน จำกัด (สาขาขอนแก่น) สาขาที่ 00001',
+    companyNameEn: 'COMFORM ESAN CO., LTD. (BRANCH KHONKAEN) Branch 00001',
     addressTh: '22/7 หมู่ 17 ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
     addressEn: '22/7 Moo 17 T.Nai-Muang A.Muang Khonkaen Khonkaen 40000',
     phone: '082-3160881, 089-4921941',
     taxId: '0435548000010'
   },
   ubon: {
-    label: 'สาขาสำนักงานใหญ่',
-    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาสำนักงานใหญ่)',
-    companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
+    label: 'สาขาอุบล',
+    companyNameTh: 'บริษัท คอมฟอร์ม อีสาน จำกัด (สำนักงานใหญ่)',
+    companyNameEn: 'COMFORM ESAN CO., LTD.',
     addressTh: '164/3 ถนนอุบล-ตระการ ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '164/3 Ubon-Trakarn Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
     phone: 'Tel: 0-4524-0661, 2   Fax: 0-4524-0663',
@@ -33,16 +33,16 @@ const PAGE_TYPES = [
   {
     id: 'original',
     tab: 'ต้นฉบับ/ORIGINAL',
-    titleTh: 'ใบส่งสินค้า/ใบกำกับภาษี',
-    titleEn: '(DELIVERY ORDER / TAX INVOICE)',
+    titleTh: 'ใบแจ้งหนี้/ใบส่งสินค้า/ใบกำกับภาษี',
+    titleEn: '(INVOICE / DELIVERY ORDER / TAX INVOICE)',
     audience: 'สำหรับลูกค้า/CUSTOMER',
     note: '(เอกสารออกเป็นชุด)'
   },
   {
     id: 'copy',
     tab: 'สำเนา/COPY',
-    titleTh: 'ใบส่งสินค้า/ใบกำกับภาษี',
-    titleEn: '(DELIVERY ORDER / TAX INVOICE)',
+    titleTh: 'ใบแจ้งหนี้/ใบส่งสินค้า/ใบกำกับภาษี',
+    titleEn: '(INVOICE / DELIVERY ORDER / TAX INVOICE)',
     audience: 'สำหรับบัญชี/ACCOUNT',
     note: '(เอกสารออกเป็นชุด)'
   },
@@ -69,7 +69,6 @@ function createDefaultState() {
   const today = new Date();
   const iso = today.toISOString().slice(0, 10);
   return {
-    previewOnly: false,
     branch: 'khonkaen',
     company: { ...BRANCH_DEFAULTS.khonkaen },
     customerName: '',
@@ -89,16 +88,7 @@ function createDefaultState() {
     buyerName: '',
     vatEnabled: true,
     note: '',
-    attachments: [],
     sourceProductionNo: '',
-    sourceProductionFirebaseId: '',
-    sourceInvoiceNo: '',
-    sourceInvoiceId: '',
-    sourceInvoiceFirebaseId: '',
-    sourceInvoiceBranch: '',
-    sourceInvoiceYear: '',
-    sourceInvoiceMonth: '',
-    sourceQuoteNo: '',
     items: [createItem()]
   };
 }
@@ -160,7 +150,7 @@ function fmt(value) {
 function formatDate(value) {
   if (!value) return '';
   const [y, m, d] = String(value).split('-');
-  return y && m && d ? `${d}-${m}-${Number(y)+543} (ค.ศ. ${y})` : value;
+  return y && m && d ? `${d}-${m}-${y}` : value;
 }
 
 function roundMoney(value) {
@@ -263,7 +253,7 @@ function mountFeature() {
   if (document.getElementById('panel-delivery-tax-doc')) return;
 
   const sidebar = document.querySelector('.sidebar');
-  if (false && sidebar && !sidebar.querySelector('.dtd-billing-sec')) {
+  if (sidebar && !sidebar.querySelector('.dtd-billing-sec')) {
     const productionSec = [...sidebar.querySelectorAll('.nav-sec')].find(el => el.textContent.includes('ฝ่ายผลิต'));
     const sec = document.createElement('div');
     sec.className = 'nav-sec dtd-billing-sec';
@@ -275,7 +265,7 @@ function mountFeature() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/><path d="M9 13h8M9 17h8"/>
       </svg>
-      ใบส่งสินค้า / ใบกำกับภาษี
+      ออกใบส่งสินค้า/ภาษี
     `;
     nav.addEventListener('click', () => {
       window.go?.('delivery-tax-doc', nav);
@@ -316,17 +306,15 @@ function renderAppShell() {
         <div class="dtd-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="dtd-company-mini">บริษัท ตัวอย่าง จำกัด</div>
-            <h2>ใบส่งสินค้า / ใบกำกับภาษี</h2>
+            <div class="dtd-company-mini">บริษัท คอมฟอร์มอีสาน จำกัด</div>
+            <h2>ออกใบส่งสินค้า / ใบกำกับภาษี</h2>
           </div>
         </div>
         <div class="dtd-toolbar-actions">
-          <button type="button" class="dtd-btn" data-action="back-source">← กลับหน้ากรอกข้อมูล</button>
-          <button type="button" class="dtd-btn dtd-btn-primary" data-action="save" ${state.previewOnly ? 'disabled title="กรุณาบันทึกข้อมูลใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง"' : ''}>💾 บันทึกเอกสาร</button>
-          <button type="button" class="dtd-btn" data-action="print-current">🖨️ พิมพ์หน้าที่เลือก</button>
-          <button type="button" class="dtd-btn" data-action="print-set">🖨️ พิมพ์ชุด</button>
-          <button type="button" class="dtd-btn" data-action="pdf-current">⬇ PDF หน้าที่เลือก</button>
-          <button type="button" class="dtd-btn dtd-btn-primary" data-action="pdf-set">📄 PDF ต้นฉบับ + สำเนา</button>
+          <button type="button" class="dtd-btn dtd-btn-primary" data-action="save">💾 บันทึก</button>
+          <button type="button" class="dtd-btn" data-action="print">🖨️ พิมพ์</button>
+          <button type="button" class="dtd-btn" data-action="pdf">📄 สร้าง PDF</button>
+          <button type="button" class="dtd-btn" data-action="download">⬇ ดาวน์โหลด PDF</button>
         </div>
       </div>
 
@@ -336,7 +324,6 @@ function renderAppShell() {
           ${documentSectionHtml()}
           ${itemsSectionHtml()}
           ${summarySectionHtml()}
-          ${sourceEvidenceHtml()}
           ${templateUploadHtml()}
         </section>
 
@@ -359,19 +346,6 @@ function sectionHeader(number, title) {
 
 function productionRefValue(p) {
   return JSON.stringify({ firebaseId: p.firebaseId || '', no: p.no || '' });
-}
-
-function productionYearOptionsHtml() {
-  const current = new Date().getFullYear();
-  const selected = Number(productionFilterYear || current);
-  const years = new Set([selected, current + 1, current, current - 1, current - 2, current - 3]);
-  productionOptionsCache.forEach(row => {
-    const y = Number(row.year || String(row.date || '').slice(0, 4));
-    if (Number.isFinite(y)) years.add(y);
-  });
-  return [...years].sort((a,b)=>b-a)
-    .map(year => `<option value="${year}" ${year===selected?'selected':''}>พ.ศ. ${year+543} (ค.ศ. ${year})</option>`)
-    .join('');
 }
 
 function productionRefOptionsHtml() {
@@ -437,47 +411,6 @@ function applyProductionRef(value) {
   renderAll();
 }
 
-function loadFromInvoice(inv = {}, ref = {}) {
-  state.previewOnly = Boolean(ref.previewOnly);
-  const branch = ref.b || inv.branch || state.branch || 'khonkaen';
-  if (BRANCH_DEFAULTS[branch]) {
-    state.branch = branch;
-    state.company = { ...BRANCH_DEFAULTS[branch] };
-  }
-  state.customerName = inv.customer || '';
-  state.docNo = inv.no || state.docNo;
-  state.date = inv.date || state.date;
-  state.dueDate = inv.dueDate || state.dueDate;
-  state.salesperson = inv.salesPerson || '';
-  state.vatEnabled = Number(inv.useVat || 0) === 1;
-  state.note = inv.note || '';
-  state.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
-  state.sourceProductionNo = inv.sourceProductionNo || '';
-  state.sourceProductionFirebaseId = inv.sourceProductionFirebaseId || '';
-  state.sourceQuoteNo = inv.sourceQuoteNo || '';
-  state.sourceInvoiceNo = inv.no || ref.no || '';
-  state.sourceInvoiceId = inv.id || ref.id || '';
-  state.sourceInvoiceFirebaseId = inv.firebaseId || '';
-  state.sourceInvoiceBranch = branch;
-  state.sourceInvoiceYear = ref.y ?? inv.year ?? '';
-  state.sourceInvoiceMonth = ref.m ?? inv.month ?? '';
-  const items = Array.isArray(inv.items) ? inv.items : [];
-  state.items = items.length ? items.slice(0, MAX_ITEMS).map(it => ({
-    productCode: it.productCode || '',
-    product: it.product || '',
-    unit: it.unit || 'ชิ้น',
-    qty: Number(it.qty) || 1,
-    priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
-  })) : [createItem()];
-  persistDraft();
-  renderAppShell();
-  bindEvents();
-  renderAll();
-  applyLockedBranch();
-  loadProductionOptions();
-  setTimeout(() => document.getElementById('delivery-tax-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-}
-
 function customerSectionHtml() {
   return `
     <div class="dtd-form-section">
@@ -485,7 +418,7 @@ function customerSectionHtml() {
       <div class="dtd-production-ref-box dtd-linked-selector">
         <div class="dtd-linked-selector-head"><div><label for="dtd-production-ref">ดึงข้อมูลจากใบสั่งผลิต (ถ้ามี)</label><small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small></div><span class="dtd-linked-branch-badge">${escapeHtml(BRANCH_DEFAULTS[state.branch]?.label || 'กรุณาเลือกสาขา')}</span></div>
         <div class="dtd-linked-filter-row">
-          <label><span>ปี</span><select id="dtd-production-filter-year">${productionYearOptionsHtml()}</select></label>
+          <label><span>ปี</span><input id="dtd-production-filter-year" type="number" min="2020" max="2100" value="${productionFilterYear}"></label>
           <label><span>เดือน</span><select id="dtd-production-filter-month"><option value="">ทุกเดือน</option>${Array.from({length:12},(_,i)=>`<option value="${i}" ${String(productionFilterMonth)===String(i)?'selected':''}>${i+1}</option>`).join('')}</select></label>
           <label class="dtd-linked-search"><span>ค้นหา</span><input id="dtd-production-filter-search" type="search" value="${escapeHtml(productionFilterSearch)}" placeholder="เลขที่ / ลูกค้า / งาน / สินค้า"></label>
           <button type="button" class="dtd-btn" data-action="refresh-production-link">รีเฟรช</button>
@@ -517,10 +450,10 @@ function documentSectionHtml() {
           <span>เลือกสาขา *</span>
           <div class="dtd-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
             <button type="button" class="dtd-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="dtd-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
+              <span class="dtd-branch-dot kk"></span><b>สาขาขอนแก่น</b><small>KHONKAEN</small>
             </button>
             <button type="button" class="dtd-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
-              <span class="dtd-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
+              <span class="dtd-branch-dot ub"></span><b>สาขาอุบล</b><small>UBON</small>
             </button>
           </div>
           ${locked ? `<small class="dtd-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="dtd-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}
@@ -598,29 +531,10 @@ function summarySectionHtml() {
   `;
 }
 
-function sourceEvidenceHtml() {
-  const files = Array.isArray(state.attachments) ? state.attachments : [];
-  const cards = files.map(file => {
-    const name = file.originalName || file.name || 'ไฟล์แนบ';
-    const type = file.type || file.mimeType || '';
-    const imageSrc = type.startsWith('image/') ? (file.previewUrl || file.data || '') : '';
-    const driveLink = file.webViewLink || '';
-    return `<div class="dtd-source-evidence-item">
-      ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(name)}">` : `<div class="dtd-source-evidence-icon">${type.includes('pdf') ? 'PDF' : '📎'}</div>`}
-      <div class="dtd-source-evidence-name">${escapeHtml(name)}</div>
-      ${driveLink ? `<a href="${escapeHtml(driveLink)}" target="_blank" rel="noopener">เปิดหลักฐาน</a>` : '<small>หลักฐานจากข้อมูลต้นทาง</small>'}
-    </div>`;
-  }).join('');
-  return `<div class="dtd-form-section dtd-source-evidence-section">
-    ${sectionHeader(5, 'หลักฐานที่แนบมากับใบส่งสินค้า')}
-    ${files.length ? `<div class="dtd-source-evidence-grid">${cards}</div>` : '<div class="dtd-source-evidence-empty">ยังไม่มีรูปภาพหรือ PDF หลักฐานในข้อมูลต้นทาง</div>'}
-  </div>`;
-}
-
 function templateUploadHtml() {
   return `
     <div class="dtd-form-section">
-      ${sectionHeader(6, 'แนบเอกสารต้นแบบ')}
+      ${sectionHeader(5, 'แนบเอกสารต้นแบบ')}
       <label class="dtd-template-upload">
         <input type="file" id="dtd-template-file" accept="application/pdf,.pdf">
         <span class="dtd-upload-icon">☁</span>
@@ -723,15 +637,9 @@ function bindEvents() {
     if (action === 'clear-date') clearOptionalDate(button.dataset.fieldTarget);
     if (action === 'add-item') addItem();
     if (action === 'remove-item') removeItem(Number(button.dataset.index));
-    if (action === 'back-source') {
-      window.go?.('invoice-form', document.querySelector('.nav-item[onclick*="invoice-form"]'));
-      return;
-    }
     if (action === 'save') await saveDocumentToSystem(button);
-    if (action === 'print-current') printDocuments('current');
-    if (action === 'print-set') printDocuments('all');
-    if (action === 'pdf-current') await downloadPdf(button, 'current');
-    if (action === 'pdf-set') await downloadPdf(button, 'all');
+    if (action === 'print') printDocuments();
+    if (action === 'pdf' || action === 'download') await downloadPdf(button);
     if (action === 'show-template') showUploadedTemplate();
   });
 
@@ -963,7 +871,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
       </div>
       <header class="dtd-doc-header">
         <div class="dtd-doc-company">
-          <img src="${logoSrc}" alt="Example Company" crossorigin="anonymous" decoding="sync">
+          <img src="${logoSrc}" alt="Comform Esan" crossorigin="anonymous" decoding="sync">
           <div>
             <div class="dtd-doc-company-th">${escapeHtml(company.companyNameTh)}</div>
             <div class="dtd-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
@@ -1030,7 +938,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
         <img class="dtd-doc-watermark" src="${logoSrc}" alt="" crossorigin="anonymous" decoding="sync">
         <div class="dtd-doc-bottom-area">
           <div class="dtd-doc-payment-note">
-            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท ตัวอย่าง จำกัด</b></div>
+            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท คอมฟอร์มอีสาน จำกัด</b></div>
             <div>• สินค้าตามรายการข้างต้นยังเป็นกรรมสิทธิ์ของบริษัทฯ จนกว่าจะได้รับชำระเงินครบถ้วน</div>
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
             ${!isFinalPage ? `<div class="dtd-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
@@ -1119,7 +1027,6 @@ function validateBeforeSave() {
 }
 
 async function saveDocumentToSystem(button) {
-  if (state.previewOnly) { alert('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง'); return; }
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1178,11 +1085,7 @@ async function saveDocumentToSystem(button) {
       paidBy: old?.paidBy || '',
       note: state.note,
       sourceProductionNo: state.sourceProductionNo || '',
-      sourceQuoteNo: state.sourceQuoteNo || '',
-      sourceInvoiceNo: state.sourceInvoiceNo || state.docNo || '',
-      sourceInvoiceId: state.sourceInvoiceId || '',
-      sourceInvoiceFirebaseId: state.sourceInvoiceFirebaseId || '',
-      attachments: state.attachments?.length ? state.attachments : (old?.attachments || []),
+      attachments: old?.attachments || [],
       branch: state.branch,
       year,
       month,
@@ -1193,25 +1096,6 @@ async function saveDocumentToSystem(button) {
     if (existingIndex >= 0) pack.issuedInvoices[existingIndex] = record;
     else pack.issuedInvoices.push(record);
     localStorage.setItem(key, JSON.stringify(pack));
-
-    // เมื่อเอกสารนี้ถูกเปิดจากฟอร์มใบส่งสินค้าเดิม ให้บันทึกสถานะกลับไปยังรายการต้นทาง
-    // เพื่อให้หน้าเดียวกันทำหน้าที่ทั้งเก็บข้อมูลธุรกิจและพิมพ์เอกสาร โดยไม่ต้องมีเมนูซ้ำ
-    if (state.sourceInvoiceNo && state.sourceInvoiceBranch && state.sourceInvoiceYear !== '' && state.sourceInvoiceMonth !== '') {
-      try {
-        const sourceKey = `biz2_${state.sourceInvoiceBranch}_${Number(state.sourceInvoiceYear)}_${String(Number(state.sourceInvoiceMonth) + 1).padStart(2, '0')}`;
-        const sourcePack = JSON.parse(localStorage.getItem(sourceKey) || '{}');
-        const sourceInv = (sourcePack.invoices || []).find(row => String(row.id) === String(state.sourceInvoiceId) || String(row.no) === String(state.sourceInvoiceNo));
-        if (sourceInv) {
-          sourceInv.issuedDocumentNo = state.docNo;
-          sourceInv.issuedDocumentId = record.id;
-          sourceInv.issuedDocumentStatus = 'issued';
-          sourceInv.issuedDocumentUpdatedAt = new Date().toISOString();
-          localStorage.setItem(sourceKey, JSON.stringify(sourcePack));
-        }
-      } catch (linkError) {
-        console.warn('เชื่อมสถานะเอกสารกลับไปยังใบส่งสินค้าเดิมไม่สำเร็จ', linkError);
-      }
-    }
 
     let cloudError = null;
     const service = window.FirebaseService;
@@ -1227,18 +1111,6 @@ async function saveDocumentToSystem(button) {
             const saved = refreshed.issuedInvoices.find(inv => String(inv.id) === String(record.id));
             if (saved) saved.firebaseId = ref.id;
             localStorage.setItem(key, JSON.stringify(refreshed));
-          }
-        }
-        if (state.sourceInvoiceFirebaseId && service.updateBusinessDoc && state.sourceInvoiceBranch) {
-          try {
-            await service.updateBusinessDoc('invoices', state.sourceInvoiceId || null, state.sourceInvoiceBranch, Number(state.sourceInvoiceYear), Number(state.sourceInvoiceMonth), {
-              issuedDocumentNo: state.docNo,
-              issuedDocumentId: record.id,
-              issuedDocumentStatus: 'issued',
-              issuedDocumentUpdatedAt: new Date().toISOString()
-            }, state.sourceInvoiceFirebaseId);
-          } catch (linkError) {
-            console.error('อัปเดตสถานะเอกสารใบส่งสินค้าต้นทางไม่สำเร็จ', linkError);
           }
         }
         if (state.sourceProductionFirebaseId && service.updateBusinessDoc) {
@@ -1273,12 +1145,11 @@ async function saveDocumentToSystem(button) {
   }
 }
 
-function createOffscreenPages(mode = 'all') {
+function createOffscreenPages() {
   const container = document.createElement('div');
   container.className = 'dtd-pdf-stage';
   container.setAttribute('aria-hidden', 'true');
-  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
-  container.innerHTML = mode === 'current' ? documentPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
+  container.innerHTML = PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
   document.body.appendChild(container);
   return container;
 }
@@ -1301,7 +1172,7 @@ async function waitForPdfStageAssets(stage) {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function downloadPdf(button, mode = 'all') {
+async function downloadPdf(button) {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1313,7 +1184,7 @@ async function downloadPdf(button, mode = 'all') {
   let stage;
   try {
     await ensurePdfLogoDataUrl();
-    stage = createOffscreenPages(mode);
+    stage = createOffscreenPages();
     await waitForPdfStageAssets(stage);
     const pages = [...stage.querySelectorAll('.dtd-document-page')];
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
@@ -1329,8 +1200,7 @@ async function downloadPdf(button, mode = 'all') {
       if (index > 0) pdf.addPage('a4', 'portrait');
       pdf.addImage(image, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
     }
-    const suffix = mode === 'current' ? `_${activePage}` : '_original-copy-set';
-    const filename = `${safeFilename(state.docNo || 'delivery-tax-invoice')}${suffix}.pdf`;
+    const filename = `${safeFilename(state.docNo || 'delivery-tax-invoice')}.pdf`;
     pdf.save(filename);
   } catch (error) {
     console.error(error);
@@ -1342,7 +1212,7 @@ async function downloadPdf(button, mode = 'all') {
   }
 }
 
-function printDocuments(mode = 'all') {
+function printDocuments() {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1354,8 +1224,7 @@ function printDocuments(mode = 'all') {
     return;
   }
   const cssUrl = new URL('./delivery-tax-document.css', window.location.href).href;
-  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
-  const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
+  const html = PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.dtd-document-page{page-break-after:always;margin:0 auto}.dtd-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -1387,73 +1256,9 @@ function showUploadedTemplate() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-
-function buildStateFromInvoicePreview(inv = {}, ref = {}) {
-  const previewState = createDefaultState();
-  const branch = ref.b || inv.branch || previewState.branch || 'khonkaen';
-  if (BRANCH_DEFAULTS[branch]) {
-    previewState.branch = branch;
-    previewState.company = { ...BRANCH_DEFAULTS[branch] };
-  }
-  previewState.customerName = inv.customer || '';
-  previewState.customerAddress = inv.customerAddress || inv.address || '';
-  previewState.customerTaxId = inv.customerTaxId || '';
-  previewState.contact = inv.contact || '';
-  previewState.phone = inv.phone || '';
-  previewState.docNo = inv.no || previewState.docNo;
-  previewState.date = inv.date || previewState.date;
-  previewState.dueDate = inv.dueDate || previewState.dueDate;
-  previewState.salesperson = inv.salesPerson || '';
-  previewState.vatEnabled = Number(inv.useVat || 0) === 1;
-  previewState.note = inv.note || '';
-  previewState.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
-  previewState.sourceProductionNo = inv.sourceProductionNo || '';
-  previewState.sourceQuoteNo = inv.sourceQuoteNo || '';
-  previewState.items = Array.isArray(inv.items) && inv.items.length ? inv.items.slice(0, MAX_ITEMS).map(it => ({
-    productCode: it.productCode || '', product: it.product || '', unit: it.unit || 'ชิ้น', qty: Number(it.qty) || 1, priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
-  })) : [createItem()];
-  return previewState;
-}
-function buildInlineDeliveryHtml(inv = {}, ref = {}, pageId = 'original') {
-  const prevState = state;
-  const prevActivePage = activePage;
-  try {
-    state = buildStateFromInvoicePreview(inv, ref);
-    activePage = pageId || 'original';
-    const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
-    return documentPagesHtml(page, false);
-  } finally {
-    state = prevState;
-    activePage = prevActivePage;
-  }
-}
-function renderInlineDeliveryPreview(target, inv = {}, ref = {}, pageId = 'original') {
-  const el = typeof target === 'string' ? document.querySelector(target) : target;
-  if (!el) return;
-  el.innerHTML = buildInlineDeliveryHtml(inv, ref, pageId);
-}
-
-window.ComformDeliveryTaxDocument = {
-  loadFromInvoice,
-  open() {
-    window.go?.('delivery-tax-doc', null);
-    renderAll();
-  },
-  downloadPdf(mode = 'all') {
-    const button = document.querySelector('#delivery-tax-app [data-action="pdf-set"]') || { textContent: 'PDF', disabled: false };
-    return downloadPdf(button, mode);
-  },
-  print(mode = 'all') { return printDocuments(mode); },
-  getState() { return JSON.parse(JSON.stringify(state)); },
-  buildInlineHtml(inv, ref = {}, pageId = 'original') { return buildInlineDeliveryHtml(inv, ref, pageId); },
-  renderInlinePreview(target, inv, ref = {}, pageId = 'original') { return renderInlineDeliveryPreview(target, inv, ref, pageId); }
-};
-
 window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('delivery-tax-app')) applyLockedBranch();
 });
-
-window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'delivery' } }));
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();
