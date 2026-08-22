@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ข้อมูล บริษัท คอมฟอร์มอีสาน จำกัด (Comform Esan)</title>
+<title>ข้อมูล บริษัท ตัวอย่าง จำกัด (Example Company)</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="delivery-tax-document.css">
+<link rel="stylesheet" href="quotation-document.css">
 <link rel="stylesheet" href="receipt-document.css">
-<link rel="stylesheet" href="integrated-documents.css">
 </head>
 <body>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
-  <img class="company-logo" src="./logo.png" alt="Comform Esan Logo">
+  <img class="company-logo" src="./logo.png" alt="Example Company Logo">
   <div class="company-title-wrap">
-    <div class="company-main-title">ข้อมูล บริษัท คอมฟอร์มอีสาน จำกัด ( Comform Esan )</div>
+    <div class="company-main-title">ข้อมูล บริษัท ตัวอย่าง จำกัด ( Example Company )</div>
     <div class="company-sub-title">ระบบบันทึกข้อมูลบริษัท / ฝ่ายขาย / ค่าใช้จ่าย / สั่งผลิตสินค้า</div>
   </div>
   <span id="topbar-ctx" class="company-date"></span>
@@ -34,11 +34,11 @@
 <nav class="sidebar">
   <div class="nav-sec">ภาพรวม</div>
   <div class="nav-item active" onclick="go('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>แดชบอร์ด</div>
-  <div class="nav-item" onclick="go('analytics',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/><circle cx="7" cy="15" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>Data Analytics</div>
+  <div class="nav-item" onclick="go('analytics',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/><circle cx="7" cy="15" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>Business Analytics</div>
   <div class="nav-sec">เอกสารขาย</div>
   <div class="nav-item" onclick="go('quote-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>ใบเสนอราคา</div>
-  <div class="nav-item" onclick="go('invoice-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>หลักฐานใบส่งสินค้า</div>
-  <div class="nav-item" onclick="go('receipt-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>หลักฐานใบเสร็จรับเงิน</div>
+  <div class="nav-item" onclick="go('invoice-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
+  <div class="nav-item" onclick="go('receipt-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>ใบเสร็จรับเงิน</div>
   <div class="nav-sec">ฝ่ายผลิต</div>
   <div class="nav-item" onclick="go('production-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8 4V7l8 4v10"/><path d="M9 17h1M14 17h1M19 17h1"/></svg>สั่งผลิตสินค้า</div>
   <div class="nav-item" onclick="go('production-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>รายการสั่งผลิต</div>
@@ -48,10 +48,8 @@
   <div class="nav-item" onclick="go('linked-flow',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 11l3.5-4M13.5 7L17 11M17 13l-3.5 4M10.5 17L7 13"/></svg>ศูนย์เชื่อมโยงเอกสาร</div>
   <div class="nav-sec">ค้นหา & รายการ</div>
   <div class="nav-item" onclick="go('quote-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>ใบเสนอราคา</div>
-  <div class="nav-item" onclick="go('invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>หลักฐานใบส่งสินค้า</div>
-  <div class="nav-item" onclick="go('receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>หลักฐานใบเสร็จรับเงิน</div>
-  <div class="nav-item" onclick="go('issued-invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>ข้อมูลออกบิลใบส่งของ</div>
-  <div class="nav-item" onclick="go('issued-receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>ข้อมูลออกใบเสร็จรับเงิน</div>
+  <div class="nav-item" onclick="go('invoice-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
+  <div class="nav-item" onclick="go('receipt-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>ใบเสร็จรับเงิน</div>
   <div class="nav-item" onclick="go('expense-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>ค่าใช้จ่าย</div>
   <div class="nav-sec">ไฟล์</div>
   <div class="nav-item" onclick="go('files',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Export / Import</div>
@@ -63,8 +61,8 @@
 <div id="panel-dashboard" class="panel active">
   <div class="dash-tabs">
     <button class="dtab active" id="dt-all" onclick="switchDashTab('all')">รวมทั้ง 2 สาขา</button>
-    <button class="dtab kk" id="dt-kk" onclick="switchDashTab('khonkaen')">🔵 สาขาขอนแก่น</button>
-    <button class="dtab ub" id="dt-ub" onclick="switchDashTab('ubon')">🟣 สาขาอุบล</button>
+    <button class="dtab kk" id="dt-kk" onclick="switchDashTab('khonkaen')">🔵 สาขาที่ 00001</button>
+    <button class="dtab ub" id="dt-ub" onclick="switchDashTab('ubon')">🟣 สาขาสำนักงานใหญ่</button>
   </div>
 
   <!-- Filter row for dashboard -->
@@ -83,8 +81,8 @@
   <div id="dash-combined">
     <div class="metrics" id="metrics-total"></div>
     <div class="compare-grid">
-      <div class="bc kk"><div class="bname">🔵 สาขาขอนแก่น</div><div id="dash-kk-rows"></div></div>
-      <div class="bc ub"><div class="bname">🟣 สาขาอุบล</div><div id="dash-ub-rows"></div></div>
+      <div class="bc kk"><div class="bname">🔵 สาขาที่ 00001</div><div id="dash-kk-rows"></div></div>
+      <div class="bc ub"><div class="bname">🟣 สาขาสำนักงานใหญ่</div><div id="dash-ub-rows"></div></div>
     </div>
   </div>
   <div id="dash-single" style="display:none">
@@ -276,6 +274,15 @@
       <div id="dash-customer-chart" class="bar-chart customer-chart"></div>
       <div id="dash-customer-summary" class="chart-summary"></div>
     </div>
+
+    <div class="card chart-card dashboard-agency-card">
+      <div class="card-title chart-title-row">
+        <span>🏛️ สัดส่วนลูกค้าตามกลุ่มธุรกิจ</span>
+        <span class="analytics-mini-label">ราชการ · รพ. · รร. · เอกชน</span>
+      </div>
+      <div id="dash-agency-chart" class="bar-chart customer-chart"></div>
+      <div id="dash-agency-summary" class="chart-summary"></div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -285,29 +292,30 @@
 </div>
 
 
-<!-- DATA SCIENCE & ANALYTICS -->
+<!-- BUSINESS ANALYTICS -->
 <div id="panel-analytics" class="panel">
   <div class="analytics-page-head">
     <div>
-      <div class="analytics-eyebrow">DATA SCIENCE & ANALYTICS</div>
-      <h2>ศูนย์วิเคราะห์ข้อมูลธุรกิจ</h2>
-      <p>ใช้หลัก Data Science เพื่อสรุปยอดขาย กำไร คุณภาพข้อมูล ลูกค้าสำคัญ สินค้าขายดี แนวโน้ม และสัญญาณผิดปกติจากข้อมูลใน Firebase/Local Cache</p>
+      <div class="analytics-eyebrow">BUSINESS ANALYTICS & CUSTOMER INTELLIGENCE</div>
+      <h2>ศูนย์วิเคราะห์ธุรกิจ</h2>
+      <p>เปลี่ยนข้อมูลขาย ผลิต ส่งสินค้า รับเงิน และกลุ่มลูกค้าให้เป็น Business Insight สำหรับวางแผนยอดขาย เครดิตลูกค้า กำไร และการติดตามงาน</p>
     </div>
     <button type="button" class="btn btn-ghost" onclick="refreshDataAnalytics(true)">↻ ดึงข้อมูลล่าสุด</button>
   </div>
 
   <div class="analytics-filter-card">
     <div class="analytics-principles">
-      <span>Descriptive: เกิดอะไรขึ้น</span>
-      <span>Diagnostic: เพราะอะไร</span>
-      <span>Predictive: เดือนถัดไปน่าจะเป็นเท่าไร</span>
-      <span>Prescriptive: ควรทำอะไรต่อ</span>
+      <span>Business Overview: ภาพรวมยอดขายและกำไร</span>
+      <span>Customer Analytics: ลูกค้าหลักและลูกค้าเสี่ยง</span>
+      <span>Forecast: แนวโน้มเดือนถัดไป</span>
+      <span>Action Plan: สิ่งที่ควรติดตาม</span>
     </div>
     <div class="analytics-filter-grid">
-      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select></label>
+      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></label>
       <label><span>ปี</span><select id="analytics-year" onchange="renderDataAnalytics()"></select></label>
       <label><span>เดือน</span><select id="analytics-month" onchange="renderDataAnalytics()"><option value="">ทุกเดือน</option></select></label>
-      <label><span>มุมมองหลัก</span><select id="analytics-focus" onchange="renderDataAnalytics()"><option value="sales">ยอดขาย/กำไร</option><option value="delivery">ส่งสินค้า/เก็บเงิน</option><option value="quality">คุณภาพข้อมูล</option></select></label>
+      <label><span>สินค้า (วิเคราะห์สินค้า)</span><select id="analytics-product" onchange="renderDataAnalytics()"><option value="">สินค้าทั้งหมด</option></select></label>
+      <label><span>มุมมองหลัก</span><select id="analytics-focus" onchange="renderDataAnalytics()"><option value="sales">ภาพรวมธุรกิจ / กำไร</option><option value="delivery">ส่งสินค้า / เครดิต / รับเงิน</option><option value="quality">คุณภาพข้อมูล / ความเสี่ยง</option></select></label>
       <label><span>ประเภทหน่วยงาน</span><select id="analytics-agency-group" onchange="populateAnalyticsAgencyTypeOptions(true)"><option value="">ทุกประเภทหน่วยงาน</option></select></label>
       <label><span>ประเภทย่อย</span><select id="analytics-agency-type" onchange="renderDataAnalytics()"><option value="">ทุกประเภทย่อย</option></select></label>
       <label><span>สูตรพยากรณ์</span><select id="analytics-forecast-method" onchange="renderDataAnalytics()"><option value="auto">Auto Ensemble</option><option value="moving">Moving Average 3 เดือน</option><option value="weighted">Weighted MA 3 เดือน</option><option value="linear">Linear Trend</option><option value="smooth">Exponential Smoothing</option></select></label>
@@ -317,30 +325,36 @@
   <div id="analytics-kpis" class="analytics-kpis"></div>
   <div id="analytics-insights" class="analytics-insights"></div>
   <div id="analytics-executive-summary" class="analytics-executive-summary"></div>
+  <div id="business-segment-cards" class="business-segment-cards"></div>
 
   <div class="analytics-grid">
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>📈 แนวโน้มรายเดือนและพยากรณ์</span><span id="analytics-trend-label" class="analytics-mini-label"></span></div>
+      <div class="card-title chart-title-row"><span>📈 Business Forecast รายเดือน</span><span id="analytics-trend-label" class="analytics-mini-label"></span></div>
       <div id="analytics-trend-chart" class="bar-chart analytics-chart"></div>
       <div id="analytics-trend-summary" class="chart-summary"></div>
     </div>
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>👥 Pareto / ABC ลูกค้า</span><span class="analytics-mini-label">Top 10</span></div>
+      <div class="card-title chart-title-row"><span>👥 Business Analytics ลูกค้า</span><span class="analytics-mini-label">Top 10</span></div>
       <div id="analytics-customer-chart" class="bar-chart analytics-chart"></div>
       <div id="analytics-customer-summary" class="chart-summary"></div>
     </div>
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>🏛️ ประเภทหน่วยงานลูกค้า</span><span class="analytics-mini-label">Agency Segment</span></div>
+      <div class="card-title chart-title-row"><span>🏛️ ลูกค้าตามกลุ่มธุรกิจ</span><span class="analytics-mini-label">Agency Segment</span></div>
       <div id="analytics-agency-chart" class="bar-chart analytics-chart"></div>
       <div id="analytics-agency-summary" class="chart-summary"></div>
     </div>
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>📦 สินค้าที่สร้างยอดสูงสุด</span><span class="analytics-mini-label">Product Analytics</span></div>
+      <div class="card-title chart-title-row"><span>📦 สินค้าและงานที่สร้างยอด</span><span class="analytics-mini-label">Product Analytics</span></div>
       <div id="analytics-product-chart" class="bar-chart analytics-chart"></div>
       <div id="analytics-product-summary" class="chart-summary"></div>
     </div>
+    <div class="card analytics-card analytics-product-season-card">
+      <div class="card-title chart-title-row"><span>🗓️ สินค้าขายดีตามเดือน</span><span class="analytics-mini-label">Seasonality</span></div>
+      <div id="analytics-product-season-chart" class="bar-chart analytics-chart"></div>
+      <div id="analytics-product-season-summary" class="chart-summary"></div>
+    </div>
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>🧹 Data Quality Check</span><span class="analytics-mini-label">ก่อนตัดสินใจ</span></div>
+      <div class="card-title chart-title-row"><span>🧹 คุณภาพข้อมูลก่อนตัดสินใจ</span><span class="analytics-mini-label">ก่อนตัดสินใจ</span></div>
       <div id="analytics-quality-chart" class="bar-chart analytics-chart"></div>
       <div id="analytics-quality-summary" class="chart-summary"></div>
     </div>
@@ -348,12 +362,12 @@
 
   <div class="analytics-detail-grid">
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>🔮 รายละเอียดสูตรพยากรณ์</span><span class="analytics-mini-label">Forecast Model</span></div>
+      <div class="card-title chart-title-row"><span>🔮 รายละเอียดการคาดการณ์ธุรกิจ</span><span class="analytics-mini-label">Forecast Model</span></div>
       <div id="analytics-forecast-summary"></div>
       <div id="analytics-method-summary" class="chart-summary"></div>
     </div>
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>🧭 Funnel ยอดขาย → ส่งสินค้า → รับเงิน</span><span class="analytics-mini-label">Conversion</span></div>
+      <div class="card-title chart-title-row"><span>🧭 Business Funnel: ผลิต → ส่ง → รับเงิน</span><span class="analytics-mini-label">Conversion</span></div>
       <div id="analytics-funnel-chart" class="analytics-funnel"></div>
       <div id="analytics-funnel-summary" class="chart-summary"></div>
     </div>
@@ -365,17 +379,27 @@
       <div id="analytics-monthly-table"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
-      <div class="card-title chart-title-row"><span>👥 วิเคราะห์ลูกค้าเชิงลึก</span><span class="analytics-mini-label">Customer Deep Dive</span></div>
+      <div class="card-title chart-title-row"><span>👥 Business Analytics วิเคราะห์ลูกค้าเชิงลึก</span><span class="analytics-mini-label">Customer Deep Dive</span></div>
       <div id="analytics-customer-table"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
-      <div class="card-title chart-title-row"><span>🏛️ วิเคราะห์ประเภทหน่วยงาน / ประเภทลูกค้า</span><span class="analytics-mini-label">Agency Deep Dive</span></div>
+      <div class="card-title chart-title-row"><span>🎯 แผนติดตามลูกค้าและโอกาสทางธุรกิจ</span><span class="analytics-mini-label">Customer Action Plan</span></div>
+      <div id="analytics-customer-strategy-table"></div>
+      <div id="analytics-customer-strategy-summary" class="chart-summary"></div>
+    </div>
+    <div class="card analytics-card analytics-wide-card">
+      <div class="card-title chart-title-row"><span>🏛️ วิเคราะห์กลุ่มลูกค้า: ราชการ รัฐวิสาหกิจ โรงพยาบาล โรงเรียน บริษัทเอกชน</span><span class="analytics-mini-label">Agency Deep Dive</span></div>
       <div id="analytics-agency-table"></div>
       <div id="analytics-agency-explain" class="chart-summary"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
       <div class="card-title chart-title-row"><span>📦 วิเคราะห์สินค้า/งานเชิงลึก</span><span class="analytics-mini-label">Product Deep Dive</span></div>
       <div id="analytics-product-table"></div>
+    </div>
+    <div class="card analytics-card analytics-wide-card">
+      <div class="card-title chart-title-row"><span>📊 ยอดขายสินค้ารายไตรมาส</span><span class="analytics-mini-label">Q1 · Q2 · Q3 · Q4</span></div>
+      <div id="analytics-product-quarter-table"></div>
+      <div class="chart-summary">เลือกสินค้าในตัวกรองด้านบน เพื่อดูว่าแต่ละสินค้าเดือนไหนและไตรมาสไหนสร้างยอดสูงสุด</div>
     </div>
     <div class="card analytics-card analytics-wide-card">
       <div class="card-title chart-title-row"><span>🧑‍💼 วิเคราะห์พนักงานขาย</span><span class="analytics-mini-label">Sales Performance</span></div>
@@ -405,7 +429,7 @@
       <div id="analytics-risk-table"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
-      <div class="card-title chart-title-row"><span>📘 อธิบายสูตรและวิธีอ่านรายงาน</span><span class="analytics-mini-label">Business Analytics Guide</span></div>
+      <div class="card-title chart-title-row"><span>📘 คู่มืออ่าน Business Analytics</span><span class="analytics-mini-label">Business Analytics Guide</span></div>
       <div id="analytics-explain-panel"></div>
     </div>
   </div>
@@ -416,19 +440,19 @@
   <div id="q-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('quote')">ยกเลิกการแก้ไข</button></div>
   <div class="card-title">📄 ใบเสนอราคาใหม่</div>
   <div class="fg">
-    <div class="ff"><label>เลขที่ใบเสนอราคา *</label><input type="text" id="q-no" placeholder="QT-2568-001"></div>
-    <div class="ff"><label>วันที่เสนอราคา *</label><input type="date" id="q-date"></div>
+    <div class="ff"><label>เลขที่ใบเสนอราคา *</label><input type="text" id="q-no" class="ro quote-auto-no" readonly placeholder="QT690801"><small class="section-hint">ระบบรันอัตโนมัติ: QT + ปี พ.ศ. 2 หลัก + เดือน 2 หลัก + ลำดับเอกสาร เช่น QT690801</small></div>
+    <div class="ff"><label>วันที่เสนอราคา *</label><input type="date" id="q-date" onchange="refreshAutoQuoteNumber()"><small class="section-hint">เปลี่ยนวันที่แล้วเลขใบเสนอราคาจะเปลี่ยนตามปี/เดือนโดยอัตโนมัติ</small></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="q-br-kk" onclick="selBr('q','khonkaen')"><input type="radio" name="q-br"> 🔵 สาขาขอนแก่น</label>
-        <label class="br-opt" id="q-br-ub" onclick="selBr('q','ubon')"><input type="radio" name="q-br"> 🟣 สาขาอุบล</label>
+        <label class="br-opt" id="q-br-kk" onclick="selBr('q','khonkaen')"><input type="radio" name="q-br"> 🔵 สาขาที่ 00001</label>
+        <label class="br-opt" id="q-br-ub" onclick="selBr('q','ubon')"><input type="radio" name="q-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="q-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="q-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('q')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="q-agency-group" onchange="populateCustomerAgencyTypeOptions('q');renderCustomerAgencyHint('q')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="q-agency-type" onchange="renderCustomerAgencyHint('q')"></select><small id="q-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="q-agency-type" onchange="renderCustomerAgencyHint('q')"></select><small id="q-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff"><label>ชื่อพนักงานขาย</label><input type="text" id="q-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="fdiv"></div><div class="fsec">รายการสินค้า</div>
     <div class="ff-full">
@@ -459,8 +483,10 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="q-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint"><b>เอกสารพร้อมพิมพ์:</b> เปิดดูต้นฉบับ/สำเนา ตรวจรูปแบบ A4 และดาวน์โหลด PDF ได้ก่อนหรือหลังบันทึก</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('quote')">ล้างฟอร์ม</button>
+    <button class="btn btn-ghost document-preview-btn" type="button" onclick="previewQuoteDocumentFromForm()">👁 ตัวอย่าง / ต้นฉบับ / สำเนา / PDF</button>
     <button id="q-save-btn" class="btn btn-primary" onclick="saveQuote()">💾 บันทึกใบเสนอราคา</button>
   </div>
 </div></div>
@@ -468,15 +494,15 @@
 <!-- INVOICE FORM -->
 <div id="panel-invoice-form" class="panel"><div class="card">
   <div id="i-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('invoice')">ยกเลิกการแก้ไข</button></div>
-  <div class="card-title">📎 หลักฐานใบส่งสินค้า / ยอดขาย</div>
+  <div class="card-title">🚚 ใบส่งสินค้า / ใบกำกับภาษี</div>
   <div class="fg">
-    <div class="ff"><label>เลขที่บิล *</label><input type="text" id="i-no" placeholder="INV-2568-001"></div>
+    <div class="ff"><label>เลขที่ใบส่งสินค้า / ใบกำกับภาษี *</label><input type="text" id="i-no" placeholder="INV690801"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="i-date" onchange="updateInvoiceDueDate()"></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="i-br-kk" onclick="selBr('i','khonkaen')"><input type="radio" name="i-br"> 🔵 สาขาขอนแก่น</label>
-        <label class="br-opt" id="i-br-ub" onclick="selBr('i','ubon')"><input type="radio" name="i-br"> 🟣 สาขาอุบล</label>
+        <label class="br-opt" id="i-br-kk" onclick="selBr('i','khonkaen')"><input type="radio" name="i-br"> 🔵 สาขาที่ 00001</label>
+        <label class="br-opt" id="i-br-ub" onclick="selBr('i','ubon')"><input type="radio" name="i-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="i-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -506,7 +532,7 @@
     <div class="ff"><label>ชื่อพนักงานขาย *</label><input type="text" id="i-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="i-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('i')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="i-agency-group" onchange="populateCustomerAgencyTypeOptions('i');renderCustomerAgencyHint('i')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="i-agency-type" onchange="renderCustomerAgencyHint('i')"></select><small id="i-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="i-agency-type" onchange="renderCustomerAgencyHint('i')"></select><small id="i-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff"><label>เครดิตการชำระของลูกค้า</label>
       <select id="i-credit-term" onchange="updateInvoiceDueDate()">
         <option value="">เลือกเครดิตการชำระ</option>
@@ -542,9 +568,9 @@
     <div class="ff"><label>อัตราค่าคอมมิสชัน (%)</label><input type="number" id="i-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcI()"></div>
     <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="i-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcI()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="i-pf" class="ro" readonly></div>
-    <div class="fdiv"></div><div class="fsec">หลักฐาน</div>
+    <div class="fdiv"></div><div class="fsec">หลักฐานใบส่งสินค้า / เอกสารเพิ่มเติม</div>
     <div class="ff-full">
-      <div class="upload-zone pasteable-upload-zone" data-attachment-key="i-att" onclick="document.getElementById('i-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับหลักฐานใบส่งสินค้า">
+      <div class="upload-zone pasteable-upload-zone" data-attachment-key="i-att" onclick="document.getElementById('i-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับใบส่งสินค้า / ใบกำกับภาษี">
         <span class="proof-upload-icon">📎</span>
         <span class="proof-upload-text">แนบรูปภาพหรือ PDF</span>
         <span class="proof-paste-sub">คลิกเลือกไฟล์ ลาก PDF/รูปภาพมาวาง หรือกด Ctrl+V เพื่อวางรูปจาก Clipboard</span>
@@ -554,31 +580,33 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="i-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint blue"><b>เอกสารพร้อมพิมพ์:</b> ตัวอย่างด้านเอกสารรองรับโลโก้ ต้นฉบับ/ORIGINAL สำเนา/COPY สำเนาส่งภายใน พิมพ์ และ PDF</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('invoice')">ล้างฟอร์ม</button>
-    <button id="i-save-btn" class="btn btn-green" onclick="saveInvoice()">💾 บันทึกหลักฐานใบส่งสินค้า</button>
+    <button class="btn btn-primary document-preview-btn" type="button" onclick="previewDeliveryDocumentFromForm()">👁 ตัวอย่างต้นฉบับ / สำเนา / PDF</button>
+    <button id="i-save-btn" class="btn btn-green" onclick="saveInvoice()">💾 บันทึกใบส่งสินค้า / ใบกำกับภาษี</button>
   </div>
 </div></div>
 
 <!-- RECEIPT FORM -->
 <div id="panel-receipt-form" class="panel"><div class="card">
   <div id="r-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('receipt')">ยกเลิกการแก้ไข</button></div>
-  <div class="card-title">📎 หลักฐานใบเสร็จรับเงิน</div>
+  <div class="card-title">🧾 ใบเสร็จรับเงิน</div>
   <div class="fg">
     <div class="ff"><label>เลขที่ใบเสร็จ *</label><input type="text" id="r-no" placeholder="REC-2568-001"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="r-date"></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="r-br-kk" onclick="selBr('r','khonkaen')"><input type="radio" name="r-br"> 🔵 สาขาขอนแก่น</label>
-        <label class="br-opt" id="r-br-ub" onclick="selBr('r','ubon')"><input type="radio" name="r-br"> 🟣 สาขาอุบล</label>
+        <label class="br-opt" id="r-br-kk" onclick="selBr('r','khonkaen')"><input type="radio" name="r-br"> 🔵 สาขาที่ 00001</label>
+        <label class="br-opt" id="r-br-ub" onclick="selBr('r','ubon')"><input type="radio" name="r-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="r-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
     <div class="ff ff-full production-invoice-link-card linked-source-card receipt-invoice-link-card">
       <div class="linked-source-head">
         <div>
-          <label>ดึงข้อมูลจากหลักฐานใบส่งสินค้า</label>
+          <label>ดึงข้อมูลจากใบส่งสินค้า / ใบกำกับภาษี</label>
           <small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small>
         </div>
         <span id="r-inv-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
@@ -593,14 +621,14 @@
         <select id="r-inv-ref" onchange="fillFromInv()"><option value="">-- เลือกจากบิลที่มี --</option></select>
         <button type="button" class="btn btn-purple" onclick="fillFromInv()">ดึงข้อมูลจากบิล</button>
       </div>
-      <small id="r-inv-link-hint">เลือกหลักฐานใบส่งสินค้าเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชั่นอัตโนมัติ</small>
+      <small id="r-inv-link-hint">เลือกใบส่งสินค้า / ใบกำกับภาษีเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชั่นอัตโนมัติ</small>
     </div>
-    <div class="ff"><label>หรือกรอกเลขบิลเอง</label><input type="text" id="r-inv-no" placeholder="เลขบิลอ้างอิง"></div>
+    <div class="ff"><label>หรือกรอกเลขใบส่งสินค้า / ใบกำกับภาษีเอง</label><input type="text" id="r-inv-no" placeholder="เลขใบส่งสินค้า / ใบกำกับภาษีอ้างอิง"></div>
     <div class="fg-row-break" aria-hidden="true"></div>
     <div class="ff"><label>ชื่อพนักงานขาย</label><input type="text" id="r-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="r-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('r')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="r-agency-group" onchange="populateCustomerAgencyTypeOptions('r');renderCustomerAgencyHint('r')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="r-agency-type" onchange="renderCustomerAgencyHint('r')"></select><small id="r-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="r-agency-type" onchange="renderCustomerAgencyHint('r')"></select><small id="r-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="fdiv"></div><div class="fsec">รายการสินค้า</div>
     <div class="ff-full">
       <table class="items-table"><thead><tr>
@@ -623,7 +651,7 @@
     <div class="ff"><label>ค่าคอมมิสชัน (%)</label><input type="number" id="r-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcR()"></div>
     <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="r-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcR()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="r-pf" class="ro" readonly></div>
-    <div class="fdiv"></div><div class="fsec">หลักฐาน / เอกสารเพิ่มเติม</div>
+    <div class="fdiv"></div><div class="fsec">หลักฐานใบเสร็จรับเงิน / เอกสารเพิ่มเติม</div>
     <div class="ff-full proof-upload-field">
       <div class="upload-zone large-proof-upload" data-attachment-key="r-att" onclick="document.getElementById('r-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับใบเสร็จรับเงิน">
         <span class="proof-upload-icon">📎</span>
@@ -636,9 +664,11 @@
     </div>
     <div class="ff"><label>หมายเหตุ</label><input type="text" id="r-note" placeholder="(ไม่บังคับ)"></div>
   </div>
+  <div class="document-action-hint pink"><b>เอกสารพร้อมพิมพ์:</b> ตัวอย่างสีชมพูพร้อมโลโก้ ต้นฉบับ/ORIGINAL สำเนาบัญชี สำเนาเก็บหลักฐาน พิมพ์ และ PDF</div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('receipt')">ล้างฟอร์ม</button>
-    <button id="r-save-btn" class="btn btn-purple" onclick="saveReceipt()">💾 บันทึกหลักฐานใบเสร็จรับเงิน</button>
+    <button class="btn btn-purple document-preview-btn" type="button" onclick="previewReceiptDocumentFromForm()">👁 ตัวอย่างต้นฉบับ / สำเนา / PDF</button>
+    <button id="r-save-btn" class="btn btn-purple" onclick="saveReceipt()">💾 บันทึกใบเสร็จรับเงิน</button>
   </div>
 </div></div>
 
@@ -653,15 +683,36 @@
     <div class="ff-full">
       <label style="font-size:14px;color:var(--g2);font-weight:700;display:block;margin-bottom:8px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="p-br-kk" onclick="selBr('p','khonkaen')"><input type="radio" name="p-br"> 🔵 สาขาขอนแก่น</label>
-        <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> 🟣 สาขาอุบล</label>
+        <label class="br-opt" id="p-br-kk" onclick="selBr('p','khonkaen')"><input type="radio" name="p-br"> 🔵 สาขาที่ 00001</label>
+        <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="p-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
+    </div>
+    <input type="hidden" id="p-source-quote-ref" value="">
+    <div class="ff ff-full production-invoice-link-card linked-source-card quote-link-card">
+      <div class="linked-source-head">
+        <div>
+          <label>สร้างสั่งผลิตจากใบเสนอราคา</label>
+          <small>ดึงลูกค้า รายการสินค้า จำนวน ราคาขาย และ VAT จากใบเสนอราคา โดยกรอกราคาต้นทุน/ผู้ผลิตเพิ่มเติมในขั้นตอนสั่งผลิต</small>
+        </div>
+        <span id="p-quote-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
+      </div>
+      <div class="linked-source-filter-row">
+        <label><span>ปี</span><input id="p-quote-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateQuoteRefs('p')"></label>
+        <label><span>เดือน</span><select id="p-quote-filter-month" onchange="populateQuoteRefs('p')"><option value="">ทุกเดือน</option></select></label>
+        <label class="linked-source-search"><span>ค้นหา</span><input id="p-quote-filter-search" type="search" placeholder="เลขที่ใบเสนอราคา / ลูกค้า / สินค้า" oninput="populateQuoteRefs('p')"></label>
+        <button type="button" class="btn btn-primary" onclick="populateQuoteRefs('p')">รีเฟรช</button>
+      </div>
+      <div class="production-invoice-link-row">
+        <select id="p-quote-ref" onchange="fillProductionFromQuote()"><option value="">-- เลือกใบเสนอราคา --</option></select>
+        <button type="button" class="btn btn-primary" onclick="fillProductionFromQuote()">ดึงข้อมูลใบเสนอราคา</button>
+      </div>
+      <small id="p-quote-link-hint">แนะนำให้เลือกใบเสนอราคาที่อนุมัติแล้ว เพื่อให้สายเอกสารติดตามได้ครบตั้งแต่เสนอราคา → ผลิต → ส่งสินค้า → รับชำระ</small>
     </div>
     <div class="ff"><label>ผู้รับผลิต / ผู้สั่งผลิต *</label><input type="text" id="p-maker" list="production-maker-options" placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้ผลิตเอง" oninput="handleProductionMakerChange()" onchange="handleProductionMakerChange()"><datalist id="production-maker-options"><option value="คอมฟอร์มกรุงเทพ"></option><option value="จันชนา"></option><option value="68 computer"></option><option value="สุเทพการพิมพ์"></option><option value="PK"></option><option value="วิทยา"></option><option value="เมดิแคร์พลัส"></option><option value="เจ้าพระยา 41"></option><option value="โพรดิวส์ลาเบล"></option><option value="PW IT"></option><option value="ยูนิ - สมาร์ท"></option></datalist><small id="p-maker-preset-hint" class="section-hint">เลือกรายชื่อผู้ผลิตเพื่อให้ระบบจำกัดระยะเวลาส่งสินค้าและตั้งเครดิตผู้ผลิตให้อัตโนมัติ หรือพิมพ์ชื่ออื่นเองได้</small></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="p-cust" placeholder="ชื่อลูกค้า" oninput="autoDetectCustomerAgency('p')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="p-agency-group" onchange="populateCustomerAgencyTypeOptions('p');renderCustomerAgencyHint('p')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="p-agency-type" onchange="renderCustomerAgencyHint('p')"></select><small id="p-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="p-agency-type" onchange="renderCustomerAgencyHint('p')"></select><small id="p-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff ff-full"><label>ชื่องาน *</label><input type="text" id="p-job" placeholder="เช่น งานป้าย / งานพิมพ์ / งานผลิตสินค้า"></div>
 
     <div class="fdiv"></div><div class="fsec">กำหนดส่งสินค้า</div>
@@ -823,7 +874,7 @@
 <div id="panel-production-list" class="panel"><div class="card">
   <div class="card-title"><span>รายการสั่งผลิตสินค้า</span><button class="btn btn-ghost btn-sm" onclick="exportXLSX('productions')">⬇ Excel</button></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select></div>
+    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
     <div><label>เดือน</label><select id="pl-month" onchange="renderPList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="pl-year" onchange="renderPList()"></select></div>
     <div><label>สถานะชำระผู้ผลิต</label>
@@ -851,8 +902,8 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="e-br-kk" onclick="selBr('e','khonkaen')"><input type="radio" name="e-br"> 🔵 สาขาขอนแก่น</label>
-        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon')"><input type="radio" name="e-br"> 🟣 สาขาอุบล</label>
+        <label class="br-opt" id="e-br-kk" onclick="selBr('e','khonkaen')"><input type="radio" name="e-br"> 🔵 สาขาที่ 00001</label>
+        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon')"><input type="radio" name="e-br"> 🟣 สาขาสำนักงานใหญ่</label>
       </div>
       <div class="br-warn" id="e-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -888,7 +939,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select>
+      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="ql-month" onchange="renderQLList()"><option value="">ทุกเดือน</option></select>
@@ -906,12 +957,12 @@
 
 <!-- INVOICE LIST -->
 <div id="panel-invoice-list" class="panel"><div class="card">
-  <div class="card-title"><span>รายการหลักฐานใบส่งสินค้า</span>
+  <div class="card-title"><span>รายการใบส่งสินค้า / ใบกำกับภาษี</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="exportXLSX('invoices')">⬇ Excel</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select>
+      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="il-month" onchange="renderIList()"><option value="">ทุกเดือน</option></select>
@@ -934,7 +985,7 @@
   </div>
   <div class="tbl-wrap"><table class="invoice-report-table"><thead><tr>
     <th>วันที่ขาย</th>
-    <th>เลขที่บิล</th>
+    <th>เลขที่ใบส่ง/ภาษี</th>
     <th>พนักงานขาย</th>
     <th>ชื่อลูกค้า</th>
     <th>รายการสินค้า</th>
@@ -959,12 +1010,12 @@
 
 <!-- RECEIPT LIST -->
 <div id="panel-receipt-list" class="panel"><div class="card">
-  <div class="card-title"><span>รายการหลักฐานใบเสร็จรับเงิน</span>
+  <div class="card-title"><span>รายการใบเสร็จรับเงิน</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="exportXLSX('receipts')">⬇ Excel</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select>
+      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="rl-month" onchange="renderRList()"><option value="">ทุกเดือน</option></select>
@@ -976,7 +1027,7 @@
       <input type="text" id="rl-search" placeholder="พิมพ์เลขที่..." oninput="renderRList()" style="min-width:130px">
     </div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>เลขบิล</th><th>ลูกค้า</th><th>พนักงาน</th><th class="tn">ยอดขาย</th><th class="tn">กำไร</th><th></th></tr></thead><tbody id="rtbl"></tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>เลขใบส่ง/ภาษี</th><th>ลูกค้า</th><th>พนักงาน</th><th class="tn">ยอดขาย</th><th class="tn">กำไร</th><th></th></tr></thead><tbody id="rtbl"></tbody></table></div>
   <div id="rempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
 
@@ -984,7 +1035,7 @@
 <div id="panel-issued-invoice-list" class="panel"><div class="card">
   <div class="card-title"><span>ข้อมูลออกบิลใบส่งของ / ใบกำกับภาษี</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select></div>
+    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
     <div><label>เดือน</label><select id="oil-month" onchange="renderIssuedInvoiceList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="oil-year" onchange="renderIssuedInvoiceList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="oil-search" placeholder="เลขที่ / ลูกค้า / พนักงาน" oninput="renderIssuedInvoiceList()"></div>
@@ -997,7 +1048,7 @@
 <div id="panel-issued-receipt-list" class="panel"><div class="card">
   <div class="card-title"><span>ข้อมูลออกใบเสร็จรับเงิน</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select></div>
+    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
     <div><label>เดือน</label><select id="orl-month" onchange="renderIssuedReceiptList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="orl-year" onchange="renderIssuedReceiptList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="orl-search" placeholder="เลขที่ / เลขบิล / ลูกค้า" oninput="renderIssuedReceiptList()"></div>
@@ -1013,7 +1064,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาขอนแก่น</option><option value="ubon">สาขาอุบล</option></select>
+      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="el-month" onchange="renderEList()"><option value="">ทุกเดือน</option></select>
@@ -1033,21 +1084,21 @@
     <div>
       <div class="linked-eyebrow">DOCUMENT WORKFLOW</div>
       <h2>ศูนย์เชื่อมโยงเอกสาร</h2>
-      <p>ติดตามสายงานตั้งแต่รายการสั่งผลิต → ระยะเวลาในการส่งสินค้า → หลักฐานใบส่งสินค้า → เครดิตการชำระของลูกค้า → หลักฐานใบเสร็จรับเงิน โดยกรองตามสาขา เดือน และปี</p>
+      <p>ติดตามสายงานตั้งแต่ใบเสนอราคา → สั่งผลิตสินค้า → ระยะเวลาในการส่งสินค้า → ใบส่งสินค้า / ใบกำกับภาษี → เครดิตการชำระของลูกค้า → ใบเสร็จรับเงิน โดยกรองตามสาขา เดือน และปี</p>
     </div>
     <button type="button" class="btn btn-ghost" onclick="refreshLinkedFlow(true)">↻ ดึงข้อมูลล่าสุด</button>
   </div>
   <div class="linked-filter-card">
     <div class="linked-branch-switch" role="group" aria-label="เลือกสาขา">
       <button type="button" data-linked-branch="" class="active" onclick="setLinkedBranch('',this)">รวมทุกสาขา</button>
-      <button type="button" data-linked-branch="khonkaen" onclick="setLinkedBranch('khonkaen',this)"><span class="branch-dot kk"></span>ขอนแก่น</button>
-      <button type="button" data-linked-branch="ubon" onclick="setLinkedBranch('ubon',this)"><span class="branch-dot ub"></span>อุบล</button>
+      <button type="button" data-linked-branch="khonkaen" onclick="setLinkedBranch('khonkaen',this)"><span class="branch-dot kk"></span>สาขาที่ 00001</button>
+      <button type="button" data-linked-branch="ubon" onclick="setLinkedBranch('ubon',this)"><span class="branch-dot ub"></span>สาขาสำนักงานใหญ่</button>
     </div>
     <div class="linked-filter-grid">
       <label><span>ปี</span><select id="linked-year" onchange="renderLinkedFlow()"></select></label>
       <label><span>เดือน</span><select id="linked-month" onchange="renderLinkedFlow()"><option value="">ทุกเดือน</option></select></label>
       <label class="linked-search"><span>ค้นหา</span><input id="linked-search" type="search" placeholder="เลขที่เอกสาร / ลูกค้า / งาน / สินค้า" oninput="renderLinkedFlow()"></label>
-      <label><span>สถานะ</span><select id="linked-status" onchange="renderLinkedFlow()"><option value="">ทุกสถานะ</option><option value="complete">ครบทุกขั้นตอน</option><option value="pending-lead-time">รอระยะเวลาส่งสินค้า</option><option value="pending-invoice">รอหลักฐานใบส่งสินค้า</option><option value="pending-credit">รอเครดิตลูกค้า</option><option value="pending-receipt">รอหลักฐานใบเสร็จรับเงิน</option></select></label>
+      <label><span>สถานะ</span><select id="linked-status" onchange="renderLinkedFlow()"><option value="">ทุกสถานะ</option><option value="complete">ครบทุกขั้นตอน</option><option value="pending-lead-time">รอระยะเวลาส่งสินค้า</option><option value="pending-invoice">รอใบส่งสินค้า / ใบกำกับภาษี</option><option value="pending-credit">รอเครดิตลูกค้า</option><option value="pending-receipt">รอใบเสร็จรับเงิน</option></select></label>
     </div>
   </div>
   <div id="linked-summary" class="linked-summary"></div>
@@ -1071,8 +1122,8 @@
           <label>สาขา</label>
           <select id="ex-branch">
             <option value="">รวมทั้งสองสาขา</option>
-            <option value="khonkaen">สาขาขอนแก่น</option>
-            <option value="ubon">สาขาอุบล</option>
+            <option value="khonkaen">สาขาที่ 00001</option>
+            <option value="ubon">สาขาสำนักงานใหญ่</option>
           </select>
         </div>
         <div class="ff">
@@ -1116,7 +1167,7 @@
         </label>
       </div>
       <div class="import-json-note">
-        ไฟล์ฐานข้อมูลยอดขายจะนำเฉพาะรายการสถานะปกติที่มียอดขายไปใช้คำนวณใน <b>ยอดขาย</b> และช่วงเดือน 1–6 ปี พ.ศ. 2569 ระบบจะสะท้อนยอดเดียวกันไปเป็น <b>ยอดส่งสินค้า</b> บน Dashboard/Analytics โดยไม่สร้างเอกสารใบส่งสินค้าซ้ำ ส่วนข้อมูลดิบทั้งหมดจะเก็บใน Firebase collection <code>salesArchive</code>
+        ไฟล์ฐานข้อมูลยอดขายจะนำเฉพาะรายการสถานะปกติที่มียอดขายไปใช้คำนวณใน <b>ยอดขาย</b> และช่วงเดือน 1–6 ปี พ.ศ. 2569 (ค.ศ. 2026) ระบบจะสะท้อนยอดเดียวกันไปเป็น <b>ยอดส่งสินค้า</b> บน Dashboard/Analytics โดยไม่สร้างเอกสารใบส่งสินค้าซ้ำ ส่วนข้อมูลดิบทั้งหมดจะเก็บใน Firebase collection <code>salesArchive</code>
       </div>
       <div class="export-actions">
         <button class="btn btn-purple" onclick="exportAllExcel()">⬇ Excel รวมทุกปี</button>
@@ -1135,19 +1186,19 @@
 
 </div><!-- /app-content -->
 
-<!-- PDF libraries: loaded as browser globals so document preview works on static hosting/GitHub Pages -->
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script type="module" src="firebase-auth.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script type="module" src="google-drive.js"></script>
 <script type="module" src="local-file-store.js"></script>
 <script type="module" src="firebase-bridge.js"></script>
 <script type="module" src="click-fallback.js"></script>
-<script type="module" src="integrated-documents.js"></script>
+<!-- Load printable document modules before app.js so inline previews are ready when forms boot. -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script type="module" src="delivery-tax-document.js"></script>
+<script type="module" src="quotation-document.js"></script>
+<script type="module" src="receipt-document.js"></script>
 <script type="module" src="app.js"></script>
 <script type="module" src="firebase-dashboard.js"></script>
-<script type="module" src="delivery-tax-document.js"></script>
-<script type="module" src="receipt-document.js"></script>
 </body>
 </html>

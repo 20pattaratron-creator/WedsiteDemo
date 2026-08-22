@@ -11,60 +11,21 @@ const BLUE = '#0868c9';
 const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
 let pdfLogoDataUrl = '';
 
-/**
- * Recolour the receipt logo to the receipt's green ink colour.
- * White/transparent pixels are preserved so the logo remains clean on PDF.
- */
-function tintReceiptLogoGreen(dataUrl) {
-  return new Promise(resolve => {
-    const image = new Image();
-    image.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = image.naturalWidth || image.width;
-        canvas.height = image.naturalHeight || image.height;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx || !canvas.width || !canvas.height) return resolve(dataUrl);
-        ctx.drawImage(image, 0, 0);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const pixels = imageData.data;
-        const target = { r: 45, g: 122, b: 58 };
-        for (let i = 0; i < pixels.length; i += 4) {
-          const alpha = pixels[i + 3];
-          if (alpha === 0) continue;
-          const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
-          // Preserve near-white backgrounds while tinting coloured logo pixels.
-          if (r > 238 && g > 238 && b > 238) continue;
-          pixels[i] = target.r;
-          pixels[i + 1] = target.g;
-          pixels[i + 2] = target.b;
-        }
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      } catch (error) {
-        console.warn('เปลี่ยนสีโลโก้ใบเสร็จเป็นสีเขียวไม่สำเร็จ', error);
-        resolve(dataUrl);
-      }
-    };
-    image.onerror = () => resolve(dataUrl);
-    image.src = dataUrl;
-  });
-}
-
+// ใบเสร็จใช้โลโก้สีจริงเพื่อให้เข้ากับธีมสีชมพูของระบบ
 const BRANCH_DEFAULTS = {
   khonkaen: {
-    label: 'สาขาขอนแก่น',
-    companyNameTh: 'บริษัท คอมฟอร์มอีสาน จำกัด (สาขาขอนแก่น) สาขาที่ 00001',
-    companyNameEn: 'COMFORM ESAN CO., LTD. (BRANCH KHONKAEN) Branch 00001',
+    label: 'สาขาที่ 00001',
+    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาที่ 00001)',
+    companyNameEn: 'EXAMPLE CO., LTD. (BRANCH 00001)',
     addressTh: '22/7 หมู่ 17 ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
     addressEn: '22/7 Moo 17 T.Nai-Muang A.Muang Khonkaen Khonkaen 40000',
     phone: '082-3160881, 089-4921941',
     taxId: '0435548000010'
   },
   ubon: {
-    label: 'สาขาอุบล',
-    companyNameTh: 'บริษัท คอมฟอร์มอีสาน จำกัด (สำนักงานใหญ่)',
-    companyNameEn: 'COMFORM ESAN CO., LTD.',
+    label: 'สาขาสำนักงานใหญ่',
+    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาสำนักงานใหญ่)',
+    companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
     addressTh: '164/3 ถนนอุบล-ตระการ ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '164/3 Ubon-Trakarn Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
     phone: 'Tel: 0-4524-0661, 2   Fax: 0-4524-0663',
@@ -111,6 +72,7 @@ function createDefaultState() {
   const today = new Date();
   const iso = today.toISOString().slice(0, 10);
   return {
+    previewOnly: false,
     branch: 'khonkaen',
     company: { ...BRANCH_DEFAULTS.khonkaen },
     customerName: '',
@@ -130,10 +92,17 @@ function createDefaultState() {
     buyerName: '',
     vatEnabled: true,
     note: '',
+    attachments: [],
     sourceInvoiceId: '',
     sourceInvoiceFirebaseId: '',
     sourceInvoiceNo: '',
     sourceInvoiceYear: today.getFullYear(),
+    sourceReceiptNo: '',
+    sourceReceiptId: '',
+    sourceReceiptFirebaseId: '',
+    sourceReceiptBranch: '',
+    sourceReceiptYear: '',
+    sourceReceiptMonth: '',
     items: [createItem()]
   };
 }
@@ -167,7 +136,8 @@ async function ensurePdfLogoDataUrl() {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-    pdfLogoDataUrl = await tintReceiptLogoGreen(originalLogoDataUrl);
+    // ใช้สีจริงของโลโก้ (กรมท่า/ฟ้า/ชมพู) ให้สอดคล้องกับธีมใบเสร็จสีชมพู
+    pdfLogoDataUrl = originalLogoDataUrl;
   } catch (error) {
     console.warn('ไม่สามารถแปลงโลโก้เป็น Data URL ได้ จะใช้ URL ของไฟล์แทน', error);
     pdfLogoDataUrl = COMPANY_LOGO_URL;
@@ -196,7 +166,7 @@ function fmt(value) {
 function formatDate(value) {
   if (!value) return '';
   const [y, m, d] = String(value).split('-');
-  return y && m && d ? `${d}-${m}-${y}` : value;
+  return y && m && d ? `${d}-${m}-${Number(y)+543} (ค.ศ. ${y})` : value;
 }
 
 function roundMoney(value) {
@@ -299,7 +269,7 @@ function mountFeature() {
   if (document.getElementById('panel-receipt-doc')) return;
 
   const sidebar = document.querySelector('.sidebar');
-  if (sidebar && !sidebar.querySelector('.rcp-nav-item')) {
+  if (false && sidebar && !sidebar.querySelector('.rcp-nav-item')) {
     const billingSection = [...sidebar.querySelectorAll('.nav-sec')].find(el => el.textContent.trim() === 'เอกสารออกบิล');
     const deliveryNav = sidebar.querySelector('.dtd-nav-item');
     const nav = document.createElement('div');
@@ -308,7 +278,7 @@ function mountFeature() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>
       </svg>
-      ออกใบเสร็จรับเงิน
+      ใบเสร็จรับเงิน
     `;
     nav.addEventListener('click', () => {
       window.go?.('receipt-doc', nav);
@@ -334,6 +304,46 @@ function mountFeature() {
   applyLockedBranch();
 }
 
+function loadFromReceipt(receipt = {}, ref = {}) {
+  state.previewOnly = Boolean(ref.previewOnly);
+  const branch = ref.b || receipt.branch || state.branch || 'khonkaen';
+  if (BRANCH_DEFAULTS[branch]) {
+    state.branch = branch;
+    state.company = { ...BRANCH_DEFAULTS[branch] };
+  }
+  state.customerName = receipt.customer || '';
+  state.docNo = receipt.no || state.docNo;
+  state.date = receipt.date || state.date;
+  state.salesperson = receipt.salesPerson || '';
+  state.vatEnabled = Number(receipt.useVat || 0) === 1;
+  state.note = receipt.note || '';
+  state.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
+  state.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
+  state.sourceInvoiceId = receipt.invoiceId || receipt.sourceInvoiceId || '';
+  state.sourceInvoiceFirebaseId = receipt.sourceInvoiceFirebaseId || '';
+  state.sourceInvoiceYear = receipt.invoiceYear || receipt.sourceInvoiceYear || state.sourceInvoiceYear;
+  state.sourceReceiptNo = receipt.no || ref.no || '';
+  state.sourceReceiptId = receipt.id || ref.id || '';
+  state.sourceReceiptFirebaseId = receipt.firebaseId || '';
+  state.sourceReceiptBranch = branch;
+  state.sourceReceiptYear = ref.y ?? receipt.year ?? '';
+  state.sourceReceiptMonth = ref.m ?? receipt.month ?? '';
+  const items = Array.isArray(receipt.items) ? receipt.items : [];
+  state.items = items.length ? items.slice(0, MAX_ITEMS).map(it => ({
+    productCode: it.productCode || '',
+    product: it.product || '',
+    unit: it.unit || 'ชิ้น',
+    qty: Number(it.qty) || 1,
+    priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
+  })) : [createItem()];
+  persistDraft();
+  renderAppShell();
+  bindEvents();
+  renderAll();
+  applyLockedBranch();
+  setTimeout(() => document.getElementById('receipt-document-app')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+}
+
 function renderAppShell() {
   const root = document.getElementById('receipt-document-app');
   if (!root) return;
@@ -343,15 +353,17 @@ function renderAppShell() {
         <div class="rcp-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="rcp-company-mini">บริษัท คอมฟอร์มอีสาน จำกัด</div>
+            <div class="rcp-company-mini">บริษัท ตัวอย่าง จำกัด</div>
             <h2>ออกใบเสร็จรับเงิน</h2>
           </div>
         </div>
         <div class="rcp-toolbar-actions">
-          <button type="button" class="rcp-btn rcp-btn-primary" data-action="save">💾 บันทึก</button>
-          <button type="button" class="rcp-btn" data-action="print">🖨️ พิมพ์</button>
-          <button type="button" class="rcp-btn" data-action="pdf">📄 สร้าง PDF</button>
-          <button type="button" class="rcp-btn" data-action="download">⬇ ดาวน์โหลด PDF</button>
+          <button type="button" class="rcp-btn" data-action="back-source">← กลับหน้ากรอกข้อมูล</button>
+          <button type="button" class="rcp-btn rcp-btn-primary" data-action="save" ${state.previewOnly ? 'disabled title="กรุณาบันทึกข้อมูลใบเสร็จรับเงินก่อนบันทึกเอกสารออกจริง"' : ''}>💾 บันทึกเอกสาร</button>
+          <button type="button" class="rcp-btn" data-action="print-current">🖨️ พิมพ์หน้าที่เลือก</button>
+          <button type="button" class="rcp-btn" data-action="print-set">🖨️ พิมพ์ชุด</button>
+          <button type="button" class="rcp-btn" data-action="pdf-current">⬇ PDF หน้าที่เลือก</button>
+          <button type="button" class="rcp-btn rcp-btn-primary" data-action="pdf-set">📄 PDF ต้นฉบับ + สำเนา</button>
         </div>
       </div>
 
@@ -362,6 +374,7 @@ function renderAppShell() {
           ${documentSectionHtml()}
           ${itemsSectionHtml()}
           ${summarySectionHtml()}
+          ${sourceEvidenceHtml()}
           ${templateUploadHtml()}
         </section>
 
@@ -436,7 +449,7 @@ function invoiceYearOptionsHtml() {
     if (Number.isFinite(year)) years.add(year);
   });
   return [...years].sort((a, b) => b - a)
-    .map(year => `<option value="${year}" ${year === selected ? 'selected' : ''}>${year + 543} (${year})</option>`)
+    .map(year => `<option value="${year}" ${year === selected ? 'selected' : ''}>พ.ศ. ${year + 543} (ค.ศ. ${year})</option>`)
     .join('');
 }
 
@@ -621,10 +634,10 @@ function documentSectionHtml() {
           <span>เลือกสาขา *</span>
           <div class="rcp-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
             <button type="button" class="rcp-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="rcp-branch-dot kk"></span><b>สาขาขอนแก่น</b><small>KHONKAEN</small>
+              <span class="rcp-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
             </button>
             <button type="button" class="rcp-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
-              <span class="rcp-branch-dot ub"></span><b>สาขาอุบล</b><small>UBON</small>
+              <span class="rcp-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
             </button>
           </div>
           ${locked ? `<small class="rcp-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="rcp-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}
@@ -702,10 +715,29 @@ function summarySectionHtml() {
   `;
 }
 
+function sourceEvidenceHtml() {
+  const files = Array.isArray(state.attachments) ? state.attachments : [];
+  const cards = files.map(file => {
+    const name = file.originalName || file.name || 'ไฟล์แนบ';
+    const type = file.type || file.mimeType || '';
+    const imageSrc = type.startsWith('image/') ? (file.previewUrl || file.data || '') : '';
+    const driveLink = file.webViewLink || '';
+    return `<div class="rcp-source-evidence-item">
+      ${imageSrc ? `<img src="${escapeHtml(imageSrc)}" alt="${escapeHtml(name)}">` : `<div class="rcp-source-evidence-icon">${type.includes('pdf') ? 'PDF' : '📎'}</div>`}
+      <div class="rcp-source-evidence-name">${escapeHtml(name)}</div>
+      ${driveLink ? `<a href="${escapeHtml(driveLink)}" target="_blank" rel="noopener">เปิดหลักฐาน</a>` : '<small>หลักฐานจากข้อมูลต้นทาง</small>'}
+    </div>`;
+  }).join('');
+  return `<div class="rcp-form-section rcp-source-evidence-section">
+    ${sectionHeader(6, 'หลักฐานที่แนบมากับใบเสร็จรับเงิน')}
+    ${files.length ? `<div class="rcp-source-evidence-grid">${cards}</div>` : '<div class="rcp-source-evidence-empty">ยังไม่มีรูปภาพหรือ PDF หลักฐานในข้อมูลต้นทาง</div>'}
+  </div>`;
+}
+
 function templateUploadHtml() {
   return `
     <div class="rcp-form-section">
-      ${sectionHeader(6, 'แนบเอกสารต้นแบบ')}
+      ${sectionHeader(7, 'แนบเอกสารต้นแบบ')}
       <label class="rcp-template-upload">
         <input type="file" id="rcp-template-file" accept="application/pdf,.pdf">
         <span class="rcp-upload-icon">☁</span>
@@ -816,9 +848,15 @@ function bindEvents() {
     if (action === 'clear-date') clearOptionalDate(button.dataset.fieldTarget);
     if (action === 'add-item') addItem();
     if (action === 'remove-item') removeItem(Number(button.dataset.index));
+    if (action === 'back-source') {
+      window.go?.('receipt-form', document.querySelector('.nav-item[onclick*="receipt-form"]'));
+      return;
+    }
     if (action === 'save') await saveDocumentToSystem(button);
-    if (action === 'print') printDocuments();
-    if (action === 'pdf' || action === 'download') await downloadPdf(button);
+    if (action === 'print-current') printDocuments('current');
+    if (action === 'print-set') printDocuments('all');
+    if (action === 'pdf-current') await downloadPdf(button, 'current');
+    if (action === 'pdf-set') await downloadPdf(button, 'all');
     if (action === 'show-template') showUploadedTemplate();
     if (action === 'load-source-invoice') applyInvoiceToReceipt(findSelectedInvoice());
     if (action === 'refresh-source-invoices') await loadInvoiceOptions({ force: true });
@@ -1038,7 +1076,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
       </div>
       <header class="rcp-doc-header">
         <div class="rcp-doc-company">
-          <img src="${logoSrc}" alt="Comform Esan" crossorigin="anonymous" decoding="sync">
+          <img src="${logoSrc}" alt="Example Company" crossorigin="anonymous" decoding="sync">
           <div>
             <div class="rcp-doc-company-th">${escapeHtml(company.companyNameTh)}</div>
             <div class="rcp-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
@@ -1102,7 +1140,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
         <img class="rcp-doc-watermark" src="${logoSrc}" alt="" crossorigin="anonymous" decoding="sync">
         <div class="rcp-doc-bottom-area">
           <div class="rcp-doc-payment-note">
-            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท คอมฟอร์มอีสาน จำกัด</b></div>
+            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท ตัวอย่าง จำกัด</b></div>
             <div>ได้รับชำระเงินตามรายการข้างต้นเรียบร้อยแล้ว</div>
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
             ${!isFinalPage ? `<div class="rcp-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
@@ -1205,6 +1243,7 @@ function validateBeforeSave() {
 }
 
 async function saveDocumentToSystem(button) {
+  if (state.previewOnly) { alert('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบเสร็จรับเงินก่อนบันทึกเอกสารออกจริง'); return; }
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1267,7 +1306,10 @@ async function saveDocumentToSystem(button) {
       paidAt: old?.paidAt || new Date().toISOString(),
       paidBy: old?.paidBy || '',
       note: state.note,
-      attachments: old?.attachments || [],
+      sourceReceiptNo: state.sourceReceiptNo || state.docNo || '',
+      sourceReceiptId: state.sourceReceiptId || '',
+      sourceReceiptFirebaseId: state.sourceReceiptFirebaseId || '',
+      attachments: state.attachments?.length ? state.attachments : (old?.attachments || []),
       branch: state.branch,
       year,
       month,
@@ -1278,6 +1320,24 @@ async function saveDocumentToSystem(button) {
     if (existingIndex >= 0) pack.issuedReceipts[existingIndex] = record;
     else pack.issuedReceipts.push(record);
     localStorage.setItem(key, JSON.stringify(pack));
+
+    // เชื่อมเอกสารที่พิมพ์กลับไปยังข้อมูลใบเสร็จต้นทาง เพื่อให้ผู้ใช้เห็นเป็นเอกสารเดียว
+    if (state.sourceReceiptNo && state.sourceReceiptBranch && state.sourceReceiptYear !== '' && state.sourceReceiptMonth !== '') {
+      try {
+        const sourceKey = `biz2_${state.sourceReceiptBranch}_${Number(state.sourceReceiptYear)}_${String(Number(state.sourceReceiptMonth) + 1).padStart(2, '0')}`;
+        const sourcePack = JSON.parse(localStorage.getItem(sourceKey) || '{}');
+        const sourceReceipt = (sourcePack.receipts || []).find(row => String(row.id) === String(state.sourceReceiptId) || String(row.no) === String(state.sourceReceiptNo));
+        if (sourceReceipt) {
+          sourceReceipt.issuedDocumentNo = state.docNo;
+          sourceReceipt.issuedDocumentId = record.id;
+          sourceReceipt.issuedDocumentStatus = 'issued';
+          sourceReceipt.issuedDocumentUpdatedAt = new Date().toISOString();
+          localStorage.setItem(sourceKey, JSON.stringify(sourcePack));
+        }
+      } catch (linkError) {
+        console.warn('เชื่อมสถานะเอกสารกลับไปยังใบเสร็จเดิมไม่สำเร็จ', linkError);
+      }
+    }
 
     let invoicePaymentResult = { found: false, cloudOk: true };
     if (record.invNo && typeof window.markInvoicePaidByReceipt === 'function') {
@@ -1303,6 +1363,18 @@ async function saveDocumentToSystem(button) {
             const saved = refreshed.issuedReceipts.find(inv => String(inv.id) === String(record.id));
             if (saved) saved.firebaseId = ref.id;
             localStorage.setItem(key, JSON.stringify(refreshed));
+          }
+        }
+        if (state.sourceReceiptFirebaseId && service.updateBusinessDoc && state.sourceReceiptBranch) {
+          try {
+            await service.updateBusinessDoc('receipts', state.sourceReceiptId || null, state.sourceReceiptBranch, Number(state.sourceReceiptYear), Number(state.sourceReceiptMonth), {
+              issuedDocumentNo: state.docNo,
+              issuedDocumentId: record.id,
+              issuedDocumentStatus: 'issued',
+              issuedDocumentUpdatedAt: new Date().toISOString()
+            }, state.sourceReceiptFirebaseId);
+          } catch (linkError) {
+            console.error('อัปเดตสถานะเอกสารใบเสร็จต้นทางไม่สำเร็จ', linkError);
           }
         }
       } catch (error) {
@@ -1335,11 +1407,12 @@ async function saveDocumentToSystem(button) {
   }
 }
 
-function createOffscreenPages() {
+function createOffscreenPages(mode = 'all') {
   const container = document.createElement('div');
   container.className = 'rcp-pdf-stage';
   container.setAttribute('aria-hidden', 'true');
-  container.innerHTML = PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
+  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
+  container.innerHTML = mode === 'current' ? documentPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
   document.body.appendChild(container);
   return container;
 }
@@ -1362,7 +1435,7 @@ async function waitForPdfStageAssets(stage) {
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-async function downloadPdf(button) {
+async function downloadPdf(button, mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1374,7 +1447,7 @@ async function downloadPdf(button) {
   let stage;
   try {
     await ensurePdfLogoDataUrl();
-    stage = createOffscreenPages();
+    stage = createOffscreenPages(mode);
     await waitForPdfStageAssets(stage);
     const pages = [...stage.querySelectorAll('.rcp-document-page')];
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
@@ -1390,7 +1463,8 @@ async function downloadPdf(button) {
       if (index > 0) pdf.addPage('a4', 'portrait');
       pdf.addImage(image, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
     }
-    const filename = `${safeFilename(state.docNo || 'receipt')}.pdf`;
+    const suffix = mode === 'current' ? `_${activePage}` : '_original-copy-set';
+    const filename = `${safeFilename(state.docNo || 'receipt')}${suffix}.pdf`;
     pdf.save(filename);
   } catch (error) {
     console.error(error);
@@ -1402,7 +1476,7 @@ async function downloadPdf(button) {
   }
 }
 
-function printDocuments() {
+function printDocuments(mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
     alert(error);
@@ -1414,7 +1488,8 @@ function printDocuments() {
     return;
   }
   const cssUrl = new URL('./receipt-document.css', window.location.href).href;
-  const html = PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
+  const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
+  const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.rcp-document-page{page-break-after:always;margin:0 auto}.rcp-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -1446,9 +1521,71 @@ function showUploadedTemplate() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+
+function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
+  const previewState = createDefaultState();
+  const branch = ref.b || receipt.branch || previewState.branch || 'khonkaen';
+  if (BRANCH_DEFAULTS[branch]) {
+    previewState.branch = branch;
+    previewState.company = { ...BRANCH_DEFAULTS[branch] };
+  }
+  previewState.customerName = receipt.customer || '';
+  previewState.customerAddress = receipt.customerAddress || receipt.address || '';
+  previewState.customerTaxId = receipt.customerTaxId || '';
+  previewState.contact = receipt.contact || '';
+  previewState.phone = receipt.phone || '';
+  previewState.docNo = receipt.no || previewState.docNo;
+  previewState.date = receipt.date || previewState.date;
+  previewState.salesperson = receipt.salesPerson || '';
+  previewState.vatEnabled = Number(receipt.useVat || 0) === 1;
+  previewState.note = receipt.note || '';
+  previewState.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
+  previewState.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
+  previewState.items = Array.isArray(receipt.items) && receipt.items.length ? receipt.items.slice(0, MAX_ITEMS).map(it => ({
+    productCode: it.productCode || '', product: it.product || '', unit: it.unit || 'ชิ้น', qty: Number(it.qty) || 1, priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
+  })) : [createItem()];
+  return previewState;
+}
+function buildInlineReceiptHtml(receipt = {}, ref = {}, pageId = 'original') {
+  const prevState = state;
+  const prevActivePage = activePage;
+  try {
+    state = buildStateFromReceiptPreview(receipt, ref);
+    activePage = pageId || 'original';
+    const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
+    return documentPagesHtml(page, false);
+  } finally {
+    state = prevState;
+    activePage = prevActivePage;
+  }
+}
+function renderInlineReceiptPreview(target, receipt = {}, ref = {}, pageId = 'original') {
+  const el = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!el) return;
+  el.innerHTML = buildInlineReceiptHtml(receipt, ref, pageId);
+}
+
+window.ComformReceiptDocument = {
+  loadFromReceipt,
+  open() {
+    window.go?.('receipt-doc', null);
+    renderAll();
+  },
+  downloadPdf(mode = 'all') {
+    const button = document.querySelector('#receipt-document-app [data-action="pdf-set"]') || { textContent: 'PDF', disabled: false };
+    return downloadPdf(button, mode);
+  },
+  print(mode = 'all') { return printDocuments(mode); },
+  getState() { return JSON.parse(JSON.stringify(state)); },
+  buildInlineHtml(receipt, ref = {}, pageId = 'original') { return buildInlineReceiptHtml(receipt, ref, pageId); },
+  renderInlinePreview(target, receipt, ref = {}, pageId = 'original') { return renderInlineReceiptPreview(target, receipt, ref, pageId); }
+};
+
 window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('receipt-document-app')) applyLockedBranch();
 });
+
+window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'receipt' } }));
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();

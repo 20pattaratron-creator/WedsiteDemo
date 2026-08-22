@@ -1,5 +1,8 @@
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+const html2canvas = (...args) => {
+  if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
+  return window.html2canvas(...args);
+};
+const jsPDF = window.jspdf?.jsPDF;
 
 const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
 const QUOTE_CSS_URL = new URL('./quotation-document.css', import.meta.url).href;
