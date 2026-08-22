@@ -1,0 +1,147 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasUserProfile() {
+      return isSignedIn() && exists(userPath());
+    }
+
+    function userBranch() {
+      return hasUserProfile()
+        ? get(userPath()).data.get('branch', '')
+        : '';
+    }
+
+    function isAdmin() {
+      return hasUserProfile() && userBranch() == 'all';
+    }
+
+    function validBranch(branch) {
+      return branch == 'khonkaen' || branch == 'ubon';
+    }
+
+    function hasValidBranch(data) {
+      return data.keys().hasAll(['branch'])
+        && data.branch is string
+        && validBranch(data.branch);
+    }
+
+    function hasValidAttachments(data) {
+      return !data.keys().hasAny(['attachments'])
+        || data.attachments is list;
+    }
+
+    function canAccessBranch(branch) {
+      return hasUserProfile()
+        && validBranch(branch)
+        && (isAdmin() || userBranch() == branch);
+    }
+
+    function canCreateForBranch() {
+      return hasValidBranch(request.resource.data)
+        && hasValidAttachments(request.resource.data)
+        && canAccessBranch(request.resource.data.branch);
+    }
+
+    function canUpdateSameBranch() {
+      return resource.data.keys().hasAll(['branch'])
+        && request.resource.data.keys().hasAll(['branch'])
+        && request.resource.data.branch == resource.data.branch
+        && hasValidAttachments(request.resource.data)
+        && canAccessBranch(resource.data.branch);
+    }
+
+    function recoveryModeEnabled() {
+      return isAdmin()
+        && exists(/databases/$(database)/documents/systemSettings/security)
+        && get(/databases/$(database)/documents/systemSettings/security).data.recoveryMode == true;
+    }
+
+    // โหมดซ่อมเอกสารเก่าจะปิดเป็นค่าเริ่มต้น
+    // เปิดเฉพาะช่วง Migration โดยตั้ง systemSettings/security.recoveryMode = true แล้วปิดทันทีหลังซ่อมเสร็จ
+    function canAdminRepairDocument() {
+      return recoveryModeEnabled()
+        && hasValidBranch(request.resource.data)
+        && hasValidAttachments(request.resource.data);
+    }
+
+    match /systemSettings/{docId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /quotes/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /invoices/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /receipts/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /issuedInvoices/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /issuedReceipts/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /productions/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /expenses/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin() || canAccessBranch(resource.data.branch);
+    }
+
+    match /salesArchive/{docId} {
+      allow read: if isAdmin() || canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch() || canAdminRepairDocument();
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
