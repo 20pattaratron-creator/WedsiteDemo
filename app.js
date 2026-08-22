@@ -135,21 +135,103 @@ function populateAnalyticsProductFilter(observed=[]){
 }
 
 const CUSTOMER_AGENCY_GROUPS=[
-  {value:'government_coop_association',label:'ราชการ / สหกรณ์ / สมาคม'},
+  {value:'government',label:'ราชการ / หน่วยงานรัฐ'},
+  {value:'state_enterprise',label:'รัฐวิสาหกิจ / สถาบันการเงินของรัฐ'},
   {value:'hospital',label:'โรงพยาบาล'},
   {value:'school',label:'โรงเรียน'},
   {value:'private_company',label:'บริษัทเอกชน'},
   {value:'other',label:'อื่น ๆ / ไม่ระบุ'}
 ];
 const CUSTOMER_AGENCY_TYPES=[
-  {value:'savings_cooperative',group:'government_coop_association',label:'สหกรณ์ออมทรัพย์',prefix:'สอ.',patterns:['สอ.','สอ','สหกรณ์ออมทรัพย์']},
-  {value:'agricultural_cooperative',group:'government_coop_association',label:'สหกรณ์การเกษตร',prefix:'สกก.',patterns:['สกก.','สกก','สหกรณ์การเกษตร']},
-  {value:'funeral_association',group:'government_coop_association',label:'สมาคมฌาปนกิจสงเคราะห์',prefix:'สมาคมฯ',patterns:['สมาคมฯ','สมาคมฌาปนกิจ','สมาคมฌาปนกิจสงเคราะห์']},
+  // ราชการ / หน่วยงานรัฐทั่วไป
+  {value:'government_agency',group:'government',label:'หน่วยงานราชการทั่วไป',prefix:'',patterns:['กระทรวง','กรม','สำนักงานจังหวัด','องค์การบริหารส่วนจังหวัด','องค์การบริหารส่วนตำบล','เทศบาล']},
+  {value:'savings_cooperative',group:'government',label:'สหกรณ์ออมทรัพย์',prefix:'สอ.',patterns:['สอ.','สอ','สหกรณ์ออมทรัพย์']},
+  {value:'agricultural_cooperative',group:'government',label:'สหกรณ์การเกษตร',prefix:'สกก.',patterns:['สกก.','สกก','สหกรณ์การเกษตร']},
+  {value:'funeral_association',group:'government',label:'สมาคมฌาปนกิจสงเคราะห์',prefix:'สมาคมฯ',patterns:['สมาคมฯ','สมาคมฌาปนกิจ','สมาคมฌาปนกิจสงเคราะห์']},
+  {value:'police',group:'government',label:'สำนักงานตำรวจแห่งชาติ',prefix:'ตร.',patterns:['ตร.','สำนักงานตำรวจแห่งชาติ']},
+  {value:'nacc',group:'government',label:'สำนักงานคณะกรรมการป้องกันและปราบปรามการทุจริตแห่งชาติ',prefix:'ป.ป.ช.',patterns:['ป.ป.ช.','ปปช','สำนักงานคณะกรรมการป้องกันและปราบปรามการทุจริตแห่งชาติ']},
+  {value:'oncb',group:'government',label:'สำนักงานคณะกรรมการป้องกันและปราบปรามยาเสพติด',prefix:'ป.ป.ส.',patterns:['ป.ป.ส.','ปปส','สำนักงานคณะกรรมการป้องกันและปราบปรามยาเสพติด']},
+  {value:'amlo',group:'government',label:'สำนักงานป้องกันและปราบปรามการฟอกเงิน',prefix:'ปปง.',patterns:['ปปง.','ปปง','สำนักงานป้องกันและปราบปรามการฟอกเงิน']},
+  {value:'immigration',group:'government',label:'สำนักงานตรวจคนเข้าเมือง',prefix:'สตม.',patterns:['สตม.','สตม','สำนักงานตรวจคนเข้าเมือง']},
+  {value:'sso',group:'government',label:'สำนักงานประกันสังคม',prefix:'สปส.',patterns:['สปส.','สำนักงานประกันสังคม']},
+  {value:'nhso',group:'government',label:'สำนักงานหลักประกันสุขภาพแห่งชาติ',prefix:'สปสช.',patterns:['สปสช.','สำนักงานหลักประกันสุขภาพแห่งชาติ']},
+  {value:'thaihealth',group:'government',label:'สำนักงานกองทุนสนับสนุนการสร้างเสริมสุขภาพ',prefix:'สสส.',patterns:['สสส.','สำนักงานกองทุนสนับสนุนการสร้างเสริมสุขภาพ']},
+  {value:'fda',group:'government',label:'สำนักงานคณะกรรมการอาหารและยา',prefix:'อย.',patterns:['อย.','สำนักงานคณะกรรมการอาหารและยา']},
+  {value:'bot',group:'government',label:'ธนาคารแห่งประเทศไทย',prefix:'ธปท.',patterns:['ธปท.','ธนาคารแห่งประเทศไทย','แบงก์ชาติ']},
+  {value:'oic',group:'government',label:'สำนักงาน คปภ.',prefix:'คปภ.',patterns:['คปภ.','สำนักงานคณะกรรมการกำกับและส่งเสริมการประกอบธุรกิจประกันภัย']},
+  {value:'pmuc',group:'government',label:'บพข.',prefix:'บพข.',patterns:['บพข.','หน่วยบริหารและจัดการทุนด้านการเพิ่มความสามารถในการแข่งขันของประเทศ']},
+  {value:'obec',group:'government',label:'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน',prefix:'สพฐ.',patterns:['สพฐ.','สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน']},
+  {value:'onec',group:'government',label:'สำนักงานเลขาธิการสภาการศึกษา',prefix:'สกศ.',patterns:['สกศ.','สำนักงานเลขาธิการสภาการศึกษา']},
+  {value:'nrct',group:'government',label:'สำนักงานการวิจัยแห่งชาติ',prefix:'วช.',patterns:['วช.','สำนักงานการวิจัยแห่งชาติ']},
+  {value:'nstda',group:'government',label:'สำนักงานพัฒนาวิทยาศาสตร์และเทคโนโลยีแห่งชาติ',prefix:'สวทช.',patterns:['สวทช.','สำนักงานพัฒนาวิทยาศาสตร์และเทคโนโลยีแห่งชาติ']},
+
+  // รัฐวิสาหกิจ / สถาบันการเงินของรัฐ
+  {value:'egat',group:'state_enterprise',label:'การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย',prefix:'กฟผ.',patterns:['กฟผ.','การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย']},
+  {value:'pea',group:'state_enterprise',label:'การไฟฟ้าส่วนภูมิภาค',prefix:'กฟภ.',patterns:['กฟภ.','การไฟฟ้าส่วนภูมิภาค']},
+  {value:'mea',group:'state_enterprise',label:'การไฟฟ้านครหลวง',prefix:'กฟน.',patterns:['กฟน.','การไฟฟ้านครหลวง']},
+  {value:'pwa',group:'state_enterprise',label:'การประปาส่วนภูมิภาค',prefix:'กปภ.',patterns:['กปภ.','การประปาส่วนภูมิภาค']},
+  {value:'mwa',group:'state_enterprise',label:'การประปานครหลวง',prefix:'กปน.',patterns:['กปน.','การประปานครหลวง']},
+  {value:'bmta',group:'state_enterprise',label:'องค์การขนส่งมวลชนกรุงเทพ',prefix:'ขสมก.',patterns:['ขสมก.','องค์การขนส่งมวลชนกรุงเทพ']},
+  {value:'srt',group:'state_enterprise',label:'การรถไฟแห่งประเทศไทย',prefix:'รฟท.',patterns:['รฟท.','การรถไฟแห่งประเทศไทย']},
+  {value:'tcg',group:'state_enterprise',label:'บรรษัทประกันสินเชื่ออุตสาหกรรมขนาดย่อม',prefix:'บ.ส.ย.',patterns:['บ.ส.ย.','บสย.','บรรษัทประกันสินเชื่ออุตสาหกรรมขนาดย่อม']},
+  {value:'zpo',group:'state_enterprise',label:'องค์การสวนสัตว์แห่งประเทศไทย ในพระบรมราชูปถัมภ์',prefix:'อสส.',patterns:['อสส.','องค์การสวนสัตว์แห่งประเทศไทย']},
+  {value:'baac',group:'state_enterprise',label:'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร',prefix:'ธ.ก.ส.',patterns:['ธ.ก.ส.','ธกส.','ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร']},
+  {value:'ghb',group:'state_enterprise',label:'ธนาคารอาคารสงเคราะห์',prefix:'ธอส.',patterns:['ธอส.','ธนาคารอาคารสงเคราะห์']},
+  {value:'smebank',group:'state_enterprise',label:'ธนาคารพัฒนาวิสาหกิจขนาดกลางและขนาดย่อมแห่งประเทศไทย',prefix:'ธพว.',patterns:['ธพว.','SME Bank','ธนาคารพัฒนาวิสาหกิจขนาดกลางและขนาดย่อมแห่งประเทศไทย']},
+  {value:'exim',group:'state_enterprise',label:'ธนาคารเพื่อการส่งออกและนำเข้าแห่งประเทศไทย',prefix:'ธสน.',patterns:['ธสน.','EXIM Bank','ธนาคารเพื่อการส่งออกและนำเข้าแห่งประเทศไทย']},
+  {value:'eta',group:'state_enterprise',label:'การทางพิเศษแห่งประเทศไทย',prefix:'กทพ.',patterns:['กทพ.','การทางพิเศษแห่งประเทศไทย']},
+  {value:'mrta',group:'state_enterprise',label:'การรถไฟฟ้าขนส่งมวลชนแห่งประเทศไทย',prefix:'รฟม.',patterns:['รฟม.','การรถไฟฟ้าขนส่งมวลชนแห่งประเทศไทย']},
+  {value:'aerothai',group:'state_enterprise',label:'บริษัท วิทยุการบินแห่งประเทศไทย จำกัด',prefix:'บวท.',patterns:['บวท.','วิทยุการบินแห่งประเทศไทย']},
+  {value:'aot',group:'state_enterprise',label:'บริษัท ท่าอากาศยานไทย จำกัด (มหาชน)',prefix:'ทอท.',patterns:['ทอท.','ท่าอากาศยานไทย','AOT']},
+  {value:'transport',group:'state_enterprise',label:'บริษัท ขนส่ง จำกัด',prefix:'บขส.',patterns:['บขส.','บริษัท ขนส่ง จำกัด']},
+  {value:'ptt',group:'state_enterprise',label:'บริษัท ปตท. จำกัด (มหาชน)',prefix:'ปตท.',patterns:['ปตท.','บริษัท ปตท.','PTT']},
+  {value:'nha',group:'state_enterprise',label:'การเคหะแห่งชาติ',prefix:'กคช.',patterns:['กคช.','การเคหะแห่งชาติ']},
+  {value:'pwo',group:'state_enterprise',label:'องค์การคลังสินค้า',prefix:'อคส.',patterns:['อคส.','องค์การคลังสินค้า']},
+  {value:'dpo',group:'state_enterprise',label:'องค์การส่งเสริมกิจการโคนมแห่งประเทศไทย',prefix:'อ.ส.ค.',patterns:['อ.ส.ค.','องค์การส่งเสริมกิจการโคนมแห่งประเทศไทย']},
+  {value:'toat',group:'state_enterprise',label:'การยาสูบแห่งประเทศไทย',prefix:'ยสท.',patterns:['ยสท.','การยาสูบแห่งประเทศไทย']},
+  {value:'fio',group:'state_enterprise',label:'องค์การอุตสาหกรรมป่าไม้',prefix:'อ.อ.ป.',patterns:['อ.อ.ป.','องค์การอุตสาหกรรมป่าไม้']},
+
+  // กลุ่มหลักอื่น ๆ
   {value:'hospital',group:'hospital',label:'โรงพยาบาล',prefix:'รพ.',patterns:['รพ.','รพ','โรงพยาบาล']},
   {value:'school',group:'school',label:'โรงเรียน',prefix:'รร.',patterns:['รร.','รร','โรงเรียน']},
   {value:'limited_partnership',group:'private_company',label:'ห้างหุ้นส่วนจำกัด',prefix:'หจก.',patterns:['หจก.','หจก','ห้างหุ้นส่วนจำกัด']},
   {value:'limited_company',group:'private_company',label:'บริษัทจำกัด',prefix:'บจก.',patterns:['บจก.','บจก','บริษัทจำกัด','บริษัท จำกัด']},
+  {value:'public_company',group:'private_company',label:'บริษัทมหาชนจำกัด',prefix:'บมจ.',patterns:['บมจ.','บริษัทมหาชนจำกัด','บริษัท มหาชน จำกัด']},
   {value:'other',group:'other',label:'อื่น ๆ / ไม่ระบุ',prefix:'',patterns:[]}
+];
+
+const CUSTOMER_DEMO_MASTER=[
+  {name:'สำนักงานตำรวจแห่งชาติ (ตร.)',group:'government',type:'police'},
+  {name:'สำนักงานประกันสังคม (สปส.)',group:'government',type:'sso'},
+  {name:'สำนักงานหลักประกันสุขภาพแห่งชาติ (สปสช.)',group:'government',type:'nhso'},
+  {name:'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)',group:'government',type:'obec'},
+  {name:'สำนักงานการวิจัยแห่งชาติ (วช.)',group:'government',type:'nrct'},
+  {name:'สอ.ข้าราชการจังหวัดตัวอย่าง จำกัด',group:'government',type:'savings_cooperative'},
+  {name:'สกก.เมืองตัวอย่าง จำกัด',group:'government',type:'agricultural_cooperative'},
+  {name:'สมาคมฯ ฌาปนกิจสงเคราะห์ตัวอย่าง',group:'government',type:'funeral_association'},
+
+  {name:'การไฟฟ้าฝ่ายผลิตแห่งประเทศไทย (กฟผ.)',group:'state_enterprise',type:'egat'},
+  {name:'การไฟฟ้าส่วนภูมิภาค (กฟภ.)',group:'state_enterprise',type:'pea'},
+  {name:'การไฟฟ้านครหลวง (กฟน.)',group:'state_enterprise',type:'mea'},
+  {name:'การประปาส่วนภูมิภาค (กปภ.)',group:'state_enterprise',type:'pwa'},
+  {name:'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร (ธ.ก.ส.)',group:'state_enterprise',type:'baac'},
+  {name:'ธนาคารอาคารสงเคราะห์ (ธอส.)',group:'state_enterprise',type:'ghb'},
+  {name:'การรถไฟแห่งประเทศไทย (รฟท.)',group:'state_enterprise',type:'srt'},
+  {name:'บริษัท ท่าอากาศยานไทย จำกัด (มหาชน) (ทอท.)',group:'state_enterprise',type:'aot'},
+  {name:'บริษัท ปตท. จำกัด (มหาชน) (ปตท.)',group:'state_enterprise',type:'ptt'},
+
+  {name:'รพ.ตัวอย่าง ศูนย์การแพทย์จังหวัดขอนแก่น',group:'hospital',type:'hospital'},
+  {name:'โรงพยาบาลตัวอย่าง เมืองอุบลราชธานี',group:'hospital',type:'hospital'},
+  {name:'รพ.ส่งเสริมสุขภาพตำบลตัวอย่าง',group:'hospital',type:'hospital'},
+
+  {name:'รร.ตัวอย่างวิทยา',group:'school',type:'school'},
+  {name:'โรงเรียนตัวอย่างพิทยาคม',group:'school',type:'school'},
+  {name:'รร.สาธิตตัวอย่าง',group:'school',type:'school'},
+
+  {name:'บจก. ตัวอย่าง ดิจิทัล จำกัด',group:'private_company',type:'limited_company'},
+  {name:'บจก. ตัวอย่าง ซัพพลาย จำกัด',group:'private_company',type:'limited_company'},
+  {name:'หจก. ตัวอย่าง การค้า',group:'private_company',type:'limited_partnership'},
+  {name:'บมจ. ตัวอย่าง เทคโนโลยี',group:'private_company',type:'public_company'}
 ];
 function agencyGroupLabel(value){return CUSTOMER_AGENCY_GROUPS.find(x=>x.value===value)?.label||'อื่น ๆ / ไม่ระบุ';}
 function agencyTypeMeta(value){return CUSTOMER_AGENCY_TYPES.find(x=>x.value===value)||CUSTOMER_AGENCY_TYPES.find(x=>x.value==='other');}
@@ -187,6 +269,57 @@ function inferCustomerAgency(name=''){
     customerAgencyConfidence:'unknown'
   };
 }
+
+function customerDemoOptionLabel(item){
+  const type=agencyTypeMeta(item.type);
+  return `${item.name} — ${agencyGroupLabel(item.group)}${type?.label?` / ${type.label}`:''}`;
+}
+function customerDemoOptionsHtml(){
+  return CUSTOMER_AGENCY_GROUPS.filter(g=>g.value!=='other').map(group=>{
+    const rows=CUSTOMER_DEMO_MASTER.filter(item=>item.group===group.value);
+    if(!rows.length)return'';
+    return `<optgroup label="${escapeHtml(group.label)}">${rows.map((item,index)=>`<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join('')}</optgroup>`;
+  }).join('');
+}
+function applyCustomerDemo(prefix,name=''){
+  const demo=CUSTOMER_DEMO_MASTER.find(item=>item.name===name);
+  if(!demo)return;
+  const input=document.getElementById(prefix+'-cust');
+  if(input)input.value=demo.name;
+  applyCustomerAgencyToForm(prefix,{
+    customer:demo.name,
+    customerAgencyGroup:demo.group,
+    customerAgencyType:demo.type,
+    customerAgencyDetectedFrom:'demo-master',
+    customerAgencyConfidence:'classified'
+  });
+  const select=document.getElementById(prefix+'-customer-demo');
+  if(select)select.value=demo.name;
+  if(typeof scheduleInlineDocumentPreview==='function')scheduleInlineDocumentPreview(prefix);
+}
+function initCustomerDemoMaster(){
+  let list=document.getElementById('customer-demo-master-list');
+  if(!list){
+    list=document.createElement('datalist');
+    list.id='customer-demo-master-list';
+    list.innerHTML=CUSTOMER_DEMO_MASTER.map(item=>`<option value="${escapeHtml(item.name)}">${escapeHtml(customerDemoOptionLabel(item))}</option>`).join('');
+    document.body.appendChild(list);
+  }
+  ['q','i','r','p'].forEach(prefix=>{
+    const customerInput=document.getElementById(prefix+'-cust');
+    const typeSelect=document.getElementById(prefix+'-agency-type');
+    if(!customerInput||!typeSelect)return;
+    customerInput.setAttribute('list','customer-demo-master-list');
+    customerInput.setAttribute('autocomplete','off');
+    if(document.getElementById(prefix+'-customer-demo'))return;
+    const box=document.createElement('div');
+    box.className='ff customer-demo-field';
+    box.innerHTML=`<label>เลือกข้อมูล Demo / ตัวช่วยกรอก</label><select id="${prefix}-customer-demo"><option value="">-- เลือกลูกค้าตัวอย่าง --</option>${customerDemoOptionsHtml()}</select><small class="section-hint">เลือกแล้วระบบจะเติมชื่อและประเภทหน่วยงานให้อัตโนมัติ</small>`;
+    typeSelect.closest('.ff')?.insertAdjacentElement('afterend',box);
+    box.querySelector('select')?.addEventListener('change',event=>applyCustomerDemo(prefix,event.target.value));
+  });
+}
+
 function getCustomerNameForForm(prefix){return document.getElementById(prefix+'-cust')?.value||'';}
 function populateCustomerAgencyGroupOptions(prefix){
   const el=document.getElementById(prefix+'-agency-group');if(!el)return;
@@ -1018,7 +1151,7 @@ function initDropdowns(){
   ['analytics-month','ql-month','il-month','rl-month','oil-month','orl-month','el-month','pl-month'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  ['p-quote-filter-month','i-quote-filter-month','i-prod-filter-month','r-inv-filter-month'].forEach(id=>populateMonthSel(id,false));
+  ['p-quote-filter-month','i-prod-filter-month','r-inv-filter-month'].forEach(id=>populateMonthSel(id,false));
   ['i-prod-filter-year','r-inv-filter-year'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=now.getFullYear();});
   document.getElementById('dash-month').value=-1;
 }
@@ -1068,7 +1201,7 @@ function go(id,el){
     // On mobile the sidebar is a horizontal bottom menu; keep the selected item visible.
     try { el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); } catch (_) {}
   }
-  const m={dashboard:renderDash,analytics:renderDataAnalytics,'quote-list':renderQLList,'invoice-list':renderIList,'receipt-list':()=>{populateInvRefs();renderRList();},'issued-invoice-list':renderIssuedInvoiceList,'issued-receipt-list':renderIssuedReceiptList,'expense-list':renderEList,'production-list':renderPList,'linked-flow':renderLinkedFlow,'receipt-form':populateInvRefs,'invoice-form':()=>{populateQuoteRefs('i');populateProductionRefs();},'production-form':()=>populateQuoteRefs('p')};
+  const m={dashboard:renderDash,analytics:renderDataAnalytics,'quote-list':renderQLList,'invoice-list':renderIList,'receipt-list':()=>{populateInvRefs();renderRList();},'issued-invoice-list':renderIssuedInvoiceList,'issued-receipt-list':renderIssuedReceiptList,'expense-list':renderEList,'production-list':renderPList,'linked-flow':renderLinkedFlow,'receipt-form':populateInvRefs,'invoice-form':()=>populateProductionRefs(),'production-form':()=>populateQuoteRefs('p')};
   if(m[id])m[id]();
   if(id==='quote-form')refreshAutoQuoteNumber();
   if(['dashboard','analytics','quote-list','invoice-list','receipt-list','issued-invoice-list','issued-receipt-list','expense-list','production-list','linked-flow','quote-form','production-form','invoice-form','receipt-form'].includes(id)){
@@ -1119,7 +1252,7 @@ function selBr(form,b){
   }
   applyBranchUi(form,b);
   if(form==='r')populateInvRefs();
-  if(form==='i'){populateQuoteRefs('i');populateProductionRefs();}
+  if(form==='i'){populateProductionRefs();}
   if(form==='p')populateQuoteRefs('p');
 }
 function getBr(form){
@@ -3948,7 +4081,7 @@ function editInvoice(branch,year,month,id){
   resetF('invoice');applyBranchUi('i',branch);setInputValue('i-no',inv.no);setInputValue('i-date',inv.date);setInputValue('i-cust',inv.customer);applyCustomerAgencyToForm('i',inv);setInputValue('i-sales',inv.salesPerson);setInputValue('i-credit-term',inv.creditTerm);setInputValue('i-due-date',inv.dueDate);setInputValue('i-vat',Number(inv.useVat||0));setInputValue('i-comm-mode',inv.commMode||'percent');setInputValue('i-cr',inv.commRate||0);setInputValue('i-ca',inv.commAmt||0);setInputValue('i-note',inv.note);
   toggleCommMode('i');document.getElementById('i-items-body').innerHTML='';(inv.items||[]).forEach(addIItem);if(!(inv.items||[]).length)addIItem();calcI();loadExistingAttachments('i-att',inv.attachments);
   const prodRef=document.getElementById('i-prod-ref');if(prodRef)prodRef.disabled=true;
-  if(inv.sourceQuoteNo){const ref={b:inv.sourceQuoteBranch||branch,y:Number(inv.sourceQuoteYear||year),m:Number(inv.sourceQuoteMonth??month),id:inv.sourceQuoteId||'',no:inv.sourceQuoteNo,firebaseId:inv.sourceQuoteFirebaseId||''};const hidden=document.getElementById('i-source-quote-ref');if(hidden)hidden.value=JSON.stringify(ref);populateQuoteRefs('i');const qref=document.getElementById('i-quote-ref');if(qref)qref.disabled=true;}
+
   beginEditState('invoice',{type:'invoices',branch,year:Number(year),month:Number(month),id:inv.id,firebaseId:inv.firebaseId||'',no:inv.no,original:inv});navToPanel('invoice-form');window.scrollTo({top:0,behavior:'smooth'});
 }
 function editReceipt(branch,year,month,id){
@@ -4084,12 +4217,11 @@ async function saveInvoice(){
   const useVat=parseInt(document.getElementById('i-vat')?.value||0),vat=calculateVatSummary(rawSaleTotal,useVat);
   const cr=parseFloat(document.getElementById('i-cr').value)||0,commMode=getCommMode('i'),comm=commMode==='manual'?parseMoney(document.getElementById('i-ca').value):vat.subtotal*cr/100;
   const sourceProduction=getSelectedProductionRef();
-  const directSourceQuote=getSelectedQuoteRef('i');
   const creditTerm=document.getElementById('i-credit-term')?.value||'';
   const dueDate=document.getElementById('i-due-date')?.value||calculateInvoiceDueDate(date,creditTerm);
   const{year,month}=dateToYM(date);const d=loadFor(b,year,month);
   const sourceProductionDoc=sourceProduction?loadProductionRef(sourceProduction)?.p:null;
-  const sourceQuote=directSourceQuote||((sourceProductionDoc?.sourceQuoteNo)?{b:sourceProductionDoc.sourceQuoteBranch||b,y:sourceProductionDoc.sourceQuoteYear??year,m:sourceProductionDoc.sourceQuoteMonth??month,id:sourceProductionDoc.sourceQuoteId||'',no:sourceProductionDoc.sourceQuoteNo,firebaseId:sourceProductionDoc.sourceQuoteFirebaseId||''}:null);
+  const sourceQuote=(sourceProductionDoc?.sourceQuoteNo)?{b:sourceProductionDoc.sourceQuoteBranch||b,y:sourceProductionDoc.sourceQuoteYear??year,m:sourceProductionDoc.sourceQuoteMonth??month,id:sourceProductionDoc.sourceQuoteId||'',no:sourceProductionDoc.sourceQuoteNo,firebaseId:sourceProductionDoc.sourceQuoteFirebaseId||''}:null;
   const sourceQuoteDoc=sourceQuote?loadQuoteRef(sourceQuote)?.q:null;
   let invoiceRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,...getCustomerAgencyFromForm('i'),salesPerson:document.getElementById('i-sales').value.trim(),creditTerm,dueDate,items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,paymentStatus:'pending',paid:false,isPaid:false,paidAt:'',paidBy:'',
     sourceProductionId:sourceProduction?.id||'',sourceProductionNo:sourceProduction?.no||'',sourceProductionBranch:sourceProduction?.b||'',sourceProductionYear:sourceProduction?.y??'',sourceProductionMonth:sourceProduction?.m??'',sourceProductionRawCostTotal:safeNum(sourceProductionDoc?.costTotal ?? sourceProductionDoc?.costRawTotal),
@@ -4200,7 +4332,7 @@ function resetF(t){
   document.getElementById(f+'-br-ub').className='br-opt';
   document.getElementById(f+'-br-warn').classList.remove('show');
   if(t==='quote'){['q-cust','q-sales','q-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('q','');document.getElementById('q-date').value=todayStr;document.getElementById('q-items-body').innerHTML='';['q-sub','q-vat-amt','q-total'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('q-att');refreshAutoQuoteNumber(true);}
-  if(t==='invoice'){['i-no','i-cust','i-sales','i-cr','i-note','i-credit-term','i-due-date','i-source-quote-ref'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');const quoteRef=document.getElementById('i-quote-ref');if(quoteRef){quoteRef.value='';quoteRef.disabled=false;}const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';const quoteHint=document.getElementById('i-quote-link-hint');if(quoteHint)quoteHint.textContent='สามารถสร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคาได้โดยตรง หรือเชื่อมผ่านใบสั่งผลิตด้านล่าง';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');populateQuoteRefs('i');populateProductionRefs();}
+  if(t==='invoice'){['i-no','i-cust','i-sales','i-cr','i-note','i-credit-term','i-due-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');populateProductionRefs();}
   if(t==='receipt'){['r-no','r-cust','r-sales','r-inv-no','r-cr','r-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('r','');const rRef=document.getElementById('r-inv-ref');if(rRef){rRef.value='';rRef.disabled=false;}document.getElementById('r-comm-mode').value='percent';toggleCommMode('r');const rVat=document.getElementById('r-vat');if(rVat)rVat.value='0';document.getElementById('r-date').value=todayStr;document.getElementById('r-items-body').innerHTML='';['r-st','r-subtotal','r-vat-amt','r-grand-total','r-ct','r-ca','r-pf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});clearAttachedFiles('r-att');populateInvRefs();}
   if(t==='expense'){['e-desc','e-by','e-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('e-amount').value='';document.getElementById('e-date').value=todayStr;clearAttachedFiles('e-att');}
 }
@@ -4265,20 +4397,6 @@ function fillProductionFromQuote(){
   const note=document.getElementById('p-note');if(note&&!note.value)note.value=`อ้างอิงใบเสนอราคา ${q.no}${q.note?` — ${q.note}`:''}`;
   const hint=document.getElementById('p-quote-link-hint');if(hint)hint.textContent=`เชื่อมกับ ${q.no} • ${q.customer||'-'} • ดึง ${items.length} รายการแล้ว กรุณากรอกผู้ผลิตและราคาต้นทุนก่อนบันทึก`;
 }
-function fillInvoiceFromQuote(){
-  const ref=getSelectedQuoteRef('i');if(!ref)return;
-  const found=loadQuoteRef(ref);if(!found)return alert('ไม่พบใบเสนอราคาที่เลือก');
-  const q=found.q;selBr('i',ref.b);
-  const refJson=quoteRefValue(ref.b,Number(ref.y),Number(ref.m),q);
-  const hidden=document.getElementById('i-source-quote-ref');if(hidden)hidden.value=refJson;
-  const select=document.getElementById('i-quote-ref');if(select&&[...select.options].some(o=>o.value===refJson))select.value=refJson;
-  setInputValue('i-cust',q.customer||'');applyCustomerAgencyToForm('i',q);setInputValue('i-sales',q.salesPerson||'');setInputValue('i-vat',Number(q.useVat||0));
-  const body=document.getElementById('i-items-body');if(body)body.innerHTML='';
-  const items=quoteItemsForTransfer(q);(items.length?items:[{product:'',qty:1,unit:'ชิ้น',priceUnit:0}]).forEach(it=>addIItem({...it,costMode:'unit',costValue:0}));
-  const note=document.getElementById('i-note');if(note&&!note.value)note.value=`อ้างอิงใบเสนอราคา ${q.no}${q.note?` — ${q.note}`:''}`;
-  const hint=document.getElementById('i-quote-link-hint');if(hint)hint.textContent=`เชื่อมกับ ${q.no} • ${q.customer||'-'} • ดึง ${items.length} รายการแล้ว`;
-  calcI();
-}
 function useQuoteForProduction(b,y,m,id){
   const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("production-form"));
   go('production-form',nav);selBr('p',b);populateQuoteRefs('p');
@@ -4286,14 +4404,6 @@ function useQuoteForProduction(b,y,m,id){
   const option=[...sel.options].find(o=>{try{const r=JSON.parse(o.value);return String(r.id)===String(id)&&r.b===b&&Number(r.y)===Number(y)&&Number(r.m)===Number(m);}catch(_){return false;}});
   if(option){sel.value=option.value;fillProductionFromQuote();}
 }
-function useQuoteForInvoice(b,y,m,id){
-  const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("invoice-form"));
-  go('invoice-form',nav);selBr('i',b);populateQuoteRefs('i');
-  const sel=document.getElementById('i-quote-ref');if(!sel)return;
-  const option=[...sel.options].find(o=>{try{const r=JSON.parse(o.value);return String(r.id)===String(id)&&r.b===b&&Number(r.y)===Number(y)&&Number(r.m)===Number(m);}catch(_){return false;}});
-  if(option){sel.value=option.value;fillInvoiceFromQuote();}
-}
-
 function productionRefValue(b,y,m,p){return JSON.stringify({b,y,m,id:p.id,no:p.no});}
 function linkedFilterMonthOptionsReady(){
   ['i-prod-filter-month','r-inv-filter-month'].forEach(id=>{
@@ -4479,7 +4589,6 @@ function renderQLList(){
     <td style="display:flex;gap:4px">
       <button class="btn btn-primary btn-sm" title="เปิดต้นฉบับ/สำเนาใบเสนอราคา และดาวน์โหลด PDF" onclick="window.openQuoteDocument?.('${q.branch}',${q._y},${q._m},'${q.id}')">📄 ต้นฉบับ/สำเนา/PDF</button>
       <button class="btn btn-sm" title="สร้างรายการสั่งผลิตจากใบเสนอราคานี้" onclick="useQuoteForProduction('${q.branch}',${q._y},${q._m},'${q.id}')">🏭 สั่งผลิต</button>
-      <button class="btn btn-green btn-sm" title="สร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคานี้" onclick="useQuoteForInvoice('${q.branch}',${q._y},${q._m},'${q.id}')">🚚 ใบส่ง/ภาษี</button>
       <button class="btn btn-view btn-sm" title="ดูรายละเอียดข้อมูล" onclick="showDetailById('quote','${q.branch}',${q._y},${q._m},'${q.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       <button class="btn btn-amber btn-sm" onclick="editQuote('${q.branch}',${q._y},${q._m},'${q.id}')">✏️ แก้ไข</button>
       <button class="btn btn-danger btn-sm" onclick="delDoc('${q.branch}',${q._y},${q._m},'quotes',${q.id})">ลบ</button>
@@ -5798,9 +5907,7 @@ function exposeInlineHandlers() {
     fillFromProduction,
     populateQuoteRefs,
     fillProductionFromQuote,
-    fillInvoiceFromQuote,
     useQuoteForProduction,
-    useQuoteForInvoice,
     previewQuoteDocumentFromForm,
     previewDeliveryDocumentFromForm,
     previewReceiptDocumentFromForm,
@@ -6087,6 +6194,151 @@ window.addEventListener('comform-sync-safety-warning',event=>{
   alert('ระบบป้องกันข้อมูลหาย: ไม่ได้ล้างข้อมูลในเครื่องบางประเภท เพราะข้อมูลบน Firebase ว่างหรือลดลงผิดปกติ\n\n'+detail+'\n\nกรุณาตรวจ Firebase ก่อนกด Sync แบบบังคับ');
 });
 
+
+
+const __docInlinePreviewState = { q: 'original', i: 'original', r: 'original' };
+const __docInlinePreviewTimers = {};
+function scheduleInlineDocumentPreview(prefix){
+  clearTimeout(__docInlinePreviewTimers[prefix]);
+  __docInlinePreviewTimers[prefix] = setTimeout(() => {
+    if (prefix === 'q') renderQuoteInlinePreview();
+    if (prefix === 'i') renderInvoiceInlinePreview();
+    if (prefix === 'r') renderReceiptInlinePreview();
+  }, 140);
+}
+function buildQuoteDraftForInlinePreview(){
+  const b = getBr('q') || 'khonkaen';
+  const date = document.getElementById('q-date')?.value || todayStr;
+  const items = getQItems();
+  const subtotal = items.reduce((sum,item)=>sum+safeNum(item.total),0);
+  const useVat = parseInt(document.getElementById('q-vat')?.value || 0);
+  const vatAmt = useVat ? subtotal * .07 : 0;
+  return {
+    id:'inline-quote', no: document.getElementById('q-no')?.value.trim() || refreshAutoQuoteNumber(), date: isoDateCEFromValue(date), branch:b,
+    customer: document.getElementById('q-cust')?.value.trim() || '-', ...getCustomerAgencyFromForm('q'), salesPerson: document.getElementById('q-sales')?.value.trim() || '',
+    items: items.length ? items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }], subtotal, useVat, vatAmt, total: subtotal + vatAmt,
+    note: document.getElementById('q-note')?.value.trim() || '', attachments: attachedFiles['q-att'] || [], approved:false
+  };
+}
+function buildInvoiceDraftForInlinePreview(){
+  const b = getBr('i') || 'khonkaen';
+  const date = document.getElementById('i-date')?.value || todayStr;
+  const items = getIItems();
+  const sourceProduction = getSelectedProductionRef();
+  return {
+    id:'inline-invoice', no: document.getElementById('i-no')?.value.trim() || 'INV', date: isoDateCEFromValue(date), branch:b,
+    customer: document.getElementById('i-cust')?.value.trim() || '-', customerAddress: document.getElementById('i-address')?.value?.trim?.() || '',
+    customerTaxId: document.getElementById('i-tax-id')?.value?.trim?.() || '', contact: document.getElementById('i-contact')?.value?.trim?.() || '', phone: document.getElementById('i-phone')?.value?.trim?.() || '',
+    ...getCustomerAgencyFromForm('i'), salesPerson: document.getElementById('i-sales')?.value.trim() || '', dueDate: document.getElementById('i-due-date')?.value || '', creditTerm: document.getElementById('i-credit-term')?.value || '',
+    items: items.length ? items : [{ productCode:'', product:'', unit:'ชิ้น', qty:0, priceUnit:0 }], useVat: parseInt(document.getElementById('i-vat')?.value || 0), note: document.getElementById('i-note')?.value.trim() || '', attachments: attachedFiles['i-att'] || [], sourceProductionNo: sourceProduction?.no || ''
+  };
+}
+function buildReceiptDraftForInlinePreview(){
+  const b = getBr('r') || 'khonkaen';
+  const date = document.getElementById('r-date')?.value || todayStr;
+  const items = getRItems();
+  const selectedInvoice = getSelectedInvoiceRef();
+  return {
+    id:'inline-receipt', no: document.getElementById('r-no')?.value.trim() || 'REC', date: isoDateCEFromValue(date), branch:b,
+    customer: document.getElementById('r-cust')?.value.trim() || '-', customerAddress: document.getElementById('r-address')?.value?.trim?.() || '',
+    customerTaxId: document.getElementById('r-tax-id')?.value?.trim?.() || '', contact: document.getElementById('r-contact')?.value?.trim?.() || '', phone: document.getElementById('r-phone')?.value?.trim?.() || '',
+    ...getCustomerAgencyFromForm('r'), salesPerson: document.getElementById('r-sales')?.value.trim() || '', invNo: document.getElementById('r-inv-no')?.value.trim() || (selectedInvoice?.no || ''),
+    items: items.length ? items : [{ productCode:'', product:'', unit:'ชิ้น', qty:0, priceUnit:0 }], useVat: parseInt(document.getElementById('r-vat')?.value || 0), note: document.getElementById('r-note')?.value.trim() || '', attachments: attachedFiles['r-att'] || []
+  };
+}
+function renderQuoteInlinePreview(){
+  const target = document.getElementById('q-inline-preview');
+  if (!target) return;
+  if (!window.ComformQuotationDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบเสนอราคา…</div>'; return; }
+  window.ComformQuotationDocument.renderInlinePreview(target, buildQuoteDraftForInlinePreview(), { b: getBr('q') || 'khonkaen' }, __docInlinePreviewState.q || 'original');
+}
+function renderInvoiceInlinePreview(){
+  const target = document.getElementById('i-inline-preview');
+  if (!target) return;
+  if (!window.ComformDeliveryTaxDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบส่งสินค้า / ใบกำกับภาษี…</div>'; return; }
+  window.ComformDeliveryTaxDocument.renderInlinePreview(target, buildInvoiceDraftForInlinePreview(), { b: getBr('i') || 'khonkaen' }, __docInlinePreviewState.i || 'original');
+}
+function renderReceiptInlinePreview(){
+  const target = document.getElementById('r-inline-preview');
+  if (!target) return;
+  if (!window.ComformReceiptDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบเสร็จรับเงิน…</div>'; return; }
+  window.ComformReceiptDocument.renderInlinePreview(target, buildReceiptDraftForInlinePreview(), { b: getBr('r') || 'khonkaen' }, __docInlinePreviewState.r || 'original');
+}
+function runQuoteToolbarAction(action){
+  if (action === 'save') return document.getElementById('q-save-btn')?.click();
+  if (action === 'preview') return previewQuoteDocumentFromForm();
+  if (action === 'print') { previewQuoteDocumentFromForm(); setTimeout(()=>window.printQuote?.('current'), 450); return; }
+  if (action === 'pdf') { previewQuoteDocumentFromForm(); setTimeout(()=>window.downloadQuotePdf?.(document.querySelector('#panel-quotation-document [data-qdoc-action="pdf-current"]') || null, 'current'), 650); return; }
+}
+function runInvoiceToolbarAction(action){
+  if (action === 'save') return document.getElementById('i-save-btn')?.click();
+  if (action === 'preview') return previewDeliveryDocumentFromForm();
+  if (action === 'print') { previewDeliveryDocumentFromForm(); setTimeout(()=>window.ComformDeliveryTaxDocument?.print?.('current'), 500); return; }
+  if (action === 'pdf') { previewDeliveryDocumentFromForm(); setTimeout(()=>window.ComformDeliveryTaxDocument?.downloadPdf?.('current'), 700); return; }
+}
+function runReceiptToolbarAction(action){
+  if (action === 'save') return document.getElementById('r-save-btn')?.click();
+  if (action === 'preview') return previewReceiptDocumentFromForm();
+  if (action === 'print') { previewReceiptDocumentFromForm(); setTimeout(()=>window.ComformReceiptDocument?.print?.('current'), 500); return; }
+  if (action === 'pdf') { previewReceiptDocumentFromForm(); setTimeout(()=>window.ComformReceiptDocument?.downloadPdf?.('current'), 700); return; }
+}
+function setupDocumentEntryWorkspace(options){
+  const panel = document.getElementById(options.panelId);
+  const card = panel?.querySelector('.card');
+  if (!card || card.dataset.entryWorkspaceReady === '1') return;
+  const title = card.querySelector('.card-title');
+  const editBanner = card.querySelector('.edit-document-banner');
+  const fg = card.querySelector('.fg');
+  const hint = card.querySelector('.document-action-hint');
+  const actions = card.querySelector('.form-actions');
+  if (!title || !fg || !actions) return;
+  const shell = document.createElement('div');
+  shell.className = 'doc-entry-shell';
+  const toolbar = document.createElement('div');
+  toolbar.className = 'doc-entry-toolbar';
+  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="logo.png" alt="โลโก้บริษัท"><div><small>บริษัท ตัวอย่าง จำกัด</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn ${options.saveBtnClass || 'btn-primary'}" data-doc-toolbar-action="save">💾 บันทึก</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="preview">👁 ดูตัวอย่าง</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="print">🖨️ พิมพ์</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="pdf">⬇ ดาวน์โหลด PDF</button></div>`;
+  const workspace = document.createElement('div');
+  workspace.className = 'doc-entry-workspace';
+  const editor = document.createElement('section');
+  editor.className = 'doc-entry-editor';
+  const preview = document.createElement('section');
+  preview.className = 'doc-entry-preview';
+  preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-preview-frame"><div id="${options.prefix}-inline-preview" class="doc-entry-empty">กำลังโหลดตัวอย่างเอกสาร...</div></div>`;
+  shell.appendChild(toolbar); shell.appendChild(workspace); workspace.appendChild(editor); workspace.appendChild(preview);
+  const nodes = [editBanner, title, fg, hint, actions].filter(Boolean);
+  card.innerHTML = '';
+  card.appendChild(shell);
+  nodes.forEach(node => editor.appendChild(node));
+  toolbar.addEventListener('click', event => {
+    const action = event.target.closest('[data-doc-toolbar-action]')?.dataset.docToolbarAction;
+    if (!action) return;
+    options.toolbarAction(action);
+  });
+  const tabs = document.getElementById(`${options.prefix}-inline-tabs`);
+  tabs.innerHTML = options.tabs.map(tab => `<button type="button" data-copy="${tab.id}" class="${tab.id === __docInlinePreviewState[options.prefix] ? 'active' : ''}">${tab.label}</button>`).join('');
+  tabs.addEventListener('click', event => {
+    const button = event.target.closest('button[data-copy]');
+    if (!button) return;
+    __docInlinePreviewState[options.prefix] = button.dataset.copy || options.tabs[0].id;
+    [...tabs.querySelectorAll('button')].forEach(btn => btn.classList.toggle('active', btn === button));
+    scheduleInlineDocumentPreview(options.prefix);
+  });
+  card.dataset.entryWorkspaceReady = '1';
+  panel.addEventListener('input', () => scheduleInlineDocumentPreview(options.prefix));
+  panel.addEventListener('change', () => scheduleInlineDocumentPreview(options.prefix));
+  panel.addEventListener('click', event => {
+    if (event.target.closest('.btn') || event.target.closest('.br-opt') || event.target.closest('.file-preview') || event.target.closest('.upload-zone')) {
+      scheduleInlineDocumentPreview(options.prefix);
+    }
+  });
+  setTimeout(() => scheduleInlineDocumentPreview(options.prefix), 100);
+}
+function initDocumentEntryWorkspaces(){
+  setupDocumentEntryWorkspace({ panelId:'panel-quote-form', prefix:'q', toolbarTitle:'ออกใบเสนอราคา', saveBtnClass:'btn-primary', toolbarAction:runQuoteToolbarAction, tabs:[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'copy',label:'สำเนา/COPY'}] });
+  setupDocumentEntryWorkspace({ panelId:'panel-invoice-form', prefix:'i', toolbarTitle:'ออกใบส่งสินค้า / ใบกำกับภาษี', saveBtnClass:'btn-primary', toolbarAction:runInvoiceToolbarAction, tabs:[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'copy',label:'สำเนา/COPY'},{id:'delivery-copy',label:'สำเนาใบส่งสินค้า/สำเนาใบกำกับภาษี'}] });
+  setupDocumentEntryWorkspace({ panelId:'panel-receipt-form', prefix:'r', toolbarTitle:'ออกใบเสร็จรับเงิน', saveBtnClass:'btn-purple', toolbarAction:runReceiptToolbarAction, tabs:[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'account-copy',label:'สำเนาบัญชี'},{id:'file-copy',label:'สำเนาเก็บหลักฐาน'}] });
+}
+
 // ============================================================
 // BOOT
 // ============================================================
@@ -6111,7 +6363,7 @@ function migrateLegacyIssuedDocuments(){
   });
 }
 
-Object.assign(window,{renderLinkedFlow,setLinkedBranch,openLinkedList,refreshLinkedFlow,renderDataAnalytics,refreshDataAnalytics,applyProductMasterToInput,applyProductionProductPreset});
+Object.assign(window,{renderLinkedFlow,setLinkedBranch,openLinkedList,refreshLinkedFlow,renderDataAnalytics,refreshDataAnalytics,applyProductMasterToInput,applyProductionProductPreset,applyCustomerDemo});
 
 function bootComformApp() {
   exposeInlineHandlers();
@@ -6121,10 +6373,12 @@ function bootComformApp() {
     initDropdowns();
     initProductMasterDatalist();
     initCustomerAgencyControls();
+    initCustomerDemoMaster();
     populateProductionMakerDatalist();
     initExportControls();
     initInteractiveScrollAreas();
     initAttachmentPasteZones();
+    initDocumentEntryWorkspaces();
     renderDash();
     renderDataAnalytics();
     addQItem();

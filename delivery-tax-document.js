@@ -1387,6 +1387,52 @@ function showUploadedTemplate() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+
+function buildStateFromInvoicePreview(inv = {}, ref = {}) {
+  const previewState = createDefaultState();
+  const branch = ref.b || inv.branch || previewState.branch || 'khonkaen';
+  if (BRANCH_DEFAULTS[branch]) {
+    previewState.branch = branch;
+    previewState.company = { ...BRANCH_DEFAULTS[branch] };
+  }
+  previewState.customerName = inv.customer || '';
+  previewState.customerAddress = inv.customerAddress || inv.address || '';
+  previewState.customerTaxId = inv.customerTaxId || '';
+  previewState.contact = inv.contact || '';
+  previewState.phone = inv.phone || '';
+  previewState.docNo = inv.no || previewState.docNo;
+  previewState.date = inv.date || previewState.date;
+  previewState.dueDate = inv.dueDate || previewState.dueDate;
+  previewState.salesperson = inv.salesPerson || '';
+  previewState.vatEnabled = Number(inv.useVat || 0) === 1;
+  previewState.note = inv.note || '';
+  previewState.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
+  previewState.sourceProductionNo = inv.sourceProductionNo || '';
+  previewState.sourceQuoteNo = inv.sourceQuoteNo || '';
+  previewState.items = Array.isArray(inv.items) && inv.items.length ? inv.items.slice(0, MAX_ITEMS).map(it => ({
+    productCode: it.productCode || '', product: it.product || '', unit: it.unit || 'ชิ้น', qty: Number(it.qty) || 1, priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
+  })) : [createItem()];
+  return previewState;
+}
+function buildInlineDeliveryHtml(inv = {}, ref = {}, pageId = 'original') {
+  const prevState = state;
+  const prevActivePage = activePage;
+  try {
+    state = buildStateFromInvoicePreview(inv, ref);
+    activePage = pageId || 'original';
+    const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
+    return documentPagesHtml(page, false);
+  } finally {
+    state = prevState;
+    activePage = prevActivePage;
+  }
+}
+function renderInlineDeliveryPreview(target, inv = {}, ref = {}, pageId = 'original') {
+  const el = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!el) return;
+  el.innerHTML = buildInlineDeliveryHtml(inv, ref, pageId);
+}
+
 window.ComformDeliveryTaxDocument = {
   loadFromInvoice,
   open() {
@@ -1398,7 +1444,9 @@ window.ComformDeliveryTaxDocument = {
     return downloadPdf(button, mode);
   },
   print(mode = 'all') { return printDocuments(mode); },
-  getState() { return JSON.parse(JSON.stringify(state)); }
+  getState() { return JSON.parse(JSON.stringify(state)); },
+  buildInlineHtml(inv, ref = {}, pageId = 'original') { return buildInlineDeliveryHtml(inv, ref, pageId); },
+  renderInlinePreview(target, inv, ref = {}, pageId = 'original') { return renderInlineDeliveryPreview(target, inv, ref, pageId); }
 };
 
 window.addEventListener('comform-auth-ready', () => {

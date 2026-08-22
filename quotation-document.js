@@ -453,13 +453,44 @@ function printQuote(mode = 'all') {
   printWindow.document.close();
 }
 
+
+function buildInlineQuote(record = {}, ref = {}, copyId = 'original') {
+  const quote = {
+    id: record.id || 'inline-preview',
+    no: record.no || '-',
+    date: record.date || new Date().toISOString().slice(0,10),
+    branch: ref.b || record.branch || 'khonkaen',
+    customer: record.customer || '-',
+    customerAgencyGroupLabel: record.customerAgencyGroupLabel || record.customerAgencyGroup || '',
+    customerAgencyTypeLabel: record.customerAgencyTypeLabel || record.customerAgencyType || '',
+    salesPerson: record.salesPerson || '',
+    items: Array.isArray(record.items) && record.items.length ? record.items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }],
+    subtotal: Number(record.subtotal || 0),
+    useVat: Number(record.useVat || 0),
+    vatAmt: Number(record.vatAmt || 0),
+    total: Number(record.total || 0),
+    note: record.note || '',
+    attachments: Array.isArray(record.attachments) ? record.attachments : [],
+    approved: Boolean(record.approved)
+  };
+  const selected = QUOTE_COPY_TYPES.find(item => item.id === copyId) || QUOTE_COPY_TYPES[0];
+  return `${quoteEvidenceHtml(quote)}<div class="qdoc-pages-stack">${documentPagesHtml(quote, selected)}</div>`;
+}
+function renderInlineQuotePreview(target, record = {}, ref = {}, copyId = 'original') {
+  const el = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!el) return;
+  el.innerHTML = buildInlineQuote(record, ref, copyId);
+}
+
 window.openQuoteDocument = openQuoteDocument;
 window.downloadQuotePdf = downloadQuotePdf;
 window.printQuote = printQuote;
 window.ComformQuotationDocument = {
   loadFromData: loadQuoteDocumentFromData,
   openFromStorage: openQuoteDocument,
-  getCurrentQuote() { return currentQuote ? JSON.parse(JSON.stringify(currentQuote)) : null; }
+  getCurrentQuote() { return currentQuote ? JSON.parse(JSON.stringify(currentQuote)) : null; },
+  buildInlineHtml(record, ref = {}, copyId = 'original') { return buildInlineQuote(record, ref, copyId); },
+  renderInlinePreview(target, record, ref = {}, copyId = 'original') { return renderInlineQuotePreview(target, record, ref, copyId); }
 };
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);

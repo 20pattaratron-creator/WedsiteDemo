@@ -388,7 +388,7 @@
       <div id="analytics-customer-strategy-summary" class="chart-summary"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
-      <div class="card-title chart-title-row"><span>🏛️ วิเคราะห์กลุ่มลูกค้า: ราชการ โรงพยาบาล โรงเรียน บริษัทเอกชน</span><span class="analytics-mini-label">Agency Deep Dive</span></div>
+      <div class="card-title chart-title-row"><span>🏛️ วิเคราะห์กลุ่มลูกค้า: ราชการ รัฐวิสาหกิจ โรงพยาบาล โรงเรียน บริษัทเอกชน</span><span class="analytics-mini-label">Agency Deep Dive</span></div>
       <div id="analytics-agency-table"></div>
       <div id="analytics-agency-explain" class="chart-summary"></div>
     </div>
@@ -452,7 +452,7 @@
     </div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="q-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('q')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="q-agency-group" onchange="populateCustomerAgencyTypeOptions('q');renderCustomerAgencyHint('q')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="q-agency-type" onchange="renderCustomerAgencyHint('q')"></select><small id="q-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="q-agency-type" onchange="renderCustomerAgencyHint('q')"></select><small id="q-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff"><label>ชื่อพนักงานขาย</label><input type="text" id="q-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="fdiv"></div><div class="fsec">รายการสินค้า</div>
     <div class="ff-full">
@@ -506,31 +506,10 @@
       </div>
       <div class="br-warn" id="i-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
-    <input type="hidden" id="i-source-quote-ref" value="">
-    <div class="ff ff-full production-invoice-link-card linked-source-card quote-link-card">
-      <div class="linked-source-head">
-        <div>
-          <label>เชื่อมข้อมูลจากใบเสนอราคา</label>
-          <small>เลือกใบเสนอราคาที่อนุมัติแล้วเพื่อดึงลูกค้า พนักงานขาย รายการสินค้า และ VAT อัตโนมัติ</small>
-        </div>
-        <span id="i-quote-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
-      </div>
-      <div class="linked-source-filter-row">
-        <label><span>ปี</span><input id="i-quote-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateQuoteRefs('i')"></label>
-        <label><span>เดือน</span><select id="i-quote-filter-month" onchange="populateQuoteRefs('i')"><option value="">ทุกเดือน</option></select></label>
-        <label class="linked-source-search"><span>ค้นหา</span><input id="i-quote-filter-search" type="search" placeholder="เลขที่ใบเสนอราคา / ลูกค้า / สินค้า" oninput="populateQuoteRefs('i')"></label>
-        <button type="button" class="btn btn-primary" onclick="populateQuoteRefs('i')">รีเฟรช</button>
-      </div>
-      <div class="production-invoice-link-row">
-        <select id="i-quote-ref" onchange="fillInvoiceFromQuote()"><option value="">-- เลือกใบเสนอราคา --</option></select>
-        <button type="button" class="btn btn-primary" onclick="fillInvoiceFromQuote()">ดึงข้อมูลใบเสนอราคา</button>
-      </div>
-      <small id="i-quote-link-hint">สามารถสร้างใบส่งสินค้า / ใบกำกับภาษีจากใบเสนอราคาได้โดยตรง หรือเชื่อมผ่านใบสั่งผลิตด้านล่าง</small>
-    </div>
     <div class="ff ff-full production-invoice-link-card linked-source-card">
       <div class="linked-source-head">
         <div>
-          <label>หรือเชื่อมข้อมูลจากใบสั่งผลิต</label>
+          <label>เชื่อมข้อมูลจากใบสั่งผลิต</label>
           <small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small>
         </div>
         <span id="i-prod-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
@@ -553,7 +532,7 @@
     <div class="ff"><label>ชื่อพนักงานขาย *</label><input type="text" id="i-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="i-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('i')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="i-agency-group" onchange="populateCustomerAgencyTypeOptions('i');renderCustomerAgencyHint('i')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="i-agency-type" onchange="renderCustomerAgencyHint('i')"></select><small id="i-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="i-agency-type" onchange="renderCustomerAgencyHint('i')"></select><small id="i-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff"><label>เครดิตการชำระของลูกค้า</label>
       <select id="i-credit-term" onchange="updateInvoiceDueDate()">
         <option value="">เลือกเครดิตการชำระ</option>
@@ -649,7 +628,7 @@
     <div class="ff"><label>ชื่อพนักงานขาย</label><input type="text" id="r-sales" placeholder="ชื่อพนักงาน"></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="r-cust" placeholder="ชื่อบริษัท / ลูกค้า" oninput="autoDetectCustomerAgency('r')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="r-agency-group" onchange="populateCustomerAgencyTypeOptions('r');renderCustomerAgencyHint('r')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="r-agency-type" onchange="renderCustomerAgencyHint('r')"></select><small id="r-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="r-agency-type" onchange="renderCustomerAgencyHint('r')"></select><small id="r-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="fdiv"></div><div class="fsec">รายการสินค้า</div>
     <div class="ff-full">
       <table class="items-table"><thead><tr>
@@ -733,7 +712,7 @@
     <div class="ff"><label>ผู้รับผลิต / ผู้สั่งผลิต *</label><input type="text" id="p-maker" list="production-maker-options" placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้ผลิตเอง" oninput="handleProductionMakerChange()" onchange="handleProductionMakerChange()"><datalist id="production-maker-options"><option value="คอมฟอร์มกรุงเทพ"></option><option value="จันชนา"></option><option value="68 computer"></option><option value="สุเทพการพิมพ์"></option><option value="PK"></option><option value="วิทยา"></option><option value="เมดิแคร์พลัส"></option><option value="เจ้าพระยา 41"></option><option value="โพรดิวส์ลาเบล"></option><option value="PW IT"></option><option value="ยูนิ - สมาร์ท"></option></datalist><small id="p-maker-preset-hint" class="section-hint">เลือกรายชื่อผู้ผลิตเพื่อให้ระบบจำกัดระยะเวลาส่งสินค้าและตั้งเครดิตผู้ผลิตให้อัตโนมัติ หรือพิมพ์ชื่ออื่นเองได้</small></div>
     <div class="ff"><label>ชื่อลูกค้า *</label><input type="text" id="p-cust" placeholder="ชื่อลูกค้า" oninput="autoDetectCustomerAgency('p')"></div>
     <div class="ff customer-agency-field"><label>ประเภทหน่วยงาน</label><select id="p-agency-group" onchange="populateCustomerAgencyTypeOptions('p');renderCustomerAgencyHint('p')"></select></div>
-    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="p-agency-type" onchange="renderCustomerAgencyHint('p')"></select><small id="p-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น สอ., สกก., รพ., รร., หจก., บจก.</small></div>
+    <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="p-agency-type" onchange="renderCustomerAgencyHint('p')"></select><small id="p-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff ff-full"><label>ชื่องาน *</label><input type="text" id="p-job" placeholder="เช่น งานป้าย / งานพิมพ์ / งานผลิตสินค้า"></div>
 
     <div class="fdiv"></div><div class="fsec">กำหนดส่งสินค้า</div>

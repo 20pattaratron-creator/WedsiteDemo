@@ -1518,6 +1518,50 @@ function showUploadedTemplate() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+
+function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
+  const previewState = createDefaultState();
+  const branch = ref.b || receipt.branch || previewState.branch || 'khonkaen';
+  if (BRANCH_DEFAULTS[branch]) {
+    previewState.branch = branch;
+    previewState.company = { ...BRANCH_DEFAULTS[branch] };
+  }
+  previewState.customerName = receipt.customer || '';
+  previewState.customerAddress = receipt.customerAddress || receipt.address || '';
+  previewState.customerTaxId = receipt.customerTaxId || '';
+  previewState.contact = receipt.contact || '';
+  previewState.phone = receipt.phone || '';
+  previewState.docNo = receipt.no || previewState.docNo;
+  previewState.date = receipt.date || previewState.date;
+  previewState.salesperson = receipt.salesPerson || '';
+  previewState.vatEnabled = Number(receipt.useVat || 0) === 1;
+  previewState.note = receipt.note || '';
+  previewState.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
+  previewState.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
+  previewState.items = Array.isArray(receipt.items) && receipt.items.length ? receipt.items.slice(0, MAX_ITEMS).map(it => ({
+    productCode: it.productCode || '', product: it.product || '', unit: it.unit || 'ชิ้น', qty: Number(it.qty) || 1, priceUnit: Number(it.priceUnit ?? it.saleValue) || 0
+  })) : [createItem()];
+  return previewState;
+}
+function buildInlineReceiptHtml(receipt = {}, ref = {}, pageId = 'original') {
+  const prevState = state;
+  const prevActivePage = activePage;
+  try {
+    state = buildStateFromReceiptPreview(receipt, ref);
+    activePage = pageId || 'original';
+    const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
+    return documentPagesHtml(page, false);
+  } finally {
+    state = prevState;
+    activePage = prevActivePage;
+  }
+}
+function renderInlineReceiptPreview(target, receipt = {}, ref = {}, pageId = 'original') {
+  const el = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!el) return;
+  el.innerHTML = buildInlineReceiptHtml(receipt, ref, pageId);
+}
+
 window.ComformReceiptDocument = {
   loadFromReceipt,
   open() {
@@ -1529,7 +1573,9 @@ window.ComformReceiptDocument = {
     return downloadPdf(button, mode);
   },
   print(mode = 'all') { return printDocuments(mode); },
-  getState() { return JSON.parse(JSON.stringify(state)); }
+  getState() { return JSON.parse(JSON.stringify(state)); },
+  buildInlineHtml(receipt, ref = {}, pageId = 'original') { return buildInlineReceiptHtml(receipt, ref, pageId); },
+  renderInlinePreview(target, receipt, ref = {}, pageId = 'original') { return renderInlineReceiptPreview(target, receipt, ref, pageId); }
 };
 
 window.addEventListener('comform-auth-ready', () => {
