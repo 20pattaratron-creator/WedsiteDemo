@@ -31,3 +31,10 @@ npm run build
 - `.env.example`, `.gitignore` — ตัวอย่าง Environment และ Git settings
 
 > ก่อนนำขึ้น GitHub Pages แนะนำให้ใช้ `npm run build` แล้ว Deploy โฟลเดอร์ `dist/`
+
+
+## Preview/PDF static-hosting fix
+- แก้ `integrated-documents.js` ไม่ให้ใช้ bare import ของ `html2canvas`/`jspdf` ซึ่ง Browser บน GitHub Pages/Live Server resolve ไม่ได้
+- Preview HTML ทางขวาโหลดได้โดยไม่ต้องรอ PDF library
+- `html2canvas` และ `jsPDF` โหลดเป็น browser globals จาก CDN เฉพาะสำหรับการสร้าง PDF
+- เพิ่ม retry อัตโนมัติและปุ่มลองโหลด Preview ใหม่

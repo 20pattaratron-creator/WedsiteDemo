@@ -1,5 +1,8 @@
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+const html2canvas = (...args) => {
+  if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
+  return window.html2canvas(...args);
+};
+const jsPDF = window.jspdf?.jsPDF;
 
 const RCP_STORAGE_KEY = 'comform_receipt_document_draft_v1';
 const MAX_ITEMS = 60;
@@ -60,7 +63,7 @@ const BRANCH_DEFAULTS = {
   },
   ubon: {
     label: 'สาขาอุบล',
-    companyNameTh: 'บริษัท คอมฟอร์ม อีสาน จำกัด (สำนักงานใหญ่)',
+    companyNameTh: 'บริษัท คอมฟอร์มอีสาน จำกัด (สำนักงานใหญ่)',
     companyNameEn: 'COMFORM ESAN CO., LTD.',
     addressTh: '164/3 ถนนอุบล-ตระการ ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '164/3 Ubon-Trakarn Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',

@@ -1135,6 +1135,9 @@
 
 </div><!-- /app-content -->
 
+<!-- PDF libraries: loaded as browser globals so document preview works on static hosting/GitHub Pages -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script type="module" src="firebase-auth.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script type="module" src="google-drive.js"></script>

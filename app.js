@@ -5598,8 +5598,8 @@ function renderInlineDoc(prefix,retry=0){
   const mod=window.ComformIntegratedDocuments;
   if(!mod?.renderInline){
     target.innerHTML='<div class="idoc-loading">กำลังโหลดตัวอย่างเอกสาร...</div>';
-    if(retry<20)setTimeout(()=>renderInlineDoc(prefix,retry+1),180);
-    else target.innerHTML='<div class="idoc-error">โมดูลตัวอย่างเอกสารไม่โหลด กรุณากด Ctrl+F5 หรือรันเว็บไซต์ผ่าน Vite</div>';
+    if(retry<70)setTimeout(()=>renderInlineDoc(prefix,retry+1),200);
+    else target.innerHTML=`<div class="idoc-error"><b>ยังโหลดตัวอย่างเอกสารไม่สำเร็จ</b><br><span>ระบบจะลองโหลดให้อัตโนมัติอีกครั้ง หรือกดปุ่มด้านล่าง</span><br><button type="button" class="btn btn-ghost btn-sm" onclick="renderInlineDoc('${prefix}',0)">ลองโหลดตัวอย่างอีกครั้ง</button></div>`;
     return;
   }
   try{mod.renderInline(target,inlineDocType(prefix),buildInlineDocData(prefix),inlineDocCopy[prefix]||'original');}
@@ -5631,6 +5631,8 @@ function setupInlineDocumentWorkspace(prefix,panelId){
   window.addEventListener('comform-integrated-documents-ready',()=>{initTabs();renderInlineDoc(prefix);},{once:true});setTimeout(()=>renderInlineDoc(prefix),120);
 }
 function initInlineDocumentWorkspaces(){setupInlineDocumentWorkspace('q','panel-quote-form');setupInlineDocumentWorkspace('i','panel-invoice-form');setupInlineDocumentWorkspace('r','panel-receipt-form');}
+window.renderInlineDoc=renderInlineDoc;
+window.scheduleInlineDoc=scheduleInlineDoc;
 
 // ============================================================
 // BOOT
