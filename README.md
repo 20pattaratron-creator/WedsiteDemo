@@ -117,3 +117,9 @@ npm run build
 - กลุ่มหลัก: ราชการ / รัฐวิสาหกิจ / โรงพยาบาล / โรงเรียน / บริษัทเอกชน
 - เพิ่มข้อมูล Demo สำหรับเลือกกรอกลูกค้า และ Auto-detect จากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., รพ., รร., บจก.
 - การเลือกข้อมูล Demo ไม่สร้างยอดขายอัตโนมัติ จนกว่าจะบันทึกเอกสารจริง จึงไม่ทำให้ Analytics ปนข้อมูลโดยไม่ตั้งใจ
+
+
+## Preview Loading Fix
+- โหลดโมดูลเอกสารก่อน `app.js` เพื่อให้ Inline Preview พร้อมตั้งแต่เปิดฟอร์ม
+- เพิ่ม retry อัตโนมัติและ event `comform-document-module-ready`
+- หากใช้ GitHub Pages ให้ deploy ผลลัพธ์ใน `dist/` หลัง `npm run build` ไม่ควรนำ source module ที่มี bare imports ขึ้นเป็น static page โดยตรง

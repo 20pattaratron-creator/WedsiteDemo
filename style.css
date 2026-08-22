@@ -1796,3 +1796,5 @@ tr:nth-child(even) td{background:#fbfdff!important}tr:hover td{background:#f0fbf
 .customer-demo-field{padding:10px 12px;border:1px dashed rgba(29,99,200,.28);border-radius:12px;background:linear-gradient(135deg,#f8fbff,#fff7fb)}
 .customer-demo-field label{color:#173873!important}.customer-demo-field select{border-color:#bcd3ec!important;background:#fff!important}
 .customer-agency-field select option{color:#1f2937}
+
+.doc-entry-preview-error{color:#9f1239!important;background:#fff1f2;border:1px solid #fecdd3;border-radius:14px;margin:16px;padding:24px!important}.doc-entry-preview-error small{display:inline-block;margin:8px 0 12px;color:#7f1d1d;line-height:1.6}

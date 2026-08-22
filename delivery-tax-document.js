@@ -1453,5 +1453,7 @@ window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('delivery-tax-app')) applyLockedBranch();
 });
 
+window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'delivery' } }));
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();

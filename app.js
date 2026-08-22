@@ -6246,24 +6246,52 @@ function buildReceiptDraftForInlinePreview(){
     items: items.length ? items : [{ productCode:'', product:'', unit:'ชิ้น', qty:0, priceUnit:0 }], useVat: parseInt(document.getElementById('r-vat')?.value || 0), note: document.getElementById('r-note')?.value.trim() || '', attachments: attachedFiles['r-att'] || []
   };
 }
+const __docPreviewRetryCount = { q:0, i:0, r:0 };
+function inlinePreviewLoading(target, prefix, label, retryFn){
+  __docPreviewRetryCount[prefix] = (__docPreviewRetryCount[prefix] || 0) + 1;
+  const count = __docPreviewRetryCount[prefix];
+  if (count <= 30) {
+    target.innerHTML = `<div class="doc-entry-empty"><b>กำลังโหลดตัวอย่าง${label}…</b><br><small>กำลังรอโมดูลเอกสาร (${count}/30)</small></div>`;
+    setTimeout(retryFn, 180);
+  } else {
+    target.innerHTML = `<div class="doc-entry-empty doc-entry-preview-error"><b>ไม่สามารถโหลดตัวอย่าง${label}</b><br><small>โมดูลเอกสารยังไม่พร้อม กรุณากด Ctrl+F5 เพื่อรีเฟรชไฟล์ JavaScript หากเปิดจาก GitHub Pages ต้อง Deploy โฟลเดอร์ dist ที่ได้จาก npm run build</small><br><button type="button" class="btn btn-ghost btn-sm" onclick="window.retryDocumentPreviews?.()">ลองโหลดตัวอย่างอีกครั้ง</button></div>`;
+  }
+}
 function renderQuoteInlinePreview(){
   const target = document.getElementById('q-inline-preview');
   if (!target) return;
-  if (!window.ComformQuotationDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบเสนอราคา…</div>'; return; }
-  window.ComformQuotationDocument.renderInlinePreview(target, buildQuoteDraftForInlinePreview(), { b: getBr('q') || 'khonkaen' }, __docInlinePreviewState.q || 'original');
+  if (!window.ComformQuotationDocument?.renderInlinePreview) return inlinePreviewLoading(target,'q','ใบเสนอราคา',renderQuoteInlinePreview);
+  __docPreviewRetryCount.q=0;
+  try { window.ComformQuotationDocument.renderInlinePreview(target, buildQuoteDraftForInlinePreview(), { b: getBr('q') || 'khonkaen' }, __docInlinePreviewState.q || 'original'); }
+  catch(error){ console.error('Quote inline preview failed',error); target.innerHTML=`<div class="doc-entry-empty doc-entry-preview-error"><b>ตัวอย่างใบเสนอราคาเกิดข้อผิดพลาด</b><br><small>${escapeHtml(error?.message||String(error))}</small></div>`; }
 }
 function renderInvoiceInlinePreview(){
   const target = document.getElementById('i-inline-preview');
   if (!target) return;
-  if (!window.ComformDeliveryTaxDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบส่งสินค้า / ใบกำกับภาษี…</div>'; return; }
-  window.ComformDeliveryTaxDocument.renderInlinePreview(target, buildInvoiceDraftForInlinePreview(), { b: getBr('i') || 'khonkaen' }, __docInlinePreviewState.i || 'original');
+  if (!window.ComformDeliveryTaxDocument?.renderInlinePreview) return inlinePreviewLoading(target,'i','ใบส่งสินค้า / ใบกำกับภาษี',renderInvoiceInlinePreview);
+  __docPreviewRetryCount.i=0;
+  try { window.ComformDeliveryTaxDocument.renderInlinePreview(target, buildInvoiceDraftForInlinePreview(), { b: getBr('i') || 'khonkaen' }, __docInlinePreviewState.i || 'original'); }
+  catch(error){ console.error('Invoice inline preview failed',error); target.innerHTML=`<div class="doc-entry-empty doc-entry-preview-error"><b>ตัวอย่างใบส่งสินค้า / ใบกำกับภาษีเกิดข้อผิดพลาด</b><br><small>${escapeHtml(error?.message||String(error))}</small></div>`; }
 }
 function renderReceiptInlinePreview(){
   const target = document.getElementById('r-inline-preview');
   if (!target) return;
-  if (!window.ComformReceiptDocument?.renderInlinePreview) { target.innerHTML = '<div class="doc-entry-empty">กำลังโหลดตัวอย่างใบเสร็จรับเงิน…</div>'; return; }
-  window.ComformReceiptDocument.renderInlinePreview(target, buildReceiptDraftForInlinePreview(), { b: getBr('r') || 'khonkaen' }, __docInlinePreviewState.r || 'original');
+  if (!window.ComformReceiptDocument?.renderInlinePreview) return inlinePreviewLoading(target,'r','ใบเสร็จรับเงิน',renderReceiptInlinePreview);
+  __docPreviewRetryCount.r=0;
+  try { window.ComformReceiptDocument.renderInlinePreview(target, buildReceiptDraftForInlinePreview(), { b: getBr('r') || 'khonkaen' }, __docInlinePreviewState.r || 'original'); }
+  catch(error){ console.error('Receipt inline preview failed',error); target.innerHTML=`<div class="doc-entry-empty doc-entry-preview-error"><b>ตัวอย่างใบเสร็จรับเงินเกิดข้อผิดพลาด</b><br><small>${escapeHtml(error?.message||String(error))}</small></div>`; }
 }
+function retryDocumentPreviews(){
+  __docPreviewRetryCount.q=0; __docPreviewRetryCount.i=0; __docPreviewRetryCount.r=0;
+  scheduleInlineDocumentPreview('q'); scheduleInlineDocumentPreview('i'); scheduleInlineDocumentPreview('r');
+}
+window.retryDocumentPreviews=retryDocumentPreviews;
+window.addEventListener('comform-document-module-ready', event=>{
+  const name=event?.detail?.module;
+  if(name==='quotation') { __docPreviewRetryCount.q=0; scheduleInlineDocumentPreview('q'); }
+  if(name==='delivery') { __docPreviewRetryCount.i=0; scheduleInlineDocumentPreview('i'); }
+  if(name==='receipt') { __docPreviewRetryCount.r=0; scheduleInlineDocumentPreview('r'); }
+});
 function runQuoteToolbarAction(action){
   if (action === 'save') return document.getElementById('q-save-btn')?.click();
   if (action === 'preview') return previewQuoteDocumentFromForm();

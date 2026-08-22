@@ -1582,5 +1582,7 @@ window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('receipt-document-app')) applyLockedBranch();
 });
 
+window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'receipt' } }));
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();

@@ -493,5 +493,7 @@ window.ComformQuotationDocument = {
   renderInlinePreview(target, record, ref = {}, copyId = 'original') { return renderInlineQuotePreview(target, record, ref, copyId); }
 };
 
+window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'quotation' } }));
+
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountFeature);
 else mountFeature();

@@ -1192,10 +1192,11 @@
 <script type="module" src="local-file-store.js"></script>
 <script type="module" src="firebase-bridge.js"></script>
 <script type="module" src="click-fallback.js"></script>
-<script type="module" src="app.js"></script>
-<script type="module" src="firebase-dashboard.js"></script>
+<!-- Load printable document modules before app.js so inline previews are ready when forms boot. -->
 <script type="module" src="delivery-tax-document.js"></script>
 <script type="module" src="quotation-document.js"></script>
 <script type="module" src="receipt-document.js"></script>
+<script type="module" src="app.js"></script>
+<script type="module" src="firebase-dashboard.js"></script>
 </body>
 </html>
