@@ -382,7 +382,7 @@ function openQuoteDocument(branch, year, month, id) {
   mountFeature();
   const quote = loadQuote(branch, Number(year), Number(month), id);
   if (!quote) {
-    alert('ไม่พบใบเสนอราคาที่ต้องการแสดง อาจถูกลบหรือย้ายไปเดือนอื่นแล้ว');
+    notify('ไม่พบใบเสนอราคาที่ต้องการแสดง อาจถูกลบหรือย้ายไปเดือนอื่นแล้ว');
     return;
   }
   currentQuote = { ...quote, branch, _y: Number(year), _m: Number(month), _previewOnly: false };
@@ -436,7 +436,7 @@ async function downloadQuotePdf(button, mode = 'all') {
     pdf.save(`${safeName}${suffix}.pdf`);
   } catch (error) {
     console.error(error);
-    alert(`สร้าง PDF ใบเสนอราคาไม่สำเร็จ: ${error?.message || error}`);
+    notify(`สร้าง PDF ใบเสนอราคาไม่สำเร็จ: ${error?.message || error}`);
   } finally {
     stage.remove();
     if (button) { button.disabled = false; button.textContent = originalText; }
@@ -447,7 +447,7 @@ function printQuote(mode = 'all') {
   if (!currentQuote) return;
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) {
-    alert('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
+    notify('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
     return;
   }
   const cssUrl = QUOTE_CSS_URL;

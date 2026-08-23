@@ -420,8 +420,8 @@ function applyProductionRef(value) {
   let ref;
   try { ref = JSON.parse(value); } catch (_) { return; }
   const p = productionOptionsCache.find(x => (x.firebaseId && x.firebaseId === ref.firebaseId) || (x.no && x.no === ref.no));
-  if (!p) { alert('ไม่พบข้อมูลใบสั่งผลิตนี้ อาจถูกลบหรืออัปเดตไปแล้ว'); return; }
-  if (p.invoiceNo) { alert(`ใบสั่งผลิตนี้ออกบิลไปแล้ว (เลขที่ ${p.invoiceNo})`); return; }
+  if (!p) { notify('ไม่พบข้อมูลใบสั่งผลิตนี้ อาจถูกลบหรืออัปเดตไปแล้ว'); return; }
+  if (p.invoiceNo) { notify(`ใบสั่งผลิตนี้ออกบิลไปแล้ว (เลขที่ ${p.invoiceNo})`); return; }
   state.customerName = p.customer || state.customerName;
   state.sourceProductionNo = p.no || '';
   state.sourceProductionFirebaseId = p.firebaseId || '';
@@ -772,7 +772,7 @@ function setBranch(branch) {
   const locked = getLockedBranch();
   if (!BRANCH_DEFAULTS[branch]) return;
   if (locked && locked !== branch) {
-    alert(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
+    notify(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
     return;
   }
   if (state.branch === branch) return;
@@ -838,7 +838,7 @@ function updateItemAmount(index) {
 
 function addItem() {
   if (state.items.length >= MAX_ITEMS) {
-    alert(`เอกสารหนึ่งชุดเพิ่มได้สูงสุด ${MAX_ITEMS} รายการ`);
+    notify(`เอกสารหนึ่งชุดเพิ่มได้สูงสุด ${MAX_ITEMS} รายการ`);
     return;
   }
   state.items.push(createItem());
@@ -1122,10 +1122,10 @@ function validateBeforeSave() {
 }
 
 async function saveDocumentToSystem(button) {
-  if (state.previewOnly) { alert('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง'); return; }
+  if (state.previewOnly) { notify('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบส่งสินค้า / ใบกำกับภาษีก่อนบันทึกเอกสารออกจริง'); return; }
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const originalText = button.textContent;
@@ -1263,13 +1263,13 @@ async function saveDocumentToSystem(button) {
     window.renderDash?.();
     window.renderIssuedInvoiceList?.();
     if (cloudError) {
-      alert(`บันทึกเอกสารไว้ในเครื่องแล้ว แต่ยังไม่ขึ้น Firebase/เครื่องอื่น\nสาเหตุ: ${cloudError?.message || cloudError}`);
+      notify(`บันทึกเอกสารไว้ในเครื่องแล้ว แต่ยังไม่ขึ้น Firebase/เครื่องอื่น\nสาเหตุ: ${cloudError?.message || cloudError}`);
     } else {
-      alert(existingIndex >= 0 ? 'อัปเดตเอกสารในระบบเรียบร้อย' : 'บันทึกใบส่งสินค้า/ใบกำกับภาษีเข้าระบบเรียบร้อย');
+      notify(existingIndex >= 0 ? 'อัปเดตเอกสารในระบบเรียบร้อย' : 'บันทึกใบส่งสินค้า/ใบกำกับภาษีเข้าระบบเรียบร้อย');
     }
   } catch (error) {
     console.error(error);
-    alert(`บันทึกเอกสารไม่สำเร็จ: ${error?.message || error}`);
+    notify(`บันทึกเอกสารไม่สำเร็จ: ${error?.message || error}`);
   } finally {
     button.disabled = false;
     button.textContent = originalText;
@@ -1307,7 +1307,7 @@ async function waitForPdfStageAssets(stage) {
 async function downloadPdf(button, mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const originalText = button.textContent;
@@ -1337,7 +1337,7 @@ async function downloadPdf(button, mode = 'all') {
     pdf.save(filename);
   } catch (error) {
     console.error(error);
-    alert(`สร้าง PDF ไม่สำเร็จ: ${error?.message || error}`);
+    notify(`สร้าง PDF ไม่สำเร็จ: ${error?.message || error}`);
   } finally {
     stage?.remove();
     button.disabled = false;
@@ -1348,12 +1348,12 @@ async function downloadPdf(button, mode = 'all') {
 function printDocuments(mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) {
-    alert('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
+    notify('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
     return;
   }
   const cssUrl = new URL('./delivery-tax-document.css', window.location.href).href;
@@ -1370,7 +1370,7 @@ function safeFilename(value) {
 function handleTemplateUpload(file) {
   if (!file) return;
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    alert('กรุณาเลือกไฟล์ PDF เท่านั้น');
+    notify('กรุณาเลือกไฟล์ PDF เท่านั้น');
     return;
   }
   if (uploadedTemplateUrl) URL.revokeObjectURL(uploadedTemplateUrl);

@@ -543,7 +543,7 @@ function findSelectedInvoice() {
 
 function applyInvoiceToReceipt(invoice) {
   if (!invoice) {
-    alert('กรุณาเลือกใบส่งสินค้า / ใบกำกับภาษีก่อน');
+    notify('กรุณาเลือกใบส่งสินค้า / ใบกำกับภาษีก่อน');
     return;
   }
   const alreadyPaid = invoice.paid || invoice.isPaid || invoice.paymentStatus === 'paid';
@@ -891,7 +891,7 @@ function setBranch(branch) {
   const locked = getLockedBranch();
   if (!BRANCH_DEFAULTS[branch]) return;
   if (locked && locked !== branch) {
-    alert(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
+    notify(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
     return;
   }
   if (state.branch === branch) return;
@@ -948,7 +948,7 @@ function updateItemAmount(index) {
 
 function addItem() {
   if (state.items.length >= MAX_ITEMS) {
-    alert(`เอกสารหนึ่งชุดเพิ่มได้สูงสุด ${MAX_ITEMS} รายการ`);
+    notify(`เอกสารหนึ่งชุดเพิ่มได้สูงสุด ${MAX_ITEMS} รายการ`);
     return;
   }
   state.items.push(createItem());
@@ -1243,10 +1243,10 @@ function validateBeforeSave() {
 }
 
 async function saveDocumentToSystem(button) {
-  if (state.previewOnly) { alert('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบเสร็จรับเงินก่อนบันทึกเอกสารออกจริง'); return; }
+  if (state.previewOnly) { notify('นี่คือตัวอย่างจากข้อมูลที่ยังไม่ได้บันทึก กรุณากลับไปบันทึกใบเสร็จรับเงินก่อนบันทึกเอกสารออกจริง'); return; }
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const originalText = button.textContent;
@@ -1389,18 +1389,18 @@ async function saveDocumentToSystem(button) {
     window.renderIssuedReceiptList?.();
     window.renderIList?.();
     if (cloudError) {
-      alert(`บันทึกเอกสารไว้ในเครื่องแล้ว แต่ยังไม่ขึ้น Firebase/เครื่องอื่น
+      notify(`บันทึกเอกสารไว้ในเครื่องแล้ว แต่ยังไม่ขึ้น Firebase/เครื่องอื่น
 สาเหตุ: ${cloudError?.message || cloudError}`);
     } else if (invoicePaymentResult.found && !invoicePaymentResult.cloudOk) {
-      alert('บันทึกใบเสร็จและเปลี่ยนบิลเป็นชำระเงินแล้วในเครื่องนี้ แต่ส่งสถานะขึ้น Firebase ไม่สำเร็จ');
+      notify('บันทึกใบเสร็จและเปลี่ยนบิลเป็นชำระเงินแล้วในเครื่องนี้ แต่ส่งสถานะขึ้น Firebase ไม่สำเร็จ');
     } else if (invoicePaymentResult.found) {
-      alert(existingIndex >= 0 ? 'อัปเดตใบเสร็จและสถานะชำระเงินของบิลเรียบร้อย' : 'บันทึกใบเสร็จและเปลี่ยนบิลอ้างอิงเป็นชำระเงินแล้วเรียบร้อย');
+      notify(existingIndex >= 0 ? 'อัปเดตใบเสร็จและสถานะชำระเงินของบิลเรียบร้อย' : 'บันทึกใบเสร็จและเปลี่ยนบิลอ้างอิงเป็นชำระเงินแล้วเรียบร้อย');
     } else {
-      alert(existingIndex >= 0 ? 'อัปเดตเอกสารในระบบเรียบร้อย' : 'บันทึกใบเสร็จรับเงินเข้าระบบเรียบร้อย');
+      notify(existingIndex >= 0 ? 'อัปเดตเอกสารในระบบเรียบร้อย' : 'บันทึกใบเสร็จรับเงินเข้าระบบเรียบร้อย');
     }
   } catch (error) {
     console.error(error);
-    alert(`บันทึกเอกสารไม่สำเร็จ: ${error?.message || error}`);
+    notify(`บันทึกเอกสารไม่สำเร็จ: ${error?.message || error}`);
   } finally {
     button.disabled = false;
     button.textContent = originalText;
@@ -1438,7 +1438,7 @@ async function waitForPdfStageAssets(stage) {
 async function downloadPdf(button, mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const originalText = button.textContent;
@@ -1468,7 +1468,7 @@ async function downloadPdf(button, mode = 'all') {
     pdf.save(filename);
   } catch (error) {
     console.error(error);
-    alert(`สร้าง PDF ไม่สำเร็จ: ${error?.message || error}`);
+    notify(`สร้าง PDF ไม่สำเร็จ: ${error?.message || error}`);
   } finally {
     stage?.remove();
     button.disabled = false;
@@ -1479,12 +1479,12 @@ async function downloadPdf(button, mode = 'all') {
 function printDocuments(mode = 'all') {
   const error = validateBeforeSave();
   if (error) {
-    alert(error);
+    notify(error);
     return;
   }
   const printWindow = window.open('', '_blank', 'noopener,noreferrer');
   if (!printWindow) {
-    alert('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
+    notify('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
     return;
   }
   const cssUrl = new URL('./receipt-document.css', window.location.href).href;
@@ -1501,7 +1501,7 @@ function safeFilename(value) {
 function handleTemplateUpload(file) {
   if (!file) return;
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    alert('กรุณาเลือกไฟล์ PDF เท่านั้น');
+    notify('กรุณาเลือกไฟล์ PDF เท่านั้น');
     return;
   }
   if (uploadedTemplateUrl) URL.revokeObjectURL(uploadedTemplateUrl);
