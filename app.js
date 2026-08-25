@@ -6599,7 +6599,7 @@ function populateLinkedFilters(){
   const y=document.getElementById('linked-year'),m=document.getElementById('linked-month'); if(!y||!m)return;
   const curY=y.value||String(now.getFullYear()),curM=m.value;
   const years=allYears(); if(!years.includes(now.getFullYear()))years.push(now.getFullYear());
-  y.innerHTML=years.sort((a,b)=>b-a).map(v=>`<option value="${v}">${v+543} (${v})</option>`).join('');
+  y.innerHTML=years.sort((a,b)=>b-a).map(v=>`<option value="${v}">พ.ศ. ${v+543}</option>`).join('');
   y.value=years.includes(Number(curY))?curY:String(years[0]);
   if(m.options.length<=1){MONTHS.forEach((name,i)=>m.insertAdjacentHTML('beforeend',`<option value="${i}">${name}</option>`));}
   m.value=curM;

@@ -94,3 +94,11 @@ Quant outputs are decision-support estimates, not guarantees. Probability result
 - NIST Median Absolute Deviation: https://www.itl.nist.gov/div898/software/dataplot/refman2/auxillar/mad.htm
 - NIST outlier detection / Modified Z-score: https://www.itl.nist.gov/div898/handbook/eda/section3/eda35h.htm
 - U.S. DOJ HHI definition: https://www.justice.gov/atr/herfindahl-hirschman-index
+
+## Workflow Center UI Fix
+
+- แก้ปัญหา `ใบเสร็จรับเงิน` ตกลงไปบรรทัดล่างในศูนย์เชื่อมโยงเอกสาร
+- Workflow บน Desktop ใช้ 11 grid tracks ให้ตรงกับ 6 ขั้นตอน + 5 ตัวเชื่อม
+- หน้าจอขนาดเล็กใช้ horizontal timeline/scroll แทนการ wrap แบบไม่เป็นระเบียบ
+- ปรับ card, connector, spacing และ hover ให้ลำดับเอกสารอ่านง่ายขึ้น
+- ตัวเลือกปีในศูนย์เชื่อมโยงเอกสารแสดงเฉพาะ `พ.ศ.` เช่น `พ.ศ. 2569`

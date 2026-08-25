@@ -2252,3 +2252,153 @@ tr:nth-child(even) td{background:#fbfdff!important}tr:hover td{background:#f0fbf
 .quant-table-grid{margin-top:12px}.quant-anomaly-z{display:inline-block;padding:3px 7px;border-radius:7px;background:#fff1f2;color:#be123c;font-weight:900;font-variant-numeric:tabular-nums}
 @media(max-width:1000px){.quant-dashboard-grid,.quant-lab-grid{grid-template-columns:1fr}.quant-stress-result{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.quant-section,.quant-analytics-lab{padding:.75rem}.quant-section-head{flex-direction:column}.quant-method-badge{white-space:normal}.quant-kpi-grid{grid-template-columns:1fr 1fr}.quant-stress-controls{grid-template-columns:1fr}.quant-stress-result{grid-template-columns:1fr 1fr}.quant-mc-main{grid-template-columns:1fr}.quant-prob-ring{width:90px;height:90px}.quant-quantiles{grid-template-columns:1fr}.quant-kpi>b{font-size:18px}}
+
+/* ============================================================
+   LINKED DOCUMENT WORKFLOW — horizontal flow polish
+   Fix: 6 stages + 5 connectors = 11 grid tracks.
+   Prevent the receipt stage from wrapping to a second row.
+   ============================================================ */
+#panel-linked-flow .linked-chain-card{
+  overflow:hidden;
+}
+
+#panel-linked-flow .linked-stages{
+  /* 6 stage cards + 5 arrow connectors */
+  grid-template-columns:
+    minmax(138px,1fr) 22px
+    minmax(138px,1fr) 22px
+    minmax(138px,1fr) 22px
+    minmax(150px,1.12fr) 22px
+    minmax(138px,1fr) 22px
+    minmax(138px,1fr);
+  gap:8px;
+  align-items:stretch;
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:2px 2px 7px;
+  scrollbar-width:thin;
+  scrollbar-color:#cbd5e1 transparent;
+}
+
+#panel-linked-flow .linked-stages::-webkit-scrollbar{height:7px}
+#panel-linked-flow .linked-stages::-webkit-scrollbar-track{background:transparent}
+#panel-linked-flow .linked-stages::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+
+#panel-linked-flow .linked-stages > i{
+  position:relative;
+  width:22px;
+  min-width:22px;
+  align-self:stretch;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:transparent;
+  font-size:0;
+}
+#panel-linked-flow .linked-stages > i::before{
+  content:"";
+  width:100%;
+  height:2px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#cbd5e1,#94a3b8);
+}
+#panel-linked-flow .linked-stages > i::after{
+  content:"";
+  position:absolute;
+  right:0;
+  top:50%;
+  width:7px;
+  height:7px;
+  border-top:2px solid #94a3b8;
+  border-right:2px solid #94a3b8;
+  transform:translateY(-50%) rotate(45deg);
+}
+
+#panel-linked-flow .linked-stage{
+  box-sizing:border-box;
+  width:100%;
+  min-height:70px;
+  height:100%;
+  padding:10px 10px;
+  border-radius:13px;
+  align-items:flex-start;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+  transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease, background .16s ease;
+}
+#panel-linked-flow button.linked-stage{font:inherit}
+#panel-linked-flow .linked-stage.is-ok:hover{
+  transform:translateY(-1px);
+  box-shadow:0 7px 18px rgba(22,163,74,.10);
+}
+#panel-linked-flow .linked-stage.is-wait{
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.02);
+}
+#panel-linked-flow .linked-stage-icon{
+  width:26px;
+  height:26px;
+  margin-top:1px;
+  box-shadow:0 1px 5px rgba(15,23,42,.08);
+}
+#panel-linked-flow .linked-stage small{
+  font-size:9.5px;
+  line-height:1.25;
+  letter-spacing:.01em;
+}
+#panel-linked-flow .linked-stage b{
+  margin-top:2px;
+  font-size:11.5px;
+  line-height:1.25;
+  white-space:normal;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+#panel-linked-flow .linked-stage span{
+  margin-top:2px;
+  font-size:9.5px;
+  line-height:1.25;
+}
+
+/* The final payment/receipt stages get a subtle visual grouping without
+   changing the business workflow or status semantics. */
+#panel-linked-flow .linked-stages > .linked-stage:nth-of-type(5),
+#panel-linked-flow .linked-stages > .linked-stage:nth-of-type(6){
+  position:relative;
+}
+
+@media (max-width:1380px){
+  #panel-linked-flow .linked-stages{
+    /* Keep the process as one continuous line and scroll horizontally. */
+    grid-template-columns:
+      155px 22px 155px 22px 165px 22px 190px 22px 165px 22px 155px;
+    padding-bottom:10px;
+  }
+}
+
+@media (max-width:1100px){
+  #panel-linked-flow .linked-stages{
+    /* Override the older vertical-grid rule: a horizontal timeline is
+       easier to understand and avoids detached stages. */
+    grid-template-columns:
+      155px 22px 155px 22px 165px 22px 190px 22px 165px 22px 155px;
+    align-items:stretch;
+  }
+  #panel-linked-flow .linked-stages > i{
+    transform:none;
+    text-align:initial;
+  }
+}
+
+@media (max-width:640px){
+  #panel-linked-flow .linked-chain-card{padding:12px}
+  #panel-linked-flow .linked-stages{
+    grid-template-columns:
+      145px 20px 145px 20px 155px 20px 180px 20px 155px 20px 145px;
+    gap:6px;
+    margin:0 -2px;
+  }
+  #panel-linked-flow .linked-stages > i{width:20px;min-width:20px}
+  #panel-linked-flow .linked-stage{min-height:68px;padding:9px}
+}
