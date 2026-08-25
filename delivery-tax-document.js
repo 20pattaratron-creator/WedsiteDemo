@@ -519,11 +519,11 @@ function documentSectionHtml() {
         <div class="dtd-field dtd-span-2">
           <span>เลือกสาขา *</span>
           <div class="dtd-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
-            <button type="button" class="dtd-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="dtd-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
-            </button>
             <button type="button" class="dtd-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
               <span class="dtd-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
+            </button>
+            <button type="button" class="dtd-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
+              <span class="dtd-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
             </button>
           </div>
           ${locked ? `<small class="dtd-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="dtd-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}

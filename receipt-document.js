@@ -633,11 +633,11 @@ function documentSectionHtml() {
         <div class="rcp-field rcp-span-2">
           <span>เลือกสาขา *</span>
           <div class="rcp-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
-            <button type="button" class="rcp-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="rcp-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
-            </button>
             <button type="button" class="rcp-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
               <span class="rcp-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
+            </button>
+            <button type="button" class="rcp-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
+              <span class="rcp-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
             </button>
           </div>
           ${locked ? `<small class="rcp-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="rcp-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}

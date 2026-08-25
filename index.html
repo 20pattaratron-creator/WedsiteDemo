@@ -43,7 +43,7 @@
   <div class="nav-item" onclick="go('production-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8 4V7l8 4v10"/><path d="M9 17h1M14 17h1M19 17h1"/></svg>สั่งผลิตสินค้า</div>
   <div class="nav-item" onclick="go('production-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>รายการสั่งผลิต</div>
   <div class="nav-sec">ค่าใช้จ่าย</div>
-  <div class="nav-item" onclick="go('expense-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7 7 7-7"/></svg>บันทึกค่าใช้จ่าย</div>
+  <div class="nav-item" onclick="go('expense-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7 7 7-7"/></svg>บันทึกค่าใช้จ่ายองค์กร</div>
   <div class="nav-sec">ติดตามงาน</div>
   <div class="nav-item" onclick="go('linked-flow',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 11l3.5-4M13.5 7L17 11M17 13l-3.5 4M10.5 17L7 13"/></svg>ศูนย์เชื่อมโยงเอกสาร</div>
   <div class="nav-sec">ค้นหา & รายการ</div>
@@ -61,8 +61,8 @@
 <div id="panel-dashboard" class="panel active">
   <div class="dash-tabs">
     <button class="dtab active" id="dt-all" onclick="switchDashTab('all')">รวมทั้ง 2 สาขา</button>
-    <button class="dtab kk" id="dt-kk" onclick="switchDashTab('khonkaen')">🔵 สาขาที่ 00001</button>
     <button class="dtab ub" id="dt-ub" onclick="switchDashTab('ubon')">🟣 สาขาสำนักงานใหญ่</button>
+    <button class="dtab kk" id="dt-kk" onclick="switchDashTab('khonkaen')">🔵 สาขาที่ 00001</button>
   </div>
 
   <!-- Filter row for dashboard -->
@@ -81,8 +81,8 @@
   <div id="dash-combined">
     <div class="metrics" id="metrics-total"></div>
     <div class="compare-grid">
-      <div class="bc kk"><div class="bname">🔵 สาขาที่ 00001</div><div id="dash-kk-rows"></div></div>
       <div class="bc ub"><div class="bname">🟣 สาขาสำนักงานใหญ่</div><div id="dash-ub-rows"></div></div>
+      <div class="bc kk"><div class="bname">🔵 สาขาที่ 00001</div><div id="dash-kk-rows"></div></div>
     </div>
   </div>
   <div id="dash-single" style="display:none">
@@ -373,7 +373,7 @@
       <span>Action Plan: สิ่งที่ควรติดตาม</span>
     </div>
     <div class="analytics-filter-grid">
-      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></label>
+      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></label>
       <label><span>ปี</span><select id="analytics-year" onchange="renderDataAnalytics()"></select></label>
       <label><span>เดือน</span><select id="analytics-month" onchange="renderDataAnalytics()"><option value="">ทุกเดือน</option></select></label>
       <label><span>สินค้า (วิเคราะห์สินค้า)</span><select id="analytics-product" onchange="renderDataAnalytics()"><option value="">สินค้าทั้งหมด</option></select></label>
@@ -561,8 +561,8 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="q-br-kk" onclick="selBr('q','khonkaen')"><input type="radio" name="q-br"> 🔵 สาขาที่ 00001</label>
         <label class="br-opt" id="q-br-ub" onclick="selBr('q','ubon')"><input type="radio" name="q-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="q-br-kk" onclick="selBr('q','khonkaen')"><input type="radio" name="q-br"> 🔵 สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="q-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -618,8 +618,8 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="i-br-kk" onclick="selBr('i','khonkaen')"><input type="radio" name="i-br"> 🔵 สาขาที่ 00001</label>
         <label class="br-opt" id="i-br-ub" onclick="selBr('i','ubon')"><input type="radio" name="i-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="i-br-kk" onclick="selBr('i','khonkaen')"><input type="radio" name="i-br"> 🔵 สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="i-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -716,8 +716,8 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="r-br-kk" onclick="selBr('r','khonkaen')"><input type="radio" name="r-br"> 🔵 สาขาที่ 00001</label>
         <label class="br-opt" id="r-br-ub" onclick="selBr('r','ubon')"><input type="radio" name="r-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="r-br-kk" onclick="selBr('r','khonkaen')"><input type="radio" name="r-br"> 🔵 สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="r-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -802,8 +802,8 @@
     <div class="ff-full">
       <label style="font-size:14px;color:var(--g2);font-weight:700;display:block;margin-bottom:8px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="p-br-kk" onclick="selBr('p','khonkaen')"><input type="radio" name="p-br"> 🔵 สาขาที่ 00001</label>
         <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="p-br-kk" onclick="selBr('p','khonkaen')"><input type="radio" name="p-br"> 🔵 สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="p-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
@@ -993,7 +993,7 @@
 <div id="panel-production-list" class="panel"><div class="card">
   <div class="card-title"><span>รายการสั่งผลิตสินค้า</span><button class="btn btn-ghost btn-sm" onclick="exportXLSX('productions')">⬇ Excel</button></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
+    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="pl-month" onchange="renderPList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="pl-year" onchange="renderPList()"></select></div>
     <div><label>สถานะชำระผู้ผลิต</label>
@@ -1014,36 +1014,101 @@
 </div></div>
 
 <!-- EXPENSE FORM -->
-<div id="panel-expense-form" class="panel"><div class="card">
+<div id="panel-expense-form" class="panel"><div class="card expense-entry-card">
   <div class="card-title">💸 บันทึกค่าใช้จ่ายองค์กร</div>
+  <div class="form-quick-guide blue expense-guide" aria-label="ขั้นตอนบันทึกค่าใช้จ่าย">
+    <div class="guide-step active">1 · ระบุค่าใช้จ่าย</div>
+    <div class="guide-step">2 · ระบุเอกสารภาษี</div>
+    <div class="guide-step">3 · ถ่ายรูป / แนบหลักฐาน</div>
+  </div>
+  <div class="expense-help-banner">
+    <div class="expense-help-icon">📷</div>
+    <div><b>เก็บหลักฐานให้รู้ทันทีว่าเป็นค่าใช้จ่ายอะไร</b><span>ตัวอย่าง: ค่าน้ำมัน · ยื่นขอใบกำกับภาษีแล้ว · แนบรูปใบเสร็จจากสถานีบริการ หรือใบเสร็จซื้อสินค้าของบริษัท</span></div>
+  </div>
   <div class="fg">
-    <div class="ff"><label>วันที่ *</label><input type="date" id="e-date"></div>
+    <div class="ff"><label>วันที่ *</label><input type="date" id="e-date" onchange="refreshExpenseEvidenceUi()"></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="e-br-kk" onclick="selBr('e','khonkaen')"><input type="radio" name="e-br"> 🔵 สาขาที่ 00001</label>
-        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon')"><input type="radio" name="e-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon');refreshExpenseEvidenceUi()"><input type="radio" name="e-br"> 🟣 สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="e-br-kk" onclick="selBr('e','khonkaen');refreshExpenseEvidenceUi()"><input type="radio" name="e-br"> 🔵 สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="e-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
     </div>
+
+    <div class="fdiv"></div><div class="fsec">1 · รายละเอียดค่าใช้จ่าย</div>
     <div class="ff"><label>หมวดหมู่ *</label>
-      <select id="e-cat"><option>ค่าวัตถุดิบ</option><option>ค่าแรงงาน</option><option>ค่าเช่าสถานที่</option><option>ค่าสาธารณูปโภค</option><option>ค่าขนส่ง</option><option>ค่าการตลาด</option><option>ค่าอุปกรณ์สำนักงาน</option><option>ค่าซ่อมบำรุง</option><option>อื่น ๆ</option></select>
+      <select id="e-cat" onchange="refreshExpenseEvidenceUi()">
+        <option value="ค่าน้ำมันเชื้อเพลิง">⛽ ค่าน้ำมันเชื้อเพลิง</option>
+        <option value="ค่าซื้อสินค้า/วัสดุของบริษัท">🛒 ค่าซื้อสินค้า/วัสดุของบริษัท</option>
+        <option value="ค่าวัตถุดิบ">📦 ค่าวัตถุดิบ</option>
+        <option value="ค่าอุปกรณ์สำนักงาน">🖨️ ค่าอุปกรณ์สำนักงาน</option>
+        <option value="ค่าขนส่ง/จัดส่ง">🚚 ค่าขนส่ง/จัดส่ง</option>
+        <option value="ค่าเดินทาง/ที่พัก">🚗 ค่าเดินทาง/ที่พัก</option>
+        <option value="ค่าอาหาร/รับรอง">🍽️ ค่าอาหาร/รับรอง</option>
+        <option value="ค่าสาธารณูปโภค">💡 ค่าสาธารณูปโภค</option>
+        <option value="ค่าซ่อมบำรุง">🛠️ ค่าซ่อมบำรุง</option>
+        <option value="ค่าเช่าสถานที่">🏢 ค่าเช่าสถานที่</option>
+        <option value="ค่าแรงงาน">👷 ค่าแรงงาน</option>
+        <option value="ค่าการตลาด">📣 ค่าการตลาด</option>
+        <option value="ภาษี/ค่าธรรมเนียม">🧾 ภาษี/ค่าธรรมเนียม</option>
+        <option value="อื่น ๆ">อื่น ๆ</option>
+      </select>
     </div>
-    <div class="ff ff-full"><label>รายละเอียด *</label><input type="text" id="e-desc" placeholder="คำอธิบายค่าใช้จ่าย"></div>
-    <div class="ff"><label>จำนวนเงิน (บาท) *</label><input type="number" id="e-amount" placeholder="0.00" step="0.01"></div>
+    <div class="ff"><label>ร้านค้า / ผู้ขาย / ผู้ให้บริการ</label><input type="text" id="e-vendor" placeholder="เช่น สถานีบริการน้ำมัน / ร้านค้า" oninput="refreshExpenseEvidenceUi()"></div>
+    <div class="ff ff-full"><label>รายละเอียด *</label><input type="text" id="e-desc" placeholder="เช่น เติมน้ำมันรถบริษัททะเบียน... / ซื้อหมึกพิมพ์ใช้สำนักงาน" oninput="refreshExpenseEvidenceUi()"></div>
+    <div class="ff"><label>จำนวนเงิน (บาท) *</label><input type="number" id="e-amount" placeholder="0.00" step="0.01" oninput="refreshExpenseEvidenceUi()"></div>
     <div class="ff"><label>ผู้บันทึก</label><input type="text" id="e-by" placeholder="ชื่อพนักงาน"></div>
-    <div class="fdiv"></div><div class="fsec">หลักฐานค่าใช้จ่าย</div>
-    <div class="ff-full proof-upload-field">
-      <div class="upload-zone large-proof-upload" data-attachment-key="e-att" onclick="document.getElementById('e-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับค่าใช้จ่าย">
-        <span class="proof-upload-icon">📎</span>
-        <span class="proof-upload-text">แนบรูปภาพหรือ PDF</span>
-        <span class="proof-upload-sub">คลิกเพื่อเลือกไฟล์หลักฐาน หรือ ลาก PDF/รูปภาพมาวาง</span>
-        <span class="proof-paste-sub">คลิกเลือกไฟล์ ลาก PDF/รูปภาพมาวาง หรือกด Ctrl+V เพื่อวางรูปจาก Clipboard</span>
-        <input type="file" id="e-files" accept="image/*,application/pdf,.pdf" multiple onchange="handleFiles('e-att',this)">
-      </div>
-      <div class="file-preview" id="e-att"></div>
+
+    <div class="fdiv"></div><div class="fsec">2 · เอกสารและภาษี</div>
+    <div class="ff"><label>ประเภทเอกสาร *</label>
+      <select id="e-doc-type" onchange="refreshExpenseEvidenceUi()">
+        <option value="receipt">ใบเสร็จรับเงิน</option>
+        <option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option>
+        <option value="receipt_tax_invoice">ใบเสร็จรับเงิน / ใบกำกับภาษี</option>
+        <option value="abbreviated_tax_invoice">ใบกำกับภาษีอย่างย่อ</option>
+        <option value="invoice">ใบแจ้งหนี้ / Invoice</option>
+        <option value="other">เอกสารอื่น ๆ</option>
+        <option value="none">ไม่มีเอกสาร</option>
+      </select>
     </div>
-    <div class="ff"><label>หมายเหตุ</label><input type="text" id="e-note" placeholder="(ไม่บังคับ)"></div>
+    <div class="ff"><label>สถานะใบกำกับภาษี</label>
+      <select id="e-tax-status" onchange="refreshExpenseEvidenceUi()">
+        <option value="requested">ยื่นขอใบกำกับภาษีแล้ว</option>
+        <option value="received">ได้รับใบกำกับภาษีแล้ว</option>
+        <option value="not_requested">ยังไม่ได้ยื่นขอ</option>
+        <option value="not_required">ไม่ต้องใช้ใบกำกับภาษี</option>
+      </select>
+    </div>
+    <div class="ff"><label>เลขที่ใบเสร็จ / ใบกำกับภาษี</label><input type="text" id="e-doc-no" placeholder="ถ้ามี" oninput="refreshExpenseEvidenceUi()"></div>
+    <div class="ff"><label>การใช้งานค่าใช้จ่าย</label>
+      <select id="e-purpose" onchange="refreshExpenseEvidenceUi()">
+        <option value="company">ค่าใช้จ่ายของบริษัท</option>
+        <option value="customer_job">ค่าใช้จ่ายสำหรับงานลูกค้า</option>
+        <option value="delivery">ค่าใช้จ่ายสำหรับส่งสินค้า</option>
+        <option value="production">ค่าใช้จ่ายสำหรับการผลิต</option>
+        <option value="other">อื่น ๆ</option>
+      </select>
+    </div>
+
+    <div class="fdiv"></div><div class="fsec">3 · รูปถ่ายและหลักฐานค่าใช้จ่าย</div>
+    <div class="ff-full proof-upload-field expense-proof-field">
+      <div class="expense-capture-actions">
+        <button type="button" class="btn expense-camera-btn" onclick="document.getElementById('e-camera').click()">📷 ถ่ายรูปหลักฐาน</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('e-files').click()">📎 เลือกรูป / PDF</button>
+        <input type="file" id="e-camera" accept="image/*" capture="environment" onchange="handleFiles('e-att',this);refreshExpenseEvidenceUi()" hidden>
+      </div>
+      <div class="upload-zone large-proof-upload expense-upload-zone" data-attachment-key="e-att" onclick="document.getElementById('e-files').click()" role="button" tabindex="0" aria-label="แนบรูปภาพหรือ PDF สำหรับค่าใช้จ่าย">
+        <span class="proof-upload-icon">📎</span>
+        <span class="proof-upload-text">ถ่ายรูปหรือแนบหลักฐานค่าใช้จ่าย</span>
+        <span class="proof-upload-sub">รองรับรูปใบเสร็จ ใบกำกับภาษี และ PDF · คลิก ลากไฟล์ หรือวางจาก Clipboard</span>
+        <span class="proof-paste-sub">รูปที่แนบจะแสดงพร้อมหมวดค่าใช้จ่ายและสถานะเอกสารด้านล่าง</span>
+        <input type="file" id="e-files" accept="image/*,application/pdf,.pdf" multiple onchange="handleFiles('e-att',this);refreshExpenseEvidenceUi()">
+      </div>
+      <div id="e-evidence-summary" class="expense-evidence-summary"></div>
+      <div class="file-preview expense-file-preview" id="e-att"></div>
+    </div>
+    <div class="ff ff-full"><label>หมายเหตุ</label><input type="text" id="e-note" placeholder="เช่น รอเอกสารตัวจริง / ส่งฝ่ายบัญชีแล้ว"></div>
   </div>
   <div class="form-actions">
     <button class="btn btn-ghost" onclick="resetF('expense')">ล้างฟอร์ม</button>
@@ -1058,7 +1123,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
+      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="ql-month" onchange="renderQLList()"><option value="">ทุกเดือน</option></select>
@@ -1081,7 +1146,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
+      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="il-month" onchange="renderIList()"><option value="">ทุกเดือน</option></select>
@@ -1134,7 +1199,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
+      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="rl-month" onchange="renderRList()"><option value="">ทุกเดือน</option></select>
@@ -1154,7 +1219,7 @@
 <div id="panel-issued-invoice-list" class="panel"><div class="card">
   <div class="card-title"><span>ข้อมูลออกบิลใบส่งของ / ใบกำกับภาษี</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
+    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="oil-month" onchange="renderIssuedInvoiceList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="oil-year" onchange="renderIssuedInvoiceList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="oil-search" placeholder="เลขที่ / ลูกค้า / พนักงาน" oninput="renderIssuedInvoiceList()"></div>
@@ -1167,7 +1232,7 @@
 <div id="panel-issued-receipt-list" class="panel"><div class="card">
   <div class="card-title"><span>ข้อมูลออกใบเสร็จรับเงิน</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select></div>
+    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="orl-month" onchange="renderIssuedReceiptList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="orl-year" onchange="renderIssuedReceiptList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="orl-search" placeholder="เลขที่ / เลขบิล / ลูกค้า" oninput="renderIssuedReceiptList()"></div>
@@ -1178,12 +1243,12 @@
 
 <!-- EXPENSE LIST -->
 <div id="panel-expense-list" class="panel"><div class="card">
-  <div class="card-title"><span>รายการค่าใช้จ่าย</span>
+  <div class="card-title"><span>รายการค่าใช้จ่ายองค์กร</span>
     <button class="btn btn-ghost btn-sm" onclick="exportXLSX('expenses')">⬇ Excel</button>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="khonkaen">สาขาที่ 00001</option><option value="ubon">สาขาสำนักงานใหญ่</option></select>
+      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="el-month" onchange="renderEList()"><option value="">ทุกเดือน</option></select>
@@ -1192,7 +1257,7 @@
       <select id="el-year" onchange="renderEList()"></select>
     </div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>วันที่</th><th>สาขา</th><th>หมวดหมู่</th><th>รายละเอียด</th><th>ผู้บันทึก</th><th class="tn">จำนวนเงิน</th><th></th></tr></thead><tbody id="etbl"></tbody></table></div>
+  <div class="tbl-wrap expense-list-wrap"><table class="expense-list-table"><thead><tr><th>วันที่</th><th>สาขา</th><th>หมวดหมู่</th><th>ร้านค้า / ผู้ขาย</th><th>รายละเอียด</th><th>เอกสาร</th><th>สถานะใบกำกับภาษี</th><th>หลักฐาน</th><th>ผู้บันทึก</th><th class="tn">จำนวนเงิน</th><th></th></tr></thead><tbody id="etbl"></tbody></table></div>
   <div id="eempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
 
@@ -1210,8 +1275,8 @@
   <div class="linked-filter-card">
     <div class="linked-branch-switch" role="group" aria-label="เลือกสาขา">
       <button type="button" data-linked-branch="" class="active" onclick="setLinkedBranch('',this)">รวมทุกสาขา</button>
-      <button type="button" data-linked-branch="khonkaen" onclick="setLinkedBranch('khonkaen',this)"><span class="branch-dot kk"></span>สาขาที่ 00001</button>
       <button type="button" data-linked-branch="ubon" onclick="setLinkedBranch('ubon',this)"><span class="branch-dot ub"></span>สาขาสำนักงานใหญ่</button>
+      <button type="button" data-linked-branch="khonkaen" onclick="setLinkedBranch('khonkaen',this)"><span class="branch-dot kk"></span>สาขาที่ 00001</button>
     </div>
     <div class="linked-filter-grid">
       <label><span>ปี</span><select id="linked-year" onchange="renderLinkedFlow()"></select></label>
@@ -1241,8 +1306,8 @@
           <label>สาขา</label>
           <select id="ex-branch">
             <option value="">รวมทั้งสองสาขา</option>
-            <option value="khonkaen">สาขาที่ 00001</option>
             <option value="ubon">สาขาสำนักงานใหญ่</option>
+            <option value="khonkaen">สาขาที่ 00001</option>
           </select>
         </div>
         <div class="ff">

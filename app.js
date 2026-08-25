@@ -3648,23 +3648,113 @@ function initAttachmentPasteZones(root=document){
     bindAttachmentDropTarget(preview,key);
   });
 }
+const EXPENSE_DOC_TYPE_LABELS={
+  receipt:'ใบเสร็จรับเงิน',
+  tax_invoice:'ใบกำกับภาษีเต็มรูป',
+  receipt_tax_invoice:'ใบเสร็จรับเงิน / ใบกำกับภาษี',
+  abbreviated_tax_invoice:'ใบกำกับภาษีอย่างย่อ',
+  invoice:'ใบแจ้งหนี้ / Invoice',
+  other:'เอกสารอื่น ๆ',
+  none:'ไม่มีเอกสาร'
+};
+const EXPENSE_TAX_STATUS_LABELS={
+  requested:'ยื่นขอใบกำกับภาษีแล้ว',
+  received:'ได้รับใบกำกับภาษีแล้ว',
+  not_requested:'ยังไม่ได้ยื่นขอ',
+  not_required:'ไม่ต้องใช้ใบกำกับภาษี'
+};
+const EXPENSE_PURPOSE_LABELS={
+  company:'ค่าใช้จ่ายของบริษัท',
+  customer_job:'ค่าใช้จ่ายสำหรับงานลูกค้า',
+  delivery:'ค่าใช้จ่ายสำหรับส่งสินค้า',
+  production:'ค่าใช้จ่ายสำหรับการผลิต',
+  other:'อื่น ๆ'
+};
+function expenseDocTypeLabel(value){return EXPENSE_DOC_TYPE_LABELS[value]||value||'-';}
+function expenseTaxStatusLabel(value){return EXPENSE_TAX_STATUS_LABELS[value]||value||'-';}
+function expensePurposeLabel(value){return EXPENSE_PURPOSE_LABELS[value]||value||'-';}
+function expenseEvidenceMeta(){
+  return{
+    cat:getElValue('e-cat')||'ยังไม่ระบุหมวดหมู่',
+    vendor:getElValue('e-vendor'),
+    docType:getElValue('e-doc-type')||'receipt',
+    taxStatus:getElValue('e-tax-status')||'requested',
+    docNo:getElValue('e-doc-no'),
+    purpose:getElValue('e-purpose')||'company',
+    amount:parseMoney(getElValue('e-amount')),
+    desc:getElValue('e-desc')
+  };
+}
+function expenseTaxStatusClass(status){
+  if(status==='received')return 'good';
+  if(status==='requested')return 'info';
+  if(status==='not_requested')return 'warn';
+  return 'neutral';
+}
+function updateExpenseEvidenceSummaryOnly(){
+  const host=document.getElementById('e-evidence-summary');if(!host)return;
+  const meta=expenseEvidenceMeta();
+  const files=attachedFiles['e-att']||[];
+  const images=files.filter(isImageFile).length;
+  const pdfs=files.filter(isPdfFile).length;
+  host.innerHTML=`
+    <div class="expense-summary-main">
+      <div><small>ค่าใช้จ่าย</small><b>${escapeHtml(meta.cat)}</b><span>${escapeHtml(meta.desc||'กรอกรายละเอียดเพื่อช่วยจำรายการนี้')}</span></div>
+      <strong>${meta.amount>0?'฿'+fmt(meta.amount):'฿0.00'}</strong>
+    </div>
+    <div class="expense-summary-tags">
+      <span>🏪 ${escapeHtml(meta.vendor||'ยังไม่ระบุร้านค้า/ผู้ขาย')}</span>
+      <span>🧾 ${escapeHtml(expenseDocTypeLabel(meta.docType))}${meta.docNo?' · '+escapeHtml(meta.docNo):''}</span>
+      <span class="${expenseTaxStatusClass(meta.taxStatus)}">VAT · ${escapeHtml(expenseTaxStatusLabel(meta.taxStatus))}</span>
+      <span>🏢 ${escapeHtml(expensePurposeLabel(meta.purpose))}</span>
+      <span>📎 ${files.length} ไฟล์ · รูป ${images} · PDF ${pdfs}</span>
+    </div>`;
+}
+function refreshExpenseEvidenceUi(){
+  renderPrev('e-att');
+}
+window.refreshExpenseEvidenceUi=refreshExpenseEvidenceUi;
 function renderPrev(k){
   const el=document.getElementById(k);if(!el)return;
-  el.innerHTML=(attachedFiles[k]||[]).map((f,i)=>{
-    const fileType=f.type||f.mimeType||'';
+  const files=attachedFiles[k]||[];
+  if(k!=='e-att'){
+    el.innerHTML=files.map((f,i)=>{
+      const fileType=f.type||f.mimeType||'';
+      const fileName=f.name||f.originalName||'ไฟล์แนบ';
+      const providerBadge=f.provider==='google-drive'?'DRIVE':(f.provider==='pending-google-drive'?'รออัปโหลด Drive':'LOCAL');
+      const previewSrc=f.previewUrl||f.data||'';
+      const browserPreviewableImage=isImageFile(f)&&!/\.(heic|heif)$/i.test(fileName)&&Boolean(previewSrc);
+      return `
+      <div class="fthumb" title="${escapeHtml(fileName)}">
+        ${browserPreviewableImage
+          ?`<img src="${previewSrc}" alt="${escapeHtml(fileName)}" onclick="viewFile('${k}',${i})" title="คลิกดูรูป">`
+          :`<div class="pdf-icon" onclick="viewFile('${k}',${i})" title="คลิกเปิดไฟล์"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>${isPdfFile(f)?'PDF':(isImageFile(f)?'IMAGE':'FILE')}<span style="font-size:9px;font-weight:400">${escapeHtml(fileName.substring(0,10))}</span></div>`}
+        <div style="font-size:8px;color:var(--blue);text-align:center;line-height:1.1">${providerBadge}</div>
+        <button class="rm" onclick="rmFile('${k}',${i})">×</button>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  const expenseMeta=expenseEvidenceMeta();
+  el.innerHTML=files.map((f,i)=>{
     const fileName=f.name||f.originalName||'ไฟล์แนบ';
     const providerBadge=f.provider==='google-drive'?'DRIVE':(f.provider==='pending-google-drive'?'รออัปโหลด Drive':'LOCAL');
     const previewSrc=f.previewUrl||f.data||'';
     const browserPreviewableImage=isImageFile(f)&&!/\.(heic|heif)$/i.test(fileName)&&Boolean(previewSrc);
     return `
-    <div class="fthumb" title="${escapeHtml(fileName)}">
-      ${browserPreviewableImage
-        ?`<img src="${previewSrc}" alt="${escapeHtml(fileName)}" onclick="viewFile('${k}',${i})" title="คลิกดูรูป">`
-        :`<div class="pdf-icon" onclick="viewFile('${k}',${i})" title="คลิกเปิดไฟล์"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>${isPdfFile(f)?'PDF':(isImageFile(f)?'IMAGE':'FILE')}<span style="font-size:9px;font-weight:400">${escapeHtml(fileName.substring(0,10))}</span></div>`}
-      <div style="font-size:8px;color:var(--blue);text-align:center;line-height:1.1">${providerBadge}</div>
-      <button class="rm" onclick="rmFile('${k}',${i})">×</button>
+    <div class="fthumb expense-evidence-thumb" title="${escapeHtml(fileName)}">
+      <div class="expense-thumb-preview">
+        ${browserPreviewableImage
+          ?`<img src="${previewSrc}" alt="${escapeHtml(fileName)}" onclick="viewFile('${k}',${i})" title="คลิกดูรูป">`
+          :`<div class="pdf-icon" onclick="viewFile('${k}',${i})" title="คลิกเปิดไฟล์"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>${isPdfFile(f)?'PDF':(isImageFile(f)?'IMAGE':'FILE')}<span style="font-size:9px;font-weight:400">${escapeHtml(fileName.substring(0,10))}</span></div>`}
+        <div class="expense-provider-badge">${providerBadge}</div>
+      </div>
+      <div class="expense-thumb-meta"><b>${escapeHtml(expenseMeta.cat)}</b><span>${escapeHtml(expenseDocTypeLabel(expenseMeta.docType))}</span><span class="${expenseTaxStatusClass(expenseMeta.taxStatus)}">${escapeHtml(expenseTaxStatusLabel(expenseMeta.taxStatus))}</span></div>
+      <button class="rm" onclick="rmFile('${k}',${i})" aria-label="ลบไฟล์">×</button>
     </div>`;
   }).join('');
+  updateExpenseEvidenceSummaryOnly();
 }
 function rmFile(k,i){
   const file=(attachedFiles[k]||[])[i];
@@ -4724,11 +4814,25 @@ function saveExpense(){
   if(!date||!desc||!amount){notify('กรุณากรอกวันที่, รายละเอียด และจำนวนเงิน');return;}
   const{year,month}=dateToYM(date);
   const d=loadFor(b,year,month);
-  const expenseRecord=withThaiCalendarMeta({id:Date.now(),date:isoDateCEFromValue(date),cat:document.getElementById('e-cat').value,desc,amount,by:document.getElementById('e-by').value.trim(),note:document.getElementById('e-note').value.trim(),attachments:attachedFiles['e-att']||[]},year,month);
+  const expenseRecord=withThaiCalendarMeta({
+    id:Date.now(),
+    date:isoDateCEFromValue(date),
+    cat:document.getElementById('e-cat').value,
+    vendor:getElValue('e-vendor'),
+    desc,
+    amount,
+    by:document.getElementById('e-by').value.trim(),
+    docType:getElValue('e-doc-type')||'receipt',
+    taxStatus:getElValue('e-tax-status')||'requested',
+    docNo:getElValue('e-doc-no'),
+    purpose:getElValue('e-purpose')||'company',
+    note:document.getElementById('e-note').value.trim(),
+    attachments:attachedFiles['e-att']||[]
+  },year,month);
   d.expenses.push(expenseRecord);
   saveFor(b,year,month,d);
   saveCloudRecord('saveExpense', expenseRecord, b, year, month, 'ค่าใช้จ่าย');
-  clearAttachedFiles('e-att');resetF('expense');onYearChange();renderDash();notify('บันทึกค่าใช้จ่ายเรียบร้อย!');
+  clearAttachedFiles('e-att');resetF('expense');onYearChange();renderDash();renderEList();notify('บันทึกค่าใช้จ่ายเรียบร้อย!');
 }
 
 // ============================================================
@@ -4743,7 +4847,7 @@ function resetF(t){
   if(t==='quote'){['q-cust','q-sales','q-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('q','');document.getElementById('q-date').value=todayStr;document.getElementById('q-items-body').innerHTML='';['q-sub','q-vat-amt','q-total'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('q-att');refreshAutoQuoteNumber(true);}
   if(t==='invoice'){['i-no','i-cust','i-sales','i-cr','i-note','i-credit-term','i-due-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');populateProductionRefs();}
   if(t==='receipt'){['r-no','r-cust','r-sales','r-inv-no','r-cr','r-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('r','');const rRef=document.getElementById('r-inv-ref');if(rRef){rRef.value='';rRef.disabled=false;}document.getElementById('r-comm-mode').value='percent';toggleCommMode('r');const rVat=document.getElementById('r-vat');if(rVat)rVat.value='0';document.getElementById('r-date').value=todayStr;document.getElementById('r-items-body').innerHTML='';['r-st','r-subtotal','r-vat-amt','r-grand-total','r-ct','r-ca','r-pf'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});clearAttachedFiles('r-att');populateInvRefs();}
-  if(t==='expense'){['e-desc','e-by','e-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('e-amount').value='';document.getElementById('e-date').value=todayStr;clearAttachedFiles('e-att');}
+  if(t==='expense'){['e-desc','e-by','e-note','e-vendor','e-doc-no'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('e-amount').value='';document.getElementById('e-date').value=todayStr;const cat=document.getElementById('e-cat');if(cat)cat.value='ค่าน้ำมันเชื้อเพลิง';const docType=document.getElementById('e-doc-type');if(docType)docType.value='receipt';const taxStatus=document.getElementById('e-tax-status');if(taxStatus)taxStatus.value='requested';const purpose=document.getElementById('e-purpose');if(purpose)purpose.value='company';clearAttachedFiles('e-att');refreshExpenseEvidenceUi();}
 }
 
 // ============================================================
@@ -5498,22 +5602,30 @@ function showIssuedDocumentDetail(type,branch,year,month,id){
 function renderEList(){
   const{branch,month,year}=getListFilters('el');
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:['ubon','khonkaen'];
   let all=[];
   const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.expenses||[]).forEach(x=>all.push({...x,branch:br,_m:m,_y:year}));}));
   all=dedupeForListDisplay(all);
   all.sort((a,b)=>b.id-a.id);
   document.getElementById('eempty').style.display=all.length?'none':'block';
-  document.getElementById('etbl').innerHTML=all.map(e=>`<tr>
-    <td>${escapeHtml(formatThaiDate(e.date))}</td><td>${bbr(e.branch)}</td>
-    <td><span class="badge b-amber">${e.cat}</span></td>
-    <td>${e.desc}</td><td>${e.by||'-'}</td>
-    <td class="tn neg">฿${fmt(e.amount)}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="delDoc('${e.branch}',${e._y},${e._m},'expenses',${e.id})">ลบ</button></td>
-  </tr>`).join('');
+  document.getElementById('etbl').innerHTML=all.map(e=>{
+    const evidenceCount=(e.attachments||[]).length;
+    const taxCls=expenseTaxStatusClass(e.taxStatus||'not_requested');
+    return `<tr>
+      <td>${escapeHtml(formatThaiDate(e.date))}</td><td>${bbr(e.branch)}</td>
+      <td><span class="badge b-amber">${escapeHtml(e.cat||'-')}</span></td>
+      <td>${escapeHtml(e.vendor||'-')}</td>
+      <td class="expense-desc-cell"><b>${escapeHtml(e.desc||'-')}</b><small>${escapeHtml(expensePurposeLabel(e.purpose))}</small></td>
+      <td><span class="expense-doc-pill">${escapeHtml(expenseDocTypeLabel(e.docType))}</span>${e.docNo?`<small class="expense-doc-no">${escapeHtml(e.docNo)}</small>`:''}</td>
+      <td><span class="expense-status-pill ${taxCls}">${escapeHtml(expenseTaxStatusLabel(e.taxStatus||'not_requested'))}</span></td>
+      <td><button class="btn btn-view btn-sm expense-evidence-view" onclick="showDetailById('expense','${e.branch}',${e._y},${e._m},${JSON.stringify(String(e.id))})">📷 ${evidenceCount} ไฟล์ · ดู</button></td>
+      <td>${escapeHtml(e.by||'-')}</td>
+      <td class="tn neg">฿${fmt(e.amount)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delDoc('${e.branch}',${e._y},${e._m},'expenses',${JSON.stringify(String(e.id))})">ลบ</button></td>
+    </tr>`;
+  }).join('');
 }
-
 async function delDoc(br,y,m,type,id){
   if(!confirm('ลบรายการนี้?'))return;
   const d=loadFor(br,y,m);
@@ -5544,7 +5656,8 @@ function showDetailById(type, br, y, m, id){
     quote: 'quotes',
     invoice: 'invoices',
     receipt: 'receipts',
-    production: 'productions'
+    production: 'productions',
+    expense: 'expenses'
   };
   const collection = collectionByType[type];
   if(!collection){
@@ -5601,6 +5714,11 @@ function showDetail(type,doc){
     body=dr('เลขที่ใบเสร็จ',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('เลขใบส่งสินค้า / ใบกำกับภาษีอ้างอิง',doc.invNo)+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('พนักงานขาย',doc.salesPerson)+
       dr('รูปแบบ VAT',vatModeLabel(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal))+dr('ยอดก่อน VAT','฿'+fmt(receiptSubtotal))+dr('VAT 7%','฿'+fmt(receiptVat))+dr('ยอดรวมทั้งสิ้น','฿'+fmt(receiptTotal))+dr('ต้นทุนรวม','฿'+fmt(doc.costTotal))+
       dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไรสุทธิ',`<span class="${doc.profit>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`)+dr('หมายเหตุ',doc.note);
+  }
+
+  if(type==='expense'){
+    title=`💸 ค่าใช้จ่ายองค์กร — ${doc.cat||'ค่าใช้จ่าย'}`;
+    body=dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('หมวดหมู่',`<span class="badge b-amber">${escapeHtml(doc.cat||'-')}</span>`)+dr('ร้านค้า / ผู้ขาย / ผู้ให้บริการ',escapeHtml(doc.vendor||'-'))+dr('รายละเอียด',escapeHtml(doc.desc||'-'))+dr('จำนวนเงิน',`<b class="neg">฿${fmt(doc.amount)}</b>`)+dr('ประเภทเอกสาร',escapeHtml(expenseDocTypeLabel(doc.docType)))+dr('เลขที่เอกสาร',escapeHtml(doc.docNo||'-'))+dr('สถานะใบกำกับภาษี',`<span class="expense-status-pill ${expenseTaxStatusClass(doc.taxStatus)}">${escapeHtml(expenseTaxStatusLabel(doc.taxStatus))}</span>`)+dr('การใช้งานค่าใช้จ่าย',escapeHtml(expensePurposeLabel(doc.purpose)))+dr('ผู้บันทึก',escapeHtml(doc.by||'-'))+dr('หมายเหตุ',escapeHtml(doc.note||'-'));
   }
 
   // Items table
@@ -6949,3 +7067,5 @@ window.addEventListener('comform-auth-ready', () => {
   }
 });
 
+
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>setTimeout(refreshExpenseEvidenceUi,0));}else{setTimeout(refreshExpenseEvidenceUi,0);}
