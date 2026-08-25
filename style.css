@@ -1886,3 +1886,49 @@ tr:nth-child(even) td{background:#fbfdff!important}tr:hover td{background:#f0fbf
   .app-toast{transform:translateY(24px)}
   .app-toast.show{transform:translateY(0)}
 }
+
+/* ============================================================
+   FULL DOCUMENT PREVIEW MODAL — ดูตัวอย่างเอกสารเต็มขนาด (เหมือนไฟล์ PDF)
+   ============================================================ */
+.doc-preview-modal-overlay{
+  position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,.6);
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:24px 16px;overflow:auto;
+}
+.doc-preview-modal{
+  background:#eef2f7;border-radius:14px;overflow:hidden;
+  width:min(880px,100%);display:flex;flex-direction:column;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+}
+.doc-preview-modal-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px;background:#fff;border-bottom:1px solid #e2e8f0;
+}
+.doc-preview-modal-title{font-size:13px;font-weight:700;color:#1e293b}
+.doc-preview-modal-close{
+  border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;
+  padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto;
+}
+.doc-preview-modal-close:hover{background:#f1f5f9}
+.doc-preview-modal-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;background:#fff;
+  border-bottom:1px solid #e2e8f0;
+}
+.doc-preview-modal-tabs button{
+  border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;
+}
+.doc-preview-modal-tabs button.active{
+  color:#fff;border-color:transparent;background:#0c447c;
+}
+.doc-preview-modal-body{padding:20px;overflow:auto}
+.doc-preview-modal-page .qdoc-document-page,
+.doc-preview-modal-page .dtd-document-page,
+.doc-preview-modal-page .rcp-document-page{
+  margin:0 auto;box-shadow:0 8px 24px rgba(15,23,42,.18);
+}
+@media(max-width:640px){
+  .doc-preview-modal-overlay{padding:0}
+  .doc-preview-modal{width:100%;height:100%;border-radius:0}
+  .doc-preview-modal-body{padding:10px}
+}

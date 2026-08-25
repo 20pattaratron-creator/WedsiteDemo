@@ -4868,7 +4868,46 @@ function renderIList(){
 
 
 
-function previewQuoteDocumentFromForm(){
+function showFullDocumentPreviewModal(moduleApi, draft, ref, tabs){
+  if (!moduleApi?.buildInlineHtml) { notify('ไม่พบโมดูลเอกสารสำหรับแสดงตัวอย่าง'); return; }
+  document.getElementById('doc-preview-modal-overlay')?.remove();
+  let activeTab = tabs[0]?.id;
+  const overlay = document.createElement('div');
+  overlay.id = 'doc-preview-modal-overlay';
+  overlay.className = 'doc-preview-modal-overlay';
+  overlay.innerHTML = `<div class="doc-preview-modal">
+    <div class="doc-preview-modal-head">
+      <div class="doc-preview-modal-title">ตัวอย่างเอกสาร — หน้านี้คือสิ่งที่จะได้เมื่อดาวน์โหลด PDF</div>
+      <button type="button" class="doc-preview-modal-close" aria-label="ปิด">✕ ปิด</button>
+    </div>
+    <div class="doc-preview-modal-tabs"></div>
+    <div class="doc-preview-modal-body"><div class="doc-preview-modal-page"></div></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const tabsBox = overlay.querySelector('.doc-preview-modal-tabs');
+  const pageEl = overlay.querySelector('.doc-preview-modal-page');
+  const renderTabs = () => {
+    tabsBox.innerHTML = tabs.map(t => `<button type="button" data-tab="${t.id}" class="${t.id === activeTab ? 'active' : ''}">${t.label}</button>`).join('');
+  };
+  const render = () => {
+    renderTabs();
+    pageEl.innerHTML = moduleApi.buildInlineHtml(draft, ref, activeTab);
+  };
+  render();
+  tabsBox.addEventListener('click', event => {
+    const btn = event.target.closest('button[data-tab]');
+    if (!btn) return;
+    activeTab = btn.dataset.tab;
+    render();
+  });
+  const close = () => overlay.remove();
+  overlay.querySelector('.doc-preview-modal-close').addEventListener('click', close);
+  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+  const onEsc = event => { if (event.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); } };
+  document.addEventListener('keydown', onEsc);
+}
+
+function previewQuoteDocumentFromForm(mode){
   const b=getBr('q'); if(!b)return;
   const date=document.getElementById('q-date')?.value||todayStr;
   const customer=document.getElementById('q-cust')?.value.trim()||'';
@@ -4889,10 +4928,15 @@ function previewQuoteDocumentFromForm(){
     attachments:attachedFiles['q-att']||[],approved:false
   };
   if(!window.ComformQuotationDocument?.loadFromData){notify('ไม่พบโมดูลเอกสารใบเสนอราคา กรุณาโหลดหน้าเว็บใหม่');return;}
-  window.ComformQuotationDocument.loadFromData(draft,{b,y:ym.year,m:ym.month,previewOnly:true});
+  const ref={b,y:ym.year,m:ym.month,previewOnly:true};
+  if(mode==='modal'){
+    showFullDocumentPreviewModal(window.ComformQuotationDocument,draft,ref,[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'copy',label:'สำเนา/COPY'}]);
+    return;
+  }
+  window.ComformQuotationDocument.loadFromData(draft,ref);
 }
 
-function previewDeliveryDocumentFromForm(){
+function previewDeliveryDocumentFromForm(mode){
   const b=getBr('i'); if(!b)return;
   const no=document.getElementById('i-no')?.value.trim()||'';
   const date=document.getElementById('i-date')?.value||todayStr;
@@ -4916,11 +4960,16 @@ function previewDeliveryDocumentFromForm(){
     sourceQuoteNo:sourceQuote?.no||'',sourceQuoteId:sourceQuote?.id||''
   };
   if(!window.ComformDeliveryTaxDocument?.loadFromInvoice){notify('ไม่พบโมดูลใบส่งสินค้า / ใบกำกับภาษี กรุณาโหลดหน้าเว็บใหม่');return;}
+  const ref={b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true};
+  if(mode==='modal'){
+    showFullDocumentPreviewModal(window.ComformDeliveryTaxDocument,draft,ref,[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'copy',label:'สำเนา/COPY'},{id:'delivery-copy',label:'สำเนาใบส่งสินค้า'}]);
+    return;
+  }
   window.go?.('delivery-tax-doc',null);
-  window.ComformDeliveryTaxDocument.loadFromInvoice(draft,{b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true});
+  window.ComformDeliveryTaxDocument.loadFromInvoice(draft,ref);
 }
 
-function previewReceiptDocumentFromForm(){
+function previewReceiptDocumentFromForm(mode){
   const b=getBr('r'); if(!b)return;
   const no=document.getElementById('r-no')?.value.trim()||'';
   const date=document.getElementById('r-date')?.value||todayStr;
@@ -4941,8 +4990,13 @@ function previewReceiptDocumentFromForm(){
     attachments:attachedFiles['r-att']||[]
   };
   if(!window.ComformReceiptDocument?.loadFromReceipt){notify('ไม่พบโมดูลเอกสารใบเสร็จรับเงิน กรุณาโหลดหน้าเว็บใหม่');return;}
+  const ref={b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true};
+  if(mode==='modal'){
+    showFullDocumentPreviewModal(window.ComformReceiptDocument,draft,ref,[{id:'original',label:'ต้นฉบับ/ORIGINAL'},{id:'account-copy',label:'สำเนาบัญชี'},{id:'file-copy',label:'สำเนาเก็บหลักฐาน'}]);
+    return;
+  }
   window.go?.('receipt-doc',null);
-  window.ComformReceiptDocument.loadFromReceipt(draft,{b,y:ym.year,m:ym.month,id:draft.id,no:draft.no,previewOnly:true});
+  window.ComformReceiptDocument.loadFromReceipt(draft,ref);
 }
 
 function openDeliveryDocumentFromInvoice(branch,year,month,id){
@@ -6330,19 +6384,19 @@ window.addEventListener('comform-document-module-ready', event=>{
 });
 function runQuoteToolbarAction(action){
   if (action === 'save') return document.getElementById('q-save-btn')?.click();
-  if (action === 'preview') return previewQuoteDocumentFromForm();
+  if (action === 'preview') return previewQuoteDocumentFromForm('modal');
   if (action === 'print') { previewQuoteDocumentFromForm(); setTimeout(()=>window.printQuote?.('current'), 450); return; }
   if (action === 'pdf') { previewQuoteDocumentFromForm(); setTimeout(()=>window.downloadQuotePdf?.(document.querySelector('#panel-quotation-document [data-qdoc-action="pdf-current"]') || null, 'current'), 650); return; }
 }
 function runInvoiceToolbarAction(action){
   if (action === 'save') return document.getElementById('i-save-btn')?.click();
-  if (action === 'preview') return previewDeliveryDocumentFromForm();
+  if (action === 'preview') return previewDeliveryDocumentFromForm('modal');
   if (action === 'print') { previewDeliveryDocumentFromForm(); setTimeout(()=>window.ComformDeliveryTaxDocument?.print?.('current'), 500); return; }
   if (action === 'pdf') { previewDeliveryDocumentFromForm(); setTimeout(()=>window.ComformDeliveryTaxDocument?.downloadPdf?.('all'), 700); return; }
 }
 function runReceiptToolbarAction(action){
   if (action === 'save') return document.getElementById('r-save-btn')?.click();
-  if (action === 'preview') return previewReceiptDocumentFromForm();
+  if (action === 'preview') return previewReceiptDocumentFromForm('modal');
   if (action === 'print') { previewReceiptDocumentFromForm(); setTimeout(()=>window.ComformReceiptDocument?.print?.('current'), 500); return; }
   if (action === 'pdf') { previewReceiptDocumentFromForm(); setTimeout(()=>window.ComformReceiptDocument?.downloadPdf?.('all'), 700); return; }
 }

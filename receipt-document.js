@@ -17,8 +17,8 @@ const BRANCH_DEFAULTS = {
     label: 'สาขาที่ 00001',
     companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาที่ 00001)',
     companyNameEn: 'EXAMPLE CO., LTD. (BRANCH 00001)',
-    addressTh: '22/7 หมู่ 17 ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
-    addressEn: '22/7 Moo 17 T.Nai-Muang A.Muang Khonkaen Khonkaen 40000',
+    addressTh: '99/1 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
+    addressEn: '99/1 Example Rd. T.Nai-Muang A.Muang Khonkaen Khonkaen 40000',
     phone: '082-3160881, 089-4921941',
     taxId: '0435548000010'
   },
@@ -26,8 +26,8 @@ const BRANCH_DEFAULTS = {
     label: 'สาขาสำนักงานใหญ่',
     companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาสำนักงานใหญ่)',
     companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
-    addressTh: '164/3 ถนนอุบล-ตระการ ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
-    addressEn: '164/3 Ubon-Trakarn Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
+    addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
+    addressEn: '88/2 Example Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
     phone: 'Tel: 0-4524-0661, 2   Fax: 0-4524-0663',
     taxId: '0345548000010'
   }

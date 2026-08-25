@@ -1815,23 +1815,18 @@
    - Enlarge black baht-in-words text without changing A4 geometry
    ===================================================================== */
 :root {
-  --rcp-blue: #2d7a3a;
-  --rcp-blue-dark: #1e5c2a;
-  --rcp-blue-soft: #f0f9f1;
-  --rcp-border: #b8d5bd;
+  --rcp-blue: #0c447c;
+  --rcp-blue-dark: #082f57;
+  --rcp-blue-soft: #eaf1fa;
+  --rcp-border: #c3d4e8;
 }
 
 .rcp-document-page {
-  --doc-blue: #6f9b78 !important;
+  --doc-blue: #0c447c !important;
   color: var(--doc-blue);
 }
 
-/* Green logo in the editor toolbar, preview and PDF capture. */
-.rcp-brand-title img,
-.rcp-document-page .rcp-doc-company img,
-.rcp-document-page .rcp-doc-watermark {
-  filter: brightness(0) saturate(100%) invert(43%) sepia(28%) saturate(1116%) hue-rotate(77deg) brightness(91%) contrast(88%) !important;
-}
+/* Logo/watermark now use the original blue logo.png as-is (formal/bank theme) — no color filter. */
 .rcp-document-page .rcp-doc-watermark { opacity: .055 !important; }
 
 /* Override the one remaining hard-coded blue text in the receipt footer. */
@@ -2008,3 +2003,14 @@
 .rcp-source-evidence-item a{display:inline-block;margin-top:4px;font-size:10px;color:#0868c9;font-weight:800;text-decoration:none}
 .rcp-source-evidence-item small,.rcp-source-evidence-empty{font-size:10px;color:#718096}
 .rcp-source-evidence-empty{padding:12px;border:1px dashed #cbd9e8;border-radius:9px;background:#fbfdff;text-align:center}
+
+/* Formal / bank-style corners — sharp edges to match official tax-form conventions */
+.rcp-doc-party-box,
+.rcp-doc-meta-table thead th,
+.rcp-doc-items-section,
+.rcp-doc-baht,
+.rcp-doc-totals > div,
+.rcp-receipt-footer-box:first-child,
+.rcp-receipt-footer-box:last-child {
+  border-radius: 2px;
+}

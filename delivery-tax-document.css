@@ -1084,7 +1084,7 @@
    - use tighter typography and lighter form styling similar to the paper form
    ===================================================================== */
 .dtd-document-page {
-  --doc-blue: #6f93d9;
+  --doc-blue: #0c447c;
   padding: 1.35% 1.55% 1.28%;
   background: #fff;
   color: var(--doc-blue);
@@ -1651,3 +1651,14 @@
 .dtd-source-evidence-item a{display:inline-block;margin-top:4px;font-size:10px;color:#0868c9;font-weight:800;text-decoration:none}
 .dtd-source-evidence-item small,.dtd-source-evidence-empty{font-size:10px;color:#718096}
 .dtd-source-evidence-empty{padding:12px;border:1px dashed #cbd9e8;border-radius:9px;background:#fbfdff;text-align:center}
+
+/* Formal / bank-style corners — sharp edges to match official tax-form conventions */
+.dtd-doc-party-box,
+.dtd-doc-meta-table thead th,
+.dtd-doc-items-section,
+.dtd-doc-baht,
+.dtd-doc-totals > div,
+.dtd-doc-sign-box:first-child,
+.dtd-doc-sign-box:last-child {
+  border-radius: 2px;
+}
