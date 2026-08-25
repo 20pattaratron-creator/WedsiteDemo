@@ -19,8 +19,8 @@ const BRANCH_DEFAULTS = {
     companyNameEn: 'EXAMPLE CO., LTD. (BRANCH 00001)',
     addressTh: '99/1 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
     addressEn: '99/1 Example Rd. T.Nai-Muang A.Muang Khonkaen Khonkaen 40000',
-    phone: '082-3160881, 089-4921941',
-    taxId: '0435548000010'
+    phone: '000-000-0000',
+    taxId: '0000000000000'
   },
   ubon: {
     label: 'สาขาสำนักงานใหญ่',
@@ -28,8 +28,8 @@ const BRANCH_DEFAULTS = {
     companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
     addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '88/2 Example Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
-    phone: 'Tel: 0-4524-0661, 2   Fax: 0-4524-0663',
-    taxId: '0345548000010'
+    phone: 'Tel: 000-000-0000   Fax: 000-000-0000',
+    taxId: '0000000000000'
   }
 };
 
@@ -166,7 +166,7 @@ function fmt(value) {
 function formatDate(value) {
   if (!value) return '';
   const [y, m, d] = String(value).split('-');
-  return y && m && d ? `${d}-${m}-${Number(y)+543} (ค.ศ. ${y})` : value;
+  return y && m && d ? `${d}-${m}-${Number(y)+543}` : value;
 }
 
 function roundMoney(value) {
@@ -449,7 +449,7 @@ function invoiceYearOptionsHtml() {
     if (Number.isFinite(year)) years.add(year);
   });
   return [...years].sort((a, b) => b - a)
-    .map(year => `<option value="${year}" ${year === selected ? 'selected' : ''}>พ.ศ. ${year + 543} (ค.ศ. ${year})</option>`)
+    .map(year => `<option value="${year}" ${year === selected ? 'selected' : ''}>พ.ศ. ${year + 543}</option>`)
     .join('');
 }
 
@@ -617,8 +617,8 @@ function customerSectionHtml() {
         ${inputHtml('customerName', 'ชื่อลูกค้า', 'ชื่อบริษัท / ลูกค้า', 'rcp-span-2')}
         ${inputHtml('contact', 'ผู้ติดต่อ', 'ชื่อผู้ติดต่อ')}
         ${textareaHtml('customerAddress', 'ที่อยู่', 'ที่อยู่สำหรับออกเอกสาร', 'rcp-span-2')}
-        ${inputHtml('phone', 'เบอร์โทร', 'หมายเลขโทรศัพท์')}
-        ${inputHtml('customerTaxId', 'เลขประจำตัวผู้เสียภาษี', 'เลข 13 หลัก')}
+        ${inputHtml('phone', 'เบอร์โทร', '000-000-0000')}
+        ${inputHtml('customerTaxId', 'เลขประจำตัวผู้เสียภาษี', '0000000000000')}
       </div>
     </div>
   `;
@@ -666,8 +666,8 @@ function documentSectionHtml() {
           ${inputHtml('company.companyNameEn', 'ชื่อบริษัทภาษาอังกฤษ', '', 'rcp-span-2')}
           ${textareaHtml('company.addressTh', 'ที่อยู่ภาษาไทย', '', 'rcp-span-2')}
           ${inputHtml('company.addressEn', 'ที่อยู่ภาษาอังกฤษ', '', 'rcp-span-2')}
-          ${inputHtml('company.phone', 'เบอร์โทรบริษัท', '')}
-          ${inputHtml('company.taxId', 'เลขประจำตัวผู้เสียภาษีบริษัท', '')}
+          ${inputHtml('company.phone', 'เบอร์โทรบริษัท', '000-000-0000')}
+          ${inputHtml('company.taxId', 'เลขประจำตัวผู้เสียภาษีบริษัท', '0000000000000')}
         </div>
       </details>
     </div>

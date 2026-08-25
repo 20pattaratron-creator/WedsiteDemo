@@ -89,6 +89,25 @@
     <div class="metrics" id="metrics-single"></div>
   </div>
 
+  <!-- EXECUTIVE COMPARISON -->
+  <section class="dash-decision-section" aria-labelledby="dash-decision-title">
+    <div class="dash-decision-head">
+      <div>
+        <h3 id="dash-decision-title">📌 สรุปเปรียบเทียบสำหรับตัดสินใจ</h3>
+        <p>ดูยอดขาย การส่งมอบ การรับเงิน และกำไรเทียบช่วงก่อนหน้าและปีก่อนในจุดเดียว</p>
+      </div>
+      <span id="dash-compare-period" class="dash-compare-period"></span>
+    </div>
+    <div id="dash-compare-kpis" class="dash-compare-kpis"></div>
+    <div class="card dash-monthly-compare-card">
+      <div class="card-title chart-title-row">
+        <span>📅 ตารางเปรียบเทียบรายเดือน</span>
+        <span class="analytics-mini-label">MoM · YoY · Delivery · Collection · Margin</span>
+      </div>
+      <div id="dash-monthly-compare-table"></div>
+    </div>
+  </section>
+
   <!-- MONTHLY DELIVERY TARGET -->
   <section class="target-section" aria-labelledby="target-section-title">
     <div class="target-heading">
@@ -177,21 +196,34 @@
   <div class="forecast-section">
     <div class="forecast-heading">
       <div>
-        <h3>🔮 แนวโน้มและคาดการณ์ยอดขาย</h3>
-        <p>คำนวณจากยอดขายย้อนหลัง แนวโน้มรายเดือน ฤดูกาล และใบเสนอราคาที่ยังรออนุมัติ</p>
+        <h3>🔮 Sales Forecast แบบมาตรฐาน</h3>
+        <p>ใช้ Time-series Forecasting และเลือกโมเดลจากความแม่นยำย้อนหลังด้วย Rolling-origin Cross-validation; Pipeline แสดงแยกเป็น Scenario ไม่ปนกับค่าพยากรณ์สถิติ</p>
       </div>
-      <select id="forecast-history" onchange="renderSalesForecast()" aria-label="จำนวนเดือนย้อนหลังที่ใช้คาดการณ์">
-        <option value="6">ใช้ข้อมูลย้อนหลัง 6 เดือน</option>
-        <option value="12" selected>ใช้ข้อมูลย้อนหลัง 12 เดือน</option>
-        <option value="24">ใช้ข้อมูลย้อนหลัง 24 เดือน</option>
-      </select>
+      <div class="forecast-controls">
+        <label><span>ข้อมูลย้อนหลัง</span><select id="forecast-history" onchange="renderSalesForecast()" aria-label="จำนวนเดือนย้อนหลังที่ใช้คาดการณ์">
+          <option value="6">6 เดือน</option>
+          <option value="12" selected>12 เดือน</option>
+          <option value="24">24 เดือน</option>
+          <option value="36">36 เดือน</option>
+        </select></label>
+        <label><span>วิธีพยากรณ์</span><select id="forecast-method" onchange="renderSalesForecast()" aria-label="วิธีพยากรณ์ยอดขาย">
+          <option value="auto" selected>Auto — เลือก RMSE ต่ำสุด</option>
+          <option value="sma">Moving Average 3 เดือน</option>
+          <option value="ses">Simple Exponential Smoothing</option>
+          <option value="holt">Holt Trend (Damped)</option>
+          <option value="hw">Holt-Winters Additive (12 เดือน)</option>
+          <option value="linear">Linear Regression (Benchmark)</option>
+        </select></label>
+      </div>
     </div>
+    <div id="forecast-model-banner" class="forecast-model-banner"></div>
     <div id="forecast-metrics" class="forecast-metrics"></div>
     <div class="forecast-grid">
       <div class="card forecast-card">
-        <div class="card-title">ยอดจริงและยอดคาดการณ์ 6 เดือนข้างหน้า</div>
+        <div class="card-title chart-title-row"><span>ยอดจริงและยอดคาดการณ์ 6 เดือนข้างหน้า</span><span class="analytics-mini-label">Base Forecast</span></div>
         <div id="forecast-chart" class="forecast-chart"></div>
         <div id="forecast-note" class="chart-summary"></div>
+        <div id="forecast-future-table" class="forecast-table-slot"></div>
       </div>
       <div class="card forecast-card">
         <div class="card-title">ภาพรวมปีถัดไป</div>
@@ -201,7 +233,37 @@
         <div id="forecast-alerts" class="forecast-alerts"></div>
       </div>
     </div>
+    <div class="card forecast-card forecast-model-card">
+      <div class="card-title chart-title-row"><span>🧪 เปรียบเทียบความแม่นยำของโมเดล</span><span class="analytics-mini-label">Rolling-origin CV · RMSE / MAE / sMAPE</span></div>
+      <div id="forecast-accuracy-table"></div>
+      <div id="forecast-method-note" class="chart-summary"></div>
+    </div>
   </div>
+
+
+  <!-- QUANT BUSINESS INTELLIGENCE -->
+  <section class="quant-section" aria-labelledby="quant-dashboard-title">
+    <div class="quant-section-head">
+      <div>
+        <div class="quant-eyebrow">QUANT BUSINESS INTELLIGENCE</div>
+        <h3 id="quant-dashboard-title">🧠 มุมมองเชิง Quant สำหรับผู้บริหาร</h3>
+        <p>วัดความผันผวน ความกระจุกตัว ความเสี่ยง รายได้ผิดปกติ และความน่าจะเป็นของ Forecast โดยใช้ข้อมูลจริงในระบบ</p>
+      </div>
+      <span class="quant-method-badge">Risk · Probability · Backtest</span>
+    </div>
+    <div id="quant-dashboard-kpis" class="quant-kpi-grid"></div>
+    <div class="quant-dashboard-grid">
+      <div class="card quant-card">
+        <div class="card-title chart-title-row"><span>🎲 Monte Carlo Forecast</span><span class="analytics-mini-label">5,000 simulations</span></div>
+        <div id="quant-dashboard-montecarlo"></div>
+      </div>
+      <div class="card quant-card">
+        <div class="card-title chart-title-row"><span>🧭 Business Regime & Risk Signals</span><span class="analytics-mini-label">Decision Support</span></div>
+        <div id="quant-dashboard-risklist"></div>
+      </div>
+    </div>
+    <div class="quant-disclaimer">ค่าจาก Quant Layer เป็นเครื่องมือช่วยตัดสินใจ ไม่ใช่ผลลัพธ์ที่รับประกัน โดยเฉพาะ Probability/Monte Carlo จะขึ้นกับปริมาณข้อมูลและสมมติฐานของโมเดล</div>
+  </section>
 
   <!-- PRODUCTION VS DELIVERY COMPARISON -->
   <div class="flow-section">
@@ -278,7 +340,7 @@
     <div class="card chart-card dashboard-agency-card">
       <div class="card-title chart-title-row">
         <span>🏛️ สัดส่วนลูกค้าตามกลุ่มธุรกิจ</span>
-        <span class="analytics-mini-label">ราชการ · รพ. · รร. · เอกชน</span>
+        <span class="analytics-mini-label">ราชการ · รัฐวิสาหกิจ · รพ. · รร. · เอกชน</span>
       </div>
       <div id="dash-agency-chart" class="bar-chart customer-chart"></div>
       <div id="dash-agency-summary" class="chart-summary"></div>
@@ -318,7 +380,7 @@
       <label><span>มุมมองหลัก</span><select id="analytics-focus" onchange="renderDataAnalytics()"><option value="sales">ภาพรวมธุรกิจ / กำไร</option><option value="delivery">ส่งสินค้า / เครดิต / รับเงิน</option><option value="quality">คุณภาพข้อมูล / ความเสี่ยง</option></select></label>
       <label><span>ประเภทหน่วยงาน</span><select id="analytics-agency-group" onchange="populateAnalyticsAgencyTypeOptions(true)"><option value="">ทุกประเภทหน่วยงาน</option></select></label>
       <label><span>ประเภทย่อย</span><select id="analytics-agency-type" onchange="renderDataAnalytics()"><option value="">ทุกประเภทย่อย</option></select></label>
-      <label><span>สูตรพยากรณ์</span><select id="analytics-forecast-method" onchange="renderDataAnalytics()"><option value="auto">Auto Ensemble</option><option value="moving">Moving Average 3 เดือน</option><option value="weighted">Weighted MA 3 เดือน</option><option value="linear">Linear Trend</option><option value="smooth">Exponential Smoothing</option></select></label>
+      <label><span>สูตรพยากรณ์</span><select id="analytics-forecast-method" onchange="renderDataAnalytics()"><option value="auto">Auto — เลือก RMSE ต่ำสุด</option><option value="sma">Moving Average 3 เดือน</option><option value="ses">Simple Exponential Smoothing</option><option value="holt">Holt Trend (Damped)</option><option value="hw">Holt-Winters Additive</option><option value="linear">Linear Regression (Benchmark)</option></select></label>
     </div>
   </div>
 
@@ -365,6 +427,10 @@
       <div class="card-title chart-title-row"><span>🔮 รายละเอียดการคาดการณ์ธุรกิจ</span><span class="analytics-mini-label">Forecast Model</span></div>
       <div id="analytics-forecast-summary"></div>
       <div id="analytics-method-summary" class="chart-summary"></div>
+      <div class="analytics-forecast-subtitle">ความแม่นยำย้อนหลังของแต่ละโมเดล</div>
+      <div id="analytics-forecast-accuracy-table"></div>
+      <div class="analytics-forecast-subtitle">พยากรณ์ 6 เดือนข้างหน้า</div>
+      <div id="analytics-forecast-future-table"></div>
     </div>
     <div class="card analytics-card">
       <div class="card-title chart-title-row"><span>🧭 Business Funnel: ผลิต → ส่ง → รับเงิน</span><span class="analytics-mini-label">Conversion</span></div>
@@ -373,9 +439,58 @@
     </div>
   </div>
 
+
+  <!-- QUANT ANALYTICS LAB -->
+  <section class="quant-analytics-lab" aria-labelledby="quant-analytics-title">
+    <div class="quant-section-head">
+      <div>
+        <div class="quant-eyebrow">QUANT RISK & DECISION LAB</div>
+        <h3 id="quant-analytics-title">📐 วิเคราะห์ความเสี่ยงและสถานการณ์เชิงปริมาณ</h3>
+        <p>ใช้ Time-series validation, HHI concentration, Coefficient of Variation, Modified Z-score และ Scenario Stress Test เพื่อดู “ความเสี่ยง” ควบคู่กับ “ยอดขาย”</p>
+      </div>
+      <span class="quant-method-badge">Explainable Quant</span>
+    </div>
+    <div id="quant-analytics-kpis" class="quant-kpi-grid"></div>
+
+    <div class="quant-lab-grid">
+      <div class="card quant-card">
+        <div class="card-title chart-title-row"><span>🌡️ Business Regime</span><span class="analytics-mini-label">Growth / Stable / Slowdown</span></div>
+        <div id="quant-regime-card"></div>
+      </div>
+      <div class="card quant-card">
+        <div class="card-title chart-title-row"><span>🧪 Stress Test</span><span class="analytics-mini-label">What-if Scenario</span></div>
+        <div class="quant-stress-controls">
+          <label><span>ยอดขายเปลี่ยน</span><input id="quant-stress-sales" type="number" value="-10" min="-90" max="200" step="1" onchange="renderDataAnalytics()"><em>%</em></label>
+          <label><span>ต้นทุนเปลี่ยน</span><input id="quant-stress-cost" type="number" value="5" min="-90" max="200" step="1" onchange="renderDataAnalytics()"><em>%</em></label>
+          <label><span>Conversion Pipeline เปลี่ยน</span><input id="quant-stress-conversion" type="number" value="-20" min="-100" max="200" step="1" onchange="renderDataAnalytics()"><em>%</em></label>
+        </div>
+        <div id="quant-stress-output"></div>
+      </div>
+    </div>
+
+    <div class="analytics-table-grid quant-table-grid">
+      <div class="card analytics-card analytics-wide-card">
+        <div class="card-title chart-title-row"><span>🎯 Quote Probability Proxy & Expected Pipeline</span><span class="analytics-mini-label">Historical Approval Ratio</span></div>
+        <div id="quant-pipeline-table"></div>
+        <div id="quant-pipeline-summary" class="chart-summary"></div>
+      </div>
+      <div class="card analytics-card analytics-wide-card">
+        <div class="card-title chart-title-row"><span>🧩 Customer Concentration</span><span class="analytics-mini-label">HHI · Top Share</span></div>
+        <div id="quant-concentration-table"></div>
+        <div id="quant-concentration-summary" class="chart-summary"></div>
+      </div>
+      <div class="card analytics-card analytics-wide-card">
+        <div class="card-title chart-title-row"><span>🚨 Robust Anomaly Detection</span><span class="analytics-mini-label">Modified Z-score · MAD</span></div>
+        <div id="quant-anomaly-table"></div>
+        <div id="quant-anomaly-summary" class="chart-summary"></div>
+      </div>
+    </div>
+    <div id="quant-methodology-note" class="quant-methodology-note"></div>
+  </section>
+
   <div class="analytics-table-grid">
     <div class="card analytics-card analytics-wide-card">
-      <div class="card-title chart-title-row"><span>📅 ตารางสรุปรายเดือนแบบละเอียด</span><span class="analytics-mini-label">Monthly Detail</span></div>
+      <div class="card-title chart-title-row"><span>📅 ตารางสรุปรายเดือนแบบละเอียด</span><span class="analytics-mini-label">MoM · YoY · Margin · Delivery · Collection</span></div>
       <div id="analytics-monthly-table"></div>
     </div>
     <div class="card analytics-card analytics-wide-card">
@@ -439,6 +554,7 @@
 <div id="panel-quote-form" class="panel"><div class="card">
   <div id="q-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('quote')">ยกเลิกการแก้ไข</button></div>
   <div class="card-title">📄 ใบเสนอราคาใหม่</div>
+  <div class="form-quick-guide"><span class="guide-step active">1 ข้อมูลเอกสาร</span><span class="guide-step">2 ลูกค้าและสินค้า</span><span class="guide-step">3 ตรวจสอบและบันทึก</span></div>
   <div class="fg">
     <div class="ff"><label>เลขที่ใบเสนอราคา *</label><input type="text" id="q-no" class="ro quote-auto-no" readonly placeholder="QT690801"><small class="section-hint">ระบบรันอัตโนมัติ: QT + ปี พ.ศ. 2 หลัก + เดือน 2 หลัก + ลำดับเอกสาร เช่น QT690801</small></div>
     <div class="ff"><label>วันที่เสนอราคา *</label><input type="date" id="q-date" onchange="refreshAutoQuoteNumber()"><small class="section-hint">เปลี่ยนวันที่แล้วเลขใบเสนอราคาจะเปลี่ยนตามปี/เดือนโดยอัตโนมัติ</small></div>
@@ -495,6 +611,7 @@
 <div id="panel-invoice-form" class="panel"><div class="card">
   <div id="i-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('invoice')">ยกเลิกการแก้ไข</button></div>
   <div class="card-title">🚚 ใบส่งสินค้า / ใบกำกับภาษี</div>
+  <div class="form-quick-guide blue"><span class="guide-step active">1 เลือกเอกสารต้นทาง</span><span class="guide-step">2 ตรวจข้อมูลและสินค้า</span><span class="guide-step">3 บันทึก / PDF</span></div>
   <div class="fg">
     <div class="ff"><label>เลขที่ใบส่งสินค้า / ใบกำกับภาษี *</label><input type="text" id="i-no" placeholder="INV690801"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="i-date" onchange="updateInvoiceDueDate()"></div>
@@ -592,6 +709,7 @@
 <div id="panel-receipt-form" class="panel"><div class="card">
   <div id="r-edit-banner" class="edit-document-banner" style="display:none"><span data-edit-label></span><button type="button" onclick="cancelDocumentEdit('receipt')">ยกเลิกการแก้ไข</button></div>
   <div class="card-title">🧾 ใบเสร็จรับเงิน</div>
+  <div class="form-quick-guide pink"><span class="guide-step active">1 เลือกใบส่งสินค้า</span><span class="guide-step">2 ตรวจยอดรับชำระ</span><span class="guide-step">3 บันทึก / PDF</span></div>
   <div class="fg">
     <div class="ff"><label>เลขที่ใบเสร็จ *</label><input type="text" id="r-no" placeholder="REC-2568-001"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="r-date"></div>
@@ -677,6 +795,7 @@
 <div id="panel-production-form" class="panel"><div class="card">
   <div id="p-edit-banner" class="edit-mode-banner" style="display:none"><span data-edit-label>กำลังแก้ไขรายการสั่งผลิต</span><button type="button" class="btn btn-ghost btn-sm" onclick="cancelDocumentEdit('production')">ยกเลิกการแก้ไข</button></div>
   <div class="card-title"><span>🏭 สั่งผลิตสินค้า</span><span class="section-hint">จัดรูปแบบเหมือนใบเสนอราคา / ใบเสร็จ เพื่อกรอกง่าย</span></div>
+  <div class="form-quick-guide"><span class="guide-step active">1 เลือกใบเสนอราคา</span><span class="guide-step">2 ผู้ผลิตและสินค้า</span><span class="guide-step">3 กำหนดส่ง / บันทึก</span></div>
   <div class="fg">
     <div class="ff"><label>เลขที่สั่งผลิต *</label><input type="text" id="p-no" placeholder="PRD-2568-001"></div>
     <div class="ff"><label>วันที่ *</label><input type="date" id="p-date" onchange="updateProductionSupplierDueDate();updateProductionDeliveryDueDate()"></div>
@@ -1167,7 +1286,7 @@
         </label>
       </div>
       <div class="import-json-note">
-        ไฟล์ฐานข้อมูลยอดขายจะนำเฉพาะรายการสถานะปกติที่มียอดขายไปใช้คำนวณใน <b>ยอดขาย</b> และช่วงเดือน 1–6 ปี พ.ศ. 2569 (ค.ศ. 2026) ระบบจะสะท้อนยอดเดียวกันไปเป็น <b>ยอดส่งสินค้า</b> บน Dashboard/Analytics โดยไม่สร้างเอกสารใบส่งสินค้าซ้ำ ส่วนข้อมูลดิบทั้งหมดจะเก็บใน Firebase collection <code>salesArchive</code>
+        ไฟล์ฐานข้อมูลยอดขายจะนำเฉพาะรายการสถานะปกติที่มียอดขายไปใช้คำนวณใน <b>ยอดขาย</b> และช่วงเดือน 1–6 ปี พ.ศ. 2569 ระบบจะสะท้อนยอดเดียวกันไปเป็น <b>ยอดส่งสินค้า</b> บน Dashboard/Analytics โดยไม่สร้างเอกสารใบส่งสินค้าซ้ำ ส่วนข้อมูลดิบทั้งหมดจะเก็บใน Firebase collection <code>salesArchive</code>
       </div>
       <div class="export-actions">
         <button class="btn btn-purple" onclick="exportAllExcel()">⬇ Excel รวมทุกปี</button>

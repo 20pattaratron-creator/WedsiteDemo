@@ -2014,3 +2014,13 @@
 .rcp-receipt-footer-box:last-child {
   border-radius: 2px;
 }
+
+
+/* User-friendly editor refinement */
+.rcp-form-section{transition:background .15s ease}
+.rcp-form-section:hover{background:rgba(248,251,255,.7)}
+.rcp-field:focus-within{padding:6px;border-radius:10px;background:#f8fbff;box-shadow:0 4px 12px rgba(8,104,201,.06)}
+.rcp-field input,.rcp-field select,.rcp-field textarea{min-height:42px;border-width:1.5px}
+.rcp-section-title{font-size:15px}
+.rcp-summary-box{min-height:48px}
+@media(max-width:760px){.rcp-grid-2,.rcp-grid-3,.rcp-grid-4{grid-template-columns:1fr!important}.rcp-span-2{grid-column:auto!important}}

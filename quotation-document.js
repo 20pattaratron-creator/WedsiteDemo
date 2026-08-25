@@ -20,16 +20,16 @@ const BRANCH_DEFAULTS = {
     companyNameTh: 'บริษัท ตัวอย่าง จำกัด',
     companyNameEn: 'EXAMPLE CO., LTD.',
     addressTh: '99/1 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000',
-    phone: '082-3160881, 089-4921941',
-    taxId: '0435548000010'
+    phone: '000-000-0000',
+    taxId: '0000000000000'
   },
   ubon: {
     label: 'สาขาสำนักงานใหญ่',
     companyNameTh: 'บริษัท ตัวอย่าง จำกัด',
     companyNameEn: 'EXAMPLE CO., LTD.',
     addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
-    phone: '0-4524-0661, 0-4524-0662',
-    taxId: '0345548000010'
+    phone: '000-000-0000',
+    taxId: '0000000000000'
   }
 };
 
@@ -51,7 +51,7 @@ function formatThaiDate(value) {
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
   if (Number.isNaN(date.getTime())) return escapeHtml(value);
   const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-  return `${date.getDate()} ${months[date.getMonth()]} พ.ศ. ${date.getFullYear() + 543} (ค.ศ. ${date.getFullYear()})`;
+  return `${date.getDate()} ${months[date.getMonth()]} พ.ศ. ${date.getFullYear() + 543}`;
 }
 
 function thaiIntegerText(num) {
