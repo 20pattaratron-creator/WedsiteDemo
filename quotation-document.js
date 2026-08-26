@@ -163,6 +163,9 @@ function infoHtml(quote) {
         <div class="qdoc-card-title"><span>●</span> ข้อมูลลูกค้า / Customer</div>
         <dl class="qdoc-data-list">
           <div><dt>ชื่อลูกค้า</dt><dd>${escapeHtml(quote.customer || '-')}</dd></div>
+          <div><dt>ที่อยู่</dt><dd>${escapeHtml(quote.customerAddress || quote.address || '-').replace(/\n/g,'<br>')}</dd></div>
+          <div><dt>เลขผู้เสียภาษี</dt><dd>${escapeHtml(quote.customerTaxId || '-')}</dd></div>
+          <div><dt>ผู้ติดต่อ</dt><dd>${escapeHtml(quote.contact || '-')}${quote.phone?` · ${escapeHtml(quote.phone)}`:''}</dd></div>
           <div><dt>ประเภทหน่วยงาน</dt><dd>${escapeHtml(agencyLabel(quote))}</dd></div>
         </dl>
       </div>

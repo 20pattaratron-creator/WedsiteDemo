@@ -80,6 +80,36 @@ service cloud.firestore {
       allow delete: if canAccessBranch(resource.data.branch);
     }
 
+    // Production-like operational collections
+    match /purchaseOrders/{docId} {
+      allow read: if canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch();
+      allow delete: if isAdmin();
+    }
+
+    match /goodsReceipts/{docId} {
+      allow read: if canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      allow update: if canUpdateSameBranch();
+      // Posted goods receipts should normally be reversed, not deleted.
+      allow delete: if isAdmin();
+    }
+
+    match /inventoryMovements/{docId} {
+      allow read: if canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      // Stock ledger is intended to be append-only in normal operation.
+      allow update, delete: if isAdmin();
+    }
+
+    match /auditLogs/{docId} {
+      allow read: if canAccessBranch(resource.data.branch);
+      allow create: if canCreateForBranch();
+      // Audit trail must not be editable by ordinary users.
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

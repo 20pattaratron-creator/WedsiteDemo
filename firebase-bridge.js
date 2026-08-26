@@ -19,10 +19,10 @@ import {
   writeBatch,
   setDoc
 } from "firebase/firestore";
-import { firebaseConfig } from "./firebase.config.js";
+import { firebaseConfig, isFirebaseConfigured, isDemoMode } from "./firebase.config.js";
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = isFirebaseConfigured ? (getApps().length ? getApp() : initializeApp(firebaseConfig)) : null;
+const db = app ? getFirestore(app) : null;
 
 
 // Calendar policy:
@@ -664,23 +664,83 @@ export async function repairLegacyBusinessCollections() {
   return stats;
 }
 
+
+// =====================================================================
+// Production-like operational collections: PO / Goods Receipt / Stock
+// =====================================================================
+const OPERATIONAL_COLLECTIONS = new Set(['purchaseOrders','goodsReceipts','inventoryMovements','auditLogs']);
+
+export async function saveOperationalRecord(collectionName, record = {}) {
+  if (!OPERATIONAL_COLLECTIONS.has(collectionName)) throw new Error('unsupported-operational-collection');
+  if (!db) throw new Error('Firebase ยังไม่พร้อมใช้งาน');
+  const profile = getCurrentProfile();
+  if (!profile?.uid) throw new Error('กรุณาเข้าสู่ระบบก่อน Sync ข้อมูล');
+  const effectiveBranch = profile.branch && profile.branch !== 'all'
+    ? profile.branch
+    : (record.branch || 'all');
+  const base = withUserMeta({ ...record, branch: effectiveBranch });
+  const calendar = base.date ? withThaiCalendarMeta(base, inferRecordYear(base) || new Date().getFullYear(), normalizeMonth(base).monthIndex) : base;
+  const clean = compactRecordForFirestore(calendar);
+  const recordId = String(record.id || deterministicImportDocId(collectionName, `${record.no || ''}-${Date.now()}`));
+  const ref = doc(db, collectionName, recordId);
+  await setDoc(ref, {
+    ...clean,
+    id: recordId,
+    branch: effectiveBranch,
+    updatedAtIso: new Date().toISOString(),
+    updatedAt: serverTimestamp(),
+    createdAtIso: record.createdAtIso || record.createdAt || new Date().toISOString()
+  }, { merge: true });
+  return { id: recordId };
+}
+
+export async function loadOperationalRecords(collectionName) {
+  if (!OPERATIONAL_COLLECTIONS.has(collectionName)) throw new Error('unsupported-operational-collection');
+  if (!db) return [];
+  const profile = getCurrentProfile();
+  if (!profile?.uid) throw new Error('กรุณาเข้าสู่ระบบก่อน Sync ข้อมูล');
+  const source = profile.branch && profile.branch !== 'all'
+    ? query(collection(db, collectionName), where('branch', '==', profile.branch))
+    : collection(db, collectionName);
+  const snapshot = await getDocs(source);
+  return snapshot.docs.map(d => ({ firebaseId: d.id, ...d.data() }));
+}
+
+export async function deleteOperationalRecord(collectionName, recordId) {
+  if (!OPERATIONAL_COLLECTIONS.has(collectionName)) throw new Error('unsupported-operational-collection');
+  if (!db) throw new Error('Firebase ยังไม่พร้อมใช้งาน');
+  await deleteDoc(doc(db, collectionName, String(recordId)));
+  return { deleted: 1 };
+}
+
 // ชื่อเดิมเพื่อรองรับหน้าเว็บที่ Cache JavaScript เก่าไว้ชั่วคราว
 export const repairMalformedHistoricalProductions = repairLegacyBusinessCollections;
 
 // ให้ app.js เดิมเรียกใช้งานได้โดยไม่ต้องแปลงทั้งไฟล์ทันที
-window.FirebaseService = {
-  saveProduction,
-  saveInvoice,
-  saveQuote,
-  saveReceipt,
-  saveIssuedInvoice,
-  saveIssuedReceipt,
-  saveExpense,
-  deleteBusinessDoc,
-  updateBusinessDoc,
-  loadCollectionByYear,
-  loadAllDashboardDataByYear,
-  importHistoricalSalesDataset,
-  repairMalformedHistoricalProductions,
-  repairLegacyBusinessCollections
-};
+if (isFirebaseConfigured && !isDemoMode) {
+  window.FirebaseService = {
+    configured: true,
+    saveProduction,
+    saveInvoice,
+    saveQuote,
+    saveReceipt,
+    saveIssuedInvoice,
+    saveIssuedReceipt,
+    saveExpense,
+    deleteBusinessDoc,
+    updateBusinessDoc,
+    loadCollectionByYear,
+    loadAllDashboardDataByYear,
+    importHistoricalSalesDataset,
+    repairMalformedHistoricalProductions,
+    repairLegacyBusinessCollections,
+    saveOperationalRecord,
+    loadOperationalRecords,
+    deleteOperationalRecord
+  };
+} else {
+  // Keep app.js in local-browser mode instead of exposing methods that would
+  // fail because no Firestore instance exists.
+  window.FirebaseService = { configured: false };
+  console.warn('[Comform ERP] FirebaseService disabled for local/demo mode or missing VITE_FIREBASE_* configuration.');
+}

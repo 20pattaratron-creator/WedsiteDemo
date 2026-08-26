@@ -22,12 +22,12 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { firebaseConfig } from "./firebase.config.js";
+import { firebaseConfig, isFirebaseConfigured, isDemoMode, missingFirebaseEnv } from "./firebase.config.js";
 import logoUrl from "./logo.png";
 
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const app = isFirebaseConfigured ? (getApps().length ? getApps()[0] : initializeApp(firebaseConfig)) : null;
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
 
 let currentProfile = null;
 
@@ -171,7 +171,7 @@ function renderUserBar(profile, email) {
     <span>👤 ${profile?.displayName || email} · ${branchLabel}</span>
     <button id="auth-logout-btn">ออกจากระบบ</button>
   `;
-  document.getElementById("auth-logout-btn").addEventListener("click", () => signOut(auth));
+  document.getElementById("auth-logout-btn").addEventListener("click", () => auth && signOut(auth));
 }
 
 function showApp() {
@@ -196,46 +196,75 @@ function hideApp() {
 }
 
 async function loadUserProfile(uid) {
+  if (!db) return null;
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? snap.data() : null;
 }
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    currentProfile = null;
-    hideApp();
-    if (!document.getElementById("auth-overlay")) renderLoginScreen();
-    return;
-  }
-
+function activateLocalDemoMode(reason = 'demo') {
+  currentProfile = {
+    uid: 'local-demo',
+    email: 'demo@local',
+    displayName: 'Demo',
+    branch: 'all',
+    localDemo: true
+  };
+  window.CurrentUser = currentProfile;
+  removeLoginScreen();
+  showApp();
+  document.body.classList.add('firebase-local-mode');
   try {
-    const profile = await loadUserProfile(user.uid);
-    if (!profile) {
-      document.getElementById("auth-error") &&
-        (document.getElementById("auth-error").textContent =
-          "บัญชีนี้ยังไม่ได้ผูกสาขา กรุณาติดต่อผู้ดูแลระบบ");
-      await signOut(auth);
+    window.dispatchEvent(new CustomEvent('comform-auth-ready', { detail: currentProfile }));
+  } catch (_) {}
+  console.info('[Comform ERP] Local/demo mode active:', reason);
+}
+
+if (isFirebaseConfigured && !isDemoMode) {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      currentProfile = null;
+      hideApp();
+      if (!document.getElementById("auth-overlay")) renderLoginScreen();
       return;
     }
-    currentProfile = { uid: user.uid, email: user.email, ...profile };
-    window.CurrentUser = currentProfile;
-    removeLoginScreen();
-    renderUserBar(profile, user.email);
-    showApp();
-    window.dispatchEvent(new CustomEvent("comform-auth-ready", { detail: currentProfile }));
-  } catch (err) {
-    console.error("โหลดโปรไฟล์ผู้ใช้ล้มเหลว:", err);
-    hideApp();
-  }
-});
 
-// แสดงหน้า Login ทันทีตอนเริ่มโหลดหน้าเว็บ ก่อนรู้สถานะ login
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    if (!document.getElementById("auth-overlay")) renderLoginScreen();
+    try {
+      const profile = await loadUserProfile(user.uid);
+      if (!profile) {
+        document.getElementById("auth-error") &&
+          (document.getElementById("auth-error").textContent =
+            "บัญชีนี้ยังไม่ได้ผูกสาขา กรุณาติดต่อผู้ดูแลระบบ");
+        await signOut(auth);
+        return;
+      }
+      currentProfile = { uid: user.uid, email: user.email, ...profile };
+      window.CurrentUser = currentProfile;
+      removeLoginScreen();
+      renderUserBar(profile, user.email);
+      showApp();
+      window.dispatchEvent(new CustomEvent("comform-auth-ready", { detail: currentProfile }));
+    } catch (err) {
+      console.error("โหลดโปรไฟล์ผู้ใช้ล้มเหลว:", err);
+      hideApp();
+    }
   });
+
+  // แสดงหน้า Login ทันทีตอนเริ่มโหลดหน้าเว็บ ก่อนรู้สถานะ login
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!document.getElementById("auth-overlay")) renderLoginScreen();
+    });
+  } else {
+    renderLoginScreen();
+  }
 } else {
-  renderLoginScreen();
+  // Vercel-safe fallback: do not leave the whole UI frozen if env is missing.
+  const reason = isDemoMode ? 'VITE_DEMO_MODE=true' : `missing Firebase env: ${missingFirebaseEnv.join(', ')}`;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => activateLocalDemoMode(reason), { once: true });
+  } else {
+    activateLocalDemoMode(reason);
+  }
 }
 
 window.ComformAuth = { auth, getCurrentProfile: () => currentProfile };
