@@ -87,7 +87,8 @@ function bahtText(value) {
 }
 
 function storageKey(branch, year, month) {
-  return `biz2_${branch}_${year}_${String(Number(month) + 1).padStart(2, '0')}`;
+  const base = `biz2_${branch}_${year}_${String(Number(month) + 1).padStart(2, '0')}`;
+  return window.ComformTenant?.storageKey?.(base) || base;
 }
 
 function loadQuote(branch, year, month, id) {
@@ -104,7 +105,20 @@ function loadQuote(branch, year, month, id) {
 }
 
 function branchInfo(branch) {
-  return BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.ubon;
+  const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.ubon;
+  const profile = window.CurrentUser?.companyProfile || {};
+  const branchProfile = profile?.branches?.[branch] || {};
+  const tenantName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || '';
+  return {
+    ...fallback,
+    ...branchProfile,
+    companyNameTh: branchProfile.companyNameTh || branchProfile.nameTh || profile.companyNameTh || profile.nameTh || tenantName || fallback.companyNameTh,
+    companyNameEn: branchProfile.companyNameEn || branchProfile.nameEn || profile.companyNameEn || profile.nameEn || fallback.companyNameEn,
+    addressTh: branchProfile.addressTh || profile.addressTh || fallback.addressTh,
+    phone: branchProfile.phone || profile.phone || fallback.phone,
+    taxId: branchProfile.taxId || profile.taxId || fallback.taxId,
+    label: branchProfile.label || branchProfile.name || fallback.label
+  };
 }
 
 function agencyLabel(quote) {
@@ -137,7 +151,7 @@ function headerHtml(quote, pageNo, totalPages, copyType = QUOTE_COPY_TYPES[0]) {
   return `
     <header class="qdoc-header">
       <div class="qdoc-brand-block">
-        <img class="qdoc-logo" src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท ตัวอย่าง จำกัด">
+        <img class="qdoc-logo" src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
         <div class="qdoc-company-copy">
           <div class="qdoc-company-th">${escapeHtml(branch.companyNameTh)}</div>
           <div class="qdoc-company-en">${escapeHtml(branch.companyNameEn)}</div>
@@ -294,7 +308,7 @@ function mountFeature() {
       <div class="qdoc-toolbar">
         <div class="qdoc-toolbar-brand">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้">
-          <div><small>บริษัท ตัวอย่าง จำกัด</small><h2>ใบเสนอราคา / Quotation</h2><p>ใช้ข้อมูลเดิมจากฟอร์มใบเสนอราคา โดยไม่เพิ่มขั้นตอนการกรอก</p></div>
+          <div><small>${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</small><h2>ใบเสนอราคา / Quotation</h2><p>ใช้ข้อมูลเดิมจากฟอร์มใบเสนอราคา โดยไม่เพิ่มขั้นตอนการกรอก</p></div>
         </div>
         <div class="qdoc-toolbar-actions">
           <button type="button" class="qdoc-btn" data-qdoc-action="back">← กลับใบเสนอราคา</button>

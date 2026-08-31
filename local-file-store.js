@@ -8,6 +8,8 @@ const DB_NAME = "comform-local-files";
 const DB_VERSION = 1;
 const STORE_NAME = "attachments";
 
+function activeTenantId() { return window.ComformTenant?.getActiveTenantId?.() || "anonymous"; }
+
 function openLocalFileDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -74,8 +76,10 @@ export async function saveLocalAttachment(file, record = {}, moduleName = "misc"
   const db = await openLocalFileDb();
   const normalized = await normalizeAttachmentFile(file);
 
+  const tenantId = activeTenantId();
   const id = [
     "local",
+    safeFileName(tenantId),
     safeFileName(moduleName),
     safeFileName(record.branch || "unknown"),
     safeFileName(record.no || record.id || Date.now()),
@@ -88,6 +92,7 @@ export async function saveLocalAttachment(file, record = {}, moduleName = "misc"
     name: normalized.name,
     type: normalized.type,
     size: normalized.size,
+    tenantId,
     moduleName,
     docNo: record.no || "",
     branch: record.branch || "",
@@ -124,11 +129,22 @@ export async function getLocalAttachmentUrl(localId) {
   });
 
   if (!item?.blob) return null;
+  if (item.tenantId && item.tenantId !== activeTenantId()) {
+    console.warn('ปฏิเสธการเปิดไฟล์ Local ของบริษัทอื่น');
+    return null;
+  }
   return URL.createObjectURL(item.blob);
 }
 
 export async function deleteLocalAttachment(localId) {
   const db = await openLocalFileDb();
+  const existing = await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const request = tx.objectStore(STORE_NAME).get(localId);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  if (existing?.tenantId && existing.tenantId !== activeTenantId()) throw new Error('ไม่มีสิทธิ์ลบไฟล์ของบริษัทอื่น');
 
   await new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");

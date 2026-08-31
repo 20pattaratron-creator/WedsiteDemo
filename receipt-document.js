@@ -5,6 +5,10 @@ const html2canvas = (...args) => {
 const jsPDF = window.jspdf?.jsPDF;
 
 const RCP_STORAGE_KEY = 'comform_receipt_document_draft_v1';
+const tenantStorageKey = key => window.ComformTenant?.storageKey?.(key) || key;
+const businessStorageKey = (branch,year,month) => tenantStorageKey(`biz2_${branch}_${year}_${String(Number(month)+1).padStart(2,'0')}`);
+const activeTenantPrefix = () => `erp_tenant::${window.ComformTenant?.getActiveTenantId?.() || 'anonymous'}::`;
+const unwrapActiveTenantKey = key => String(key||'').startsWith(activeTenantPrefix()) ? String(key).slice(activeTenantPrefix().length) : '';
 const MAX_ITEMS = 60;
 const ITEM_UNITS_PER_PAGE = 8;
 const BLUE = '#0868c9';
@@ -32,6 +36,25 @@ const BRANCH_DEFAULTS = {
     taxId: '0000000000000'
   }
 };
+
+
+function branchCompany(branch) {
+  const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.khonkaen;
+  const profile = window.CurrentUser?.companyProfile || {};
+  const branchProfile = profile?.branches?.[branch] || {};
+  const tenantName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || '';
+  return {
+    ...fallback,
+    ...branchProfile,
+    companyNameTh: branchProfile.companyNameTh || branchProfile.nameTh || profile.companyNameTh || profile.nameTh || tenantName || fallback.companyNameTh,
+    companyNameEn: branchProfile.companyNameEn || branchProfile.nameEn || profile.companyNameEn || profile.nameEn || fallback.companyNameEn,
+    addressTh: branchProfile.addressTh || profile.addressTh || fallback.addressTh,
+    addressEn: branchProfile.addressEn || profile.addressEn || fallback.addressEn,
+    phone: branchProfile.phone || profile.phone || fallback.phone,
+    taxId: branchProfile.taxId || profile.taxId || fallback.taxId,
+    label: branchProfile.label || branchProfile.name || fallback.label
+  };
+}
 
 const PAGE_TYPES = [
   {
@@ -74,7 +97,7 @@ function createDefaultState() {
   return {
     previewOnly: false,
     branch: 'khonkaen',
-    company: { ...BRANCH_DEFAULTS.khonkaen },
+    company: { ...branchCompany('khonkaen') },
     customerName: '',
     customerAddress: '',
     customerTaxId: '',
@@ -238,12 +261,12 @@ function getLockedBranch() {
 
 function loadDraft() {
   try {
-    const saved = JSON.parse(localStorage.getItem(RCP_STORAGE_KEY) || 'null');
+    const saved = JSON.parse(localStorage.getItem(tenantStorageKey(RCP_STORAGE_KEY)) || 'null');
     if (saved && typeof saved === 'object') {
       state = {
         ...createDefaultState(),
         ...saved,
-        company: { ...BRANCH_DEFAULTS[saved.branch || 'khonkaen'], ...(saved.company || {}) },
+        company: { ...branchCompany(saved.branch || 'khonkaen'), ...(saved.company || {}) },
         items: Array.isArray(saved.items) && saved.items.length ? saved.items.slice(0, MAX_ITEMS).map(item => ({ ...createItem(), ...item })) : [createItem()]
       };
     }
@@ -253,13 +276,13 @@ function loadDraft() {
   const lockedBranch = getLockedBranch();
   if (lockedBranch && BRANCH_DEFAULTS[lockedBranch]) {
     state.branch = lockedBranch;
-    state.company = { ...BRANCH_DEFAULTS[lockedBranch], ...state.company, label: BRANCH_DEFAULTS[lockedBranch].label };
+    state.company = { ...branchCompany(lockedBranch), ...state.company, label: branchCompany(lockedBranch).label };
   }
 }
 
 function persistDraft() {
   try {
-    localStorage.setItem(RCP_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(tenantStorageKey(RCP_STORAGE_KEY), JSON.stringify(state));
   } catch (error) {
     console.warn('บันทึกร่างเอกสารไม่สำเร็จ', error);
   }
@@ -309,7 +332,7 @@ function loadFromReceipt(receipt = {}, ref = {}) {
   const branch = ref.b || receipt.branch || state.branch || 'khonkaen';
   if (BRANCH_DEFAULTS[branch]) {
     state.branch = branch;
-    state.company = { ...BRANCH_DEFAULTS[branch] };
+    state.company = { ...branchCompany(branch) };
   }
   state.customerName = receipt.customer || '';
   state.docNo = receipt.no || state.docNo;
@@ -353,7 +376,7 @@ function renderAppShell() {
         <div class="rcp-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="rcp-company-mini">บริษัท ตัวอย่าง จำกัด</div>
+            <div class="rcp-company-mini">${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
             <h2>ออกใบเสร็จรับเงิน</h2>
           </div>
         </div>
@@ -478,8 +501,9 @@ function readLocalIssuedInvoices(year) {
   const seen = new Set();
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key || !key.startsWith('biz2_')) continue;
-    const parts = key.split('_');
+    const baseKey = unwrapActiveTenantKey(key);
+    if (!baseKey || !baseKey.startsWith('biz2_')) continue;
+    const parts = baseKey.split('_');
     if (Number(parts[2]) !== Number(year)) continue;
     try {
       const pack = JSON.parse(localStorage.getItem(key) || '{}');
@@ -556,7 +580,7 @@ function applyInvoiceToReceipt(invoice) {
   const data = invoice.documentData || {};
   const branch = invoice.branch || data.branch || state.branch;
   state.branch = BRANCH_DEFAULTS[branch] ? branch : state.branch;
-  state.company = { ...(BRANCH_DEFAULTS[state.branch] || state.company), ...(data.company || {}) };
+  state.company = { ...branchCompany(state.branch), ...(data.company || {}) };
   state.customerName = data.customerName || invoice.customer || '';
   state.customerAddress = data.customerAddress || '';
   state.customerTaxId = data.customerTaxId || '';
@@ -596,7 +620,8 @@ function receiptExistsForSourceInvoice(invoiceNo, currentReceiptNo = '') {
   if (!invoiceNo) return false;
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key || !key.startsWith('biz2_')) continue;
+    const baseKey = unwrapActiveTenantKey(key);
+    if (!baseKey || !baseKey.startsWith('biz2_')) continue;
     try {
       const pack = JSON.parse(localStorage.getItem(key) || '{}');
       const duplicate = (pack.issuedReceipts || []).some(receipt =>
@@ -824,7 +849,7 @@ function bindEvents() {
     if (field === 'branch') {
       const branch = event.target.value;
       state.branch = branch;
-      state.company = { ...BRANCH_DEFAULTS[branch] };
+      state.company = { ...branchCompany(branch) };
       persistDraft();
       renderAppShell();
       bindEvents();
@@ -896,7 +921,7 @@ function setBranch(branch) {
   }
   if (state.branch === branch) return;
   state.branch = branch;
-  state.company = { ...BRANCH_DEFAULTS[branch] };
+  state.company = { ...branchCompany(branch) };
   persistDraft();
   renderAppShell();
   bindEvents();
@@ -909,7 +934,7 @@ function applyLockedBranch() {
   if (!locked) return;
   if (state.branch !== locked) {
     state.branch = locked;
-    state.company = { ...BRANCH_DEFAULTS[locked] };
+    state.company = { ...branchCompany(locked) };
     persistDraft();
     renderAppShell();
     bindEvents();
@@ -1061,7 +1086,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
   `).join('');
   const emptyUnits = Math.max(0, ITEM_UNITS_PER_PAGE - Number(chunk.usedUnits || 0));
   const emptyHtml = Array.from({ length: emptyUnits }, () => '<tr class="empty"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-  const company = state.company || BRANCH_DEFAULTS[state.branch] || BRANCH_DEFAULTS.khonkaen;
+  const company = state.company || branchCompany(state.branch);
   const logoSrc = pdfMode && pdfLogoDataUrl ? pdfLogoDataUrl : COMPANY_LOGO_URL;
   const pageCounter = totalPages > 1 ? `<span class="rcp-doc-page-counter">หน้ารายการ ${pageNumber}/${totalPages}</span>` : '';
   const subtotalText = isFinalPage ? fmt(sum.subtotal) : '';
@@ -1076,7 +1101,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
       </div>
       <header class="rcp-doc-header">
         <div class="rcp-doc-company">
-          <img src="${logoSrc}" alt="Example Company" crossorigin="anonymous" decoding="sync">
+          <img src="${logoSrc}" alt="Company Logo" crossorigin="anonymous" decoding="sync">
           <div>
             <div class="rcp-doc-company-th">${escapeHtml(company.companyNameTh)}</div>
             <div class="rcp-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
@@ -1140,7 +1165,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
         <img class="rcp-doc-watermark" src="${logoSrc}" alt="" crossorigin="anonymous" decoding="sync">
         <div class="rcp-doc-bottom-area">
           <div class="rcp-doc-payment-note">
-            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท ตัวอย่าง จำกัด</b></div>
+            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>${escapeHtml(company.companyNameTh || window.CurrentUser?.tenantName || 'บริษัท')}</b></div>
             <div>ได้รับชำระเงินตามรายการข้างต้นเรียบร้อยแล้ว</div>
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
             ${!isFinalPage ? `<div class="rcp-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
@@ -1256,7 +1281,7 @@ async function saveDocumentToSystem(button) {
     // วันที่บนเอกสารเป็นข้อมูลไม่บังคับ แต่ระบบยังต้องมีปี/เดือนสำหรับจัดเก็บและซิงก์
     // หากไม่ระบุวันที่ จะใช้เดือนปัจจุบันเป็นตำแหน่งจัดเก็บ โดยช่องวันที่ในเอกสารยังคงว่าง
     const { year, month } = resolveStoragePeriod(state.date);
-    const key = `biz2_${state.branch}_${year}_${String(month + 1).padStart(2, '0')}`;
+    const key = businessStorageKey(state.branch, year, month);
     const pack = JSON.parse(localStorage.getItem(key) || '{"quotes":[],"invoices":[],"receipts":[],"issuedInvoices":[],"issuedReceipts":[],"expenses":[],"productions":[]}');
     pack.issuedReceipts ||= [];
     const sum = totals();
@@ -1324,7 +1349,7 @@ async function saveDocumentToSystem(button) {
     // เชื่อมเอกสารที่พิมพ์กลับไปยังข้อมูลใบเสร็จต้นทาง เพื่อให้ผู้ใช้เห็นเป็นเอกสารเดียว
     if (state.sourceReceiptNo && state.sourceReceiptBranch && state.sourceReceiptYear !== '' && state.sourceReceiptMonth !== '') {
       try {
-        const sourceKey = `biz2_${state.sourceReceiptBranch}_${Number(state.sourceReceiptYear)}_${String(Number(state.sourceReceiptMonth) + 1).padStart(2, '0')}`;
+        const sourceKey = businessStorageKey(state.sourceReceiptBranch, Number(state.sourceReceiptYear), Number(state.sourceReceiptMonth));
         const sourcePack = JSON.parse(localStorage.getItem(sourceKey) || '{}');
         const sourceReceipt = (sourcePack.receipts || []).find(row => String(row.id) === String(state.sourceReceiptId) || String(row.no) === String(state.sourceReceiptNo));
         if (sourceReceipt) {
@@ -1527,7 +1552,7 @@ function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
   const branch = ref.b || receipt.branch || previewState.branch || 'khonkaen';
   if (BRANCH_DEFAULTS[branch]) {
     previewState.branch = branch;
-    previewState.company = { ...BRANCH_DEFAULTS[branch] };
+    previewState.company = { ...branchCompany(branch) };
   }
   previewState.customerName = receipt.customer || '';
   previewState.customerAddress = receipt.customerAddress || receipt.address || '';

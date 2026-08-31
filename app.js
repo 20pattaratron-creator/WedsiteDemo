@@ -106,6 +106,7 @@ function invoiceNetSales(doc={}){
 const MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const UNITS=['กล่อง','ชุด','เครื่อง','ดวง','ม้วน','ตลับ','อัน','แผ่น','ขวด','ถุง','เล่ม','ซอง','อื่น ๆ'];
 const BRANCH_TH={khonkaen:'สาขาที่ 00001',ubon:'สาขาสำนักงานใหญ่'};
+function tenantLocalKey(base){return window.ComformTenant?.storageKey?.(base)||String(base||'');}
 
 // ============================================================
 // PRODUCT MASTER — รายชื่อสินค้าตัวอย่างสำหรับ Auto-complete และ Product Analytics
@@ -154,10 +155,60 @@ function defaultProductFulfillment(row={}){
   return'stock';
 }
 function readLocalMaster(key,fallback=[]){
-  try{const raw=localStorage.getItem(key);const data=raw?JSON.parse(raw):fallback;return Array.isArray(data)?data:fallback;}catch(err){console.warn('อ่าน Master Data ไม่สำเร็จ',key,err);return fallback;}
+  try{const raw=localStorage.getItem(tenantLocalKey(key));const data=raw?JSON.parse(raw):fallback;return Array.isArray(data)?data:fallback;}catch(err){console.warn('อ่าน Master Data ไม่สำเร็จ',key,err);return fallback;}
 }
-function writeLocalMaster(key,rows){
-  try{localStorage.setItem(key,JSON.stringify(rows||[]));return true;}catch(err){console.error('บันทึก Master Data ไม่สำเร็จ',key,err);notify('บันทึกข้อมูลหลักลงเครื่องไม่สำเร็จ: '+(err?.message||err));return false;}
+let masterCloudSyncTimer=null;
+let masterCloudReady=false;
+function localMasterSnapshot(){
+  return{
+    contacts:readLocalMaster(CONTACT_MASTER_KEY,[]),
+    products:readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[])
+  };
+}
+function queueMasterCloudSync(){
+  if(!masterCloudReady)return;
+  clearTimeout(masterCloudSyncTimer);
+  masterCloudSyncTimer=setTimeout(()=>{
+    const service=window.FirebaseService;
+    if(!service?.configured||typeof service.saveMasterSnapshot!=='function')return;
+    service.saveMasterSnapshot(localMasterSnapshot()).catch(err=>console.warn('Sync Master Data ไป Firebase ไม่สำเร็จ',err));
+  },350);
+}
+function writeLocalMaster(key,rows,options={}){
+  try{
+    localStorage.setItem(tenantLocalKey(key),JSON.stringify(rows||[]));
+    if(!options.skipCloud)queueMasterCloudSync();
+    return true;
+  }catch(err){console.error('บันทึก Master Data ไม่สำเร็จ',key,err);notify('บันทึกข้อมูลหลักลงเครื่องไม่สำเร็จ: '+(err?.message||err));return false;}
+}
+function mergeMasterRows(localRows=[],cloudRows=[],kind='contact'){
+  const keyOf=row=>kind==='product'?normalizeProductKey(row?.code||row?.name):String(row?.id||normalizeProductKey(row?.name));
+  const map=new Map();
+  [...localRows,...cloudRows].forEach(row=>{
+    if(!row)return;const key=keyOf(row);if(!key)return;
+    const current=map.get(key);
+    const curTime=Date.parse(current?.updatedAt||current?.createdAt||0)||0;
+    const rowTime=Date.parse(row?.updatedAt||row?.createdAt||0)||0;
+    if(!current||rowTime>=curTime)map.set(key,{...current,...row});
+  });
+  return[...map.values()];
+}
+async function hydrateTenantMasterFromCloud(){
+  const service=window.FirebaseService;
+  if(!service?.configured||typeof service.loadMasterSnapshot!=='function')return false;
+  try{
+    const cloud=await service.loadMasterSnapshot();
+    if(Array.isArray(cloud.contacts)&&cloud.contacts.length){
+      writeLocalMaster(CONTACT_MASTER_KEY,mergeMasterRows(readLocalMaster(CONTACT_MASTER_KEY,[]),cloud.contacts,'contact'),{skipCloud:true});
+    }
+    if(Array.isArray(cloud.products)&&cloud.products.length){
+      writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,mergeMasterRows(readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),cloud.products,'product'),{skipCloud:true});
+    }
+    masterCloudReady=true;
+    refreshContactMasterDatalists?.();initProductMasterDatalist?.();renderMasterData?.();
+    queueMasterCloudSync();
+    return true;
+  }catch(err){masterCloudReady=true;console.warn('โหลด Master Data ของบริษัทจาก Firebase ไม่สำเร็จ',err);return false;}
 }
 function productMasterRows(){
   const local=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]);
@@ -323,7 +374,7 @@ function productFulfillmentBadge(v){const cls=v==='stock'?'b-green':v==='made_to
 function productSoldQty(product,branch=''){
   const targetCode=normalizeProductKey(product.code),targetName=normalizeProductKey(product.name);let qty=0;
   const years=typeof allYears==='function'?allYears():[now.getFullYear()];
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   branches.forEach(br=>years.forEach(year=>{for(let month=0;month<12;month++){const pack=loadFor(br,year,month);(pack.invoices||[]).filter(inv=>!inv.voided&&!inv.cancelled).forEach(inv=>(inv.items||[]).forEach(item=>{const code=normalizeProductKey(item.productCode),name=normalizeProductKey(item.product);if((targetCode&&code===targetCode)||(!targetCode&&name===targetName)||(targetName&&name===targetName))qty+=safeNum(item.qty);}));}}));
   return roundMoneyValue(qty);
 }
@@ -340,13 +391,13 @@ function syncProductFulfillmentFromFlowType(){const flow=document.getElementById
 function resetCustomerMasterForm(){masterEditState.customer='';['md-c-name','md-c-tax','md-c-branch-name','md-c-branch-code','md-c-address','md-c-postal','md-c-contact','md-c-phone','md-c-email','md-c-credit','md-c-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-c-entity','company');setInputValue('md-c-role','customer');}
 function resetSupplierMasterForm(){masterEditState.supplier='';['md-s-name','md-s-tax','md-s-address','md-s-contact','md-s-phone','md-s-email','md-s-lead','md-s-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-s-entity','company');setInputValue('md-s-role','supplier');setInputValue('md-s-credit','cash');}
 function resetProductMasterForm(){masterEditState.product='';['md-p-code','md-p-name','md-p-category','md-p-opening','md-p-opening-ub','md-p-opening-kk','md-p-standard-cost','md-p-reorder','md-p-supplier'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-p-flow-type','inventory');setInputValue('md-p-fulfillment','stock');setInputValue('md-p-unit','กล่อง');}
-function saveCustomerMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-c-name');if(!name)return notify('กรุณากรอกชื่อลูกค้า');upsertContactMaster({id:masterEditState.customer||'',name,role:document.getElementById('md-c-role')?.value||'customer',entityType:document.getElementById('md-c-entity')?.value||'company',taxId:v('md-c-tax'),branchName:v('md-c-branch-name'),branchCode:v('md-c-branch-code'),address:v('md-c-address'),postalCode:v('md-c-postal'),contactPerson:v('md-c-contact'),phone:v('md-c-phone'),email:v('md-c-email'),creditDays:safeNum(v('md-c-credit')),note:v('md-c-note')});resetCustomerMasterForm();notify('บันทึกลูกค้าไว้ในเครื่องแล้ว');}
-function saveSupplierMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-s-name');if(!name)return notify('กรุณากรอกชื่อผู้จำหน่าย / ผู้ผลิต');const lead=v('md-s-lead').split(',').map(x=>Number(x.trim())).filter(x=>x>0);upsertContactMaster({id:masterEditState.supplier||'',name,role:document.getElementById('md-s-role')?.value||'supplier',entityType:document.getElementById('md-s-entity')?.value||'company',taxId:v('md-s-tax'),address:v('md-s-address'),contactPerson:v('md-s-contact'),phone:v('md-s-phone'),email:v('md-s-email'),supplierCreditTerm:document.getElementById('md-s-credit')?.value||'cash',supplierLeadDays:lead,note:v('md-s-note')});resetSupplierMasterForm();notify('บันทึกผู้จำหน่าย / ผู้ผลิตไว้ในเครื่องแล้ว');}
-function saveProductMasterLocal(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const code=v('md-p-code'),name=v('md-p-name');if(!code||!name)return notify('กรุณากรอกรหัสสินค้าและชื่อสินค้า');const rows=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]);const key=normalizeProductKey(masterEditState.product||code);const idx=rows.findIndex(r=>normalizeProductKey(r.code||r.name)===key);const openingStockUbon=safeNum(v('md-p-opening-ub')||v('md-p-opening')),openingStockKhonkaen=safeNum(v('md-p-opening-kk'));const row={id:idx>=0?rows[idx].id:`product-${Date.now()}`,code,name,category:v('md-p-category')||'อื่น ๆ',unit:document.getElementById('md-p-unit')?.value||'ชิ้น',flowType:document.getElementById('md-p-flow-type')?.value||'inventory',fulfillmentType:document.getElementById('md-p-fulfillment')?.value||'stock',openingStockUbon,openingStockKhonkaen,openingStock:openingStockUbon+openingStockKhonkaen,reorderPoint:safeNum(v('md-p-reorder')),standardCost:safeNum(v('md-p-standard-cost')),defaultSupplier:v('md-p-supplier'),updatedAt:new Date().toISOString()};if(idx>=0)rows[idx]={...rows[idx],...row};else rows.push(row);writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);window.ERPProductionCore?.audit?.(idx>=0?'update':'create','product',code,`${idx>=0?'แก้ไข':'บันทึก'} Product Master: ${name}`);resetProductMasterForm();initProductMasterDatalist();renderMasterData();notify('บันทึก Product Master ไว้ในเครื่องแล้ว');}
+function saveCustomerMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-c-name');if(!name)return notify('กรุณากรอกชื่อลูกค้า');upsertContactMaster({id:masterEditState.customer||'',name,role:document.getElementById('md-c-role')?.value||'customer',entityType:document.getElementById('md-c-entity')?.value||'company',taxId:v('md-c-tax'),branchName:v('md-c-branch-name'),branchCode:v('md-c-branch-code'),address:v('md-c-address'),postalCode:v('md-c-postal'),contactPerson:v('md-c-contact'),phone:v('md-c-phone'),email:v('md-c-email'),creditDays:safeNum(v('md-c-credit')),note:v('md-c-note')});resetCustomerMasterForm();notify('บันทึกลูกค้าแล้วใน Browser เครื่องนี้ (Local Demo)','success');}
+function saveSupplierMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-s-name');if(!name)return notify('กรุณากรอกชื่อผู้จำหน่าย / ผู้ผลิต');const lead=v('md-s-lead').split(',').map(x=>Number(x.trim())).filter(x=>x>0);upsertContactMaster({id:masterEditState.supplier||'',name,role:document.getElementById('md-s-role')?.value||'supplier',entityType:document.getElementById('md-s-entity')?.value||'company',taxId:v('md-s-tax'),address:v('md-s-address'),contactPerson:v('md-s-contact'),phone:v('md-s-phone'),email:v('md-s-email'),supplierCreditTerm:document.getElementById('md-s-credit')?.value||'cash',supplierLeadDays:lead,note:v('md-s-note')});resetSupplierMasterForm();notify('บันทึกผู้จำหน่าย / ผู้ผลิตแล้วใน Browser เครื่องนี้ (Local Demo)','success');}
+function saveProductMasterLocal(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const code=v('md-p-code'),name=v('md-p-name');if(!code||!name)return notify('กรุณากรอกรหัสสินค้าและชื่อสินค้า');const rows=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]);const key=normalizeProductKey(masterEditState.product||code);const idx=rows.findIndex(r=>normalizeProductKey(r.code||r.name)===key);const openingStockUbon=safeNum(v('md-p-opening-ub')||v('md-p-opening')),openingStockKhonkaen=safeNum(v('md-p-opening-kk'));const row={id:idx>=0?rows[idx].id:`product-${Date.now()}`,code,name,category:v('md-p-category')||'อื่น ๆ',unit:document.getElementById('md-p-unit')?.value||'ชิ้น',flowType:document.getElementById('md-p-flow-type')?.value||'inventory',fulfillmentType:document.getElementById('md-p-fulfillment')?.value||'stock',openingStockUbon,openingStockKhonkaen,openingStock:openingStockUbon+openingStockKhonkaen,reorderPoint:safeNum(v('md-p-reorder')),standardCost:safeNum(v('md-p-standard-cost')),defaultSupplier:v('md-p-supplier'),updatedAt:new Date().toISOString()};if(idx>=0)rows[idx]={...rows[idx],...row};else rows.push(row);writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);window.ERPProductionCore?.audit?.(idx>=0?'update':'create','product',code,`${idx>=0?'แก้ไข':'บันทึก'} Product Master: ${name}`);resetProductMasterForm();initProductMasterDatalist();renderMasterData();notify('บันทึก Product Master แล้วใน Browser เครื่องนี้ (Local Demo)','success');}
 function editContactMaster(id,mode){const row=contactMasterRows().find(r=>String(r.id)===String(id));if(!row)return;if(mode==='customer'){masterEditState.customer=row.id;setInputValue('md-c-name',row.name);setInputValue('md-c-entity',row.entityType||'company');setInputValue('md-c-role',row.role==='both'?'both':'customer');setInputValue('md-c-tax',row.taxId);setInputValue('md-c-branch-name',row.branchName);setInputValue('md-c-branch-code',row.branchCode);setInputValue('md-c-address',row.address);setInputValue('md-c-postal',row.postalCode);setInputValue('md-c-contact',row.contactPerson);setInputValue('md-c-phone',row.phone);setInputValue('md-c-email',row.email);setInputValue('md-c-credit',row.creditDays);setInputValue('md-c-note',row.note);}else{masterEditState.supplier=row.id;setInputValue('md-s-name',row.name);setInputValue('md-s-entity',row.entityType||'company');setInputValue('md-s-role',row.role==='both'?'both':'supplier');setInputValue('md-s-tax',row.taxId);setInputValue('md-s-address',row.address);setInputValue('md-s-contact',row.contactPerson);setInputValue('md-s-phone',row.phone);setInputValue('md-s-email',row.email);setInputValue('md-s-credit',row.supplierCreditTerm||'cash');setInputValue('md-s-lead',(row.supplierLeadDays||[]).join(','));setInputValue('md-s-note',row.note);}}
-function deleteContactMaster(id){if(!confirm('ลบข้อมูลผู้ติดต่อนี้ออกจากเครื่องใช่หรือไม่?'))return;writeLocalMaster(CONTACT_MASTER_KEY,contactMasterRows().filter(r=>String(r.id)!==String(id)));refreshContactMasterDatalists();renderMasterData();}
+function deleteContactMaster(id){if(!confirm('ลบข้อมูลผู้ติดต่อนี้ใช่หรือไม่?'))return;const rows=contactMasterRows(),target=rows.find(r=>String(r.id)===String(id));writeLocalMaster(CONTACT_MASTER_KEY,rows.filter(r=>String(r.id)!==String(id)));if(target&&window.FirebaseService?.deleteMasterRecord)window.FirebaseService.deleteMasterRecord('contact',target).catch(err=>console.warn('ลบ Contact Master บน Firebase ไม่สำเร็จ',err));refreshContactMasterDatalists();renderMasterData();}
 function editProductMasterLocal(code){const row=productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));if(!row)return;masterEditState.product=row.code||row.name;setInputValue('md-p-code',row.code);setInputValue('md-p-name',row.name);setInputValue('md-p-category',row.category);setInputValue('md-p-unit',row.unit||'ชิ้น');setInputValue('md-p-flow-type',row.flowType);setInputValue('md-p-fulfillment',row.fulfillmentType);setInputValue('md-p-opening-ub',row.openingStockUbon??row.openingStock);setInputValue('md-p-opening-kk',row.openingStockKhonkaen||0);setInputValue('md-p-standard-cost',row.standardCost||0);setInputValue('md-p-reorder',row.reorderPoint);setInputValue('md-p-supplier',row.defaultSupplier);}
-function deleteProductMasterLocal(code){if(!confirm('ลบ Product Master ที่สร้างเองออกจากเครื่องใช่หรือไม่?'))return;const rows=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]).filter(r=>normalizeProductKey(r.code||r.name)!==normalizeProductKey(code));writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);initProductMasterDatalist();renderMasterData();}
+function deleteProductMasterLocal(code){if(!confirm('ลบ Product Master นี้ใช่หรือไม่?'))return;const all=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),target=all.find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));const rows=all.filter(r=>normalizeProductKey(r.code||r.name)!==normalizeProductKey(code));writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);if(target&&window.FirebaseService?.deleteMasterRecord)window.FirebaseService.deleteMasterRecord('product',target).catch(err=>console.warn('ลบ Product Master บน Firebase ไม่สำเร็จ',err));initProductMasterDatalist();renderMasterData();}
 function initMasterData(){
   const unit=document.getElementById('md-p-unit');if(unit)unit.innerHTML=UNITS.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
   // Seed supplier names from the production presets without inventing addresses.
@@ -773,7 +824,7 @@ function cancelDocumentEdit(type){
 // STORAGE — key includes YEAR so data is preserved across years
 // ============================================================
 function keyFor(branch,year,month){
-  return `biz2_${branch}_${year}_${String(month+1).padStart(2,'0')}`;
+  return tenantLocalKey(`biz2_${branch}_${year}_${String(month+1).padStart(2,'0')}`);
 }
 function createEmptyBusinessStore(){
   return {quotes:[],invoices:[],receipts:[],issuedInvoices:[],issuedReceipts:[],expenses:[],productions:[]};
@@ -826,8 +877,9 @@ function allYears(){
   const ys=new Set();
   ys.add(now.getFullYear());
   for(let k in localStorage){
-    if(!k.startsWith('biz2_'))continue;
-    const parts=k.split('_');
+    const rawKey=window.ComformTenant?.unwrapStorageKey?.(k)||'';
+    if(!rawKey.startsWith('biz2_'))continue;
+    const parts=rawKey.split('_');
     // key format: biz2_{branch}_{year}_{month}
     // parts[2] is the document year. parts[3] is month, so do NOT use it as a year.
     const y=parseInt(parts[2],10);
@@ -838,7 +890,7 @@ function allYears(){
 
 // Get all docs across all months of a year for both branches (or one)
 function docsForYear(type,year,branch){
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   const result=[];
   branches.forEach(br=>{
     for(let m=0;m<12;m++){
@@ -851,7 +903,7 @@ function docsForYear(type,year,branch){
 
 // Get docs for a specific branch+year+month (or all months)
 function docsFor(type,branch,year,month){
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   const result=[];
   const months=(month===''||month===undefined||month===null)?Array.from({length:12},(_,i)=>i):[parseInt(month)];
   branches.forEach(br=>{
@@ -898,12 +950,12 @@ function localBackupNowId(){
 }
 function readLocalBackupIndex(){
   try{
-    const rows=JSON.parse(localStorage.getItem(LOCAL_BACKUP_INDEX_KEY)||'[]');
+    const rows=JSON.parse(localStorage.getItem(tenantLocalKey(LOCAL_BACKUP_INDEX_KEY))||'[]');
     return Array.isArray(rows)?rows:[];
   }catch(_){return [];}
 }
 function writeLocalBackupIndex(rows){
-  localStorage.setItem(LOCAL_BACKUP_INDEX_KEY,JSON.stringify(rows));
+  localStorage.setItem(tenantLocalKey(LOCAL_BACKUP_INDEX_KEY),JSON.stringify(rows));
 }
 function listLocalBackups(){
   return readLocalBackupIndex();
@@ -913,7 +965,7 @@ function createLocalBackupSnapshot(year=getCurrentSelectedYear(), reason='manual
   const y=Number(year)||now.getFullYear();
   const branches=getCloudSyncBranches(profile);
   const id=localBackupNowId();
-  const key=LOCAL_BACKUP_KEY_PREFIX+id;
+  const key=tenantLocalKey(LOCAL_BACKUP_KEY_PREFIX+id);
   const snapshot={
     id,
     version:1,
@@ -935,7 +987,7 @@ function createLocalBackupSnapshot(year=getCurrentSelectedYear(), reason='manual
     localStorage.setItem(key,JSON.stringify(snapshot));
     const index=[{id,key,year:y,reason,createdAt:snapshot.createdAt,branches},...readLocalBackupIndex().filter(x=>x?.id!==id)];
     const keep=index.slice(0,CLOUD_SYNC_SAFETY.maxBackups);
-    index.slice(CLOUD_SYNC_SAFETY.maxBackups).forEach(item=>{try{localStorage.removeItem(item.key||LOCAL_BACKUP_KEY_PREFIX+item.id);}catch(_){}});
+    index.slice(CLOUD_SYNC_SAFETY.maxBackups).forEach(item=>{try{localStorage.removeItem(item.key||tenantLocalKey(LOCAL_BACKUP_KEY_PREFIX+item.id));}catch(_){}});
     writeLocalBackupIndex(keep);
     return snapshot;
   }catch(error){
@@ -946,7 +998,7 @@ function createLocalBackupSnapshot(year=getCurrentSelectedYear(), reason='manual
 function restoreLocalBackupSnapshot(id){
   const entry=readLocalBackupIndex().find(x=>String(x.id)===String(id));
   if(!entry)throw new Error('ไม่พบ Backup: '+id);
-  const snapshot=JSON.parse(localStorage.getItem(entry.key||LOCAL_BACKUP_KEY_PREFIX+entry.id)||'null');
+  const snapshot=JSON.parse(localStorage.getItem(entry.key||tenantLocalKey(LOCAL_BACKUP_KEY_PREFIX+entry.id))||'null');
   if(!snapshot?.data)throw new Error('ไฟล์ Backup เสียหรืออ่านไม่ได้');
   Object.entries(snapshot.data).forEach(([branch,months])=>{
     Object.entries(months||{}).forEach(([month,raw])=>{
@@ -1203,7 +1255,7 @@ function mergeCloudDoc(collectionName, doc){
 
 function getCloudSyncBranches(profile){
   if(profile?.branch && profile.branch !== 'all' && BRANCH_TH[profile.branch]) return [profile.branch];
-  return ['khonkaen','ubon'];
+  return tenantActiveBranchIds();
 }
 
 function replaceLocalYearWithCloudPack(year, pack, profile, options = {}){
@@ -1444,6 +1496,8 @@ function getLockedUserBranch(){
   const profile = getCurrentProfile();
   return profile?.branch && profile.branch !== 'all' ? profile.branch : null;
 }
+function isTenantBranchActive(branch){return window.SaaSService?.isBranchActive?.(branch) ?? true;}
+function tenantActiveBranchIds(){const rows=['ubon','khonkaen'].filter(isTenantBranchActive);return rows.length?rows:['ubon'];}
 
 function applyBranchUi(form, b){
   formBranch[form]=b;
@@ -1470,6 +1524,10 @@ function lockBranchForStaff(){
 }
 
 function selBr(form,b){
+  if(!isTenantBranchActive(b)){
+    notify('สาขานี้ยังไม่เปิดใช้งานในแพ็กเกจ กรุณาเพิ่มสิทธิ์สาขาก่อน');
+    return;
+  }
   const locked = getLockedUserBranch();
   if(locked && b !== locked){
     notify('บัญชีนี้ถูกผูกกับ '+BRANCH_TH[locked]+' จึงบันทึกได้เฉพาะสาขานี้');
@@ -1494,6 +1552,10 @@ function getBr(form){
 // DASHBOARD
 // ============================================================
 function switchDashTab(t){
+  if(t!=='all'&&!isTenantBranchActive(t)){
+    notify('สาขานี้ยังไม่เปิดใช้งานในแพ็กเกจ');
+    return;
+  }
   dashTab=t;
   ['all','khonkaen','ubon'].forEach(x=>{
     document.getElementById('dt-'+(x==='khonkaen'?'kk':x==='ubon'?'ub':'all')).classList.toggle('active',x===t);
@@ -1557,7 +1619,7 @@ function renderDash(){
   }
 
   // Recent docs
-  const branches=dashTab==='all'?['khonkaen','ubon']:[dashTab];
+  const branches=dashTab==='all'?tenantActiveBranchIds():[dashTab];
   let allQ=[],allI=[];
   const mList=mVal===-1?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{
@@ -1716,7 +1778,7 @@ function shouldMirrorHistoricalSalesAsDelivery(year,month){
 function readDeliveryTargets(){
   const defaults={all:DEFAULT_COMPANY_MONTHLY_TARGET,khonkaen:0,ubon:0};
   try{
-    const raw=localStorage.getItem(DELIVERY_TARGET_STORAGE_KEY);
+    const raw=localStorage.getItem(tenantLocalKey(DELIVERY_TARGET_STORAGE_KEY));
     if(!raw)return defaults;
     const parsed=JSON.parse(raw);
     return{
@@ -1745,12 +1807,12 @@ function saveDeliveryTarget(){
       // บันทึกไปยังเป้าหมายยอดขายเพื่อให้สองเป้าหมายเท่ากันเฉพาะช่วงย้อนหลัง
       const salesTargets=readSalesTargets();
       salesTargets[scope]=value;
-      localStorage.setItem(SALES_TARGET_STORAGE_KEY,JSON.stringify(salesTargets));
+      localStorage.setItem(tenantLocalKey(SALES_TARGET_STORAGE_KEY),JSON.stringify(salesTargets));
       renderSalesTargetDashboard();
     }else{
       const targets=readDeliveryTargets();
       targets[scope]=value;
-      localStorage.setItem(DELIVERY_TARGET_STORAGE_KEY,JSON.stringify(targets));
+      localStorage.setItem(tenantLocalKey(DELIVERY_TARGET_STORAGE_KEY),JSON.stringify(targets));
     }
     renderDeliveryTargetDashboard();
   }catch(error){
@@ -1901,7 +1963,7 @@ function renderDeliveryTargetDashboard(){
     <div class="target-progress-values"><span>${chartMoney(m.actual)}</span><span>${m.target?chartMoney(m.target):'ยังไม่กำหนดเป้าหมาย'}</span></div>`;
   document.getElementById('target-chart').innerHTML=renderTargetSvg(m);
   document.getElementById('target-chart-note').textContent=m.mirroredFromSales
-    ?'มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อให้ยอดและเป้าหมายทั้งสองส่วนเท่ากัน โดยไม่สร้างใบส่งสินค้า / ใบกำกับภาษีซ้ำใน Firebase'
+    ?'มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อให้ยอดและเป้าหมายทั้งสองส่วนเท่ากัน โดยไม่สร้างใบส่งสินค้า / ใบกำกับภาษีซ้ำในข้อมูลทดลอง'
     :'คำนวณเฉพาะวันจันทร์–ศุกร์ ยังไม่หักวันหยุดนักขัตฤกษ์หรือวันหยุดพิเศษของบริษัท';
 
   document.getElementById('target-workday-summary').innerHTML=`
@@ -1938,7 +2000,7 @@ const DEFAULT_COMPANY_MONTHLY_SALES_TARGET=2000000;
 function readSalesTargets(){
   const defaults={all:DEFAULT_COMPANY_MONTHLY_SALES_TARGET,khonkaen:0,ubon:0};
   try{
-    const raw=localStorage.getItem(SALES_TARGET_STORAGE_KEY);
+    const raw=localStorage.getItem(tenantLocalKey(SALES_TARGET_STORAGE_KEY));
     if(!raw)return defaults;
     const parsed=JSON.parse(raw);
     return{
@@ -1958,7 +2020,7 @@ function saveSalesTarget(){
   const targets=readSalesTargets();
   targets[currentTargetScope()]=value;
   try{
-    localStorage.setItem(SALES_TARGET_STORAGE_KEY,JSON.stringify(targets));
+    localStorage.setItem(tenantLocalKey(SALES_TARGET_STORAGE_KEY),JSON.stringify(targets));
     renderSalesTargetDashboard();
   }catch(error){
     console.error('บันทึกเป้าหมายยอดขายไม่สำเร็จ',error);
@@ -2061,7 +2123,7 @@ function renderSalesTargetDashboard(){
     <div class="target-progress-values"><span>${chartMoney(m.actual)}</span><span>${m.target?chartMoney(m.target):'ยังไม่กำหนดเป้าหมาย'}</span></div>`;
   document.getElementById('sales-target-chart').innerHTML=renderTargetSvg(m).replace('ยอดส่งจริงสะสม','ยอดขายจริงสะสม');
   document.getElementById('sales-target-chart-note').textContent=m.deliveryModel?.mirroredFromSales
-    ?'มกราคม–มิถุนายน 2569 ยอดส่งสินค้าใช้ยอดเดียวกับยอดขายย้อนหลัง เพื่อให้ยอดและเป้าหมายเท่ากันโดยไม่สร้างเอกสารซ้ำใน Firebase'
+    ?'มกราคม–มิถุนายน 2569 ยอดส่งสินค้าใช้ยอดเดียวกับยอดขายย้อนหลัง เพื่อให้ยอดและเป้าหมายเท่ากันโดยไม่สร้างเอกสารซ้ำในข้อมูลทดลอง'
     :'ยอดขายคำนวณจากมูลค่าขายก่อน VAT ของใบสั่งผลิต ส่วนยอดส่งสินค้าคำนวณจากใบส่งสินค้า / ใบกำกับภาษี จึงไม่รวมตัวเลขสองชุดเข้าด้วยกัน';
 
   document.getElementById('sales-target-workday-summary').innerHTML=`
@@ -2552,7 +2614,7 @@ function renderProductionDeliveryComparison(){
 // ============================================================
 // DASHBOARD CHARTS — กราฟแท่งรายเดือน/รายปี + ลูกค้า Top 10
 // ============================================================
-function dashBranches(){return dashTab==='all'?['khonkaen','ubon']:[dashTab];}
+function dashBranches(){return dashTab==='all'?tenantActiveBranchIds():[dashTab];}
 function safeNum(n){return Number.isFinite(Number(n))?Number(n):0;}
 function chartMoney(n){return '฿'+fmt(Math.round(safeNum(n)*100)/100);}
 function chartCount(n){return fmt(safeNum(n))+' รายการ';}
@@ -2696,6 +2758,205 @@ function renderDashCharts(){
   renderMainDashChart();
   renderCustomerChart();
   renderDashboardAgencyChart();
+  renderDashboardProductCompareChart();
+  renderDashboardMonthlyCustomerLeaderTable();
+  renderDashboardSupplierCompareChart();
+}
+
+function collectDashboardProductionRows(year,monthVal,branches){
+  const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];
+  const rows=[];
+  branches.forEach(branch=>months.forEach(month=>{
+    const data=loadFor(branch,year,month);
+    dedupeRecords(data.productions||[]).forEach(row=>rows.push(normalizeAnalyticsDoc(row,{branch,year,month,type:'productions'})));
+  }));
+  return rows;
+}
+function averagePositive(values=[]){
+  const arr=(values||[]).map(Number).filter(v=>Number.isFinite(v)&&v>0);
+  return arr.length?arr.reduce((sum,v)=>sum+v,0)/arr.length:0;
+}
+function mostCommonLabel(values=[]){
+  const map=new Map();
+  (values||[]).map(v=>String(v||'').trim()).filter(Boolean).forEach(v=>map.set(v,(map.get(v)||0)+1));
+  let best='';
+  let max=0;
+  map.forEach((count,label)=>{if(count>max){best=label;max=count;}});
+  return best||'-';
+}
+function buildDashboardProductCompare(year,monthVal,branches){
+  const productionRows=collectDashboardProductionRows(year,monthVal,branches);
+  const itemRows=analyticsItemRows(productionRows);
+  const total=itemRows.reduce((sum,row)=>sum+safeNum(row.value),0);
+  const groups=groupAnalytics(itemRows,row=>row.product,row=>row.value).map(row=>{
+    const qty=row.rows.reduce((sum,item)=>sum+safeNum(item.qty),0);
+    const customers=new Set(row.rows.map(item=>item.customer).filter(Boolean));
+    const units=[...new Set(row.rows.map(item=>item.unit).filter(Boolean))].slice(0,2).join(', ');
+    return {...row,qty,customerCount:customers.size,units,share:ratioPercent(row.value,total)};
+  });
+  return{rows:groups,total,top:groups[0]||null};
+}
+function buildMonthlyProductLeaderRows(year,branches){
+  const productionRows=collectDashboardProductionRows(year,-1,branches);
+  const itemRows=analyticsItemRows(productionRows);
+  return MONTHS.map((label,month)=>{
+    const monthItems=itemRows.filter(row=>Number(row._month)===month);
+    const monthTotal=monthItems.reduce((sum,row)=>sum+safeNum(row.value),0);
+    const groups=groupAnalytics(monthItems,row=>row.product,row=>row.value);
+    const top=groups[0]||null;
+    const second=groups[1]||null;
+    const qty=top?top.rows.reduce((sum,row)=>sum+safeNum(row.qty),0):0;
+    const customerCount=top?new Set(top.rows.map(row=>row.customer).filter(Boolean)).size:0;
+    return{month,label,product:top?.label||'-',sales:top?.value||0,qty,customerCount,share:ratioPercent(top?.value||0,monthTotal),runnerUp:second?.label||'-',runnerUpSales:second?.value||0};
+  }).filter(row=>row.sales>0);
+}
+function buildMonthlyCustomerLeaderRows(year,branches){
+  const productionRows=collectDashboardProductionRows(year,-1,branches);
+  return MONTHS.map((label,month)=>{
+    const monthRows=productionRows.filter(row=>Number(row._month)===month);
+    const monthTotal=monthRows.reduce((sum,row)=>sum+productionNetSalesValue(row),0);
+    const customerGroups=groupAnalytics(monthRows,row=>analyticsCustomer(row),row=>productionNetSalesValue(row));
+    const topCustomer=customerGroups[0]||null;
+    const topCustomerAgency=topCustomer?customerAgencyForRecord(topCustomer.rows[0]||{}):customerAgencyForRecord({});
+    const agencyGroups=groupAnalytics(monthRows,row=>customerAgencyForRecord(row).customerAgencyGroupLabel,row=>productionNetSalesValue(row));
+    const topAgency=agencyGroups[0]||null;
+    const secondAgency=agencyGroups[1]||null;
+    return{month,label,customer:topCustomer?.label||'-',sales:topCustomer?.value||0,docs:topCustomer?.count||0,customerType:topCustomerAgency.customerAgencyTypeLabel||'-',agencyRank1:topAgency?.label||'-',agencyRank1Sales:topAgency?.value||0,agencyRank2:secondAgency?.label||'-',agencyRank2Sales:secondAgency?.value||0,share:ratioPercent(topCustomer?.value||0,monthTotal)};
+  }).filter(row=>row.sales>0);
+}
+function supplierOpportunityLevel(row){
+  if(row.spendShare>=30&&row.overdueCount===0)return'เหมาะขอเครดิตเพิ่ม';
+  if(row.spendShare>=20&&row.overdueCount<=1)return'ควรเริ่มคุยเครดิต';
+  if(row.spendShare>=10)return'มีโอกาสต่อรอง';
+  return'สะสมยอดเพิ่มก่อน';
+}
+function supplierOpportunityRecommendation(row){
+  if(row.spendShare>=30&&row.overdueCount===0)return'เป็นคู่ค้าหลักและวินัยชำระดี ควรเจรจาขอเครดิตเพิ่มหรือขยายวงเงิน';
+  if(row.spendShare>=20&&row.overdueCount<=1)return'ยอดซื้อค่อนข้างสูง ควรเริ่มคุยเรื่องเครดิต 30–60 วัน หรือส่วนลดตามปริมาณ';
+  if(row.pendingCount>row.paidCount)return'มีการสั่งซื้อสม่ำเสมอ แต่ควรวางรอบชำระให้ชัดก่อนขอเครดิตเพิ่ม';
+  return'ยอดซื้อยังไม่สูงมาก ควรสะสมประวัติการสั่งซื้อและชำระตรงเวลาเพิ่มก่อน';
+}
+function buildSupplierOpportunityRowsFromProductions(productionRows=[]){
+  const map=new Map();
+  let totalSpend=0;
+  (productionRows||[]).forEach(p=>{
+    const label=String(p.maker||p.supplier||p.vendor||'ไม่ระบุผู้ผลิต').trim()||'ไม่ระบุผู้ผลิต';
+    const spend=safeNum(p.costGrandTotal??p.costTotal??p.costSubtotal);
+    const sales=productionNetSalesValue(p);
+    const lead=safeNum(p.deliveryLeadDays||p.shippingLeadDays);
+    const term=productionSupplierCreditLabel(p.supplierCreditTerm||'deliveryLead',p);
+    const dueDate=getProductionSupplierDueDate(p);
+    const days=analyticsDaysFromToday(dueDate);
+    const cur=map.get(label)||{label,spend:0,sales:0,count:0,leadValues:[],terms:[],paidCount:0,pendingCount:0,overdueCount:0,branches:new Set()};
+    cur.spend+=spend;cur.sales+=sales;cur.count+=1;totalSpend+=spend;
+    if(lead>0)cur.leadValues.push(lead);
+    if(term&&term!=='-')cur.terms.push(term);
+    if(String(p.supplierPaymentStatus||'pending')==='paid')cur.paidCount+=1;
+    else if(dueDate&&days<0)cur.overdueCount+=1;
+    else cur.pendingCount+=1;
+    if(p.branch)cur.branches.add(BRANCH_TH[p.branch]||p.branch);
+    map.set(label,cur);
+  });
+  return[...map.values()].map(row=>{
+    const avgLeadDays=averagePositive(row.leadValues);
+    const spendShare=ratioPercent(row.spend,totalSpend);
+    const paidRatio=ratioPercent(row.paidCount,row.count);
+    const grossSupportMargin=ratioPercent(row.sales-row.spend,row.sales);
+    const creditTerm=mostCommonLabel(row.terms);
+    const opportunityScore=roundMoneyValue((spendShare*0.6)+(paidRatio*0.2)+(row.overdueCount===0?10:Math.max(0,10-row.overdueCount*3))+Math.max(0,10-Math.min(avgLeadDays,10)));
+    const opportunityLevel=supplierOpportunityLevel({spendShare,overdueCount:row.overdueCount,pendingCount:row.pendingCount,paidCount:row.paidCount});
+    return{...row,avgLeadDays,creditTerm,spendShare,paidRatio,grossSupportMargin,opportunityScore,opportunityLevel,recommendation:supplierOpportunityRecommendation({spendShare,overdueCount:row.overdueCount,pendingCount:row.pendingCount,paidCount:row.paidCount}),branchText:[...row.branches].join(', ')||'-'};
+  }).sort((a,b)=>safeNum(b.opportunityScore)-safeNum(a.opportunityScore)||safeNum(b.spend)-safeNum(a.spend));
+}
+function renderDashboardProductCompareChart(){
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear());
+  const monthVal=parseInt(document.getElementById('dash-month')?.value??-1);
+  const branches=dashBranches();
+  const result=buildDashboardProductCompare(year,monthVal,branches);
+  const labelEl=document.getElementById('dash-product-compare-label');
+  if(labelEl)labelEl.textContent=`${dashTab==='all'?'รวมทั้ง 2 สาขา':BRANCH_TH[dashTab]} · ${monthVal===-1?'ทั้งปี':MONTHS[monthVal]}`;
+  renderBarRows('dash-product-compare-chart',result.rows.slice(0,10).map(row=>({label:row.label,value:row.value,sub:`${fmt(row.qty)} ${row.units||''} · ลูกค้า ${row.customerCount} ราย · สัดส่วน ${percentText(row.share)}`})),{fillClass:'purple'});
+  const summary=document.getElementById('dash-product-compare-summary');
+  if(summary)summary.innerHTML=result.top?`สินค้าขายดีที่สุดคือ <b>${escapeHtml(result.top.label)}</b> มูลค่า ${chartMoney(result.top.value)} · จากยอดขายสินค้าในช่วงที่เลือกทั้งหมด ${chartMoney(result.total)} · ช่วยดูได้ว่าสินค้าใดควรเร่งขายและติดตามสต็อก`:'ยังไม่มีข้อมูลสินค้าในช่วงที่เลือก';
+}
+function renderDashboardMonthlyCustomerLeaderTable(){
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear());
+  const branches=dashBranches();
+  const rows=buildMonthlyCustomerLeaderRows(year,branches);
+  analyticsRenderTable('dash-monthly-customer-leader-table',[
+    {label:'เดือน',html:r=>`<b>${escapeHtml(r.label)}</b>`},
+    {label:'ลูกค้าอันดับ 1',html:r=>`${escapeHtml(r.customer)}<br><small>${escapeHtml(r.customerType)}</small>`},
+    {label:'ยอดซื้อ',html:r=>chartMoney(r.sales),cls:'num'},
+    {label:'สัดส่วน',html:r=>percentText(r.share),cls:'num'},
+    {label:'กลุ่มอันดับ 1',html:r=>escapeHtml(r.agencyRank1)},
+    {label:'กลุ่มอันดับ 2',html:r=>escapeHtml(r.agencyRank2)}
+  ],rows,'ยังไม่มีข้อมูลลูกค้าสำหรับจัดอันดับรายเดือน');
+  const summary=document.getElementById('dash-monthly-customer-leader-summary');
+  const yearRows=collectDashboardProductionRows(year,-1,branches);
+  const agencyRank=groupAnalytics(yearRows,row=>customerAgencyForRecord(row).customerAgencyGroupLabel,row=>productionNetSalesValue(row));
+  const topAgency=agencyRank[0];
+  const secondAgency=agencyRank[1];
+  if(summary)summary.innerHTML=rows.length?`จัดอันดับจากยอดขายของใบสั่งผลิตในแต่ละเดือน · ทั้งปี พ.ศ. ${yearLabelDual(year)} กลุ่มลูกค้าอันดับ 1 คือ <b>${escapeHtml(topAgency?.label||'-')}</b>${topAgency?` ${chartMoney(topAgency.value)}`:''}${secondAgency?` · อันดับ 2 คือ <b>${escapeHtml(secondAgency.label)}</b> ${chartMoney(secondAgency.value)}`:''}`:'ยังไม่มีข้อมูลเพียงพอสำหรับจัดอันดับลูกค้ารายเดือน';
+}
+function renderDashboardSupplierCompareChart(){
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear());
+  const monthVal=parseInt(document.getElementById('dash-month')?.value??-1);
+  const rows=buildSupplierOpportunityRowsFromProductions(collectDashboardProductionRows(year,monthVal,dashBranches()));
+  renderBarRows('dash-supplier-compare-chart',rows.slice(0,10).map(row=>({label:row.label,value:row.spend,sub:`สัดส่วน ${percentText(row.spendShare)} · เครดิต ${row.creditTerm} · ${row.opportunityLevel}`})),{fillClass:'green'});
+  const summary=document.getElementById('dash-supplier-compare-summary');
+  const top=rows[0];
+  if(summary)summary.innerHTML=top?`สั่งซื้อกับ <b>${escapeHtml(top.label)}</b> มากที่สุด มูลค่า ${chartMoney(top.spend)} · คิดเป็น ${percentText(top.spendShare)} ของยอดจัดซื้อในช่วงนี้ · ${escapeHtml(top.recommendation)}`:'ยังไม่มีข้อมูลต้นทุน/ผู้ผลิตในช่วงที่เลือก';
+}
+function renderAnalyticsMonthlyProductLeaderTable(filter){
+  const rows=buildMonthlyProductLeaderRows(filter.year,analyticsBranchList(filter.branch));
+  analyticsRenderTable('analytics-monthly-product-leader-table',[
+    {label:'เดือน',html:r=>`<b>${escapeHtml(r.label)}</b>`},
+    {label:'สินค้าอันดับ 1',html:r=>escapeHtml(r.product)},
+    {label:'ยอดขาย',html:r=>chartMoney(r.sales),cls:'num'},
+    {label:'จำนวน',html:r=>fmt(r.qty),cls:'num'},
+    {label:'ลูกค้า',html:r=>fmt(r.customerCount),cls:'num'},
+    {label:'สัดส่วน',html:r=>percentText(r.share),cls:'num'},
+    {label:'รองลงมา',html:r=>`${escapeHtml(r.runnerUp)}${r.runnerUpSales>0?`<br><small>${chartMoney(r.runnerUpSales)}</small>`:''}`}
+  ],rows,'ยังไม่มีข้อมูลสินค้าสำหรับจัดอันดับรายเดือน');
+  const summary=document.getElementById('analytics-monthly-product-leader-summary');
+  const topProducts=rows.map(r=>r.product).filter(x=>x&&x!=='-');
+  const dominant=mostCommonLabel(topProducts);
+  const freq=topProducts.filter(x=>x===dominant).length;
+  if(summary)summary.innerHTML=rows.length?`ปี พ.ศ. ${yearLabelDual(filter.year)} สินค้าที่ขึ้นอันดับ 1 บ่อยที่สุดคือ <b>${escapeHtml(dominant)}</b> ${freq} เดือน · ใช้ดู seasonality และช่วยวางแผนสต็อก/การผลิต`:'ยังไม่มีข้อมูลสำหรับสรุปสินค้ารายเดือน';
+}
+function renderAnalyticsMonthlyCustomerLeaderTable(filter){
+  const rows=buildMonthlyCustomerLeaderRows(filter.year,analyticsBranchList(filter.branch));
+  analyticsRenderTable('analytics-monthly-customer-leader-table',[
+    {label:'เดือน',html:r=>`<b>${escapeHtml(r.label)}</b>`},
+    {label:'ลูกค้าอันดับ 1',html:r=>`${escapeHtml(r.customer)}<br><small>${escapeHtml(r.customerType)}</small>`},
+    {label:'ยอดซื้อ',html:r=>chartMoney(r.sales),cls:'num'},
+    {label:'เอกสาร',html:r=>fmt(r.docs),cls:'num'},
+    {label:'สัดส่วน',html:r=>percentText(r.share),cls:'num'},
+    {label:'กลุ่มอันดับ 1',html:r=>`${escapeHtml(r.agencyRank1)}${r.agencyRank1Sales>0?`<br><small>${chartMoney(r.agencyRank1Sales)}</small>`:''}`},
+    {label:'กลุ่มอันดับ 2',html:r=>`${escapeHtml(r.agencyRank2)}${r.agencyRank2Sales>0?`<br><small>${chartMoney(r.agencyRank2Sales)}</small>`:''}`}
+  ],rows,'ยังไม่มีข้อมูลลูกค้าสำหรับจัดอันดับรายเดือน');
+  const summary=document.getElementById('analytics-monthly-customer-leader-summary');
+  const leaders=rows.map(r=>r.customer).filter(x=>x&&x!=='-');
+  const dominant=mostCommonLabel(leaders);
+  const freq=leaders.filter(x=>x===dominant).length;
+  if(summary)summary.innerHTML=rows.length?`ลูกค้าที่ขึ้นอันดับ 1 บ่อยที่สุดคือ <b>${escapeHtml(dominant)}</b> ${freq} เดือน · ใช้ดูความสม่ำเสมอของลูกค้าหลักและวางแผนเครดิต/การดูแลความสัมพันธ์`:'ยังไม่มีข้อมูลสำหรับสรุปลูกค้ารายเดือน';
+}
+function renderAnalyticsSupplierOpportunityTable(filter,data){
+  const rows=buildSupplierOpportunityRowsFromProductions(data.productions||[]);
+  analyticsRenderTable('analytics-supplier-opportunity-table',[
+    {label:'ผู้ผลิต / ผู้จำหน่าย',html:r=>`${escapeHtml(r.label)}<br><small>${escapeHtml(r.branchText)}</small>`},
+    {label:'ยอดสั่งซื้อ',html:r=>chartMoney(r.spend),cls:'num'},
+    {label:'สัดส่วน',html:r=>percentText(r.spendShare),cls:'num'},
+    {label:'เครดิตปัจจุบัน',html:r=>escapeHtml(r.creditTerm)},
+    {label:'Lead Time เฉลี่ย',html:r=>r.avgLeadDays?`${r.avgLeadDays.toFixed(1)} วัน`:'-'},
+    {label:'ชำระแล้ว',html:r=>fmt(r.paidCount),cls:'num'},
+    {label:'ค้าง/เกินกำหนด',html:r=>`${fmt(r.pendingCount)} / ${fmt(r.overdueCount)}`,cls:'num'},
+    {label:'Opportunity',html:r=>`<span class="analytics-badge">${escapeHtml(r.opportunityLevel)}</span>`},
+    {label:'คำแนะนำ',html:r=>escapeHtml(r.recommendation)}
+  ],rows.slice(0,20),'ยังไม่มีข้อมูลผู้ผลิต/ผู้จำหน่ายในช่วงที่เลือก');
+  const summary=document.getElementById('analytics-supplier-opportunity-summary');
+  const top=rows[0];
+  if(summary)summary.innerHTML=top?`คู่ค้าที่น่าพิจารณาขอเครดิตเพิ่มมากที่สุดคือ <b>${escapeHtml(top.label)}</b> เพราะมียอดสั่งซื้อ ${chartMoney(top.spend)} (${percentText(top.spendShare)}) และสถานะภาพรวมเป็น <b>${escapeHtml(top.opportunityLevel)}</b>`:'ยังไม่มีข้อมูลพอสำหรับประเมินศักยภาพเครดิตผู้ผลิต';
 }
 
 // ============================================================
@@ -2719,7 +2980,7 @@ function analyticsFilters(){
     forecastMethod:document.getElementById('analytics-forecast-method')?.value||'auto'
   };
 }
-function analyticsBranchList(branch){return branch?[branch]:['khonkaen','ubon'];}
+function analyticsBranchList(branch){return branch?[branch]:tenantActiveBranchIds();}
 function analyticsMonthList(month){return month===''?Array.from({length:12},(_,i)=>i):[Number(month)];}
 function normalizeAnalyticsDoc(row,meta){const enriched=withCustomerAgencyMeta(row||{});return{...enriched,branch:row?.branch||meta.branch,_year:meta.year,_month:meta.month,_type:meta.type};}
 function collectAnalyticsData(filter=analyticsFilters()){
@@ -3213,7 +3474,7 @@ function renderAnalyticsExecutiveSummary(kpis,quality,trend,arRows,deliveryRows,
   const dueSoonSupplier=supplierRows.filter(r=>r.state==='soon'||r.state==='dueToday');
   const periodText=filter.month===''?`ทั้งปี พ.ศ. ${yearLabelDual(filter.year)}`:`${MONTHS[filter.month]} พ.ศ. ${yearLabelDual(filter.year)}`;
   const mirrorNote=Number(filter.year)===2026 && (filter.month==='' || Number(filter.month)<=5)
-    ? '<div class="analytics-note">หมายเหตุ: เดือน ม.ค.–มิ.ย. พ.ศ. 2569 ระบบใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อไม่สร้างใบส่งสินค้าซ้ำใน Firebase</div>' : '';
+    ? '<div class="analytics-note">หมายเหตุ: เดือน ม.ค.–มิ.ย. พ.ศ. 2569 ระบบใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อไม่สร้างใบส่งสินค้าซ้ำในข้อมูลทดลอง</div>' : '';
   el.innerHTML=`<div class="analytics-executive-card">
     <div><small>สรุปสำหรับผู้บริหาร</small><b>${escapeHtml(periodText)}</b><span>ยอดขาย ${chartMoney(kpis.sales)} · กำไรสุทธิ ${chartMoney(kpis.profit)} · คุณภาพข้อมูล ${quality.score}/100</span></div>
     <div><small>เงินที่ต้องติดตาม</small><b>${chartMoney(overdueAr.reduce((s,r)=>s+r.outstanding,0))}</b><span>เกินกำหนด ${overdueAr.length} บิล · ใกล้ครบกำหนด ${dueSoonAr.length} บิล</span></div>
@@ -3324,6 +3585,9 @@ function renderDataAnalytics(){
   const productSummary=document.getElementById('analytics-product-summary');
   if(productSummary)productSummary.innerHTML=productGroups.length?`สินค้าที่สร้างยอดสูงสุดคือ <b>${escapeHtml(productGroups[0].label)}</b> มูลค่า ${chartMoney(productGroups[0].value)} · ราคาเฉลี่ย ${chartMoney(productGroups[0].avgPrice)}/${escapeHtml(productGroups[0].units||'หน่วย')}`:'ยังไม่มีรายการสินค้าในช่วงที่เลือก';
   renderProductSeasonality(filter,filter.product);
+  renderAnalyticsMonthlyProductLeaderTable(filter);
+  renderAnalyticsMonthlyCustomerLeaderTable(filter);
+  renderAnalyticsSupplierOpportunityTable(filter,data);
 
   const qRows=[
     {label:'ไม่มีวันที่',value:quality.missingDate,sub:'เอกสารที่ไม่มี date'},
@@ -4166,7 +4430,8 @@ window.addEventListener('comform-drive-upload-error',ev=>{
 // ITEMS TABLE HELPERS
 // ============================================================
 function uSel(v){return`<select style="width:82px">${UNITS.map(u=>`<option${u===v?' selected':''}>${u}</option>`).join('')}</select>`;}
-function addQItem(item={}){item=enrichProductItem(item);const tb=document.getElementById('q-items-body');const tr=document.createElement('tr');tr.innerHTML=`<td><input data-field="product" type="text" list="product-master-list" data-product-code="${escapeHtml(item.productCode||'')}" data-product-category="${escapeHtml(item.productCategory||'')}" value="${escapeHtml(item.product||'')}" placeholder="เลือกหรือพิมพ์ชื่อสินค้า" onchange="applyProductMasterToInput(this)"><small class="product-type-note"></small></td><td><input type="number" min="0" step="0.01" value="${item.qty??''}" placeholder="0" oninput="calcQ()" style="width:55px"></td><td>${uSel(item.unit||'')}</td><td><input type="number" min="0" step="0.01" value="${item.priceUnit??''}" placeholder="0.00" oninput="calcQ()"></td><td><input class="ro" readonly></td><td><button onclick="this.closest('tr').remove();calcQ()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px">×</button></td>`;tb.appendChild(tr);const input=tr.querySelector('[data-field="product"]');if(input)applyProductMasterToInput(input);calcQ();}
+function addQItem(item={}){item=enrichProductItem(item);const tb=document.getElementById('q-items-body');const tr=document.createElement('tr');tr.innerHTML=`<td><input data-field="product" type="text" list="product-master-list" data-product-code="${escapeHtml(item.productCode||'')}" data-product-category="${escapeHtml(item.productCategory||'')}" value="${escapeHtml(item.product||'')}" placeholder="เลือกหรือพิมพ์ชื่อสินค้า" onchange="applyProductMasterToInput(this)"><small class="product-type-note"></small></td><td><input type="number" min="0" step="0.01" value="${item.qty??''}" placeholder="0" oninput="calcQ()" style="width:55px"></td><td>${uSel(item.unit||'')}</td><td><div class="quote-price-rule-cell"><input data-field="price-unit" type="number" min="0" step="0.01" value="${item.priceUnit??''}" placeholder="0.00" oninput="calcQ()"><button type="button" class="quote-price-rule-btn" onclick="applySuggestedQuotePrice(this)" title="คำนวณจาก Standard Cost + Business Rules ของบริษัท">⚙ ราคาแนะนำ</button></div></td><td><input class="ro" readonly></td><td><button onclick="this.closest('tr').remove();calcQ()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px">×</button></td>`;tb.appendChild(tr);const input=tr.querySelector('[data-field="product"]');if(input)applyProductMasterToInput(input);calcQ();}
+function applySuggestedQuotePrice(button){const tr=button?.closest?.('tr');if(!tr)return;const productInput=tr.querySelector('[data-field="product"]');const productName=productInput?.value||'',productCode=productInput?.dataset.productCode||'',category=productInput?.dataset.productCategory||'';const customer=document.getElementById('q-cust')?.value.trim()||'';const result=window.BusinessRulesService?.suggestQuoteUnitPrice?.({productCode,productName,category,customer});if(!result){notify('ยังคำนวณราคาแนะนำไม่ได้ กรุณากำหนดต้นทุนมาตรฐานใน Product Master และตั้ง Business Rules ก่อน');return;}const priceInput=tr.querySelector('[data-field="price-unit"]');if(priceInput){priceInput.value=Number(result.suggestedUnitPrice||0).toFixed(2);calcQ();notify(`ใช้ราคาแนะนำ ${fmt(result.suggestedUnitPrice)} บาท จาก ${result.formulaCode} แล้ว`,'success');}}
 function invoiceCostModeSelect(selected='unit'){
   return `<select data-field="costMode" class="i-cost-mode" onchange="updateInvoiceCostPlaceholder(this);calcI()" style="min-width:155px">
     <option value="unit" ${selected==='unit'?'selected':''}>ราคาต้นทุนต่อหน่วย</option>
@@ -4295,7 +4560,7 @@ function calcR(){
 // ============================================================
 // GET ITEMS FROM TABLE
 // ============================================================
-function getQItems(){return Array.from(document.querySelectorAll('#q-items-body tr')).map(tr=>{const productInput=tr.querySelector('[data-field="product"]')||tr.querySelector('input[type=text]');const nums=tr.querySelectorAll('input[type=number]');const sel=tr.querySelector('select');const qty=parseFloat(nums[0]?.value)||0,pu=parseFloat(nums[1]?.value)||0;return enrichProductItem({product:productInput?.value||'',productCode:productInput?.dataset.productCode||'',productCategory:productInput?.dataset.productCategory||'',qty,unit:sel?.value||'',priceUnit:pu,total:qty*pu});});}
+function getQItems(){const customer=document.getElementById('q-cust')?.value.trim()||'';return Array.from(document.querySelectorAll('#q-items-body tr')).map(tr=>{const productInput=tr.querySelector('[data-field="product"]')||tr.querySelector('input[type=text]');const nums=tr.querySelectorAll('input[type=number]');const sel=tr.querySelector('select');const qty=parseFloat(nums[0]?.value)||0,pu=parseFloat(nums[1]?.value)||0;const base=enrichProductItem({product:productInput?.value||'',productCode:productInput?.dataset.productCode||'',productCategory:productInput?.dataset.productCategory||'',qty,unit:sel?.value||'',priceUnit:pu,total:qty*pu});const pricingRuleSnapshot=window.BusinessRulesService?.snapshotForItem?.({productCode:base.productCode,productName:base.product,category:base.productCategory,customer,actualUnitPrice:pu})||null;return{...base,pricingRuleSnapshot};});}
 function getIItems(){
   return Array.from(document.querySelectorAll('#i-items-body tr')).map(tr=>{
     const productInput=tr.querySelector('[data-field="product"]');
@@ -4884,7 +5149,7 @@ function resetProduction(){
 }
 function buildProductionInvoiceLinkMap(){
   const map=new Map();
-  ['khonkaen','ubon'].forEach(br=>allYears().forEach(y=>{for(let m=0;m<12;m++){
+  tenantActiveBranchIds().forEach(br=>allYears().forEach(y=>{for(let m=0;m<12;m++){
     const d=loadFor(br,y,m);(d.invoices||[]).forEach(inv=>{
       if(inv.sourceProductionId)map.set(`${inv.sourceProductionBranch||br}|${inv.sourceProductionId}`,{...inv,branch:br,_y:y,_m:m});
       if(inv.sourceProductionNo)map.set(`${inv.sourceProductionBranch||br}|no:${inv.sourceProductionNo}`,{...inv,branch:br,_y:y,_m:m});
@@ -4893,7 +5158,7 @@ function buildProductionInvoiceLinkMap(){
   return map;
 }
 function renderPList(){
-  const{branch,month,year,search}=getListFilters('pl');const paymentFilter=getElValue('pl-paystatus');const mVal=month===''?null:parseInt(month);const branches=branch?[branch]:['khonkaen','ubon'];let all=[];const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
+  const{branch,month,year,search}=getListFilters('pl');const paymentFilter=getElValue('pl-paystatus');const mVal=month===''?null:parseInt(month);const branches=branch?[branch]:tenantActiveBranchIds();let all=[];const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.productions||[]).forEach(x=>all.push({...x,branch:br,_m:m,_y:year}));}));
   all=dedupeForListDisplay(all);all.sort((a,b)=>b.id-a.id);if(search)all=all.filter(p=>(p.no||'').toLowerCase().includes(search)||(p.job||'').toLowerCase().includes(search)||(p.customer||'').toLowerCase().includes(search));
   if(paymentFilter){
@@ -5032,7 +5297,7 @@ function documentNumberSequence(type,dateValue,excludeId=''){
   const d=parseFlexibleBusinessDate(dateValue)||now;
   const year=d.getFullYear(),month=d.getMonth(),prefix=documentNumberPrefix(type,d);
   let maxSeq=0;
-  ['khonkaen','ubon'].forEach(branch=>{
+  tenantActiveBranchIds().forEach(branch=>{
     const pack=loadFor(branch,year,month);
     spec.collections.forEach(collection=>{
       (pack[collection]||[]).forEach(row=>{
@@ -5090,7 +5355,7 @@ function refreshAutoReceiptNumber(force=false){return refreshAutoDocumentNumber(
 function documentNumberExists(type,no,excludeId=''){
   const spec=AUTO_DOCUMENT_NUMBER_SPECS[type];if(!spec||!String(no||'').trim())return false;
   const target=String(no).trim().toUpperCase();const years=[...new Set([...allYears(),now.getFullYear()])];
-  for(const branch of ['khonkaen','ubon'])for(const year of years)for(let month=0;month<12;month++){
+  for(const branch of tenantActiveBranchIds())for(const year of years)for(let month=0;month<12;month++){
     const pack=loadFor(branch,year,month);
     for(const collection of spec.collections){
       const found=(pack[collection]||[]).some(row=>{if(excludeId!==''&&String(row.id)===String(excludeId))return false;return String(row.no||row.docNo||'').trim().toUpperCase()===target;});
@@ -5109,7 +5374,7 @@ async function saveQuote(){
   if(documentNumberExists('quote',no,state?.id||'')){notify(`เลขที่ใบเสนอราคา ${no} มีอยู่แล้ว กรุณาแก้ไขเลขหรือกด “ใช้เลขอัตโนมัติ”`);return;}
   const items=getQItems();if(!items.length){notify('กรุณาเพิ่มรายการสินค้า');return;}
   const sub=items.reduce((sum,item)=>sum+item.total,0),uv=parseInt(document.getElementById('q-vat').value),va=uv?sub*.07:0;
-  let quoteRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,customerAddress:document.getElementById('q-address')?.value.trim()||'',customerTaxId:document.getElementById('q-tax-id')?.value.trim()||'',contact:document.getElementById('q-contact')?.value.trim()||'',phone:document.getElementById('q-phone')?.value.trim()||'',email:document.getElementById('q-email')?.value.trim()||'',...getCustomerAgencyFromForm('q'),salesPerson:document.getElementById('q-sales').value.trim(),items,subtotal:sub,useVat:uv,vatAmt:va,total:sub+va,note:document.getElementById('q-note').value.trim(),attachments:attachedFiles['q-att']||[],approved:state?.original?.approved||false};
+  let quoteRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,customerAddress:document.getElementById('q-address')?.value.trim()||'',customerTaxId:document.getElementById('q-tax-id')?.value.trim()||'',contact:document.getElementById('q-contact')?.value.trim()||'',phone:document.getElementById('q-phone')?.value.trim()||'',email:document.getElementById('q-email')?.value.trim()||'',...getCustomerAgencyFromForm('q'),salesPerson:document.getElementById('q-sales').value.trim(),items,subtotal:sub,useVat:uv,vatAmt:va,total:sub+va,note:document.getElementById('q-note').value.trim(),attachments:attachedFiles['q-att']||[],approved:state?.original?.approved||false,businessRuleVersion:window.BusinessRulesService?.currentVersion?.()||1,businessRuleCode:`BR-${String(window.BusinessRulesService?.currentVersion?.()||1).padStart(3,'0')}`};
   {const ym=dateToYM(quoteRecord.date);quoteRecord=withThaiCalendarMeta(quoteRecord,ym.year,ym.month);}
   try{
     if(state){await commitDocumentEdit('quote',quoteRecord);notify('แก้ไขใบเสนอราคาเรียบร้อย');}
@@ -5188,7 +5453,7 @@ function locateInvoiceReference(branch,invNo,selectedRef){
     if(inv)return{inv,d,b:selectedRef.b,y:Number(selectedRef.y),m:Number(selectedRef.m),collection:'invoices'};
   }
   if(!invNo)return null;
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   for(const b of branches){for(const y of allYears()){for(let m=0;m<12;m++){
     const d=loadFor(b,y,m);
     const issued=(d.issuedInvoices||[]).find(x=>String(x.no||'').trim()===String(invNo).trim());
@@ -5307,7 +5572,7 @@ function populateQuoteRefs(prefix){
   const sel=document.getElementById(prefix+'-quote-ref');if(!sel)return;
   const current=sel.value;sel.innerHTML='<option value="">-- เลือกใบเสนอราคา --</option>';
   const br=formBranch[prefix]||'';updateLinkedSourceBranchBadge(prefix+'-quote-source-branch',br);
-  const branches=br?[br]:['khonkaen','ubon'];
+  const branches=br?[br]:tenantActiveBranchIds();
   const filter=getLinkedRefFilters(prefix+'-quote');
   const years=Number.isFinite(filter.year)?[filter.year]:allYears();
   const months=filter.month===null?Array.from({length:12},(_,i)=>i):[filter.month];
@@ -5385,7 +5650,7 @@ function populateProductionRefs(){
   const sel=document.getElementById('i-prod-ref');if(!sel)return;
   const current=sel.value;sel.innerHTML='<option value="">-- เลือกใบสั่งผลิตเพื่อสร้างใบส่งสินค้า / ใบกำกับภาษี --</option>';
   const br=formBranch.i;updateLinkedSourceBranchBadge('i-prod-source-branch',br);
-  const branches=br?[br]:['khonkaen','ubon'];const linkMap=buildProductionInvoiceLinkMap();
+  const branches=br?[br]:tenantActiveBranchIds();const linkMap=buildProductionInvoiceLinkMap();
   const filter=getLinkedRefFilters('i-prod');
   const years=Number.isFinite(filter.year)?[filter.year]:allYears();
   const months=filter.month===null?Array.from({length:12},(_,i)=>i):[filter.month];
@@ -5477,7 +5742,7 @@ function populateInvRefs(){
   const sel=document.getElementById('r-inv-ref');if(!sel)return;
   const current=sel.value;sel.innerHTML='<option value="">-- เลือกจากบิลที่มี --</option>';
   const br=formBranch.r;updateLinkedSourceBranchBadge('r-inv-source-branch',br);
-  const branches=br?[br]:['khonkaen','ubon'];
+  const branches=br?[br]:tenantActiveBranchIds();
   const filter=getLinkedRefFilters('r-inv');
   const years=Number.isFinite(filter.year)?[filter.year]:allYears();
   const months=filter.month===null?Array.from({length:12},(_,i)=>i):[filter.month];
@@ -5520,7 +5785,7 @@ function getListFilters(prefix){
 function renderQLList(){
   const{branch,month,year,search}=getListFilters('ql');
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   let all=[];
   const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.quotes||[]).forEach(x=>all.push({...x,branch:br,_m:m,_y:year}));}));
@@ -5723,7 +5988,7 @@ function renderIList(){
   const paymentFilter=getElValue('il-paystatus');
   const q=(search||'').toLowerCase();
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   let invoices=[];
   const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.invoices||[]).forEach(x=>invoices.push({...x,branch:br,_m:m,_y:year}));}));
@@ -5950,7 +6215,7 @@ function issueReceiptFromInvoice(branch,year,month,id){
 function renderRList(){
   const{branch,month,year,search}=getListFilters('rl');
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   let all=[];
   const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.receipts||[]).forEach(x=>all.push({...x,branch:br,_m:m,_y:year}));}));
@@ -5976,7 +6241,7 @@ function renderRList(){
 function issuedDocRows(type, prefix){
   const {branch,month,year,search}=getListFilters(prefix);
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   const months=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   let rows=[];
   branches.forEach(br=>months.forEach(m=>{
@@ -6038,7 +6303,7 @@ function showIssuedDocumentDetail(type,branch,year,month,id){
 function renderEList(){
   const{branch,month,year}=getListFilters('el');
   const mVal=month===''?null:parseInt(month);
-  const branches=branch?[branch]:['ubon','khonkaen'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   let all=[];
   const mList=mVal===null?Array.from({length:12},(_,i)=>i):[mVal];
   branches.forEach(br=>mList.forEach(m=>{const d=loadFor(br,year,m);(d.expenses||[]).forEach(x=>all.push({...x,branch:br,_m:m,_y:year}));}));
@@ -6331,7 +6596,7 @@ function monthKeyToIndex(key){
 function collectBackupData({year=null,month=null,branch='',includeEmpty=false}={}){
   const years=year?[parseInt(year)]:allYears();
   const months=month===null||month===undefined?Array.from({length:12},(_,i)=>i):[parseInt(month)];
-  const branches=branch?[branch]:['khonkaen','ubon'];
+  const branches=branch?[branch]:tenantActiveBranchIds();
   const result={};
   years.forEach(y=>{
     result[y]={};
@@ -6417,7 +6682,7 @@ function exportXLSX(type,options={}){
     const wb=XLSX.utils.book_new();
     const years=options.year?[parseInt(options.year)]:allYears();
     const months=options.month!==undefined&&options.month!==null&&options.month!==''?[parseInt(options.month)]:Array.from({length:12},(_,i)=>i);
-    const branches=options.branch?[options.branch]:['khonkaen','ubon'];
+    const branches=options.branch?[options.branch]:tenantActiveBranchIds();
 
     if(type==='all'||type==='invoices'){
       const rows=[['วันที่ขาย','เลขที่บิล','พนักงานขาย','ชื่อลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','เครดิตการชำระ','วันครบกำหนดชำระ','สถานะกำหนดชำระ','สถานะชำระเงิน','รายการสินค้า','จำนวน','รูปแบบราคาต้นทุน','ราคาต้นทุน','รวมต้นทุน','ราคาขายต่อหน่วย','รวมราคาขายพร้อม VAT','ถอด VAT 7%','สวัสดิการหรือค่าคอมมิชชั่น','กำไร','%กำไรต้นทุน','%กำไรยอดขาย']];
@@ -7637,7 +7902,8 @@ function setupDocumentEntryWorkspace(options){
   shell.className = 'doc-entry-shell';
   const toolbar = document.createElement('div');
   toolbar.className = 'doc-entry-toolbar';
-  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="logo.png" alt="โลโก้บริษัท"><div><small>บริษัท ตัวอย่าง จำกัด</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn ${options.saveBtnClass || 'btn-primary'}" data-doc-toolbar-action="save">💾 บันทึก</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="preview">👁 ดูตัวอย่าง</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="print">🖨️ พิมพ์</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="pdf">⬇ ดาวน์โหลด PDF</button></div>`;
+  const tenantCompanyName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท';
+  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="logo.png" alt="โลโก้บริษัท"><div><small>${escapeHtml(tenantCompanyName)}</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn ${options.saveBtnClass || 'btn-primary'}" data-doc-toolbar-action="save">💾 บันทึก</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="preview">👁 ดูตัวอย่าง</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="print">🖨️ พิมพ์</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="pdf">⬇ ดาวน์โหลด PDF</button></div>`;
   const workspace = document.createElement('div');
   workspace.className = 'doc-entry-workspace';
   const editor = document.createElement('section');
@@ -7726,7 +7992,7 @@ function initDocumentEntryWorkspaces(){
 
 function migrateLegacyIssuedDocuments(){
   allYears().forEach(year=>{
-    ['khonkaen','ubon'].forEach(branch=>{
+    tenantActiveBranchIds().forEach(branch=>{
       for(let month=0;month<12;month++){
         const data=loadFor(branch,year,month);
         const oldInvoices=data.invoices||[];
@@ -7744,7 +8010,7 @@ function migrateLegacyIssuedDocuments(){
   });
 }
 
-Object.assign(window,{loadFor,saveFor,productMasterRows,productMasterMeta,productEstimatedStock,productOpeningStock,productSoldQty,findContactMaster,contactMasterRows,docsForYear,docsFor,allYears,renderLinkedFlow,setLinkedBranch,openLinkedList,refreshLinkedFlow,renderDataAnalytics,refreshDataAnalytics,applyProductMasterToInput,applyProductionProductPreset,applyCustomerDemo,useAutoDocumentNumber,refreshAutoDocumentNumber,handleDocumentDateChange,switchMasterTab,renderMasterData,saveCustomerMaster,saveSupplierMaster,saveProductMasterLocal,resetCustomerMasterForm,resetSupplierMasterForm,resetProductMasterForm,editContactMaster,deleteContactMaster,editProductMasterLocal,deleteProductMasterLocal,handleCustomerMasterInput,applyCustomerMasterToForm,rememberCustomerFromForm,rememberSupplierFromProduction,syncProductFulfillmentFromFlowType,handleCsvImportFile,changeCsvImportType,setCsvMapping,commitCsvImport,downloadCsvTemplate,resetCsvImportWizard});
+Object.assign(window,{loadFor,saveFor,productMasterRows,productMasterMeta,productEstimatedStock,productOpeningStock,productSoldQty,findContactMaster,contactMasterRows,applySuggestedQuotePrice,docsForYear,docsFor,allYears,renderLinkedFlow,setLinkedBranch,openLinkedList,refreshLinkedFlow,renderDataAnalytics,refreshDataAnalytics,applyProductMasterToInput,applyProductionProductPreset,applyCustomerDemo,useAutoDocumentNumber,refreshAutoDocumentNumber,handleDocumentDateChange,switchMasterTab,renderMasterData,saveCustomerMaster,saveSupplierMaster,saveProductMasterLocal,resetCustomerMasterForm,resetSupplierMasterForm,resetProductMasterForm,editContactMaster,deleteContactMaster,editProductMasterLocal,deleteProductMasterLocal,handleCustomerMasterInput,applyCustomerMasterToForm,rememberCustomerFromForm,rememberSupplierFromProduction,syncProductFulfillmentFromFlowType,handleCsvImportFile,changeCsvImportType,setCsvMapping,commitCsvImport,downloadCsvTemplate,resetCsvImportWizard});
 
 function bootComformApp() {
   exposeInlineHandlers();
@@ -7803,3 +8069,13 @@ window.addEventListener('comform-auth-ready', () => {
 
 
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>setTimeout(refreshExpenseEvidenceUi,0));}else{setTimeout(refreshExpenseEvidenceUi,0);}
+
+
+// Multi-tenant cache refresh: after Firebase resolves the company/tenant, re-read
+// tenant-scoped local data instead of data that may have initialized anonymously.
+window.addEventListener('comform-auth-ready',async()=>{
+  try{await hydrateTenantMasterFromCloud();}catch(_){}
+  try{window.renderMasterData?.();}catch(_){}
+  try{renderDashboard?.();}catch(_){}
+  try{renderDataAnalytics?.();}catch(_){}
+});

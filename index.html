@@ -3,20 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ข้อมูล บริษัท ตัวอย่าง จำกัด (Example Company)</title>
+<title>ERP Business Platform</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="delivery-tax-document.css">
 <link rel="stylesheet" href="quotation-document.css">
 <link rel="stylesheet" href="receipt-document.css">
+<link rel="stylesheet" href="trial-mode.css">
+<link rel="stylesheet" href="business-rules.css">
+<link rel="stylesheet" href="local-demo-mode.css">
 </head>
 <body>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
-  <img class="company-logo" src="./logo.png" alt="Example Company Logo">
+  <img class="company-logo" src="./logo.png" alt="Company Logo">
   <div class="company-title-wrap">
-    <div class="company-main-title">ข้อมูล บริษัท ตัวอย่าง จำกัด ( Example Company )</div>
-    <div class="company-sub-title">ระบบ ERP Demo / ฝ่ายขาย / จัดซื้อ / คลังสินค้า / ค่าใช้จ่าย / วิเคราะห์ธุรกิจ</div>
+    <div class="company-main-title" id="tenant-company-title">ERP Business Platform</div>
+    <div class="company-sub-title" id="tenant-company-subtitle">ฝ่ายขาย / จัดซื้อ / คลังสินค้า / ค่าใช้จ่าย / วิเคราะห์ธุรกิจ</div>
   </div>
   <span id="topbar-ctx" class="company-date"></span>
 </div>
@@ -37,6 +40,7 @@
   <div class="nav-item" onclick="go('analytics',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-7"/><circle cx="7" cy="15" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="14" r="1"/><circle cx="19" cy="7" r="1"/></svg>Business Analytics</div>
   <div class="nav-sec">ข้อมูลหลัก</div>
   <div class="nav-item" onclick="go('master-data',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><path d="M2 21v-2a6 6 0 0112 0v2"/><rect x="15" y="4" width="7" height="7" rx="1"/><path d="M16 16h6M16 20h6"/></svg>ลูกค้า / ผู้จำหน่าย / สินค้า</div>
+  <div class="nav-item" onclick="go('business-rules',this);window.BusinessRulesService?.render?.()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h3M14 12h2M8 16h8"/></svg>สูตร / Business Rules</div>
   <div class="nav-sec">เอกสารขาย</div>
   <div class="nav-item" onclick="go('quote-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>ใบเสนอราคา</div>
   <div class="nav-item" onclick="go('invoice-form',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7-7 7 7"/></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
@@ -59,6 +63,7 @@
   <div class="nav-item" onclick="go('expense-list',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>ค่าใช้จ่าย</div>
   <div class="nav-sec">ควบคุมระบบ</div>
   <div class="nav-item" onclick="go('audit-log',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Audit / Control Center</div>
+  <div class="nav-item" onclick="go('saas-admin',this);window.SaaSService?.renderPanel?.()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/><path d="M9 9h.01M15 9h.01"/></svg>ข้อมูลบริษัท / โหมดทดลอง</div>
   <div class="nav-sec">ไฟล์</div>
   <div class="nav-item" onclick="go('files',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Export / Import</div>
 </nav>
@@ -365,6 +370,33 @@
       <div id="dash-agency-chart" class="bar-chart customer-chart"></div>
       <div id="dash-agency-summary" class="chart-summary"></div>
     </div>
+
+    <div class="card chart-card">
+      <div class="card-title chart-title-row">
+        <span>📦 สินค้าขายดีในช่วงที่เลือก</span>
+        <span id="dash-product-compare-label" class="analytics-mini-label">Top Product Compare</span>
+      </div>
+      <div id="dash-product-compare-chart" class="bar-chart analytics-chart"></div>
+      <div id="dash-product-compare-summary" class="chart-summary"></div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-title chart-title-row">
+        <span>🏆 ลูกค้าอันดับ 1 ในแต่ละเดือน</span>
+        <span class="analytics-mini-label">Monthly Leaderboard</span>
+      </div>
+      <div id="dash-monthly-customer-leader-table"></div>
+      <div id="dash-monthly-customer-leader-summary" class="chart-summary"></div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-title chart-title-row">
+        <span>🏭 ผู้ผลิต / ผู้จำหน่ายที่เราซื้อมากที่สุด</span>
+        <span class="analytics-mini-label">Supplier Credit Opportunity</span>
+      </div>
+      <div id="dash-supplier-compare-chart" class="bar-chart analytics-chart"></div>
+      <div id="dash-supplier-compare-summary" class="chart-summary"></div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -543,6 +575,21 @@
       <div class="chart-summary">เลือกสินค้าในตัวกรองด้านบน เพื่อดูว่าแต่ละสินค้าเดือนไหนและไตรมาสไหนสร้างยอดสูงสุด</div>
     </div>
     <div class="card analytics-card analytics-wide-card">
+      <div class="card-title chart-title-row"><span>🗓️ สินค้าขายดีอันดับ 1 ของแต่ละเดือน</span><span class="analytics-mini-label">Monthly Product Leader</span></div>
+      <div id="analytics-monthly-product-leader-table"></div>
+      <div id="analytics-monthly-product-leader-summary" class="chart-summary"></div>
+    </div>
+    <div class="card analytics-card analytics-wide-card">
+      <div class="card-title chart-title-row"><span>🏆 ลูกค้าอันดับ 1 ของแต่ละเดือน</span><span class="analytics-mini-label">Monthly Customer Leader</span></div>
+      <div id="analytics-monthly-customer-leader-table"></div>
+      <div id="analytics-monthly-customer-leader-summary" class="chart-summary"></div>
+    </div>
+    <div class="card analytics-card analytics-wide-card">
+      <div class="card-title chart-title-row"><span>🏭 ศักยภาพเครดิตกับผู้ผลิต / ผู้จำหน่าย</span><span class="analytics-mini-label">Supplier Opportunity</span></div>
+      <div id="analytics-supplier-opportunity-table"></div>
+      <div id="analytics-supplier-opportunity-summary" class="chart-summary"></div>
+    </div>
+    <div class="card analytics-card analytics-wide-card">
       <div class="card-title chart-title-row"><span>🧑‍💼 วิเคราะห์พนักงานขาย</span><span class="analytics-mini-label">Sales Performance</span></div>
       <div id="analytics-salesperson-table"></div>
     </div>
@@ -656,6 +703,105 @@
   </section>
 </div>
 
+<!-- BUSINESS RULES / FORMULA LAB -->
+<div id="panel-business-rules" class="panel">
+  <section class="brules-head">
+    <div><div class="brules-eyebrow">TENANT-SCOPED FORMULA SANDBOX</div><h2>🧮 Business Rules / Formula Lab</h2><p>แต่ละบริษัทมีสินค้า ลูกค้า ผู้ผลิต และวิธีคิดราคาไม่เหมือนกัน หน้านี้ใช้ทดลองกำหนดสูตรของบริษัทโดยไม่ต้องแก้ Source Code แยกรายลูกค้า และบันทึก Formula Version สำหรับ Audit</p></div>
+    <span id="br-version-badge" class="brules-version">Formula BR-001</span>
+  </section>
+
+  <div class="card">
+    <div class="card-title"><span>1) เลือก Scenario ตัวอย่าง</span><span class="analytics-mini-label">ข้อมูลสมมติสำหรับ Trial</span></div>
+    <div id="br-preset-grid" class="brules-preset-grid"></div>
+    <div class="brules-actions"><button type="button" id="br-seed-selected" class="btn btn-primary">🧪 โหลด Scenario + Master Data ลง Trial นี้</button></div>
+    <div class="brules-note"><strong>ความปลอดภัย:</strong> ปุ่มนี้เพิ่มข้อมูลสมมติเฉพาะ Tenant ที่กำลัง Login เท่านั้น ไม่เปิดให้บริษัทหนึ่งเห็น Master Data หรือ Business Rules ของอีกบริษัท</div>
+  </div>
+
+  <div class="brules-grid">
+    <section class="brules-card">
+      <h3>2) สูตรหลักของบริษัท</h3>
+      <div class="brules-form-grid">
+        <label><span>วิธีตั้งราคาหลัก</span><select id="br-pricing-method"><option value="markup_on_cost">Markup on Cost</option><option value="target_margin">Target Gross Margin</option><option value="fixed_price">Fixed Price / Rate</option></select></label>
+        <label><span>อัตรา (%) / ราคาคงที่</span><input id="br-rate" type="number" min="0" step="0.01" value="25"></label>
+        <label><span>ส่วนลดลูกค้า Default (%)</span><input id="br-default-discount" type="number" min="0" max="100" step="0.01" value="0"></label>
+        <label><span>วิธีคิดค่าคอมมิชชัน</span><select id="br-commission-method"><option value="none">ไม่มี</option><option value="net_sales">% จากยอดขายสุทธิ</option><option value="gross_profit">% จากกำไรขั้นต้น</option></select></label>
+        <label><span>Commission Rate (%)</span><input id="br-commission-rate" type="number" min="0" max="100" step="0.01" value="0"></label>
+      </div>
+      <div class="brules-checks">
+        <label><input id="br-cost-shipping" type="checkbox" checked> รวมค่าขนส่งในต้นทุน</label>
+        <label><input id="br-cost-labor" type="checkbox" checked> รวมค่าแรงในต้นทุน</label>
+        <label><input id="br-cost-design" type="checkbox" checked> รวมค่าออกแบบในต้นทุน</label>
+        <label><input id="br-cost-other" type="checkbox" checked> รวมต้นทุนทางตรงอื่น</label>
+      </div>
+      <div class="brules-actions"><button type="button" id="br-save" class="btn btn-green">💾 บันทึกเป็น Formula Version ใหม่</button></div>
+      <div class="brules-note"><strong>Markup ≠ Margin:</strong> Markup 25% = Cost × 1.25 ส่วน Target Margin 25% = Cost ÷ (1−0.25) จึงได้ราคาขายต่างกัน ระบบแยกสูตรให้ถูกต้อง</div>
+    </section>
+
+    <section class="brules-card">
+      <h3>3) Formula Lab — ทดลองคำนวณ</h3>
+      <div class="brules-form-grid">
+        <label><span>ต้นทุนสินค้า/บริการต่อหน่วย</span><input id="br-lab-base" type="number" min="0" step="0.01" value="10000"></label>
+        <label><span>ค่าขนส่งต่อหน่วย</span><input id="br-lab-shipping" type="number" min="0" step="0.01" value="0"></label>
+        <label><span>ค่าแรงต่อหน่วย</span><input id="br-lab-labor" type="number" min="0" step="0.01" value="0"></label>
+        <label><span>ค่าออกแบบต่อหน่วย</span><input id="br-lab-design" type="number" min="0" step="0.01" value="0"></label>
+        <label><span>ต้นทุนอื่นต่อหน่วย</span><input id="br-lab-other" type="number" min="0" step="0.01" value="0"></label>
+        <label><span>จำนวน</span><input id="br-lab-qty" type="number" min="0.01" step="0.01" value="1"></label>
+        <label><span>สินค้า / SKU (ใช้ Product Override)</span><input id="br-lab-product" list="br-product-list" placeholder="เช่น IT-TRIAL-01"><datalist id="br-product-list"></datalist></label>
+        <label><span>ลูกค้า (ใช้ Customer Override)</span><input id="br-lab-customer" list="br-customer-list" placeholder="ชื่อลูกค้า"><datalist id="br-customer-list"></datalist></label>
+        <label><span>ส่วนลดในเอกสาร (%)</span><input id="br-lab-discount" type="number" min="0" max="100" step="0.01" value="0"></label>
+        <label><span>VAT</span><select id="br-lab-vat"><option value="1">VAT 7%</option><option value="0">ไม่คิด VAT</option></select></label>
+      </div>
+      <div class="brules-result-grid" style="margin-top:12px">
+        <div class="brules-result"><small>ต้นทุนตรง/หน่วย</small><b id="br-res-cost">฿0.00</b></div>
+        <div class="brules-result purple"><small>ราคาก่อนส่วนลด/หน่วย</small><b id="br-res-list">฿0.00</b></div>
+        <div class="brules-result"><small>ราคาขายสุทธิ/หน่วย</small><b id="br-res-net">฿0.00</b></div>
+        <div class="brules-result good"><small>รวม VAT</small><b id="br-res-total">฿0.00</b></div>
+        <div class="brules-result good"><small>กำไรขั้นต้น</small><b id="br-res-profit">฿0.00</b></div>
+        <div class="brules-result"><small>Gross Margin</small><b id="br-res-margin">0%</b></div>
+        <div class="brules-result warn"><small>ค่าคอมมิชชัน</small><b id="br-res-commission">฿0.00</b></div>
+        <div class="brules-result good"><small>กำไรหลัง Commission</small><b id="br-res-netprofit">฿0.00</b></div>
+      </div>
+      <div class="brules-note">Rule ที่ใช้: <strong id="br-res-rule">-</strong><br>ส่วนลด: <strong id="br-res-discount">-</strong><br><strong>VAT 7%</strong> ใน Trial นี้เป็นสูตรระบบ ไม่เปิดให้เขียน JavaScript/สูตรภาษาธรรมชาติเอง</div>
+      <div class="brules-actions"><button type="button" id="br-apply-quote" class="btn btn-primary">→ ใส่ราคานี้ในใบเสนอราคาแถวแรก</button></div>
+    </section>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>4) Rule Priority</span><span class="analytics-mini-label">Formula Resolution</span></div>
+    <div class="brules-flow"><span>Company Default</span><i>→</i><span>Product Override</span><i>→</i><span>Customer Discount</span><i>→</i><span>Document Override</span></div>
+    <div class="brules-note">ระบบเลือกกฎที่เฉพาะเจาะจงกว่าก่อน และใบเสนอราคาจะเก็บ Snapshot ของ Formula Version + Suggested Price ณ วันที่สร้าง เพื่อให้การเปลี่ยนสูตรในอนาคตไม่ย้อนกลับไปเปลี่ยนบริบทของเอกสารเก่า</div>
+  </div>
+
+  <div class="brules-grid">
+    <section class="brules-card">
+      <div class="brules-section-title"><b>Product Pricing Override</b><small>สูตรเฉพาะสินค้า</small></div>
+      <div class="brules-inline-form">
+        <label><span>สินค้า/SKU</span><input id="br-rule-product" list="br-product-list" placeholder="SKU หรือชื่อสินค้า"></label>
+        <label><span>วิธีคำนวณ</span><select id="br-rule-product-method"><option value="markup_on_cost">Markup on Cost</option><option value="target_margin">Target Margin</option></select></label>
+        <label><span>อัตรา %</span><input id="br-rule-product-rate" type="number" min="0" max="95" step="0.01" value="25"></label>
+        <button type="button" id="br-add-product-rule" class="brules-mini-btn">+ เพิ่ม Rule</button>
+      </div>
+      <div id="br-product-rules-table"></div>
+    </section>
+    <section class="brules-card">
+      <div class="brules-section-title"><b>Customer Discount Override</b><small>ส่วนลดเฉพาะลูกค้า</small></div>
+      <div class="brules-inline-form" style="grid-template-columns:1.5fr .7fr auto">
+        <label><span>ลูกค้า</span><input id="br-rule-customer" list="br-customer-list" placeholder="ชื่อลูกค้า"></label>
+        <label><span>ส่วนลด %</span><input id="br-rule-customer-discount" type="number" min="0" max="100" step="0.01" value="0"></label>
+        <button type="button" id="br-add-customer-rule" class="brules-mini-btn">+ เพิ่ม Rule</button>
+      </div>
+      <div id="br-customer-rules-table"></div>
+    </section>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>5) Formula Version / Audit Context</span><span class="analytics-mini-label">ไม่แก้เอกสารย้อนหลัง</span></div>
+    <div id="br-audit" class="brules-audit"></div>
+    <div id="br-version-history" style="margin-top:12px"></div>
+    <div id="br-status" class="brules-status" aria-live="polite"></div>
+  </div>
+</div>
+
 
 <!-- PURCHASE ORDER -->
 <div id="panel-purchase-order" class="panel"><div class="card prodcore-shell">
@@ -713,7 +859,7 @@
 <div id="panel-audit-log" class="panel">
   <div class="prodcore-page-head audit"><div><span>INTERNAL CONTROL</span><h2>🛡️ Audit & Control Center</h2><p>ติดตามการสร้าง แก้ไข รับสินค้า ปรับ Stock การชำระ และเหตุการณ์สำคัญของระบบบนเครื่องนี้</p></div><button class="btn btn-ghost" onclick="pcExportAudit()">⬇ Export Audit CSV</button></div>
   <div id="audit-kpis" class="prodcore-kpis"></div>
-  <div class="card"><div class="filter-bar"><div><label>เหตุการณ์</label><select id="audit-action" onchange="pcRenderAudit()"><option value="">ทั้งหมด</option><option value="create">Create</option><option value="update">Update</option><option value="post">Post</option><option value="payment">Payment</option><option value="adjust">Adjust</option><option value="delete">Delete</option><option value="system">System</option></select></div><div><label>ค้นหา</label><input id="audit-search" type="text" placeholder="เลขเอกสาร / รายละเอียด" oninput="pcRenderAudit()"></div></div><div id="audit-table"></div><div class="prodcore-control-note"><b>หมายเหตุ:</b> Audit Log รุ่นนี้เก็บแบบ Local Audit Trail เพื่อช่วยตรวจสอบการทำงาน หากนำไปใช้ Production หลายผู้ใช้ควรเก็บ Audit Log บน Firebase/Backend แบบ append-only และกำหนดสิทธิ์ไม่ให้ผู้ใช้ทั่วไปแก้ไขย้อนหลัง</div></div>
+  <div class="card"><div class="filter-bar"><div><label>เหตุการณ์</label><select id="audit-action" onchange="pcRenderAudit()"><option value="">ทั้งหมด</option><option value="create">Create</option><option value="update">Update</option><option value="post">Post</option><option value="payment">Payment</option><option value="adjust">Adjust</option><option value="delete">Delete</option><option value="system">System</option></select></div><div><label>ค้นหา</label><input id="audit-search" type="text" placeholder="เลขเอกสาร / รายละเอียด" oninput="pcRenderAudit()"></div></div><div id="audit-table"></div><div class="prodcore-control-note"><b>หมายเหตุ:</b> Audit Log ในชุดทดลองนี้เก็บเฉพาะใน Browser เครื่องนี้ เพื่อให้ลูกค้าเห็นแนวทางการตรวจสอบย้อนหลัง โดยยังไม่มีการส่งข้อมูลขึ้น Firebase/Cloud</div></div>
 </div>
 
 <!-- QUOTE FORM -->
@@ -1483,6 +1629,32 @@
 </div>
 
 <!-- FILES -->
+
+<!-- SAAS TENANT / SUBSCRIPTION -->
+<div id="panel-saas-admin" class="panel">
+  <div class="card">
+    <div class="card-title">🏢 บริษัท / แพ็กเกจ SaaS</div>
+    <div class="saas-note">ข้อมูลหน้านี้อ่านจาก Tenant ของบัญชีที่ Login อยู่เท่านั้น การเพิ่มสาขาทำผ่าน Vercel API ฝั่ง Server และตรวจ <b>Branch Limit</b> ก่อนสร้างจริง</div>
+    <div id="saas-summary-cards" class="metrics"></div>
+    <div class="saas-admin-grid">
+      <div class="saas-box">
+        <h3>สาขาที่เปิดใช้งาน</h3>
+        <div id="saas-branch-list" class="saas-branch-list"><div class="empty">กำลังโหลด...</div></div>
+      </div>
+      <div class="saas-box">
+        <h3>เพิ่มสาขา (Add-on)</h3>
+        <p class="section-hint">ในเวอร์ชันนี้ ERP รองรับรหัสสาขาหลักเดิม 2 รหัส: <b>ubon</b> = สำนักงานใหญ่ และ <b>khonkaen</b> = สาขาที่ 00001 หากต้องการมากกว่า 2 สาขา ควรทำ Dynamic Branch Refactor เพิ่มเติม</p>
+        <div class="fg">
+          <div class="ff"><label>รหัสสาขา</label><select id="saas-new-branch-code"><option value="ubon">ubon — สำนักงานใหญ่</option><option value="khonkaen">khonkaen — สาขาที่ 00001</option></select></div>
+          <div class="ff"><label>ชื่อสาขา</label><input id="saas-new-branch-name" type="text" placeholder="เช่น สาขาที่ 00001"></div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-primary" onclick="window.SaaSService?.createBranchFromPanel?.()">+ เพิ่มสาขาตามสิทธิ์แพ็กเกจ</button></div>
+        <div id="saas-action-status" class="section-hint"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="panel-files" class="panel"><div class="card">
   <div class="card-title">Export / Import ข้อมูล</div>
   <p style="font-size:15px;color:var(--g2);margin-bottom:1rem">
@@ -1531,9 +1703,9 @@
 
     <div class="export-box">
       <div class="export-box-title">🗂️ ไฟล์รวมและนำเข้าข้อมูล</div>
-      <p class="export-help">รองรับทั้งไฟล์ Backup JSON ของระบบ และไฟล์ฐานข้อมูลยอดขาย <code>firebase-sales-*.json</code> ที่จัดทำจาก Excel</p>
+      <p class="export-help">รองรับไฟล์ Backup JSON ของระบบและไฟล์ฐานข้อมูลยอดขาย JSON สำหรับทดลอง Import ในเครื่อง</p>
       <div class="import-json-options">
-        <label><input id="import-sync-cloud" type="checkbox" checked> อัปโหลดข้อมูลขึ้น Firebase พร้อมกัน</label>
+        <label class="cloud-disabled-control"><input id="import-sync-cloud" type="checkbox" disabled> Local Demo: ไม่อัปโหลดข้อมูลขึ้น Firebase/Cloud</label>
         <label>Backup JSON:
           <select id="import-mode">
             <option value="merge">รวมกับข้อมูลเดิมและตัดรายการซ้ำ</option>
@@ -1542,7 +1714,7 @@
         </label>
       </div>
       <div class="import-json-note">
-        ไฟล์ฐานข้อมูลยอดขายจะนำเฉพาะรายการสถานะปกติที่มียอดขายไปใช้คำนวณใน <b>ยอดขาย</b> และช่วงเดือน 1–6 ปี พ.ศ. 2569 ระบบจะสะท้อนยอดเดียวกันไปเป็น <b>ยอดส่งสินค้า</b> บน Dashboard/Analytics โดยไม่สร้างเอกสารใบส่งสินค้าซ้ำ ส่วนข้อมูลดิบทั้งหมดจะเก็บใน Firebase collection <code>salesArchive</code>
+        ไฟล์ฐานข้อมูลยอดขายจะถูกนำเข้ามาใช้กับ Dashboard/Analytics เฉพาะใน Browser เครื่องนี้เท่านั้น ข้อมูลดิบและ Master Data ไม่ถูกส่งไป Firebase/Cloud และสามารถ Export Backup JSON ก่อนล้างข้อมูลทดลองได้
       </div>
       <div class="export-actions">
         <button class="btn btn-purple" onclick="exportAllExcel()">⬇ Excel รวมทุกปี</button>
@@ -1550,7 +1722,7 @@
         <label class="btn btn-green" style="cursor:pointer">⬆ Import JSON / ฐานข้อมูลยอดขาย
           <input type="file" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
         </label>
-        <button class="btn btn-ghost" type="button" onclick="repairHistoricalImportData()">🛠 ซ่อมข้อมูลเดิม / เพิ่มวันที่ พ.ศ.</button>
+        
       </div>
       <div id="import-json-status" class="import-json-status">ยังไม่มีการนำเข้าไฟล์</div>
     </div>
@@ -1591,7 +1763,7 @@
       <button class="btn btn-ghost" type="button" onclick="resetCsvImportWizard()">ล้าง</button>
     </div>
 
-    <div id="csv-import-file-summary" class="csv-import-summary">ยังไม่ได้เลือกไฟล์ CSV</div><div class="csv-map-note"><b>การจัดเก็บ:</b> CSV Master Data จะถูกบันทึกใน Browser เครื่องนี้ (Local Storage) เช่นเดียวกับ Customer/Supplier/Product Master ปัจจุบัน และจะถูกรวมไปกับ Backup JSON เพื่อย้ายไปเครื่องอื่นได้ · แนะนำให้บันทึก CSV เป็น UTF-8</div>
+    <div id="csv-import-file-summary" class="csv-import-summary">ยังไม่ได้เลือกไฟล์ CSV</div><div class="csv-map-note"><b>การจัดเก็บ:</b> CSV Master Data จะถูกเก็บเฉพาะใน Browser เครื่องนี้ (Local Demo) · ไม่มีการ Sync ไป Firebase/Cloud · Backup JSON ใช้สำรองหรือย้ายข้อมูลทดลองได้ · แนะนำ CSV แบบ UTF-8</div>
 
     <div id="csv-mapping-section" class="csv-mapping-section" style="display:none">
       <div class="csv-section-title"><span>1</span> จับคู่คอลัมน์</div>
@@ -1614,11 +1786,9 @@
 </div><!-- /app-content -->
 
 <script src="boot-status.js"></script>
-<script type="module" src="firebase-auth.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script type="module" src="google-drive.js"></script>
+<script type="module" src="tenant-context.js"></script>
+<script type="module" src="local-demo-mode.js"></script>
 <script type="module" src="local-file-store.js"></script>
-<script type="module" src="firebase-bridge.js"></script>
 <script type="module" src="click-fallback.js"></script>
 <!-- Load printable document modules before app.js so inline previews are ready when forms boot. -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
@@ -1627,7 +1797,8 @@
 <script type="module" src="quotation-document.js"></script>
 <script type="module" src="receipt-document.js"></script>
 <script type="module" src="app.js"></script>
-<script type="module" src="firebase-dashboard.js"></script>
+<script type="module" src="business-rules.js"></script>
+<script type="module" src="trial-mode.js"></script>
 <script type="module" src="erp-production-core.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>

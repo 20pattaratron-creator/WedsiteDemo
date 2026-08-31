@@ -5,6 +5,8 @@ const html2canvas = (...args) => {
 const jsPDF = window.jspdf?.jsPDF;
 
 const DTD_STORAGE_KEY = 'comform_delivery_tax_document_draft_v1';
+const tenantStorageKey = key => window.ComformTenant?.storageKey?.(key) || key;
+const businessStorageKey = (branch,year,month) => tenantStorageKey(`biz2_${branch}_${year}_${String(Number(month)+1).padStart(2,'0')}`);
 const MAX_ITEMS = 60;
 const ITEM_UNITS_PER_PAGE = 8;
 const BLUE = '#0868c9';
@@ -31,6 +33,25 @@ const BRANCH_DEFAULTS = {
     taxId: '0000000000000'
   }
 };
+
+
+function branchCompany(branch) {
+  const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.khonkaen;
+  const profile = window.CurrentUser?.companyProfile || {};
+  const branchProfile = profile?.branches?.[branch] || {};
+  const tenantName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || '';
+  return {
+    ...fallback,
+    ...branchProfile,
+    companyNameTh: branchProfile.companyNameTh || branchProfile.nameTh || profile.companyNameTh || profile.nameTh || tenantName || fallback.companyNameTh,
+    companyNameEn: branchProfile.companyNameEn || branchProfile.nameEn || profile.companyNameEn || profile.nameEn || fallback.companyNameEn,
+    addressTh: branchProfile.addressTh || profile.addressTh || fallback.addressTh,
+    addressEn: branchProfile.addressEn || profile.addressEn || fallback.addressEn,
+    phone: branchProfile.phone || profile.phone || fallback.phone,
+    taxId: branchProfile.taxId || profile.taxId || fallback.taxId,
+    label: branchProfile.label || branchProfile.name || fallback.label
+  };
+}
 
 const PAGE_TYPES = [
   {
@@ -74,7 +95,7 @@ function createDefaultState() {
   return {
     previewOnly: false,
     branch: 'khonkaen',
-    company: { ...BRANCH_DEFAULTS.khonkaen },
+    company: { ...branchCompany('khonkaen') },
     customerName: '',
     customerAddress: '',
     customerTaxId: '',
@@ -235,12 +256,12 @@ function getLockedBranch() {
 
 function loadDraft() {
   try {
-    const saved = JSON.parse(localStorage.getItem(DTD_STORAGE_KEY) || 'null');
+    const saved = JSON.parse(localStorage.getItem(tenantStorageKey(DTD_STORAGE_KEY)) || 'null');
     if (saved && typeof saved === 'object') {
       state = {
         ...createDefaultState(),
         ...saved,
-        company: { ...BRANCH_DEFAULTS[saved.branch || 'khonkaen'], ...(saved.company || {}) },
+        company: { ...branchCompany(saved.branch || 'khonkaen'), ...(saved.company || {}) },
         items: Array.isArray(saved.items) && saved.items.length ? saved.items.slice(0, MAX_ITEMS).map(item => ({ ...createItem(), ...item })) : [createItem()]
       };
     }
@@ -250,13 +271,13 @@ function loadDraft() {
   const lockedBranch = getLockedBranch();
   if (lockedBranch && BRANCH_DEFAULTS[lockedBranch]) {
     state.branch = lockedBranch;
-    state.company = { ...BRANCH_DEFAULTS[lockedBranch], ...state.company, label: BRANCH_DEFAULTS[lockedBranch].label };
+    state.company = { ...branchCompany(lockedBranch), ...state.company, label: branchCompany(lockedBranch).label };
   }
 }
 
 function persistDraft() {
   try {
-    localStorage.setItem(DTD_STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(tenantStorageKey(DTD_STORAGE_KEY), JSON.stringify(state));
   } catch (error) {
     console.warn('บันทึกร่างเอกสารไม่สำเร็จ', error);
   }
@@ -319,7 +340,7 @@ function renderAppShell() {
         <div class="dtd-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="dtd-company-mini">บริษัท ตัวอย่าง จำกัด</div>
+            <div class="dtd-company-mini">${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
             <h2>ออกใบส่งสินค้า / ใบกำกับภาษี</h2>
           </div>
         </div>
@@ -445,7 +466,7 @@ function loadFromInvoice(inv = {}, ref = {}) {
   const branch = ref.b || inv.branch || state.branch || 'khonkaen';
   if (BRANCH_DEFAULTS[branch]) {
     state.branch = branch;
-    state.company = { ...BRANCH_DEFAULTS[branch] };
+    state.company = { ...branchCompany(branch) };
   }
   state.customerName = inv.customer || '';
   state.docNo = inv.no || state.docNo;
@@ -701,7 +722,7 @@ function bindEvents() {
     if (field === 'branch') {
       const branch = event.target.value;
       state.branch = branch;
-      state.company = { ...BRANCH_DEFAULTS[branch] };
+      state.company = { ...branchCompany(branch) };
       persistDraft();
       renderAppShell();
       bindEvents();
@@ -777,7 +798,7 @@ function setBranch(branch) {
   }
   if (state.branch === branch) return;
   state.branch = branch;
-  state.company = { ...BRANCH_DEFAULTS[branch] };
+  state.company = { ...branchCompany(branch) };
   persistDraft();
   renderAppShell();
   bindEvents();
@@ -791,7 +812,7 @@ function applyLockedBranch() {
   if (!locked) return;
   if (state.branch !== locked) {
     state.branch = locked;
-    state.company = { ...BRANCH_DEFAULTS[locked] };
+    state.company = { ...branchCompany(locked) };
     persistDraft();
     renderAppShell();
     bindEvents();
@@ -951,7 +972,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
   `).join('');
   const emptyUnits = Math.max(0, ITEM_UNITS_PER_PAGE - Number(chunk.usedUnits || 0));
   const emptyHtml = Array.from({ length: emptyUnits }, () => '<tr class="empty"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-  const company = state.company || BRANCH_DEFAULTS[state.branch] || BRANCH_DEFAULTS.khonkaen;
+  const company = state.company || branchCompany(state.branch);
   const logoSrc = pdfMode && pdfLogoDataUrl ? pdfLogoDataUrl : COMPANY_LOGO_URL;
   const pageCounter = totalPages > 1 ? `<span class="dtd-doc-page-counter">หน้ารายการ ${pageNumber}/${totalPages}</span>` : '';
   const subtotalText = isFinalPage ? fmt(sum.subtotal) : '';
@@ -966,7 +987,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
       </div>
       <header class="dtd-doc-header">
         <div class="dtd-doc-company">
-          <img src="${logoSrc}" alt="Example Company" crossorigin="anonymous" decoding="sync">
+          <img src="${logoSrc}" alt="Company Logo" crossorigin="anonymous" decoding="sync">
           <div>
             <div class="dtd-doc-company-th">${escapeHtml(company.companyNameTh)}</div>
             <div class="dtd-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
@@ -1033,7 +1054,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
         <img class="dtd-doc-watermark" src="${logoSrc}" alt="" crossorigin="anonymous" decoding="sync">
         <div class="dtd-doc-bottom-area">
           <div class="dtd-doc-payment-note">
-            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>บริษัท ตัวอย่าง จำกัด</b></div>
+            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>${escapeHtml(company.companyNameTh || window.CurrentUser?.tenantName || 'บริษัท')}</b></div>
             <div>• สินค้าตามรายการข้างต้นยังเป็นกรรมสิทธิ์ของบริษัทฯ จนกว่าจะได้รับชำระเงินครบถ้วน</div>
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
             ${!isFinalPage ? `<div class="dtd-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
@@ -1135,7 +1156,7 @@ async function saveDocumentToSystem(button) {
     // วันที่บนเอกสารเป็นข้อมูลไม่บังคับ แต่ระบบยังต้องมีปี/เดือนสำหรับจัดเก็บและซิงก์
     // หากไม่ระบุวันที่ จะใช้เดือนปัจจุบันเป็นตำแหน่งจัดเก็บ โดยช่องวันที่ในเอกสารยังคงว่าง
     const { year, month } = resolveStoragePeriod(state.date);
-    const key = `biz2_${state.branch}_${year}_${String(month + 1).padStart(2, '0')}`;
+    const key = businessStorageKey(state.branch, year, month);
     const pack = JSON.parse(localStorage.getItem(key) || '{"quotes":[],"invoices":[],"receipts":[],"issuedInvoices":[],"issuedReceipts":[],"expenses":[],"productions":[]}');
     pack.issuedInvoices ||= [];
     const sum = totals();
@@ -1201,7 +1222,7 @@ async function saveDocumentToSystem(button) {
     // เพื่อให้หน้าเดียวกันทำหน้าที่ทั้งเก็บข้อมูลธุรกิจและพิมพ์เอกสาร โดยไม่ต้องมีเมนูซ้ำ
     if (state.sourceInvoiceNo && state.sourceInvoiceBranch && state.sourceInvoiceYear !== '' && state.sourceInvoiceMonth !== '') {
       try {
-        const sourceKey = `biz2_${state.sourceInvoiceBranch}_${Number(state.sourceInvoiceYear)}_${String(Number(state.sourceInvoiceMonth) + 1).padStart(2, '0')}`;
+        const sourceKey = businessStorageKey(state.sourceInvoiceBranch, Number(state.sourceInvoiceYear), Number(state.sourceInvoiceMonth));
         const sourcePack = JSON.parse(localStorage.getItem(sourceKey) || '{}');
         const sourceInv = (sourcePack.invoices || []).find(row => String(row.id) === String(state.sourceInvoiceId) || String(row.no) === String(state.sourceInvoiceNo));
         if (sourceInv) {
@@ -1396,7 +1417,7 @@ function buildStateFromInvoicePreview(inv = {}, ref = {}) {
   const branch = ref.b || inv.branch || previewState.branch || 'khonkaen';
   if (BRANCH_DEFAULTS[branch]) {
     previewState.branch = branch;
-    previewState.company = { ...BRANCH_DEFAULTS[branch] };
+    previewState.company = { ...branchCompany(branch) };
   }
   previewState.customerName = inv.customer || '';
   previewState.customerAddress = inv.customerAddress || inv.address || '';

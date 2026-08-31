@@ -14,8 +14,9 @@ const money=v=>new Intl.NumberFormat('th-TH',{minimumFractionDigits:2,maximumFra
 const qtyFmt=v=>new Intl.NumberFormat('th-TH',{maximumFractionDigits:2}).format(num(v));
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const nowIso=()=>new Date().toISOString();
-function read(key){try{const x=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(x)?x:[];}catch{return[];}}
-function write(key,rows){localStorage.setItem(key,JSON.stringify(rows||[]));}
+function scopedKey(key){return window.ComformTenant?.storageKey?.(key)||String(key||'');}
+function read(key){try{const x=JSON.parse(localStorage.getItem(scopedKey(key))||'[]');return Array.isArray(x)?x:[];}catch{return[];}}
+function write(key,rows){localStorage.setItem(scopedKey(key),JSON.stringify(rows||[]));}
 function cloudSave(collectionName,row){
   if(!window.FirebaseService?.configured||typeof window.FirebaseService.saveOperationalRecord!=='function')return;
   window.FirebaseService.saveOperationalRecord(collectionName,row).catch(err=>console.warn(`[Operational Sync] ${collectionName} save failed`,err));
@@ -49,7 +50,8 @@ function branchFromForm(prefix){
 }
 function currentProfile(){return window.ComformAuth?.getCurrentProfile?.()||window.CurrentUser||null;}
 function lockedBranch(){const b=currentProfile()?.branch;return b&&b!=='all'?b:'';}
-function canSeeBranch(branch){const locked=lockedBranch();return !locked||branch===locked;}
+function branchActive(branch){return window.SaaSService?.isBranchActive?.(branch) ?? true;}
+function canSeeBranch(branch){const locked=lockedBranch();return branchActive(branch)&&(!locked||branch===locked);}
 function enforceOperationalBranchUi(){
   const locked=lockedBranch();
   ['po-branch','gr-branch','adj-branch'].forEach(id=>{const el=document.getElementById(id);if(!el)return;if(locked)el.value=locked;el.disabled=!!locked;});
@@ -87,8 +89,12 @@ function inventoryMovementNet(product,branch=''){
   return movementRows().filter(r=>(!branch||r.branch===branch)&&productKey({code:r.productCode,name:r.product})===key).reduce((s,r)=>s+num(r.qty),0);
 }
 function stockOnHand(product,branch=''){
+  if(branch==='all'||!branch){
+    return ['ubon','khonkaen'].filter(branchActive).reduce((sum,b)=>sum+stockOnHand(product,b),0);
+  }
+  if(!branchActive(branch))return 0;
   if(typeof window.productEstimatedStock==='function')return num(window.productEstimatedStock(product,branch));
-  const base=branch==='ubon'?num(product.openingStockUbon??product.openingStock):branch==='khonkaen'?num(product.openingStockKhonkaen):num(product.openingStockUbon??product.openingStock)+num(product.openingStockKhonkaen);
+  const base=branch==='ubon'?num(product.openingStockUbon??product.openingStock):branch==='khonkaen'?num(product.openingStockKhonkaen):0;
   return Math.max(0,base+inventoryMovementNet(product,branch));
 }
 function availableStock(product,branch){return stockOnHand(product,branch);}
@@ -186,17 +192,17 @@ function reverseGr(idv){const grs=grRows(),g=grs.find(x=>x.id===idv);if(!g||g.re
 
 function postAdjustment(){
   const date=document.getElementById('adj-date')?.value,branch=lockedBranch()||document.getElementById('adj-branch')?.value,productName=document.getElementById('adj-product')?.value.trim(),type=document.getElementById('adj-type')?.value,qty=num(document.getElementById('adj-qty')?.value),reason=document.getElementById('adj-reason')?.value.trim();const p=productBy(productName);
-  if(!date||!branch||!p||qty<=0||!reason)return window.notify?.('กรุณากรอกวันที่ สาขา สินค้า จำนวน และเหตุผลให้ครบ');if(p.fulfillmentType!=='stock'||p.flowType!=='inventory')return window.notify?.('Stock Adjustment ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const delta=type==='decrease'?-qty:qty;if(delta<0&&stockOnHand(p,branch)<qty-0.000001)return window.notify?.(`Stock ไม่พอ: ${p.name} มี ${qtyFmt(stockOnHand(p,branch))} ${p.unit||''}`);
+  if(!date||!branch||!p||qty<=0||!reason)return window.notify?.('กรุณากรอกวันที่ สาขา สินค้า จำนวน และเหตุผลให้ครบ');if(!branchActive(branch))return window.notify?.('สาขานี้ยังไม่เปิดใช้งานในแพ็กเกจ');if(p.fulfillmentType!=='stock'||p.flowType!=='inventory')return window.notify?.('Stock Adjustment ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const delta=type==='decrease'?-qty:qty;if(delta<0&&stockOnHand(p,branch)<qty-0.000001)return window.notify?.(`Stock ไม่พอ: ${p.name} มี ${qtyFmt(stockOnHand(p,branch))} ${p.unit||''}`);
   const rows=movementRows();const mv={id:id('mv'),date,branch,kind:'adjustment',qty:delta,productCode:p.code||'',product:p.name,unit:p.unit||'',unitCost:p.standardCost||0,refType:'adjustment',refNo:`ADJ-${Date.now()}`,note:reason,createdAt:nowIso(),updatedAtIso:nowIso()};rows.unshift(mv);saveMovementRows(rows);cloudSave('inventoryMovements',mv);audit('adjust','inventory',p.code||p.name,`${delta>0?'เพิ่ม':'ลด'} Stock ${qtyFmt(qty)} ${p.unit||''} · ${reason}`,{branch});document.getElementById('adj-qty').value='';document.getElementById('adj-reason').value='';renderInventory();window.renderMasterData?.();window.notify?.('บันทึก Stock Adjustment เรียบร้อย');
 }
 function postTransfer(){
   const date=document.getElementById('transfer-date')?.value||today(),productName=document.getElementById('transfer-product')?.value.trim(),from=lockedBranch()||document.getElementById('transfer-from')?.value,to=document.getElementById('transfer-to')?.value,qty=num(document.getElementById('transfer-qty')?.value),note=document.getElementById('transfer-note')?.value.trim()||'';const p=productBy(productName);
-  if(!p||!from||!to||qty<=0)return window.notify?.('กรุณากรอกสินค้า ต้นทาง ปลายทาง และจำนวนให้ครบ');if(from===to)return window.notify?.('สาขาต้นทางและปลายทางต้องไม่ใช่สาขาเดียวกัน');if(p.flowType!=='inventory'||p.fulfillmentType!=='stock')return window.notify?.('Stock Transfer ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const available=stockOnHand(p,from);if(available<qty-0.000001)return window.notify?.(`Stock ต้นทางไม่พอ: ${p.name} มี ${qtyFmt(available)} ${p.unit||''}`);
+  if(!p||!from||!to||qty<=0)return window.notify?.('กรุณากรอกสินค้า ต้นทาง ปลายทาง และจำนวนให้ครบ');if(!branchActive(from)||!branchActive(to))return window.notify?.('ต้นทางหรือปลายทางยังไม่เปิดใช้งานในแพ็กเกจ');if(from===to)return window.notify?.('สาขาต้นทางและปลายทางต้องไม่ใช่สาขาเดียวกัน');if(p.flowType!=='inventory'||p.fulfillmentType!=='stock')return window.notify?.('Stock Transfer ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const available=stockOnHand(p,from);if(available<qty-0.000001)return window.notify?.(`Stock ต้นทางไม่พอ: ${p.name} มี ${qtyFmt(available)} ${p.unit||''}`);
   const d=new Date(`${date}T00:00:00`),ref=`TRF${String(d.getFullYear()+543).slice(-2)}${String(d.getMonth()+1).padStart(2,'0')}${String(Date.now()).slice(-5)}`;const common={date,productCode:p.code||'',product:p.name,unit:p.unit||'',unitCost:p.standardCost||0,refType:'stock_transfer',refNo:ref,createdAt:nowIso(),updatedAtIso:nowIso()};const out={id:id('mv'),...common,branch:from,kind:'transfer_out',qty:-qty,note:`โอนไป ${BRANCH_LABEL[to]}${note?` · ${note}`:''}`};const inn={id:id('mv'),...common,branch:to,kind:'transfer_in',qty:qty,note:`รับโอนจาก ${BRANCH_LABEL[from]}${note?` · ${note}`:''}`};const rows=movementRows();rows.unshift(inn,out);saveMovementRows(rows);cloudSave('inventoryMovements',out);cloudSave('inventoryMovements',inn);audit('adjust','inventory',ref,`โอน ${p.code||p.name} ${qtyFmt(qty)} ${p.unit||''} · ${BRANCH_LABEL[from]} → ${BRANCH_LABEL[to]}`,{branch:from});document.getElementById('transfer-qty').value='';document.getElementById('transfer-note').value='';renderInventory();renderOpsDashboard();window.renderMasterData?.();window.notify?.(`โอนสต็อกเรียบร้อย · ${ref}`);
 }
 function derivedSalesMovements(){
   const out=[];if(typeof window.docsForYear!=='function'||typeof window.allYears!=='function')return out;const years=window.allYears();
-  ['ubon','khonkaen'].forEach(branch=>years.forEach(year=>{(window.docsForYear('invoices',year,branch)||[]).filter(inv=>!inv.voided&&!inv.cancelled).forEach(inv=>(inv.items||[]).forEach(i=>{const p=productBy(i.product,i.productCode);if(!p||p.fulfillmentType!=='stock'||p.flowType!=='inventory')return;out.push({id:`sale-${branch}-${year}-${inv.id}-${p.code||p.name}`,date:inv.date||'',branch,kind:'sale',qty:-num(i.qty),productCode:p.code||i.productCode||'',product:p.name||i.product,unit:i.unit||p.unit||'',unitCost:num(i.costUnit||p.standardCost),refType:'invoice',refNo:inv.no||'',note:`ตัดสต็อกจากใบส่งสินค้า / ใบกำกับภาษี ${inv.no||''}`,createdAt:inv.createdAt||inv.date||''});}));}));return out;
+  ['ubon','khonkaen'].filter(branchActive).forEach(branch=>years.forEach(year=>{(window.docsForYear('invoices',year,branch)||[]).filter(inv=>!inv.voided&&!inv.cancelled).forEach(inv=>(inv.items||[]).forEach(i=>{const p=productBy(i.product,i.productCode);if(!p||p.fulfillmentType!=='stock'||p.flowType!=='inventory')return;out.push({id:`sale-${branch}-${year}-${inv.id}-${p.code||p.name}`,date:inv.date||'',branch,kind:'sale',qty:-num(i.qty),productCode:p.code||i.productCode||'',product:p.name||i.product,unit:i.unit||p.unit||'',unitCost:num(i.costUnit||p.standardCost),refType:'invoice',refNo:inv.no||'',note:`ตัดสต็อกจากใบส่งสินค้า / ใบกำกับภาษี ${inv.no||''}`,createdAt:inv.createdAt||inv.date||''});}));}));return out;
 }
 function allMovements(){return [...movementRows(),...derivedSalesMovements()].sort((a,b)=>String(b.date||b.createdAt).localeCompare(String(a.date||a.createdAt))||String(b.createdAt).localeCompare(String(a.createdAt)));}
 function renderInventory(){

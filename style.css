@@ -2646,3 +2646,19 @@ tr:nth-child(even) td{background:#fbfdff!important}tr:hover td{background:#f0fbf
 @media(max-width:640px){.prodcore-kpis{grid-template-columns:1fr}.prodcore-inline{grid-template-columns:1fr}.prodcore-page-head{padding:15px}.prodcore-page-head h2{font-size:19px}}
 .prodcore-dashboard-ops{margin:0 0 1rem;padding:14px;border:1px solid #dbe7f5;border-radius:16px;background:linear-gradient(180deg,#f9fcff,#fff)}
 .prodcore-dashboard-ops .card-title{margin-bottom:10px}
+
+/* ============================================================
+   MULTI-TENANT SAAS ADMIN / BRANCH SUBSCRIPTION
+   ============================================================ */
+.saas-note{padding:12px 14px;margin-bottom:14px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;color:#1e3a8a;line-height:1.55}
+.saas-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.saas-box{border:1px solid #dbe4ef;border-radius:14px;padding:16px;background:#fff}
+.saas-box h3{margin:0 0 10px;font-size:16px;color:#0f172a}
+.saas-branch-list{display:flex;flex-direction:column;gap:8px}
+.saas-branch-row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+.saas-branch-row b{color:#0f172a}.saas-branch-row small{display:block;color:#64748b;margin-top:2px}
+.saas-status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.saas-status-pill.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.tenant-branch-disabled{opacity:.38!important;filter:grayscale(.4);pointer-events:none!important;position:relative}
+.tenant-branch-disabled::after{content:'ยังไม่เปิดในแพ็กเกจ';position:absolute;inset:auto 4px -18px auto;font-size:9px;color:#92400e;white-space:nowrap}
+@media(max-width:900px){.saas-admin-grid{grid-template-columns:1fr}}
