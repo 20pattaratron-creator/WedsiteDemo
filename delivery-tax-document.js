@@ -112,6 +112,7 @@ function createDefaultState() {
     shipTo: '',
     buyerName: '',
     vatEnabled: true,
+    vatNone: false,
     note: '',
     attachments: [],
     sourceProductionNo: '',
@@ -203,6 +204,7 @@ function totals() {
   // 1) รวม VAT 7%: มูลค่าสินค้า + VAT 7%
   // 2) ไม่รวม VAT 7%: ถอด VAT จากมูลค่าสินค้าด้วย ×100÷107
   //    แล้วนำมูลค่าก่อน VAT + VAT 7% กลับมาเป็นยอดรวมเดิม
+  if (state.vatNone) return {itemTotal,subtotal:itemTotal,vat:0,grand:itemTotal};
   if (state.vatEnabled) {
     const subtotal = itemTotal;
     const vat = roundMoney(subtotal * 0.07);
@@ -474,6 +476,7 @@ function loadFromInvoice(inv = {}, ref = {}) {
   state.dueDate = inv.dueDate || state.dueDate;
   state.salesperson = inv.salesPerson || '';
   state.vatEnabled = Number(inv.useVat || 0) === 1;
+  state.vatNone = inv.vatMode==='none'||Number(inv.useVat)===2;
   state.note = inv.note || '';
   state.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
   state.sourceProductionNo = inv.sourceProductionNo || '';
@@ -607,8 +610,8 @@ function summarySectionHtml() {
         <label class="dtd-field">
           <span>ภาษีมูลค่าเพิ่ม</span>
           <select data-field="vatEnabled">
-            <option value="1" ${state.vatEnabled ? 'selected' : ''}>รวม VAT 7%</option>
-            <option value="0" ${!state.vatEnabled ? 'selected' : ''}>ไม่รวม VAT 7%</option>
+            <option value="1" ${state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคายังไม่รวม VAT — บวกเพิ่ม</option>
+            <option value="0" ${!state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคารวม VAT แล้ว — แยกภาษี</option><option value="2" ${state.vatNone?'selected':''}>ไม่มี VAT</option>
           </select>
           <small class="dtd-vat-help">รวม VAT 7% = รวมมูลค่าสินค้า + VAT 7% • ไม่รวม VAT 7% = ถอดฐานภาษีด้วย รวมมูลค่าสินค้า × 100 ÷ 107 แล้วบวก VAT 7%</small>
         </label>
@@ -711,6 +714,7 @@ function bindEvents() {
   root.addEventListener('input', event => {
     const field = event.target?.dataset?.field;
     if (!field) return;
+    if(field==='vatEnabled')state.vatNone=event.target.value==='2';
     const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
     setNestedValue(state, field, value);
     persistDraft();
@@ -731,7 +735,8 @@ function bindEvents() {
       return;
     }
     if (field) {
-      const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
+      if(field==='vatEnabled')state.vatNone=event.target.value==='2';
+    const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
       setNestedValue(state, field, value);
       persistDraft();
       updateComputedAndPreview();
@@ -1185,8 +1190,8 @@ async function saveDocumentToSystem(button) {
       })),
       itemSaleTotal: sum.itemTotal,
       subtotal: sum.subtotal,
-      useVat: state.vatEnabled ? 1 : 0,
-      vatMode: state.vatEnabled ? 'add' : 'extract',
+      useVat: state.vatNone ? 2 : state.vatEnabled ? 1 : 0,
+      vatMode: state.vatNone ? 'none' : state.vatEnabled ? 'add' : 'extract',
       vatAmt: sum.vat,
       total: sum.grand,
       saleTotal: sum.itemTotal,
@@ -1214,9 +1219,17 @@ async function saveDocumentToSystem(button) {
       documentData: JSON.parse(JSON.stringify(state))
     };
 
+    const canonical=window.ERPIntegrity.resolveInvoice({branch:state.sourceInvoiceBranch||state.branch,id:state.sourceInvoiceId,no:state.sourceInvoiceNo});
+    if(canonical){
+      if(!window.ERPIntegrity.live(canonical))throw new Error('Invoice ต้นทางถูกยกเลิกแล้ว');
+      const matches=(canonical.items||[]).length===record.items.length&&(canonical.items||[]).every((x,i)=>Number(x.qty)===record.items[i].qty&&Number(x.priceUnit)===record.items[i].priceUnit&&String(x.product)===String(record.items[i].product));
+      if(!matches||Math.abs(window.ERPIntegrity.amount(canonical)-record.total)>0.001||canonical.customer!==record.customer)throw new Error('รายการสินค้าหรือยอดเงินต่างจาก Invoice ต้นทาง กรุณาแก้ข้อมูลต้นทางก่อน');
+      record.sourceSalesOrderId=canonical.sourceSalesOrderId||'';record.sourceSalesOrderNo=canonical.sourceSalesOrderNo||'';
+    }else throw new Error('กรุณาบันทึก Invoice ต้นทางก่อนออกเอกสาร');
     if (existingIndex >= 0) pack.issuedInvoices[existingIndex] = record;
     else pack.issuedInvoices.push(record);
     localStorage.setItem(key, JSON.stringify(pack));
+    window.ERPIntegrity.changed();
 
     // เมื่อเอกสารนี้ถูกเปิดจากฟอร์มใบส่งสินค้าเดิม ให้บันทึกสถานะกลับไปยังรายการต้นทาง
     // เพื่อให้หน้าเดียวกันทำหน้าที่ทั้งเก็บข้อมูลธุรกิจและพิมพ์เอกสาร โดยไม่ต้องมีเมนูซ้ำ
@@ -1429,6 +1442,7 @@ function buildStateFromInvoicePreview(inv = {}, ref = {}) {
   previewState.dueDate = inv.dueDate || previewState.dueDate;
   previewState.salesperson = inv.salesPerson || '';
   previewState.vatEnabled = Number(inv.useVat || 0) === 1;
+  previewState.vatNone = inv.vatMode==='none'||Number(inv.useVat)===2;
   previewState.note = inv.note || '';
   previewState.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
   previewState.sourceProductionNo = inv.sourceProductionNo || '';

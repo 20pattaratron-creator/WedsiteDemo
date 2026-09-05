@@ -114,6 +114,7 @@ function createDefaultState() {
     shipTo: '',
     buyerName: '',
     vatEnabled: true,
+    vatNone: false,
     note: '',
     attachments: [],
     sourceInvoiceId: '',
@@ -208,6 +209,7 @@ function totals() {
   // 1) รวม VAT 7%: มูลค่าสินค้า + VAT 7%
   // 2) ไม่รวม VAT 7%: ถอด VAT จากมูลค่าสินค้าด้วย ×100÷107
   //    แล้วนำมูลค่าก่อน VAT + VAT 7% กลับมาเป็นยอดรวมเดิม
+  if (state.vatNone) return {itemTotal,subtotal:itemTotal,vat:0,grand:itemTotal};
   if (state.vatEnabled) {
     const subtotal = itemTotal;
     const vat = roundMoney(subtotal * 0.07);
@@ -339,6 +341,7 @@ function loadFromReceipt(receipt = {}, ref = {}) {
   state.date = receipt.date || state.date;
   state.salesperson = receipt.salesPerson || '';
   state.vatEnabled = Number(receipt.useVat || 0) === 1;
+  state.vatNone = receipt.vatMode==='none'||Number(receipt.useVat)===2;
   state.note = receipt.note || '';
   state.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
   state.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
@@ -593,6 +596,7 @@ function applyInvoiceToReceipt(invoice) {
   state.paymentTerm = data.paymentTerm || 'เงินสด';
   state.shipTo = invoice.no || data.docNo || '';
   state.vatEnabled = Number(invoice.useVat ?? (data.vatEnabled ? 1 : 0)) === 1;
+  state.vatNone=invoice.vatMode==='none'||Number(invoice.useVat)===2;
   state.note = data.note || invoice.note || state.note || '';
   state.sourceInvoiceId = invoice.id || '';
   state.sourceInvoiceFirebaseId = invoice.firebaseId || '';
@@ -725,8 +729,8 @@ function summarySectionHtml() {
         <label class="rcp-field">
           <span>ภาษีมูลค่าเพิ่ม</span>
           <select data-field="vatEnabled">
-            <option value="1" ${state.vatEnabled ? 'selected' : ''}>รวม VAT 7%</option>
-            <option value="0" ${!state.vatEnabled ? 'selected' : ''}>ไม่รวม VAT 7%</option>
+            <option value="1" ${state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคายังไม่รวม VAT — บวกเพิ่ม</option>
+            <option value="0" ${!state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคารวม VAT แล้ว — แยกภาษี</option><option value="2" ${state.vatNone?'selected':''}>ไม่มี VAT</option>
           </select>
           <small class="rcp-vat-help">รวม VAT 7% = รวมมูลค่าสินค้า + VAT 7% • ไม่รวม VAT 7% = ถอดฐานภาษีด้วย รวมมูลค่าสินค้า × 100 ÷ 107 แล้วบวก VAT 7%</small>
         </label>
@@ -830,6 +834,7 @@ function bindEvents() {
     if (event.target?.id === 'rcp-source-invoice-search') { invoiceFilterSearch=event.target.value||''; refreshInvoiceLinkControls(); return; }
     const field = event.target?.dataset?.field;
     if (!field) return;
+    if(field==='vatEnabled')state.vatNone=event.target.value==='2';
     const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
     setNestedValue(state, field, value);
     persistDraft();
@@ -858,7 +863,8 @@ function bindEvents() {
       return;
     }
     if (field) {
-      const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
+      if(field==='vatEnabled')state.vatNone=event.target.value==='2';
+    const value = field === 'vatEnabled' ? event.target.value === '1' : event.target.value;
       setNestedValue(state, field, value);
       persistDraft();
       updateComputedAndPreview();
@@ -1315,8 +1321,8 @@ async function saveDocumentToSystem(button) {
       })),
       itemSaleTotal: sum.itemTotal,
       subtotal: sum.subtotal,
-      useVat: state.vatEnabled ? 1 : 0,
-      vatMode: state.vatEnabled ? 'add' : 'extract',
+      useVat: state.vatNone ? 2 : state.vatEnabled ? 1 : 0,
+      vatMode: state.vatNone ? 'none' : state.vatEnabled ? 'add' : 'extract',
       vatAmt: sum.vat,
       total: sum.grand,
       saleTotal: sum.itemTotal,
@@ -1342,9 +1348,16 @@ async function saveDocumentToSystem(button) {
       documentData: JSON.parse(JSON.stringify(state))
     };
 
+    const canonical=window.ERPIntegrity.business().receipts.find(r=>r._type==='receipts'&&r._branch===state.branch&&((state.sourceReceiptId&&String(r.id)===String(state.sourceReceiptId))||(state.sourceReceiptNo&&r.no===state.sourceReceiptNo)));
+    if(canonical){
+      if(!window.ERPIntegrity.live(canonical))throw new Error('ใบเสร็จต้นทางถูกยกเลิกแล้ว');
+      if(Math.abs(window.ERPIntegrity.amount(canonical)-record.total)>0.001||Math.abs(Number(canonical.subtotal)-record.subtotal)>0.01||canonical.customer!==record.customer)throw new Error('ยอดเงินหรือชื่อลูกค้าต่างจากใบเสร็จต้นทาง กรุณาแก้ข้อมูลต้นทางก่อน');
+      record.paymentId=canonical.paymentId||'';record.invoiceId=canonical.invoiceId||'';record.invoiceBranch=canonical.invoiceBranch||state.branch;
+    }else window.ERPIntegrity.validateReceipt(record,old?.id||'');
     if (existingIndex >= 0) pack.issuedReceipts[existingIndex] = record;
     else pack.issuedReceipts.push(record);
     localStorage.setItem(key, JSON.stringify(pack));
+    window.ERPIntegrity.changed();
 
     // เชื่อมเอกสารที่พิมพ์กลับไปยังข้อมูลใบเสร็จต้นทาง เพื่อให้ผู้ใช้เห็นเป็นเอกสารเดียว
     if (state.sourceReceiptNo && state.sourceReceiptBranch && state.sourceReceiptYear !== '' && state.sourceReceiptMonth !== '') {
@@ -1563,6 +1576,7 @@ function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
   previewState.date = receipt.date || previewState.date;
   previewState.salesperson = receipt.salesPerson || '';
   previewState.vatEnabled = Number(receipt.useVat || 0) === 1;
+  previewState.vatNone = receipt.vatMode==='none'||Number(receipt.useVat)===2;
   previewState.note = receipt.note || '';
   previewState.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
   previewState.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';

@@ -66,7 +66,7 @@ const PRESETS={
 };
 
 let draftPolicy=null;
-function pricingRate(method,value){return method==='fixed_price'?Math.max(0,n(value)):clamp(value,0,95)}
+function pricingRate(method,value){return method==='fixed_price'?Math.max(0,n(value)):clamp(value,0,method==='target_margin'?95:500)}
 function basePolicy(){
   return {schemaVersion:1,formulaVersion:1,pricingMethod:'markup_on_cost',rate:25,defaultCustomerDiscount:0,commissionMethod:'none',commissionRate:0,costComponents:{shipping:true,labor:true,design:true,other:true},productRules:[],customerRules:[],history:[],updatedAt:new Date().toISOString()};
 }
@@ -135,7 +135,7 @@ function commissionLabel(v){return{none:'ไม่มีค่าคอมมิ
 function resolveRule({productCode='',productName='',category='',customer='',documentOverride=null,policyOverride=null}={}){
   const p=policyOverride||readRules();let method=p.pricingMethod,rate=pricingRate(p.pricingMethod,p.rate),source='Company Default';
   const key=String(productCode||productName).trim().toLowerCase();
-  const exact=(p.productRules||[]).find(r=>String(r.key||'').trim().toLowerCase()===key||String(r.label||'').toLowerCase().includes(key));
+  const exact=key?(p.productRules||[]).find(r=>String(r.key||'').trim().toLowerCase()===key||String(r.label||'').trim().toLowerCase()===key):null;
   if(exact){method=exact.pricingMethod||method;rate=pricingRate(method,exact.rate);source='Product Override';}
   let discount=n(p.defaultCustomerDiscount),discountSource='Company Default';
   const cust=(p.customerRules||[]).find(r=>String(r.key||'').trim().toLowerCase()===String(customer||'').trim().toLowerCase());
@@ -149,7 +149,7 @@ function calculate(input={},resolvedRule=null){
   const rule=resolvedRule||resolveRule(input);const p=rule.policy||readRules();const comp=p.costComponents||{};
   const base=Math.max(0,n(input.baseCost));const shipping=comp.shipping?Math.max(0,n(input.shipping)):0;const labor=comp.labor?Math.max(0,n(input.labor)):0;const design=comp.design?Math.max(0,n(input.design)):0;const other=comp.other?Math.max(0,n(input.other)):0;const qty=Math.max(.0001,n(input.qty)||1);
   const directUnit=base+shipping+labor+design+other;let listUnit=directUnit;
-  if(rule.pricingMethod==='target_margin'){const r=clamp(rule.rate,0,95)/100;listUnit=r>=.95?directUnit:directUnit/(1-r)}
+  if(rule.pricingMethod==='target_margin'){const r=clamp(rule.rate,0,95)/100;listUnit=directUnit/(1-r)}
   else if(rule.pricingMethod==='fixed_price'){listUnit=Math.max(0,n(input.fixedPrice)||n(rule.rate));}
   else listUnit=directUnit*(1+clamp(rule.rate,0,500)/100);
   const discount=Number.isFinite(Number(input.discountPercent))?clamp(input.discountPercent,0,100):rule.discountPercent;

@@ -159,3 +159,35 @@ window.LocalFileStore = {
   getLocalAttachmentUrl,
   deleteLocalAttachment
 };
+
+// Portable backups include verified file bytes, not just local IDs.
+async function attachmentDigest(blob){const hash=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function exportAttachments(ids=[]){
+  const db=await openLocalFileDb();
+  const rows=await new Promise((resolve,reject)=>{const r=db.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const result=[];
+  for(const id of ids){
+    const row=rows.find(r=>r.id===id&&(!r.tenantId||r.tenantId===activeTenantId()));
+    if(!row?.blob)throw new Error('ไม่พบไฟล์แนบ '+id+' จึงยังสร้าง Backup แบบครบไฟล์ไม่ได้');
+    const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(row.blob);});
+    const {blob,...meta}=row;result.push({...meta,dataUrl,sha256:await attachmentDigest(blob)});
+  }
+  return result;
+}
+async function importAttachments(rows=[]){
+  if(!Array.isArray(rows))throw new Error('ไฟล์แนบใน Backup ไม่ถูกต้อง');
+  const db=await openLocalFileDb();
+  const existing=await new Promise((resolve,reject)=>{const r=db.transaction(STORE_NAME,'readonly').objectStore(STORE_NAME).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+  const prepared=[],seen=new Set();
+  for(const r of rows){
+    if(!r.id||seen.has(r.id)||!/^data:[^,]*;base64,/.test(r.dataUrl||''))throw new Error('ข้อมูลไฟล์แนบไม่ถูกต้องหรือรหัสซ้ำ');seen.add(r.id);
+    const blob=await dataUrlToBlob(r.dataUrl),digest=await attachmentDigest(blob);
+    if(!r.sha256||r.sha256!==digest)throw new Error('ตรวจความสมบูรณ์ไฟล์แนบไม่ผ่าน: '+r.name);
+    const old=existing.find(x=>x.id===r.id);
+    if(old){if(old.tenantId&&old.tenantId!==activeTenantId())throw new Error('รหัสไฟล์แนบชนกับข้อมูลบริษัทอื่น');if(await attachmentDigest(old.blob)!==digest)throw new Error('ไฟล์แนบรหัสเดียวกันมีเนื้อหาต่างกัน: '+r.name);continue;}
+    const {dataUrl,sha256,...meta}=r;prepared.push({...meta,tenantId:activeTenantId(),blob});
+  }
+  if(prepared.length)await new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,'readwrite');prepared.forEach(r=>tx.objectStore(STORE_NAME).add(r));tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('ยกเลิกนำเข้าไฟล์แนบ'));});
+  return prepared.map(r=>r.id);
+}
+Object.assign(window.LocalFileStore,{exportAttachments,importAttachments});

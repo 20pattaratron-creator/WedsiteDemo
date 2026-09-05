@@ -55,6 +55,7 @@ function roundMoneyValue(value){
 }
 function calculateVatSummary(rawSaleTotal,useVat){
   const itemTotal=roundMoneyValue(rawSaleTotal);
+  if(Number(useVat)===2||useVat==='none')return {itemTotal,subtotal:itemTotal,vatAmt:0,total:itemTotal,vatMode:'none'};
   if(Number(useVat)===1){
     const subtotal=itemTotal;
     const vatAmt=roundMoneyValue(subtotal*0.07);
@@ -71,8 +72,8 @@ function resolveVatMode(doc={}){
 }
 function vatModeLabel(doc={}){
   const mode=resolveVatMode(doc);
-  if(mode==='add')return 'รวม VAT 7% (บวก VAT เพิ่ม)';
-  if(mode==='extract')return 'ไม่รวม VAT 7% (ถอด VAT จากยอดขายรวม)';
+  if(mode==='add')return 'ราคายังไม่รวม VAT — บวกเพิ่ม 7%';
+  if(mode==='extract')return 'ราคารวม VAT แล้ว — แยกภาษี';
   return 'ไม่มี VAT';
 }
 
@@ -375,7 +376,7 @@ function productSoldQty(product,branch=''){
   const targetCode=normalizeProductKey(product.code),targetName=normalizeProductKey(product.name);let qty=0;
   const years=typeof allYears==='function'?allYears():[now.getFullYear()];
   const branches=branch?[branch]:tenantActiveBranchIds();
-  branches.forEach(br=>years.forEach(year=>{for(let month=0;month<12;month++){const pack=loadFor(br,year,month);(pack.invoices||[]).filter(inv=>!inv.voided&&!inv.cancelled).forEach(inv=>(inv.items||[]).forEach(item=>{const code=normalizeProductKey(item.productCode),name=normalizeProductKey(item.product);if((targetCode&&code===targetCode)||(!targetCode&&name===targetName)||(targetName&&name===targetName))qty+=safeNum(item.qty);}));}}));
+  branches.forEach(br=>years.forEach(year=>{for(let month=0;month<12;month++){const pack=loadFor(br,year,month);(pack.invoices||[]).filter(inv=>!inv.voided&&!inv.cancelled).forEach(inv=>(inv.items||[]).forEach(item=>{const code=normalizeProductKey(item.productCode),name=normalizeProductKey(item.product);if(targetCode&&code?code===targetCode:targetName&&name===targetName)qty+=safeNum(item.qty);}));}}));
   return roundMoneyValue(qty);
 }
 function productOpeningStock(product,branch=''){
@@ -862,6 +863,7 @@ function localCacheJsonReplacer(key,value){
 function saveFor(branch,year,month,data){
   try{
     localStorage.setItem(keyFor(branch,year,month),JSON.stringify(data,localCacheJsonReplacer));
+    window.ERPIntegrity?.changed?.();
   }catch(err){
     console.error('บันทึกข้อมูลลง localStorage ไม่สำเร็จ:',err);
     const isQuota=err?.name==='QuotaExceededError'||err?.code===22||err?.code===1014;
@@ -968,7 +970,8 @@ function createLocalBackupSnapshot(year=getCurrentSelectedYear(), reason='manual
   const key=tenantLocalKey(LOCAL_BACKUP_KEY_PREFIX+id);
   const snapshot={
     id,
-    version:1,
+    version:2,
+    rawStorage:window.ERPBackup.capture(),
     createdAt:new Date().toISOString(),
     year:y,
     reason,
@@ -1000,6 +1003,7 @@ function restoreLocalBackupSnapshot(id){
   if(!entry)throw new Error('ไม่พบ Backup: '+id);
   const snapshot=JSON.parse(localStorage.getItem(entry.key||tenantLocalKey(LOCAL_BACKUP_KEY_PREFIX+entry.id))||'null');
   if(!snapshot?.data)throw new Error('ไฟล์ Backup เสียหรืออ่านไม่ได้');
+  if(snapshot.rawStorage){window.ERPBackup.restore(snapshot.rawStorage);rerenderAfterCloudWrite(Number(snapshot.year));return snapshot;}
   Object.entries(snapshot.data).forEach(([branch,months])=>{
     Object.entries(months||{}).forEach(([month,raw])=>{
       const storageKey=keyFor(branch,Number(snapshot.year),Number(month));
@@ -1564,25 +1568,17 @@ function switchDashTab(t){
 }
 
 function branchStats(branch,year,monthVal){
-  const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];
-  let st=0,ct=0,cm=0,ex=0,qc=0,ic=0,pc=0;
-  months.forEach(m=>{
-    const d=loadFor(branch,year,m);
-    const productions=dedupeRecords(d.productions||[]);
-
-    // ยอดขายหลักของบริษัทมาจากใบสั่งผลิต/ฐานข้อมูลยอดขายย้อนหลัง
-    // ไม่รวม invoices ซ้ำอีกครั้ง เพราะ invoice คือยอดส่งสินค้า ไม่ใช่ยอดขายก้อนใหม่
-    st+=productions.reduce((s,e)=>s+productionNetSalesValue(e),0);
-    ct+=productions.reduce((s,e)=>s+safeNum(e.costTotal??e.costSubtotal??e.costGrandTotal),0);
-    cm+=productions.reduce((s,e)=>s+safeNum(e.commAmt),0);
-    ex+=(d.expenses||[]).reduce((s,e)=>s+safeNum(e.amount),0);
-    qc+=(d.quotes||[]).length;
-    ic+=(d.invoices||[]).length;
-    pc+=productions.length;
-  });
-  return{st,ct,cm,ex,net:st-ct-cm-ex,qc,ic,pc};
+  const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];let st=0,ct=0,cm=0,ex=0,qc=0,ic=0,pc=0;
+  months.forEach(m=>{const d=loadFor(branch,year,m),rows=analyticsPrimarySalesRows({productions:dedupeRecords(d.productions||[]).map(r=>({...r,branch})),invoices:(d.invoices||[]).map(r=>({...r,branch}))});
+    st+=rows.reduce((s,r)=>s+analyticsSalesValue(r),0);ct+=rows.reduce((s,r)=>s+safeNum(r.costTotal??r.costSubtotal??r.costGrandTotal),0);cm+=rows.reduce((s,r)=>s+safeNum(r.commAmt),0);ex+=(d.expenses||[]).reduce((s,r)=>s+safeNum(r.amount),0);qc+=(d.quotes||[]).length;ic+=(d.invoices||[]).length;pc+=(d.productions||[]).length;});
+  return {st,ct,cm,ex,net:st-ct-cm-ex,qc,ic,pc};
 }
 
+function renderCostReviewNotice(id,rows){
+  const el=document.getElementById(id);if(!el)return;
+  const count=(rows||[]).filter(r=>r.costReviewRequired||(r.sourceSalesOrderId&&!(r.items||[]).every(i=>i.costAllocation?.basis==='production_actual'))).length;
+  el.hidden=count===0;el.textContent=`กำไรเบื้องต้น: ${count} Invoice มีต้นทุนประมาณการ ยังไม่ครบ หรือยังไม่ได้ตรวจจากรุ่นเดิม กรุณาตรวจต้นทุนก่อนใช้ตัดสินใจ`;
+}
 function renderDash(){
   const year=parseInt(document.getElementById('dash-year').value||now.getFullYear());
   const mVal=parseInt(document.getElementById('dash-month').value);
@@ -1590,6 +1586,7 @@ function renderDash(){
   document.getElementById('dash-badge').textContent=mLabel+' พ.ศ. '+yearLabelDual(year);
   document.getElementById('topbar-ctx').textContent=mLabel+' พ.ศ. '+yearLabelDual(year);
 
+  renderCostReviewNotice('dash-cost-review',window.ERPIntegrity.business().invoices.filter(i=>i._year===year&&(mVal===-1||i._month===mVal)&&dashBranches().includes(i._branch)&&window.ERPIntegrity.live(i)));
   const kk=branchStats('khonkaen',year,mVal);
   const ub=branchStats('ubon',year,mVal);
 
@@ -2697,6 +2694,7 @@ function customerRows(year,monthVal,branches,source,mode){
     map.set(key,cur);
   };
   branches.forEach(br=>months.forEach(m=>{
+    if(source==='all'){collectDashboardSalesRows(year,m,[br]).forEach(x=>add(x.customer,analyticsSalesValue(x),x._type==='invoices'?'invoice':'production'));return;}
     const d=loadFor(br,year,m);
     const productions=dedupeRecords(d.productions||[]);
     if(source==='all'||source==='invoices'){
@@ -2721,7 +2719,7 @@ function renderCustomerChart(){
   const rows=customerRows(year,mVal,dashBranches(),source,mode);
   renderBarRows('dash-customer-chart',rows,{fillClass:'green',mode});
   const total=rows.reduce((s,r)=>s+safeNum(r.value),0);
-  const srcLabel={all:'ใบส่งสินค้า / ใบกำกับภาษี + ใบสั่งผลิต',invoices:'ใบส่งสินค้า / ใบกำกับภาษี',productions:'ใบสั่งผลิต'}[source];
+  const srcLabel={all:'ยอดขายก่อน VAT (ไม่นับเอกสารที่เชื่อมกันซ้ำ)',invoices:'ใบส่งสินค้า / ใบกำกับภาษี',productions:'ใบสั่งผลิต'}[source];
   const monthText=mVal===-1?'ทั้งปี':MONTHS[mVal];
   const summary=document.getElementById('dash-customer-summary');
   if(summary)summary.innerHTML=`แสดงลูกค้า Top 10 จาก <b>${srcLabel}</b> ช่วง ${monthText} พ.ศ. ${yearLabelDual(year)}<br>${mode==='count'?'จำนวนเอกสารรวม':'มูลค่ารวมในกราฟ'}: <b>${mode==='count'?chartCount(total):chartMoney(total)}</b>`;
@@ -2735,12 +2733,7 @@ function dashboardAgencyRows(year,monthVal,branches){
     const cur=map.get(key)||{label:agency.customerAgencyGroupLabel||agencyGroupLabel(key),value:0,count:0,customers:new Set()};
     cur.value+=safeNum(value);cur.count+=1;cur.customers.add(analyticsCustomer(record));map.set(key,cur);
   };
-  branches.forEach(br=>months.forEach(m=>{
-    const d=loadFor(br,year,m);
-    const productions=dedupeRecords(d.productions||[]);
-    productions.forEach(row=>add(row,productionNetSalesValue(row)));
-    if(!shouldMirrorHistoricalSalesAsDelivery(year,m))(d.invoices||[]).forEach(row=>add(row,invoiceNetSales(row)));
-  }));
+  collectDashboardSalesRows(year,monthVal,branches).forEach(row=>add(row,analyticsSalesValue(row)));
   return Array.from(map.values()).map(row=>({label:row.label,value:row.value,sub:`ลูกค้า ${[...row.customers].filter(x=>x&&x!=='ไม่ระบุลูกค้า').length} ราย · เอกสาร ${row.count}`})).sort((a,b)=>safeNum(b.value)-safeNum(a.value));
 }
 function renderDashboardAgencyChart(){
@@ -2763,6 +2756,11 @@ function renderDashCharts(){
   renderDashboardSupplierCompareChart();
 }
 
+function collectDashboardSalesRows(year,monthVal,branches){
+  const business=window.ERPIntegrity.business();
+  const inScope=r=>branches.includes(r._branch)&&Number(r._year)===Number(year)&&(Number(monthVal)===-1||Number(r._month)===Number(monthVal));
+  return analyticsPrimarySalesRows({productions:business.productions.filter(inScope),invoices:business.invoices.filter(inScope)});
+}
 function collectDashboardProductionRows(year,monthVal,branches){
   const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];
   const rows=[];
@@ -2785,7 +2783,7 @@ function mostCommonLabel(values=[]){
   return best||'-';
 }
 function buildDashboardProductCompare(year,monthVal,branches){
-  const productionRows=collectDashboardProductionRows(year,monthVal,branches);
+  const productionRows=collectDashboardSalesRows(year,monthVal,branches);
   const itemRows=analyticsItemRows(productionRows);
   const total=itemRows.reduce((sum,row)=>sum+safeNum(row.value),0);
   const groups=groupAnalytics(itemRows,row=>row.product,row=>row.value).map(row=>{
@@ -2797,7 +2795,7 @@ function buildDashboardProductCompare(year,monthVal,branches){
   return{rows:groups,total,top:groups[0]||null};
 }
 function buildMonthlyProductLeaderRows(year,branches){
-  const productionRows=collectDashboardProductionRows(year,-1,branches);
+  const productionRows=collectDashboardSalesRows(year,-1,branches);
   const itemRows=analyticsItemRows(productionRows);
   return MONTHS.map((label,month)=>{
     const monthItems=itemRows.filter(row=>Number(row._month)===month);
@@ -2811,14 +2809,14 @@ function buildMonthlyProductLeaderRows(year,branches){
   }).filter(row=>row.sales>0);
 }
 function buildMonthlyCustomerLeaderRows(year,branches){
-  const productionRows=collectDashboardProductionRows(year,-1,branches);
+  const productionRows=collectDashboardSalesRows(year,-1,branches);
   return MONTHS.map((label,month)=>{
     const monthRows=productionRows.filter(row=>Number(row._month)===month);
-    const monthTotal=monthRows.reduce((sum,row)=>sum+productionNetSalesValue(row),0);
-    const customerGroups=groupAnalytics(monthRows,row=>analyticsCustomer(row),row=>productionNetSalesValue(row));
+    const monthTotal=monthRows.reduce((sum,row)=>sum+analyticsSalesValue(row),0);
+    const customerGroups=groupAnalytics(monthRows,row=>analyticsCustomer(row),row=>analyticsSalesValue(row));
     const topCustomer=customerGroups[0]||null;
     const topCustomerAgency=topCustomer?customerAgencyForRecord(topCustomer.rows[0]||{}):customerAgencyForRecord({});
-    const agencyGroups=groupAnalytics(monthRows,row=>customerAgencyForRecord(row).customerAgencyGroupLabel,row=>productionNetSalesValue(row));
+    const agencyGroups=groupAnalytics(monthRows,row=>customerAgencyForRecord(row).customerAgencyGroupLabel,row=>analyticsSalesValue(row));
     const topAgency=agencyGroups[0]||null;
     const secondAgency=agencyGroups[1]||null;
     return{month,label,customer:topCustomer?.label||'-',sales:topCustomer?.value||0,docs:topCustomer?.count||0,customerType:topCustomerAgency.customerAgencyTypeLabel||'-',agencyRank1:topAgency?.label||'-',agencyRank1Sales:topAgency?.value||0,agencyRank2:secondAgency?.label||'-',agencyRank2Sales:secondAgency?.value||0,share:ratioPercent(topCustomer?.value||0,monthTotal)};
@@ -3000,9 +2998,18 @@ function collectAnalyticsData(filter=analyticsFilters()){
       });
     });
   }));
+  out.invoices=window.ERPIntegrity.dedupe([...out.invoices,...out.issuedInvoices]).filter(window.ERPIntegrity.live);
+  out.receipts=window.ERPIntegrity.dedupe([...out.receipts,...out.issuedReceipts],'Receipt').filter(window.ERPIntegrity.live);
   return out;
 }
-function analyticsPrimarySalesRows(data){return data.productions.length?data.productions:data.invoices;}
+function analyticsPrimarySalesRows(data){
+  // New SO production is work in progress; count its invoices when delivered.
+  // Keep legacy production-only sales for historical imports.
+  const prods=(data.productions||[]).filter(window.ERPIntegrity.live).filter(p=>!p.sourceSalesOrderId);
+  const allProds=window.ERPIntegrity.business().productions.filter(window.ERPIntegrity.live).filter(p=>!p.sourceSalesOrderId);
+  const direct=(data.invoices||[]).filter(window.ERPIntegrity.live).filter(i=>!allProds.some(p=>p._branch===(i.branch||i._branch)&&((i.sourceProductionId&&String(i.sourceProductionId)===String(p.id))||(i.sourceProductionNo&&i.sourceProductionNo===p.no))));
+  return [...prods,...direct.map(i=>({...i,_type:'invoices'}))];
+}
 function analyticsSalesValue(row){
   if(row?._type==='invoices'||row?._type==='receipts'||row?._type==='issuedInvoices'||row?._type==='issuedReceipts')return invoiceNetSales(row);
   if(row?._type==='quotes')return safeNum(row.subtotal||row.saleTotal||row.total);
@@ -3117,9 +3124,9 @@ function analyticsDeliveryRows(data){
 }
 function analyticsDeliveryValue(row){return row?._deliverySource==='historical-sales-mirror'?productionNetSalesValue(row):invoiceNetSales(row);}
 function buildAnalyticsKpis(data,filter){
-  const salesRows=data.productions||[];
+  const salesRows=analyticsPrimarySalesRows(data);
   const deliveryRows=analyticsDeliveryRows(data);
-  const sales=sumBy(salesRows,productionNetSalesValue);
+  const sales=sumBy(salesRows,analyticsSalesValue);
   const quotes=sumBy(data.quotes,row=>analyticsSalesValue({...row,_type:'quotes'}));
   const delivery=sumBy(deliveryRows,analyticsDeliveryValue);
   const receipts=sumBy(data.receipts,invoiceNetSales);
@@ -3140,7 +3147,7 @@ function buildAnalyticsKpis(data,filter){
   const collectionRate=ratioPercent(receipts,delivery);
   const quoteToSalesRate=ratioPercent(sales,quotes);
   const deliveryGap=sales-delivery;
-  const uncollected=delivery-receipts;
+  const uncollected=(data.invoices||[]).reduce((s,i)=>s+window.ERPIntegrity.paymentSummary(i).outstanding,0);
   const customers=new Set(salesRows.map(analyticsCustomer).filter(x=>x&&x!=='ไม่ระบุลูกค้า'));
   const products=new Set(analyticsItemRows(salesRows).map(row=>row.product).filter(Boolean));
   return{sales,quotes,delivery,deliveryRows,receipts,cost,commission,expenses,profit,grossProfit,grossMargin,netMargin,deliveryRate,collectionRate,quoteToSalesRate,deliveryGap,uncollected,avgOrder,avgDelivery,avgReceipt,orderCount,invoiceCount,receiptCount,customerCount:customers.size,productCount:products.size,
@@ -3403,8 +3410,9 @@ function buildReceiptPaymentMap(receipts=[]){
 function buildReceivableAgingRows(data){
   const paidMap=buildReceiptPaymentMap(data.receipts||[]);
   return (data.invoices||[]).map(inv=>{
-    const delivery=invoiceNetSales(inv);
-    const paid=analyticsInvoiceKeys(inv).reduce((sum,key)=>sum+(paidMap.get(key.toLowerCase())||0),0);
+    const summary=window.ERPIntegrity.paymentSummary(inv);
+    const delivery=summary.total;
+    const paid=summary.paid;
     const outstanding=roundMoneyValue(Math.max(0,delivery-paid));
     const dueDate=getInvoiceDueDate(inv);
     const days=analyticsDaysFromToday(dueDate);
@@ -3550,6 +3558,7 @@ function renderDataAnalytics(){
   const insights=buildAnalyticsInsights(kpis,quality,forecastTrend,customerGroups,filter);
   const periodText=filter.month===''?`ทั้งปี พ.ศ. ${yearLabelDual(filter.year)}`:`${MONTHS[filter.month]} พ.ศ. ${yearLabelDual(filter.year)}`;
   const branchText=filter.branch?BRANCH_TH[filter.branch]:'รวมทุกสาขา';
+  renderCostReviewNotice('analytics-cost-review',data.invoices);
   const kpiEl=document.getElementById('analytics-kpis');
   if(kpiEl)kpiEl.innerHTML=
     analyticsKpi('ยอดขายก่อน VAT',chartMoney(kpis.sales),`${branchText} · ${periodText}`,'blue')+
@@ -3557,7 +3566,7 @@ function renderDataAnalytics(){
     analyticsKpi('ยอดใบเสร็จ',chartMoney(kpis.receipts),`Collection Rate ${percentText(kpis.collectionRate)}`,'green')+
     analyticsKpi('กำไรสุทธิ',chartMoney(kpis.profit),`Net Margin ${percentText(kpis.netMargin)}`,kpis.profit>=0?'green':'red')+
     analyticsKpi('ยอดค้างส่ง',chartMoney(Math.max(0,kpis.deliveryGap)),`ยอดขาย - ยอดส่งสินค้า`,'amber')+
-    analyticsKpi('ยอดค้างรับเงิน',chartMoney(Math.max(0,kpis.uncollected)),`ยอดส่งสินค้า - ใบเสร็จ`,'amber')+
+    analyticsKpi('ยอดค้างรับเงิน',chartMoney(Math.max(0,kpis.uncollected)),`ยอดเรียกเก็บรวม VAT - รับเงินจริง`,'amber')+
     analyticsKpi('ค่าเฉลี่ยต่อเอกสาร',chartMoney(kpis.avgOrder),`${kpis.orderCount} เอกสารขาย`,'blue')+
     analyticsKpi('คุณภาพข้อมูล',`${quality.score}/100`,`${quality.issues} จุดที่ควรตรวจ`,quality.score>=90?'green':quality.score>=75?'amber':'red');
   const insightsEl=document.getElementById('analytics-insights');
@@ -4451,6 +4460,7 @@ function addIItem(item={}){
   const tb=document.getElementById('i-items-body');
   if(!tb)return;
   const tr=document.createElement('tr');
+  tr.dataset.salesOrderLineId=item.salesOrderLineId||'';
   const costMode=item.costMode==='lump'?'lump':'unit';
   const costValue=Number(item.costValue ?? (costMode==='lump' ? item.costLump : item.costUnit) ?? 0)||0;
   const unitSelect=uSel(item.unit||'').replace('<select','<select data-field="unit" onchange="calcI()"');
@@ -4494,8 +4504,26 @@ function commLabel(doc){
 // ============================================================
 // CALC
 // ============================================================
-function calcQ(){let sub=0;document.querySelectorAll('#q-items-body tr').forEach(tr=>{const ins=tr.querySelectorAll('input[type=number]');const qty=parseFloat(ins[0]?.value)||0,pu=parseFloat(ins[1]?.value)||0,t=qty*pu;sub+=t;const ro=tr.querySelector('input.ro');if(ro)ro.value=t?fmt(t):'';});const uv=parseInt(document.getElementById('q-vat').value),va=uv?sub*.07:0;document.getElementById('q-sub').value=sub?fmt(sub):'';document.getElementById('q-vat-amt').value=va?fmt(va):'';document.getElementById('q-total').value=(sub+va)?fmt(sub+va):'';}
+function calcQ(){
+  let raw=0;document.querySelectorAll('#q-items-body tr').forEach(tr=>{const inputs=tr.querySelectorAll('input[type=number]');const total=(parseFloat(inputs[0]?.value)||0)*(parseFloat(inputs[1]?.value)||0);raw+=total;const out=tr.querySelector('input.ro');if(out)out.value=fmt(total);});
+  const v=calculateVatSummary(raw,document.getElementById('q-vat').value);document.getElementById('q-sub').value=fmt(v.subtotal);document.getElementById('q-vat-amt').value=fmt(v.vatAmt);document.getElementById('q-total').value=fmt(v.total);
+}
+function syncInvoiceOrderCosts(){
+  const state=editState.invoice,orderId=state?.original?.sourceSalesOrderId||window.ERPPreparedSalesOrderId;
+  const warnings=[];
+  document.querySelectorAll('#i-items-body tr').forEach(tr=>{
+    const input=tr.querySelector('[data-field="costValue"]'),mode=tr.querySelector('[data-field="costMode"]');
+    const cost=orderId?window.ERPIntegrity.salesOrderCost(orderId,tr.dataset.salesOrderLineId,tr.querySelector('[data-field="qty"]')?.value,state?.id||''):null;
+    if(!cost){if(input)input.readOnly=false;if(mode)mode.disabled=false;return;}
+    mode.value='lump';mode.disabled=true;input.value=cost.total;input.readOnly=true;
+    tr.dataset.costAllocation=JSON.stringify(cost);
+    if(cost.basis!=='production_actual')warnings.push(cost.basis);
+  });
+  const notice=document.getElementById('i-cost-status');
+  if(notice){notice.hidden=!orderId;notice.textContent=warnings.length?'กำไรเบื้องต้น: บางรายการใช้ต้นทุนประมาณการหรือต้นทุนยังไม่ครบ กรุณาตรวจข้อมูลต้นทาง':'ต้นทุนจากงานผลิตถูกจัดสรรตามจำนวนส่ง พร้อมเก็บเลขอ้างอิงต้นทาง';}
+}
 function calcI(){
+  syncInvoiceOrderCosts();
   let rawSaleTotal=0,ct=0;
   document.querySelectorAll('#i-items-body tr').forEach(tr=>{
     const qty=parseFloat(tr.querySelector('[data-field="qty"]')?.value)||0;
@@ -4574,7 +4602,8 @@ function getIItems(){
     const costTotal=costMode==='lump'?costValue:qty*costValue;
     const costUnit=costMode==='unit'?costValue:(qty>0?costTotal/qty:0);
     return{
-      product,productCode:productMeta.productCode,productCategory:productMeta.productCategory,flowType:productMeta.flowType,fulfillmentType:productMeta.fulfillmentType,qty,unit,costMode,costValue,
+      product,productCode:productMeta.productCode,productCategory:productMeta.productCategory,flowType:productMeta.flowType,fulfillmentType:productMeta.fulfillmentType,qty,unit,costMode,costValue,salesOrderLineId:tr.dataset.salesOrderLineId||'',
+      costAllocation:tr.dataset.costAllocation?JSON.parse(tr.dataset.costAllocation):null,
       costUnit,
       costLump:costMode==='lump'?costValue:0,
       priceUnit,
@@ -4631,7 +4660,7 @@ function addPItem(itemOrQty={},cost='',unit='กล่อง',costMode='unit'){
     <td><input class="p-sale-value" type="number" min="0" step="0.01" value="${saleValue||''}" placeholder="ราคาขายต่อหน่วย" oninput="calcP()"></td>
     <td><input class="p-sale-total ro readonly-big" readonly></td>
     <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();calcP()">ลบ</button></td>`;
-  tr.dataset.productCode=item.productCode||'';tr.dataset.productCategory=item.productCategory||'';
+  tr.dataset.salesOrderLineId=item.salesOrderLineId||'';tr.dataset.productCode=item.productCode||'';tr.dataset.productCategory=item.productCategory||'';
   tb.appendChild(tr);calcP();
 }
 function applyProductionProductPreset(input){
@@ -4722,7 +4751,7 @@ function getPItems(){
     const saleValue=parseMoney(saleRaw);
     const saleTotal=qty*saleValue;
     return{
-      product,productCode:productMeta.productCode,productCategory:productMeta.productCategory,flowType:productMeta.flowType,fulfillmentType:productMeta.fulfillmentType,qty,unit,costMode,costValue,costEntered:costRaw!=='',
+      product,productCode:productMeta.productCode,productCategory:productMeta.productCategory,flowType:productMeta.flowType,fulfillmentType:productMeta.fulfillmentType,qty,unit,costMode,costValue,salesOrderLineId:tr.dataset.salesOrderLineId||'',costEntered:costRaw!=='',
       costUnit:costMode==='unit'?costValue:(qty>0?costTotal/qty:0),costLump:costMode==='lump'?costValue:0,costTotal,
       saleMode:'unit',saleValue,saleEntered:saleRaw!=='',priceUnit:saleValue,saleLump:0,saleTotal
     };
@@ -5082,7 +5111,7 @@ async function saveProduction(){
   const supplierTotalDueDays=diffIsoDateDays(date,supplierDueDate);
   const supplierPaymentStatus=document.getElementById('p-supplier-payment-status')?.value||'pending';
   const supplierPaymentNote=document.getElementById('p-supplier-payment-note')?.value.trim()||'';
-  const items=getPItems();
+  const items=getPItems();try{window.ERPIntegrity.validateItems(items);}catch(e){notify(e.message);return;}
   if(!no||!date||!maker||!cust||!job||!items.length){notify('กรุณากรอกเลขที่, วันที่, ผู้รับผลิต/ผู้สั่งผลิต, ลูกค้า, ชื่องาน และรายการสินค้าที่สั่งผลิต');return;}
   if(makerPreset&&deliveryLeadDays&&!makerPreset.leadDays.includes(deliveryLeadDays)){notify(`ระยะเวลาส่งสินค้าไม่ตรงกับผู้ผลิต ${makerPreset.name} กรุณาเลือกจากตัวเลือก: ${makerPreset.leadDays.map(day=>day+' วัน').join(', ')}`);return;}
   if(items.some(x=>!x.product||!x.qty||!x.costEntered||!x.saleEntered||x.saleValue<=0)){notify('กรุณากรอกชื่อสินค้า จำนวน ราคาต้นทุน และราคาขายที่มากกว่า 0 ให้ครบทุกแถว');return;}
@@ -5111,6 +5140,7 @@ ${stockItems.map(x=>'• '+x.product).join('\n')}
     invoiceId:state?(original.invoiceId||''):'',
     note:document.getElementById('p-note').value.trim(),attachments:attachedFiles['p-att']||[]
   };
+  productionRecord.sourceSalesOrderId=original?.sourceSalesOrderId||window.ERPPreparedProductionOrderId||'';
   productionRecord=withThaiCalendarMeta(productionRecord,year,month);
   try{
     if(state){
@@ -5130,6 +5160,7 @@ ${stockItems.map(x=>'• '+x.product).join('\n')}
   }
 }
 function resetProduction(){
+  window.ERPPreparedProductionOrderId='';
   clearEditState('production');
   formBranch.p=null;['p-br-kk','p-br-ub'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='br-opt';});document.getElementById('p-br-warn')?.classList.remove('show');
   ['p-no','p-maker','p-maker-address','p-maker-tax-id','p-maker-contact','p-maker-phone','p-maker-email','p-cust','p-job','p-sale-raw','p-sub-total','p-vat-total','p-total','p-cost-raw','p-cost-total','p-cost-subtotal','p-cost-vat-total','p-cost-grandtotal','p-cr','p-ca','p-profit','p-note','p-delivery-lead-days','p-delivery-due-date','p-supplier-credit','p-supplier-due-date','p-supplier-payment-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -5222,7 +5253,7 @@ function editProduction(branch,year,month,id){
 function editQuote(branch,year,month,id){
   const found=findLocalRecord('quotes',branch,year,month,id);const q=found.record;
   if(!q){notify('ไม่พบใบเสนอราคาที่ต้องการแก้ไข');return;}
-  resetF('quote');applyBranchUi('q',branch);setInputValue('q-no',q.no);setDocumentNumberValue('quote',q.no,{manual:true});setInputValue('q-date',q.date);setInputValue('q-cust',q.customer);applyCustomerAgencyToForm('q',q);setInputValue('q-address',q.customerAddress||q.address||'');setInputValue('q-tax-id',q.customerTaxId||'');setInputValue('q-contact',q.contact||'');setInputValue('q-phone',q.phone||'');setInputValue('q-email',q.email||'');setInputValue('q-sales',q.salesPerson);setInputValue('q-note',q.note);setInputValue('q-vat',Number(q.useVat||0));
+  resetF('quote');applyBranchUi('q',branch);setInputValue('q-no',q.no);setDocumentNumberValue('quote',q.no,{manual:true});setInputValue('q-date',q.date);setInputValue('q-cust',q.customer);applyCustomerAgencyToForm('q',q);setInputValue('q-address',q.customerAddress||q.address||'');setInputValue('q-tax-id',q.customerTaxId||'');setInputValue('q-contact',q.contact||'');setInputValue('q-phone',q.phone||'');setInputValue('q-email',q.email||'');setInputValue('q-sales',q.salesPerson);setInputValue('q-note',q.note);setInputValue('q-vat',q.vatMode==='extract'?0:Number(q.useVat)===1?1:2);
   document.getElementById('q-items-body').innerHTML='';(q.items||[]).forEach(addQItem);if(!(q.items||[]).length)addQItem();calcQ();loadExistingAttachments('q-att',q.attachments);
   beginEditState('quote',{type:'quotes',branch,year:Number(year),month:Number(month),id:q.id,firebaseId:q.firebaseId||'',no:q.no,original:q});navToPanel('quote-form');window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -5249,7 +5280,16 @@ async function commitDocumentEdit(type,newRecord){
   if(!oldFound.record)throw new Error('ไม่พบข้อมูลเดิมในเครื่อง กรุณารีเฟรชแล้วลองใหม่');
   const newYM=dateToYM(newRecord.date);
   const original={...oldFound.record};
+  window.ERPIntegrity.assertEditable(type,{...original,branch:state.branch});
   const profile=getCurrentProfile();const merged=withThaiCalendarMeta({...original,...newRecord,id:original.id,firebaseId:original.firebaseId||state.firebaseId||'',updatedAtClient:new Date().toISOString(),lastEditedBy:profile?.uid||'',lastEditedByEmail:profile?.email||'',editCount:Number(original.editCount||0)+1},newYM.year,newYM.month);
+  if(window.ERP_LOCAL_DEMO){
+    const oldKey=keyFor(state.branch,state.year,state.month),newKey=keyFor(state.branch,newYM.year,newYM.month);
+    oldFound.list.splice(oldFound.index,1);
+    const target=oldKey===newKey?oldFound.data:loadFor(state.branch,newYM.year,newYM.month);
+    target[state.type]||=[];target[state.type].push(merged);
+    window.ERPIntegrity.transaction(oldKey===newKey?[[newKey,JSON.stringify(target,localCacheJsonReplacer)]]:[[oldKey,JSON.stringify(oldFound.data,localCacheJsonReplacer)],[newKey,JSON.stringify(target,localCacheJsonReplacer)]]);
+    clearEditState(type);window.ERPIntegrity.changed();return true;
+  }
   // ย้าย bucket localStorage เมื่อแก้วันที่ข้ามเดือน/ปี
   oldFound.list.splice(oldFound.index,1);saveFor(state.branch,state.year,state.month,oldFound.data);
   const target=loadFor(state.branch,newYM.year,newYM.month);target[state.type]=target[state.type]||[];target[state.type].push(merged);saveFor(state.branch,newYM.year,newYM.month,target);
@@ -5372,9 +5412,9 @@ async function saveQuote(){
   if(!no)no=refreshAutoDocumentNumber('quote',true);
   if(!no||!date||!cust){notify('กรุณากรอกเลขที่, วันที่ และชื่อลูกค้า');return;}
   if(documentNumberExists('quote',no,state?.id||'')){notify(`เลขที่ใบเสนอราคา ${no} มีอยู่แล้ว กรุณาแก้ไขเลขหรือกด “ใช้เลขอัตโนมัติ”`);return;}
-  const items=getQItems();if(!items.length){notify('กรุณาเพิ่มรายการสินค้า');return;}
-  const sub=items.reduce((sum,item)=>sum+item.total,0),uv=parseInt(document.getElementById('q-vat').value),va=uv?sub*.07:0;
-  let quoteRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,customerAddress:document.getElementById('q-address')?.value.trim()||'',customerTaxId:document.getElementById('q-tax-id')?.value.trim()||'',contact:document.getElementById('q-contact')?.value.trim()||'',phone:document.getElementById('q-phone')?.value.trim()||'',email:document.getElementById('q-email')?.value.trim()||'',...getCustomerAgencyFromForm('q'),salesPerson:document.getElementById('q-sales').value.trim(),items,subtotal:sub,useVat:uv,vatAmt:va,total:sub+va,note:document.getElementById('q-note').value.trim(),attachments:attachedFiles['q-att']||[],approved:state?.original?.approved||false,businessRuleVersion:window.BusinessRulesService?.currentVersion?.()||1,businessRuleCode:`BR-${String(window.BusinessRulesService?.currentVersion?.()||1).padStart(3,'0')}`};
+  const items=getQItems();try{window.ERPIntegrity.validateItems(items);}catch(e){notify(e.message);return;}
+  const raw=items.reduce((sum,item)=>sum+item.total,0),uv=parseInt(document.getElementById('q-vat').value),v=calculateVatSummary(raw,uv),sub=v.subtotal,va=v.vatAmt;
+  let quoteRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),customer:cust,customerAddress:document.getElementById('q-address')?.value.trim()||'',customerTaxId:document.getElementById('q-tax-id')?.value.trim()||'',contact:document.getElementById('q-contact')?.value.trim()||'',phone:document.getElementById('q-phone')?.value.trim()||'',email:document.getElementById('q-email')?.value.trim()||'',...getCustomerAgencyFromForm('q'),salesPerson:document.getElementById('q-sales').value.trim(),items,subtotal:sub,useVat:uv,vatMode:v.vatMode,vatAmt:va,total:v.total,note:document.getElementById('q-note').value.trim(),attachments:attachedFiles['q-att']||[],approved:state?.original?.approved||false,businessRuleVersion:window.BusinessRulesService?.currentVersion?.()||1,businessRuleCode:`BR-${String(window.BusinessRulesService?.currentVersion?.()||1).padStart(3,'0')}`};
   {const ym=dateToYM(quoteRecord.date);quoteRecord=withThaiCalendarMeta(quoteRecord,ym.year,ym.month);}
   try{
     if(state){await commitDocumentEdit('quote',quoteRecord);notify('แก้ไขใบเสนอราคาเรียบร้อย');}
@@ -5406,11 +5446,13 @@ async function linkProductionToInvoice(source,invoiceRecord){
 async function saveInvoice(){
   const b=getBr('i');if(!b)return;
   const state=editState.invoice;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
+  if(state){try{window.ERPIntegrity.assertEditable('invoice',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
   let no=document.getElementById('i-no').value.trim();const date=document.getElementById('i-date').value,cust=document.getElementById('i-cust').value.trim();
   if(!no)no=refreshAutoDocumentNumber('invoice',true);
   if(!no||!date||!cust){notify('กรุณากรอกเลขที่บิล, วันที่ และชื่อลูกค้า');return;}
   if(documentNumberExists('invoice',no,state?.id||'')){notify(`เลขที่ใบส่งสินค้า / ใบกำกับภาษี ${no} มีอยู่แล้ว กรุณาแก้ไขเลขหรือกด “ใช้เลขอัตโนมัติ”`);return;}
-  const items=getIItems();if(!items.length){notify('กรุณาเพิ่มรายการสินค้า');return;}
+  syncInvoiceOrderCosts();
+  const items=getIItems();try{window.ERPIntegrity.validateItems(items);}catch(e){notify(e.message);return;}
   const rawSaleTotal=items.reduce((s,i)=>s+i.saleTotal,0),ct=items.reduce((s,i)=>s+i.costTotal,0);
   const useVat=parseInt(document.getElementById('i-vat')?.value||0),vat=calculateVatSummary(rawSaleTotal,useVat);
   const cr=parseFloat(document.getElementById('i-cr').value)||0,commMode=getCommMode('i'),comm=commMode==='manual'?parseMoney(document.getElementById('i-ca').value):vat.subtotal*cr/100;
@@ -5425,7 +5467,13 @@ async function saveInvoice(){
     sourceProductionId:sourceProduction?.id||'',sourceProductionNo:sourceProduction?.no||'',sourceProductionBranch:sourceProduction?.b||'',sourceProductionYear:sourceProduction?.y??'',sourceProductionMonth:sourceProduction?.m??'',sourceProductionRawCostTotal:safeNum(sourceProductionDoc?.costTotal ?? sourceProductionDoc?.costRawTotal),
     sourceQuoteId:sourceQuote?.id||'',sourceQuoteNo:sourceQuote?.no||'',sourceQuoteBranch:sourceQuote?.b||'',sourceQuoteYear:sourceQuote?.y??'',sourceQuoteMonth:sourceQuote?.m??'',sourceQuoteFirebaseId:sourceQuoteDoc?.firebaseId||sourceQuote?.firebaseId||'',
     note:document.getElementById('i-note').value.trim(),attachments:attachedFiles['i-att']||[]};
+  if(items.some(i=>i.costAllocation?.conflict)){notify('ต้นทุนต้นทางต่ำกว่าที่จัดสรรไปแล้ว กรุณาตรวจงานผลิตก่อนบันทึก');return;}
+  invoiceRecord.costReviewRequired=items.some(i=>i.costAllocation&&i.costAllocation.basis!=='production_actual');
+  const soId=state?.original?.sourceSalesOrderId||window.ERPPreparedSalesOrderId||'';
+  const so=window.ERPOrderFlow?.getStore?.().salesOrders.find(o=>String(o.id)===String(soId));
+  Object.assign(invoiceRecord,{branch:b,sourceSalesOrderId:soId,sourceSalesOrderNo:so?.no||state?.original?.sourceSalesOrderNo||'',paymentManaged:state?.original?.paymentManaged??true});
   invoiceRecord=withThaiCalendarMeta(invoiceRecord,year,month);
+  try{const check=window.ERPProductionCore?.validateInvoiceStock(b,items,state?.id||'',soId);if(check&&!check.ok)throw new Error(check.message);window.ERPIntegrity.validateDelivery(invoiceRecord,state?.id||'');if(state&&window.ERPIntegrity.paymentSummary({...state.original,branch:b}).paid>invoiceRecord.total+0.001)throw new Error('ยอดเอกสารใหม่ต่ำกว่ายอดรับเงินจริง กรุณาจัดการรายการรับเงินก่อน');}catch(e){notify(e.message);return;}
   try{
     if(state){
       // รักษาสถานะชำระเงินและความสัมพันธ์เดิมไว้
@@ -5464,45 +5512,37 @@ function locateInvoiceReference(branch,invNo,selectedRef){
   return null;
 }
 async function markInvoicePaidByReceipt(branch,invNo,selectedRef,receiptRecord){
-  const found=locateInvoiceReference(branch,invNo,selectedRef);if(!found)return{found:false,cloudOk:true};
-  const{inv,d,b,y,m,collection='invoices'}=found;const profile=getCurrentProfile();
-  inv.paid=true;inv.isPaid=true;inv.paymentStatus='paid';inv.paidAt=new Date().toISOString();inv.paidBy=profile?.email||profile?.uid||'';
-  inv.paidReceiptNo=receiptRecord.no;inv.paidReceiptId=receiptRecord.id;inv.paymentSource='receipt';
-  saveFor(b,y,m,d);
-  let cloudOk=true;
-  if(window.FirebaseService?.updateBusinessDoc){
-    try{
-      await window.FirebaseService.updateBusinessDoc(collection,inv.id,b,y,m,{
-        paid:inv.paid,isPaid:inv.isPaid,paymentStatus:inv.paymentStatus,paidAt:inv.paidAt,paidBy:inv.paidBy,paidReceiptNo:inv.paidReceiptNo,paidReceiptId:inv.paidReceiptId,paymentSource:inv.paymentSource
-      },inv.firebaseId||'');
-      scheduleCloudSync(y);
-    }catch(err){cloudOk=false;console.error('Firebase auto paid from receipt error:',err);}
-  }
+  const found=locateInvoiceReference(branch,invNo,selectedRef);if(!found)return {found:false,cloudOk:true};
+  window.ERPIntegrity.reconcilePayments();
+  const summary=window.ERPIntegrity.paymentSummary({...found.inv,branch:found.b});
   renderIList();populateInvRefs();window.renderIssuedInvoiceList?.();
-  return{found:true,cloudOk,collection};
+  return {found:true,cloudOk:true,collection:found.collection,fullyPaid:summary.status==='paid',outstanding:summary.outstanding};
 }
 async function saveReceipt(){
   const b=getBr('r');if(!b)return;
-  const state=editState.receipt;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
+  const state=editState.receipt;if(state?.original?.paymentId){notify('ใบเสร็จนี้สร้างจากรายการรับเงิน กรุณายกเลิกรายการรับเงินแล้วบันทึกใหม่ที่หน้าใบวางบิล');return;}if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
+  if(state){try{window.ERPIntegrity.assertEditable('receipt',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
   let no=document.getElementById('r-no').value.trim();const date=document.getElementById('r-date').value,cust=document.getElementById('r-cust').value.trim();
   if(!no)no=refreshAutoDocumentNumber('receipt',true);
   if(!no||!date||!cust){notify('กรุณากรอกเลขที่, วันที่ และชื่อลูกค้า');return;}
   if(documentNumberExists('receipt',no,state?.id||'')){notify(`เลขที่ใบเสร็จ ${no} มีอยู่แล้ว กรุณาแก้ไขเลขหรือกด “ใช้เลขอัตโนมัติ”`);return;}
-  const items=getRItems(),rawSaleTotal=items.reduce((s,i)=>s+i.saleTotal,0),ct=items.reduce((s,i)=>s+(i.costUnit||0)*(i.qty||0),0);
+  const items=getRItems();try{window.ERPIntegrity.validateItems(items);}catch(e){notify(e.message);return;}
+  const rawSaleTotal=items.reduce((s,i)=>s+i.saleTotal,0),ct=items.reduce((s,i)=>s+(i.costUnit||0)*(i.qty||0),0);
   const useVat=parseInt(document.getElementById('r-vat')?.value||0),vat=calculateVatSummary(rawSaleTotal,useVat);
   const cr=parseFloat(document.getElementById('r-cr').value)||0,commMode=getCommMode('r'),comm=commMode==='manual'?parseMoney(document.getElementById('r-ca').value):vat.subtotal*cr/100;
   const selectedInvoice=getSelectedInvoiceRef();const invNo=document.getElementById('r-inv-no').value.trim()||(selectedInvoice?.no||'');
   const{year,month}=dateToYM(date);const d=loadFor(b,year,month);
   let receiptRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),invNo,invoiceId:selectedInvoice?.id||'',invoiceBranch:selectedInvoice?.b||b,invoiceYear:selectedInvoice?.y??'',invoiceMonth:selectedInvoice?.m??'',...getCustomerAgencyFromForm('r'),salesPerson:document.getElementById('r-sales').value.trim(),customer:cust,customerAddress:document.getElementById('r-address')?.value.trim()||'',customerTaxId:document.getElementById('r-tax-id')?.value.trim()||'',contact:document.getElementById('r-contact')?.value.trim()||'',phone:document.getElementById('r-phone')?.value.trim()||'',email:document.getElementById('r-email')?.value.trim()||'',items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,note:document.getElementById('r-note').value.trim(),attachments:attachedFiles['r-att']||[]};
-  receiptRecord=withThaiCalendarMeta(receiptRecord,year,month);
+  receiptRecord=withThaiCalendarMeta({...receiptRecord,branch:b,paymentManaged:true},year,month);
+  try{window.ERPIntegrity.validateReceipt(receiptRecord,state?.id||'');}catch(e){notify(e.message);return;}
   try{
     let paymentResult={found:false,cloudOk:true};
     if(state){
-      Object.assign(receiptRecord,{invoiceId:state.original.invoiceId||receiptRecord.invoiceId,invoiceBranch:state.original.invoiceBranch||receiptRecord.invoiceBranch,invoiceYear:state.original.invoiceYear??receiptRecord.invoiceYear,invoiceMonth:state.original.invoiceMonth??receiptRecord.invoiceMonth});
+      // The current selected invoice reference is authoritative when editing. 
       await commitDocumentEdit('receipt',receiptRecord);notify('แก้ไขใบเสร็จรับเงินเรียบร้อย');
     }else{
       d.receipts.push(receiptRecord);saveFor(b,year,month,d);paymentResult=await markInvoicePaidByReceipt(b,invNo,selectedInvoice,receiptRecord);saveCloudRecord('saveReceipt',receiptRecord,b,year,month,'ใบเสร็จรับเงิน');
-      const message=paymentResult.found?(paymentResult.cloudOk?'บันทึกใบเสร็จเรียบร้อย และปรับบิลอ้างอิงเป็น “ชำระเงินแล้ว” อัตโนมัติ':'บันทึกใบเสร็จและเปลี่ยนสถานะในเครื่องแล้ว แต่ส่งสถานะชำระเงินขึ้น Firebase ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต/Rules'):(invNo?'บันทึกใบเสร็จเรียบร้อย แต่ไม่พบบิลอ้างอิง กรุณาตรวจเลขบิล':'บันทึกใบเสร็จรับเงินเรียบร้อย!');notify(message);
+      const message=paymentResult.found?(paymentResult.cloudOk?`บันทึกใบเสร็จแล้ว · ${paymentResult.fullyPaid?'รับเงินครบ':'คงค้าง '+fmt(paymentResult.outstanding)+' บาท'}`:'บันทึกใบเสร็จและเปลี่ยนสถานะในเครื่องแล้ว แต่ส่งสถานะชำระเงินขึ้น Firebase ไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ต/Rules'):(invNo?'บันทึกใบเสร็จเรียบร้อย แต่ไม่พบบิลอ้างอิง กรุณาตรวจเลขบิล':'บันทึกใบเสร็จรับเงินเรียบร้อย!');notify(message);
     }
     rememberCustomerFromForm('r',false);clearAttachedFiles('r-att');resetF('receipt');onYearChange();renderDash();renderIList();renderRList();populateInvRefs();
   }catch(err){console.error(err);notify('แก้ไขใบเสร็จรับเงินไม่สำเร็จ: '+(err?.message||err));}
@@ -5540,6 +5580,7 @@ function saveExpense(){
 // RESET FORMS
 // ============================================================
 function resetF(t){
+  if(t==='invoice')window.ERPPreparedSalesOrderId='';
   clearEditState(t);
   const f=t[0];formBranch[f]=null;
   document.getElementById(f+'-br-kk').className='br-opt';
@@ -5607,7 +5648,7 @@ function fillProductionFromQuote(){
   const body=document.getElementById('p-items-body');if(body)body.innerHTML='';
   const items=quoteItemsForTransfer(q);
   if(!items.length){addPItem({product:'',qty:1,unit:'ชิ้น',priceUnit:0});notify('ใบเสนอราคานี้ไม่มีรายการที่ตั้งเป็น “สินค้าสั่งผลิต” กรุณาตรวจ Product Master ก่อนสร้างใบสั่งผลิต');}else items.forEach(it=>addPItem({...it,costMode:'unit',costValue:'',saleValue:it.priceUnit}));
-  setRadioValue('p-vat',Number(q.useVat||0));calcP();
+  setRadioValue('p-vat',q.vatMode==='extract'?0:Number(q.useVat)===1?1:2);calcP();
   const note=document.getElementById('p-note');if(note&&!note.value)note.value=`อ้างอิงใบเสนอราคา ${q.no}${q.note?` — ${q.note}`:''}`;
   const hint=document.getElementById('p-quote-link-hint');if(hint)hint.textContent=`เชื่อมกับ ${q.no} • ${q.customer||'-'} • ดึง ${items.length} รายการแล้ว กรุณากรอกผู้ผลิตและราคาต้นทุนก่อนบันทึก`;
 }
@@ -5732,6 +5773,9 @@ function fillFromProduction(){
 }
 
 function useProductionForInvoice(b,y,m,id){
+  const linked=(loadFor(b,y,m).productions||[]).find(p=>String(p.id)===String(id));
+  if(linked?.sourceSalesOrderId){window.ERPOrderFlow.prepareDelivery(linked.sourceSalesOrderId);return;}
+  resetF('invoice');
   const nav=[...document.querySelectorAll('.nav-item')].find(el=>(el.getAttribute('onclick')||'').includes("invoice-form"));
   go('invoice-form',nav);selBr('i',b);populateProductionRefs();
   const sel=document.getElementById('i-prod-ref');if(!sel)return;
@@ -5767,7 +5811,8 @@ function fillFromInv(){
   document.getElementById('r-inv-no').value=inv.no;document.getElementById('r-cust').value=inv.customer;applyCustomerAgencyToForm('r',inv);setInputValue('r-address',inv.customerAddress||inv.address||'');setInputValue('r-tax-id',inv.customerTaxId||'');setInputValue('r-contact',inv.contact||'');setInputValue('r-phone',inv.phone||'');setInputValue('r-email',inv.email||'');document.getElementById('r-sales').value=inv.salesPerson||'';
   document.getElementById('r-comm-mode').value=inv.commMode||'percent';document.getElementById('r-cr').value=inv.commRate||'';document.getElementById('r-ca').value=inv.commMode==='manual'?(inv.commAmt||''):'';
   const rVat=document.getElementById('r-vat');if(rVat)rVat.value=String(Number(inv.useVat||0));toggleCommMode('r');
-  document.getElementById('r-items-body').innerHTML='';(inv.items||[]).forEach(it=>addRItem(it));calcR();
+  document.getElementById('r-items-body').innerHTML='';const balance=window.ERPIntegrity.paymentSummary({...inv,branch:ref.b});
+  if(balance.paid>0){document.getElementById('r-vat').value=Number(inv.vatAmt)>0?'0':'2';addRItem({product:'รับชำระยอดค้างตามบิล '+inv.no,qty:1,unit:'ครั้ง',priceUnit:balance.outstanding,costUnit:0});document.getElementById('r-cr').value=0;document.getElementById('r-ca').value=0;}else (inv.items||[]).forEach(it=>addRItem(it));calcR();
 }
 
 // ============================================================
@@ -5797,7 +5842,7 @@ function renderQLList(){
     <td><span class="badge b-purple">${q.no}</span></td>
     <td>${bbr(q.branch)}</td><td>${formatThaiDate(q.date)}</td><td>${q.customer}</td><td>${q.salesPerson||'-'}</td>
     <td class="tn">฿${fmt(q.total)}</td>
-    <td>${q.useVat?'<span class="badge b-blue">มี VAT</span>':'<span class="badge b-gray">ไม่มี</span>'}</td>
+    <td>${Number(q.vatAmt)>0?'<span class="badge b-blue">มี VAT</span>':'<span class="badge b-gray">ไม่มี</span>'}</td>
     <td><div>${q.approved?'<span class="qs-approved">✅ อนุมัติแล้ว</span>':'<span class="qs-pending">⏳ รออนุมัติ</span>'}</div>${q.productionNo?`<small style="display:block;margin-top:4px">🏭 ${escapeHtml(q.productionNo)}</small>`:''}${q.invoiceNo?`<small style="display:block;margin-top:2px">🚚 ${escapeHtml(q.invoiceNo)}</small>`:''}</td>
     <td><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px"><input type="checkbox" ${q.approved?'checked':''} onchange="toggleApprove('${q.branch}',${q._y},${q._m},${q.id},this.checked)"> อนุมัติ</label></td>
     <td style="display:flex;gap:4px">
@@ -5853,9 +5898,7 @@ function updateInvoiceDueDate(){
 function getInvoiceDueDate(inv){
   return inv?.dueDate||calculateInvoiceDueDate(inv?.date,inv?.creditTerm);
 }
-function isInvoicePaid(inv){
-  return inv?.paymentStatus === 'paid' || inv?.paid === true || inv?.isPaid === true;
-}
+function isInvoicePaid(inv){ return window.ERPIntegrity ? window.ERPIntegrity.paymentSummary(inv).status==='paid' : inv?.paymentStatus==='paid'||inv?.paid===true||inv?.isPaid===true; }
 function invoiceDueInfo(inv){
   const dueDate=getInvoiceDueDate(inv);
   if(isInvoicePaid(inv))return{dueDate,days:null,state:'paid',rowClass:'invoice-row-paid',text:'ชำระแล้ว'};
@@ -5877,7 +5920,7 @@ function invoiceDueBadge(inv){
   return '<span class="badge b-gray">ไม่ระบุ</span>';
 }
 function invoicePaymentText(inv){
-  return isInvoicePaid(inv) ? 'ชำระเงินแล้ว' : 'รอชำระเงิน';
+  const s=window.ERPIntegrity.paymentSummary(inv);return s.status==='paid'?'ชำระเงินแล้ว':s.status==='partially_paid'?'ชำระบางส่วน · ค้าง '+fmt(s.outstanding):'รอชำระเงิน';
 }
 function invoicePaymentBadge(inv){
   return isInvoicePaid(inv)
@@ -5888,52 +5931,10 @@ function invoicePaymentChecked(inv){
   return isInvoicePaid(inv) ? 'checked' : '';
 }
 async function toggleInvoicePaid(br,y,m,id,checked){
-  const paid=!!checked;
-  const d=loadFor(br,y,m);
-  const inv=(d.invoices||[]).find(x=>String(x.id)===String(id));
-  if(!inv){
-    notify('ไม่พบรายการบิลนี้ อาจถูกลบหรืออยู่คนละเดือน/ปี');
-    renderIList();
-    return;
-  }
-
-  const old={
-    paid:inv.paid,
-    isPaid:inv.isPaid,
-    paymentStatus:inv.paymentStatus,
-    paidAt:inv.paidAt,
-    paidBy:inv.paidBy
-  };
-  const profile=getCurrentProfile();
-  inv.paid=paid;
-  inv.isPaid=paid;
-  inv.paymentStatus=paid?'paid':'pending';
-  inv.paidAt=paid?new Date().toISOString():'';
-  inv.paidBy=paid?(profile?.email||profile?.uid||''):'';
-  saveFor(br,y,m,d);
+  const inv=(loadFor(br,y,m).invoices||[]).find(x=>String(x.id)===String(id));if(!inv)return;
+  if(checked&&!isInvoicePaid({...inv,branch:br})){issueReceiptFromInvoice(br,y,m,id);notify('กรุณาบันทึกยอดรับจริงในใบเสร็จ สถานะบิลจะคำนวณอัตโนมัติ','info');}
+  else notify('สถานะรับเงินคำนวณจากรายการจริง กรุณาแก้ใบเสร็จหรือยกเลิกรายการรับเงินที่หน้าใบวางบิล','info');
   renderIList();
-
-  if(window.FirebaseService?.updateBusinessDoc){
-    try{
-      const result=await window.FirebaseService.updateBusinessDoc('invoices',id,br,y,m,{
-        paid:inv.paid,
-        isPaid:inv.isPaid,
-        paymentStatus:inv.paymentStatus,
-        paidAt:inv.paidAt,
-        paidBy:inv.paidBy
-      },inv.firebaseId||'');
-      if(!result?.updated){
-        console.warn('ไม่พบเอกสารบน Firebase ที่ต้องอัปเดตสถานะชำระเงิน:', {id,br,y,m});
-      }
-      scheduleCloudSync(y);
-    }catch(err){
-      console.error('Firebase update invoice payment status error:',err);
-      Object.assign(inv,old);
-      saveFor(br,y,m,d);
-      renderIList();
-      notify('อัปเดตสถานะชำระเงินบน Firebase ไม่สำเร็จ ระบบย้อนสถานะกลับแล้ว กรุณาตรวจ Firestore Rules และอินเทอร์เน็ต');
-    }
-  }
 }
 
 function pctFmt(n){return (Number.isFinite(Number(n))?Number(n):0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';}
@@ -6331,6 +6332,11 @@ async function delDoc(br,y,m,type,id){
   if(!confirm('ลบรายการนี้หรือไม่? ระบบจะเก็บสำเนาไว้ใน Recycle Bin เพื่อกู้คืนภายหลัง'))return;
   const d=loadFor(br,y,m);
   const found=(d[type]||[]).find(x=>String(x.id)===String(id));
+  if(!found)return;
+  if(found.paymentId){notify('ใบเสร็จนี้ผูกกับรายการรับเงิน กรุณายกเลิกรับเงินที่หน้าใบวางบิล');return;}
+  if((type==='invoices'||type==='issuedInvoices')&&window.ERPIntegrity.paymentSummary({...found,branch:br}).paid>0){notify('บิลนี้มีการรับเงินแล้ว กรุณาจัดการรายการรับเงินก่อนลบ');return;}
+  const linkedType=type==='invoices'?'issuedInvoices':type==='receipts'?'issuedReceipts':'';
+  if(linkedType&&window.ERPIntegrity.business()[linkedType].some(r=>window.ERPIntegrity.sameDoc({...found,branch:br},r,type==='receipts'?'Receipt':'Invoice'))){notify('กรุณาลบเอกสารฉบับพิมพ์ที่เชื่อมอยู่ก่อนลบข้อมูลต้นทาง');return;}
   window.ERPProductionCore?.trashSnapshot?.(type,found,br,y,m);
   d[type]=(d[type]||[]).filter(x=>String(x.id)!==String(id));
   saveFor(br,y,m,d);
@@ -6621,16 +6627,23 @@ function downloadJSON(payload,filename){
   URL.revokeObjectURL(url);
 }
 
-function collectLocalMasterBackup(){return{contacts:contactMasterRows(),products:readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),productionCore:window.ERPProductionCore?.exportData?.()||{},version:2,exportedAt:new Date().toISOString()};}
-function restoreLocalMasterBackup(masterData={}){
-  if(Array.isArray(masterData.contacts))writeLocalMaster(CONTACT_MASTER_KEY,masterData.contacts);
-  if(Array.isArray(masterData.products))writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,masterData.products);
-  if(masterData.productionCore)window.ERPProductionCore?.importData?.(masterData.productionCore);
-  refreshContactMasterDatalists();initProductMasterDatalist();renderMasterData();
-  window.pcRenderInventory?.();window.pcRenderAudit?.();
+function collectLocalMasterBackup(){
+  const settings={};for(const base of ['comform_sales_targets_v1','comform_delivery_targets_v2','example_erp_order_flow_preferences_v3']){const value=localStorage.getItem(tenantLocalKey(base));if(value!==null)settings[base]=JSON.parse(value);}
+  return {contacts:contactMasterRows(),products:readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),productionCore:window.ERPProductionCore?.exportData?.()||{},orderFlow:window.ERPOrderFlow?.exportData?.()||{},businessRules:window.BusinessRulesService?.read?.()||{},settings,version:4,exportedAt:new Date().toISOString()};
+}
+function restoreLocalMasterBackup(masterData={},options={}){
+  const writes=[],merge=window.ERPIntegrity.mergeRows;
+  if(masterData.contacts!==undefined)writes.push([tenantLocalKey(CONTACT_MASTER_KEY),merge(contactMasterRows(),masterData.contacts,!!options.replace)]);
+  if(masterData.products!==undefined)writes.push([tenantLocalKey(PRODUCT_MASTER_LOCAL_KEY),merge(readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),masterData.products,!!options.replace)]);
+  if(masterData.businessRules&&Object.keys(masterData.businessRules).length){const old=window.BusinessRulesService?.read?.()||{},incoming=masterData.businessRules;if(options.replace||localStorage.getItem(tenantLocalKey('comform_business_rules_v1'))===null||(Date.parse(incoming.updatedAt||'')||0)>=(Date.parse(old.updatedAt||'')||0))writes.push([tenantLocalKey('comform_business_rules_v1'),incoming]);}
+  for(const [base,value] of Object.entries(masterData.settings||{})){if(['comform_sales_targets_v1','comform_delivery_targets_v2','example_erp_order_flow_preferences_v3'].includes(base)&&(options.replace||localStorage.getItem(tenantLocalKey(base))===null))writes.push([tenantLocalKey(base),value]);}
+  window.ERPIntegrity.transaction(writes);
+  if(masterData.productionCore)window.ERPProductionCore.importData(masterData.productionCore,options);
+  if(masterData.orderFlow)window.ERPOrderFlow.importData(masterData.orderFlow,options);
+  refreshContactMasterDatalists();initProductMasterDatalist();renderMasterData();window.BusinessRulesService?.render?.();window.pcRenderInventory?.();window.pcRenderAudit?.();
 }
 
-function exportSelectedMonthJSON(){
+async function exportSelectedMonthJSON(){
   const {year,month,branch}=getExportSelection();
   if(month===null){notify('กรุณาเลือกเดือนก่อนดาวน์โหลดไฟล์รายเดือน');return;}
   const payload={
@@ -6638,26 +6651,29 @@ function exportSelectedMonthJSON(){
     data:collectBackupData({year,month,branch,includeEmpty:true}),
     masterData:collectLocalMasterBackup()
   };
+  try{await window.ERPBackup.portable(payload);}catch(e){notify('สำรองข้อมูลไม่สำเร็จ: '+e.message);return;}
   downloadJSON(payload,`backup_comform_${exportBranchFilePart(branch)}_${year}_${String(month+1).padStart(2,'0')}_${safeName(MONTHS[month])}.json`);
 }
 
-function exportSelectedYearJSON(){
+async function exportSelectedYearJSON(){
   const {year,branch}=getExportSelection();
   const payload={
     meta:{app:'comform-esan',backupType:'year',branch:branch||'all',branchName:exportBranchLabel(branch),year,exportedAt:new Date().toISOString()},
     data:collectBackupData({year,branch,includeEmpty:true}),
     masterData:collectLocalMasterBackup()
   };
+  try{await window.ERPBackup.portable(payload);}catch(e){notify('สำรองข้อมูลไม่สำเร็จ: '+e.message);return;}
   downloadJSON(payload,`backup_comform_${exportBranchFilePart(branch)}_year_${year}_${year+543}.json`);
 }
 
-function exportAllJSON(){
+async function exportAllJSON(){
   const {branch}=getExportSelection();
   const payload={
     meta:{app:'comform-esan',backupType:'all',branch:branch||'all',branchName:exportBranchLabel(branch),exportedAt:new Date().toISOString()},
     data:collectBackupData({branch,includeEmpty:false}),
     masterData:collectLocalMasterBackup()
   };
+  try{await window.ERPBackup.portable(payload);}catch(e){notify('สำรองข้อมูลไม่สำเร็จ: '+e.message);return;}
   downloadJSON(payload,`backup_comform_${exportBranchFilePart(branch)}_all_${now.getFullYear()}_${now.getFullYear()+543}.json`);
 }
 
@@ -6944,64 +6960,36 @@ async function repairHistoricalImportData(){
 
 
 async function importJSON(ev){
-  const f=ev.target.files[0];if(!f)return;
-  const syncCloud=document.getElementById('import-sync-cloud')?.checked!==false;
-  const replaceBackup=document.getElementById('import-mode')?.value==='replace';
-  const statusEl=document.getElementById('import-json-status');
-  if(statusEl){statusEl.textContent='กำลังอ่านและตรวจสอบไฟล์...';statusEl.className='import-json-status working';}
+  const file=ev.target.files[0];if(!file)return;
+  const replace=document.getElementById('import-mode')?.value==='replace',status=document.getElementById('import-json-status');
+  let before=null,addedFiles=[];
+  const message=(text,ok)=>{if(status){status.textContent=text;status.className='import-json-status '+(ok?'success':'error');}notify(text,ok?'success':'error');};
   try{
-    const text=await f.text();
-    const raw=JSON.parse(text);
-    const masterImported=Boolean(raw?.masterData);
-    if(masterImported)restoreLocalMasterBackup(raw.masterData);
-    if(isSalesAnalyticsDataset(raw)){
-      const sourceCount=raw.collections.salesDocuments.length;
-      const activeCount=raw.collections.salesDocuments.filter(x=>x.status==='active'&&safeImportNumber(x?.totals?.saleTotal)>0&&x.date).length;
-      const ok=confirm(`ตรวจพบฐานข้อมูลยอดขายสำหรับวิเคราะห์\nทั้งหมด ${sourceCount.toLocaleString('th-TH')} เอกสาร\nรายการยอดขายที่จะใช้คำนวณ ${activeCount.toLocaleString('th-TH')} เอกสาร\n\nระบบจะรวมข้อมูลโดยไม่สร้างรายการซ้ำ${syncCloud?' และอัปโหลดขึ้น Firebase':''}\nดำเนินการต่อหรือไม่?`);
-      if(!ok)return;
-      if(statusEl)statusEl.textContent=syncCloud?'กำลังนำเข้าในเครื่องและอัปโหลด Firebase...':'กำลังนำเข้าข้อมูลในเครื่อง...';
-      const result=await importSalesAnalyticsDataset(raw,{syncCloud});
-      onYearChange();initExportControls();renderDash();renderPList();populateProductionRefs();
-      const cloudText=result.cloudStats?`\nFirebase: Production ${result.cloudStats.productionWrites} รายการ, คลังดิบ ${result.cloudStats.archiveWrites} รายการ`:'';
-      const msg=`นำเข้าฐานข้อมูลยอดขายสำเร็จ\nข้อมูลใช้งาน ${result.activeCount} รายการ\nเพิ่มใหม่ ${result.localStats.inserted} / อัปเดต ${result.localStats.updated}\nข้ามรายการยกเลิก ${result.cancelledCount} / เขียนบิลแทน ${result.replacementCount}${cloudText}`;
-      if(statusEl){statusEl.textContent=msg.replaceAll('\n',' · ');statusEl.className='import-json-status success';}
-      notify(msg);
-      return;
+    if(status)status.textContent='กำลังตรวจสอบ Backup และไฟล์แนบ...';
+    const raw=window.ERPBackup.validate(JSON.parse(await file.text()));
+    const sales=isSalesAnalyticsDataset(raw);
+    if(sales&&!confirm('นำเข้าฐานข้อมูลยอดขายเพื่อวิเคราะห์ โดยสำรองข้อมูลปัจจุบันก่อนดำเนินการ?'))return;
+    const obj=raw.data||raw,specs=[];
+    if(!sales){
+      if(['quotes','invoices','receipts','issuedInvoices','issuedReceipts','expenses','productions'].some(k=>Array.isArray(obj[k]))){const br=['ubon','khonkaen'].includes(raw.meta?.branch)?raw.meta.branch:(getExportSelection()?.branch||'ubon');specs.push([br,now.getFullYear(),now.getMonth(),obj]);}
+      else for(const [year,branches] of Object.entries(obj)){if(!/^\d{4}$/.test(year))continue;if(Number(year)<2020||Number(year)>2100)throw new Error('ปีใน Backup ต้องเป็น ค.ศ. 2020–2100');for(const [br,months] of Object.entries(branches||{})){if(!['ubon','khonkaen'].includes(br))throw new Error('สาขาใน Backup ไม่ถูกต้อง');for(const [month,data] of Object.entries(months||{})){const m=monthKeyToIndex(month);if(m<0||m>11||!data||typeof data!=='object'||Array.isArray(data))throw new Error('ชุดข้อมูลรายเดือนไม่ถูกต้อง');specs.push([br,Number(year),m,data]);}}}
+      if(!specs.length&&!raw.masterData)throw new Error('ไม่พบข้อมูลที่ระบบรองรับ');
     }
-
-    const obj=raw.data||raw;
-    if(replaceBackup){
-      createLocalBackupSnapshot(getCurrentSelectedYear(),'before-json-replace-import',getCurrentProfile());
+    before=window.ERPBackup.capture();
+    if(!createLocalBackupSnapshot(getCurrentSelectedYear(),'before-json-import',getCurrentProfile()))throw new Error('สร้างข้อมูลสำรองก่อนนำเข้าไม่ได้ กรุณา Export และตรวจพื้นที่จัดเก็บก่อน');
+    if(raw.localFiles)addedFiles=await window.LocalFileStore.importAttachments(raw.localFiles);
+    if(sales){const result=await importSalesAnalyticsDataset(raw,{syncCloud:false});message(`นำเข้ายอดขาย ${result.activeCount} รายการแล้ว`,true);}
+    else{
+      if(raw.masterData)restoreLocalMasterBackup(raw.masterData,{replace});
+      specs.forEach(([b,y,m,data])=>mergeBackupPack(b,y,m,data,replace));
+      message(`นำเข้า ${specs.length} ชุดข้อมูล${raw.masterData?' พร้อมข้อมูลหลักและ Workflow':''} · ${replace?'แทนที่ชุดที่อยู่ในไฟล์':'รวมข้อมูลและรักษารายการเดิม'} · ไฟล์แนบ ${raw.localFiles?.length||0} ไฟล์`,true);
     }
-    let importedPacks=0;
-    if(obj.quotes||obj.invoices||obj.receipts||obj.expenses||obj.productions){
-      const y=now.getFullYear(),m=now.getMonth();
-      mergeBackupPack('khonkaen',y,m,obj,replaceBackup);importedPacks++;
-    }else{
-      Object.entries(obj).forEach(([y,brs])=>{
-        if(!brs||typeof brs!=='object')return;
-        Object.entries(brs).forEach(([br,months])=>{
-          if(!['khonkaen','ubon'].includes(br)||!months||typeof months!=='object')return;
-          Object.entries(months).forEach(([mName,data])=>{
-            const mIdx=monthKeyToIndex(mName);
-            if(mIdx>=0&&mIdx<=11){mergeBackupPack(br,parseInt(y),mIdx,data,replaceBackup);importedPacks++;}
-          });
-        });
-      });
-    }
-    if(!importedPacks&&!masterImported)throw new Error('ไม่พบข้อมูลที่ระบบรองรับในไฟล์');
-    onYearChange();initExportControls();renderDash();
-    const msg=importedPacks?`นำเข้า Backup JSON สำเร็จ ${importedPacks} ชุด (${replaceBackup?'แทนที่ข้อมูลเดิม':'รวมและตัดรายการซ้ำ'})${masterImported?' · รวมข้อมูลหลักลูกค้า/ผู้จำหน่าย/สินค้าแล้ว':''}`:'นำเข้าข้อมูลหลักลูกค้า / ผู้จำหน่าย / สินค้าสำเร็จ';
-    if(statusEl){statusEl.textContent=msg;statusEl.className='import-json-status success';}
-    notify(msg);
-  }catch(err){
-    console.error(err);
-    const msg='นำเข้าไม่สำเร็จ: '+(err?.message||'ไฟล์ JSON ไม่ตรงกับระบบ');
-    if(statusEl){statusEl.textContent=msg;statusEl.className='import-json-status error';}
-    notify(msg);
-  }finally{
-    ev.target.value='';
-  }
+    window.ERPIntegrity.reconcilePayments();onYearChange();initExportControls();renderDash();window.ERPIntegrity.changed();
+  }catch(e){
+    if(before){try{window.ERPBackup.restore(before);}catch(rollback){console.error(rollback);message('นำเข้าไม่สำเร็จและกู้คืนอัตโนมัติไม่ครบ กรุณาใช้ Backup ก่อนนำเข้า',false);return;}}
+    for(const id of addedFiles){try{await window.LocalFileStore.deleteLocalAttachment(id);}catch(error){console.warn(error);}}
+    message('นำเข้าไม่สำเร็จ: '+e.message+' · รักษาข้อมูลเดิมไว้แล้ว',false);
+  }finally{ev.target.value='';}
 }
 
 // ============================================================
@@ -7788,13 +7776,13 @@ function buildQuoteDraftForInlinePreview(){
   const b = getBr('q') || 'khonkaen';
   const date = document.getElementById('q-date')?.value || todayStr;
   const items = getQItems();
-  const subtotal = items.reduce((sum,item)=>sum+safeNum(item.total),0);
-  const useVat = parseInt(document.getElementById('q-vat')?.value || 0);
-  const vatAmt = useVat ? subtotal * .07 : 0;
+  const raw = items.reduce((sum,item)=>sum+safeNum(item.total),0);
+  const useVat = parseInt(document.getElementById('q-vat')?.value || 2);
+  const summary=calculateVatSummary(raw,useVat),subtotal=summary.subtotal,vatAmt=summary.vatAmt;
   return {
     id:'inline-quote', no: document.getElementById('q-no')?.value.trim() || refreshAutoQuoteNumber(), date: isoDateCEFromValue(date), branch:b,
     customer: document.getElementById('q-cust')?.value.trim() || '-', customerAddress:document.getElementById('q-address')?.value.trim()||'',customerTaxId:document.getElementById('q-tax-id')?.value.trim()||'',contact:document.getElementById('q-contact')?.value.trim()||'',phone:document.getElementById('q-phone')?.value.trim()||'',email:document.getElementById('q-email')?.value.trim()||'', ...getCustomerAgencyFromForm('q'), salesPerson: document.getElementById('q-sales')?.value.trim() || '',
-    items: items.length ? items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }], subtotal, useVat, vatAmt, total: subtotal + vatAmt,
+    items: items.length ? items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }], subtotal, useVat, vatMode:summary.vatMode, vatAmt, total: summary.total,
     note: document.getElementById('q-note')?.value.trim() || '', attachments: attachedFiles['q-att'] || [], approved:false
   };
 }
@@ -7903,7 +7891,7 @@ function setupDocumentEntryWorkspace(options){
   const toolbar = document.createElement('div');
   toolbar.className = 'doc-entry-toolbar';
   const tenantCompanyName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท';
-  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="logo.png" alt="โลโก้บริษัท"><div><small>${escapeHtml(tenantCompanyName)}</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn ${options.saveBtnClass || 'btn-primary'}" data-doc-toolbar-action="save">💾 บันทึก</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="preview">👁 ดูตัวอย่าง</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="print">🖨️ พิมพ์</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="pdf">⬇ ดาวน์โหลด PDF</button></div>`;
+  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="${new URL('./logo.png', import.meta.url).href}" alt="โลโก้บริษัท"><div><small>${escapeHtml(tenantCompanyName)}</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn ${options.saveBtnClass || 'btn-primary'}" data-doc-toolbar-action="save">💾 บันทึก</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="preview">👁 ดูตัวอย่าง</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="print">🖨️ พิมพ์</button><button type="button" class="btn btn-ghost" data-doc-toolbar-action="pdf">⬇ ดาวน์โหลด PDF</button></div>`;
   const workspace = document.createElement('div');
   workspace.className = 'doc-entry-workspace';
   const editor = document.createElement('section');
@@ -7912,7 +7900,7 @@ function setupDocumentEntryWorkspace(options){
   preview.className = 'doc-entry-preview';
   preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div><div class="doc-entry-zoom"><button type="button" data-zoom="out" title="ย่อ">－</button><button type="button" data-zoom="in" title="ขยาย">＋</button></div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-tab-hint" id="${options.prefix}-inline-tab-hint"></div><div class="doc-entry-preview-frame"><div id="${options.prefix}-inline-preview" class="doc-entry-empty">กำลังโหลดตัวอย่างเอกสาร...</div></div>`;
   shell.appendChild(toolbar); shell.appendChild(workspace); workspace.appendChild(editor); workspace.appendChild(preview);
-  const nodes = [editBanner, title, fg, hint, actions].filter(Boolean);
+  const nodes = [editBanner,card.querySelector('#i-cost-status'), title, fg, hint, actions].filter(Boolean);
   card.innerHTML = '';
   card.appendChild(shell);
   nodes.forEach(node => editor.appendChild(node));

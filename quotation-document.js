@@ -233,11 +233,11 @@ function summaryHtml(quote) {
       <div class="qdoc-remark-card">
         <div class="qdoc-card-title"><span>✦</span> หมายเหตุ / Remark</div>
         <div class="qdoc-remark-text">${escapeHtml(quote.note || 'ไม่มีหมายเหตุเพิ่มเติม')}</div>
-        <div class="qdoc-vat-note">${quote.useVat ? 'ราคานี้ยังไม่รวมภาษีมูลค่าเพิ่ม 7% และแสดง VAT แยกด้านขวา' : 'เอกสารฉบับนี้ไม่มีการคิด VAT เพิ่มจากยอดสินค้า'}</div>
+        <div class="qdoc-vat-note">${Number(quote.vatAmt)>0 ? 'ราคานี้ยังไม่รวมภาษีมูลค่าเพิ่ม 7% และแสดง VAT แยกด้านขวา' : 'เอกสารฉบับนี้ไม่มีการคิด VAT เพิ่มจากยอดสินค้า'}</div>
       </div>
       <div class="qdoc-summary-card">
         <div class="qdoc-summary-row"><span>ยอดรวมก่อนภาษี</span><strong>${fmt(subtotal)}</strong></div>
-        <div class="qdoc-summary-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong>${quote.useVat ? fmt(vat) : '0.00'}</strong></div>
+        <div class="qdoc-summary-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong>${Number(quote.vatAmt)>0 ? fmt(vat) : '0.00'}</strong></div>
         <div class="qdoc-summary-row qdoc-grand"><span>ยอดรวมทั้งสิ้น</span><strong>${fmt(grand)}</strong></div>
         <div class="qdoc-baht-text">( ${escapeHtml(bahtText(grand))} )</div>
       </div>
@@ -487,6 +487,7 @@ function buildInlineQuote(record = {}, ref = {}, copyId = 'original') {
     items: Array.isArray(record.items) && record.items.length ? record.items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }],
     subtotal: Number(record.subtotal || 0),
     useVat: Number(record.useVat || 0),
+    vatMode:record.vatMode,
     vatAmt: Number(record.vatAmt || 0),
     total: Number(record.total || 0),
     note: record.note || '',

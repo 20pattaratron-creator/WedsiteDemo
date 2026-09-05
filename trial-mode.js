@@ -29,7 +29,7 @@ async function loadTrial({force=false}={}){
     trialState={
       enabled:true,localOnly:true,expired:false,remainingDays:null,expiresAt:null,
       limits:{customers:30,suppliers:20,products:50,quotes:30,invoices:20,receipts:20},
-      counts:{customers:0,suppliers:0,products:0,quotes:0,invoices:0,receipts:0},
+      counts:{customers:0,suppliers:0,products:0,quotes:0,invoices:0,receipts:0,salesOrders:0,billingNotes:0},
       onboarding:{company:true,customer:false,product:false,quote:false}
     };
   }else{
@@ -46,7 +46,10 @@ async function loadTrial({force=false}={}){
     const years=window.allYears?.()||[];
     const docCount=(type)=>years.reduce((sum,y)=>sum+(window.docsForYear?.(type,Number(y),null)?.length||0),0);
     trialState.counts={...(trialState.counts||{}),customers:Math.max(customers,Number(trialState.counts?.customers||0)),suppliers:Math.max(suppliers,Number(trialState.counts?.suppliers||0)),products:Math.max(products,Number(trialState.counts?.products||0)),quotes:Math.max(docCount('quotes'),Number(trialState.counts?.quotes||0)),invoices:Math.max(docCount('invoices'),Number(trialState.counts?.invoices||0)),receipts:Math.max(docCount('receipts'),Number(trialState.counts?.receipts||0))};
-    trialState.onboarding={...(trialState.onboarding||{}),customer:trialState.counts.customers>0,product:trialState.counts.products>0,quote:trialState.counts.quotes>0};
+    const flow=window.ERPOrderFlow?.getStore?.()||{};
+    trialState.counts.salesOrders=(flow.salesOrders||[]).length;
+    trialState.counts.billingNotes=(flow.billingNotes||[]).length;
+    trialState.onboarding={...(trialState.onboarding||{}),customer:trialState.counts.customers>0,product:trialState.counts.products>0,quote:trialState.counts.quotes>0,salesOrder:trialState.counts.salesOrders>0,billing:trialState.counts.billingNotes>0};
   }catch(_){/* cloud counts remain authoritative fallback */}
   renderTrialUi();
   return trialState;
@@ -72,13 +75,15 @@ function renderTrialUi(){
     {done:trialState.onboarding?.customer,title:'2. เพิ่มลูกค้า 1 ราย',sub:`ตอนนี้ ${trialState.counts?.customers||0} ราย`,action:'customer',label:'เพิ่มลูกค้า'},
     {done:trialState.onboarding?.product,title:'3. เพิ่มสินค้า 1 รายการ',sub:`ตอนนี้ ${trialState.counts?.products||0} รายการ`,action:'product',label:'เพิ่มสินค้า'},
     {done:trialState.onboarding?.quote,title:'4. สร้างใบเสนอราคา',sub:`ตอนนี้ ${trialState.counts?.quotes||0} ใบ`,action:'quote',label:'สร้างเอกสาร'},
-    {done:pdfDone(),title:'5. ดูตัวอย่าง/PDF',sub:'เปิด Preview ใบเสนอราคาอย่างน้อย 1 ครั้ง',action:'quote',label:'ไปใบเสนอราคา'}
+    {done:pdfDone(),title:'5. ดูตัวอย่าง/PDF',sub:'เปิด Preview ใบเสนอราคาอย่างน้อย 1 ครั้ง',action:'quote',label:'ไปใบเสนอราคา'},
+    {done:trialState.onboarding?.salesOrder,title:'6. ยืนยันคำสั่งซื้อ',sub:`Sales Order ${trialState.counts?.salesOrders||0} รายการ`,action:'order-flow',label:'เปิดศูนย์งานขาย'},
+    {done:trialState.onboarding?.billing,title:'7. ทดลองวางบิล',sub:`Billing Note ${trialState.counts?.billingNotes||0} ใบ`,action:'billing',label:'ไปใบวางบิล'}
   ];
   const done=steps.filter(x=>x.done).length;
   let box=document.getElementById('trial-onboarding');
   if(!box){box=document.createElement('aside');box.id='trial-onboarding';box.className='trial-onboarding';document.body.appendChild(box);}
   const collapsed=localStorage.getItem(tenantKey('onboarding-collapsed'))==='1';box.classList.toggle('collapsed',collapsed);
-  box.innerHTML=`<div class="trial-onboarding-head"><div><h3>เริ่มทดลอง ERP ใน 5 ขั้นตอน</h3><p>แนะนำให้ทดลองจากข้อมูลหลัก → ใบเสนอราคา → PDF ก่อน แล้วค่อยดู Stock และ Analytics</p></div><button class="trial-collapse" onclick="window.TrialService.toggleOnboarding()">${collapsed?'＋':'−'}</button></div><div class="trial-onboarding-body"><div class="trial-progress-row"><span>ความคืบหน้า</span><b>${done} / ${steps.length}</b></div><div class="trial-progress"><span style="width:${done/steps.length*100}%"></span></div>${steps.map(s=>stepHtml(s.done,s.title,s.sub,s.action,s.label)).join('')}<div class="trial-usage">${usageCard('ลูกค้า','customers')}${usageCard('สินค้า','products')}${usageCard('ใบเสนอราคา','quotes')}${usageCard('Invoice','invoices')}${usageCard('ใบเสร็จ','receipts')}</div>${expired?'<div class="trial-limit-warning">Trial หมดอายุแล้ว: Firestore Rules จะไม่อนุญาตการเขียนข้อมูลใหม่ แต่ยังอ่าน/Export ข้อมูลเดิมได้</div>':''}</div>`;
+  box.innerHTML=`<div class="trial-onboarding-head"><div><h3>เริ่มทดลอง ERP ใน 7 ขั้นตอน</h3><p>แนะนำให้ทดลองจากข้อมูลหลัก → ใบเสนอราคา → PDF ก่อน แล้วค่อยดู Stock และ Analytics</p></div><button class="trial-collapse" onclick="window.TrialService.toggleOnboarding()">${collapsed?'＋':'−'}</button></div><div class="trial-onboarding-body"><div class="trial-progress-row"><span>ความคืบหน้า</span><b>${done} / ${steps.length}</b></div><div class="trial-progress"><span style="width:${done/steps.length*100}%"></span></div>${steps.map(s=>stepHtml(s.done,s.title,s.sub,s.action,s.label)).join('')}<div class="trial-usage">${usageCard('ลูกค้า','customers')}${usageCard('สินค้า','products')}${usageCard('ใบเสนอราคา','quotes')}${usageCard('Invoice','invoices')}${usageCard('ใบเสร็จ','receipts')}${usageCard('Sales Order','salesOrders')}${usageCard('Billing','billingNotes')}</div>${expired?'<div class="trial-limit-warning">Trial หมดอายุแล้ว: Firestore Rules จะไม่อนุญาตการเขียนข้อมูลใหม่ แต่ยังอ่าน/Export ข้อมูลเดิมได้</div>':''}</div>`;
 }
 
 function action(name){
@@ -86,6 +91,8 @@ function action(name){
   if(name==='customer'){window.go?.('master-data');setTimeout(()=>window.switchMasterTab?.('customer',document.querySelector('[data-master-tab="customer"]')),80);return;}
   if(name==='product'){window.go?.('master-data');setTimeout(()=>window.switchMasterTab?.('product',document.querySelector('[data-master-tab="product"]')),80);return;}
   if(name==='quote'){window.go?.('quote-form');return;}
+  if(name==='order-flow'){window.ERPOrderFlow?.open?.();return;}
+  if(name==='billing'){window.ERPOrderFlow?.openTab?.('billing');return;}
 }
 function toggleOnboarding(force){const box=document.getElementById('trial-onboarding');if(!box)return;const next=typeof force==='boolean'?force:!box.classList.contains('collapsed');localStorage.setItem(tenantKey('onboarding-collapsed'),next?'1':'0');renderTrialUi();}
 
@@ -119,6 +126,7 @@ async function boot(){
   try{await loadTrial({force:true});installGuards();}
   catch(e){console.warn('[TrialMode] unavailable',e);}
 }
+window.addEventListener('erp-flow:changed',()=>setTimeout(()=>loadTrial({force:true}).catch(()=>{}),120));
 window.TrialService={loadTrial,renderTrialUi,action,toggleOnboarding,canCreate,markPdfDone};
 window.addEventListener('comform-auth-ready',()=>setTimeout(boot,250));
 setTimeout(()=>{if(window.CurrentUser)boot();},1600);

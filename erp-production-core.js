@@ -83,7 +83,7 @@ function productBy(value,code=''){
 }
 function supplierBy(name){return typeof window.findContactMaster==='function'?window.findContactMaster(name,'supplier'):null;}
 function movementRows(){return read(KEYS.inventoryMovements).filter(r=>!r.voided);}
-function productKey(product){return normalize(product?.code||product?.name||product);}
+function productKey(product){return window.ERPIntegrity.productKey(product);}
 function inventoryMovementNet(product,branch=''){
   const key=productKey(product);
   return movementRows().filter(r=>(!branch||r.branch===branch)&&productKey({code:r.productCode,name:r.product})===key).reduce((s,r)=>s+num(r.qty),0);
@@ -97,7 +97,7 @@ function stockOnHand(product,branch=''){
   const base=branch==='ubon'?num(product.openingStockUbon??product.openingStock):branch==='khonkaen'?num(product.openingStockKhonkaen):0;
   return Math.max(0,base+inventoryMovementNet(product,branch));
 }
-function availableStock(product,branch){return stockOnHand(product,branch);}
+function availableStock(product,branch,orderId=''){return window.ERPIntegrity.availableStock(product,branch,orderId);}
 function docNo(prefix,key,dateValue){
   const d=new Date(`${dateValue||today()}T00:00:00`);const yy=String(d.getFullYear()+543).slice(-2),mm=String(d.getMonth()+1).padStart(2,'0');
   const root=`${prefix}${yy}${mm}`;const rows=read(key);let max=0;
@@ -152,6 +152,7 @@ function resetPo(){
 function savePo(){
   const no=document.getElementById('po-no')?.value||refreshPoNo(),date=document.getElementById('po-date')?.value,supplier=document.getElementById('po-supplier')?.value.trim(),branch=lockedBranch()||document.getElementById('po-branch')?.value||'';
   if(!date||!supplier||!branch)return window.notify?.('กรุณากรอกวันที่ สาขา และผู้จำหน่าย');const items=poItems();if(!items.length)return window.notify?.('กรุณาเพิ่มรายการสั่งซื้ออย่างน้อย 1 รายการ');
+  if(new Set(items.map(productKey)).size!==items.length)return window.notify?.('กรุณารวมสินค้ารหัสเดียวกันเป็นบรรทัดเดียวก่อนบันทึก PO');
   const invalid=items.find(i=>i.fulfillmentType==='service');if(invalid)return window.notify?.(`รายการ ${invalid.product} เป็นบริการ ไม่ควรรับเข้าสต็อก`);
   if(poRows().some(p=>p.no===no))return window.notify?.(`เลขที่ PO ${no} มีอยู่แล้ว กรุณากดเลขใหม่`);
   const row={id:id('po'),no,date,branch,supplier,supplierAddress:document.getElementById('po-supplier-address')?.value||'',supplierTaxId:document.getElementById('po-supplier-tax')?.value||'',expectedDate:document.getElementById('po-expected')?.value||'',status:document.getElementById('po-status')?.value||'draft',items:items.map(i=>({...i,total:i.qty*i.unitCost})),subtotal:items.reduce((s,i)=>s+i.qty*i.unitCost,0),note:document.getElementById('po-note')?.value.trim()||'',createdAt:nowIso(),updatedAt:nowIso(),updatedAtIso:nowIso()};
@@ -175,29 +176,36 @@ function loadPoForReceipt(){
 }
 function resetGr(){const d=document.getElementById('gr-date');if(d)d.value=today();const tb=document.getElementById('gr-items-body');if(tb)tb.innerHTML='';const s=document.getElementById('gr-supplier');if(s)s.value='';const n=document.getElementById('gr-note');if(n)n.value='';refreshGrNo();populateOpenPo();}
 function postGoodsReceipt(){
-  const poId=document.getElementById('gr-po')?.value,p=poRows().find(x=>x.id===poId);if(!p)return window.notify?.('กรุณาเลือกใบสั่งซื้อ');const date=document.getElementById('gr-date')?.value,branch=lockedBranch()||document.getElementById('gr-branch')?.value||'';if(!date||!branch)return window.notify?.('กรุณาระบุวันที่และสาขา');
+  const poId=document.getElementById('gr-po')?.value,p=poRows().find(x=>x.id===poId);if(!p)return window.notify?.('กรุณาเลือกใบสั่งซื้อ');const date=document.getElementById('gr-date')?.value,branch=lockedBranch()||document.getElementById('gr-branch')?.value||'';if(p.status==='cancelled'||p.branch!==branch)return window.notify?.('PO ถูกยกเลิกหรือสาขาไม่ตรงกัน');if(!date||!branch)return window.notify?.('กรุณาระบุวันที่และสาขา');
   const items=[...document.querySelectorAll('#gr-items-body tr')].map(tr=>({productCode:tr.dataset.productCode||'',product:tr.dataset.product||'',unit:tr.dataset.unit||'ชิ้น',unitCost:num(tr.dataset.cost),outstanding:num(tr.dataset.outstanding),qty:num(tr.querySelector('[data-f="receive"]')?.value)})).filter(i=>i.qty>0);
-  if(!items.length)return window.notify?.('กรุณากรอกจำนวนรับอย่างน้อย 1 รายการ');const over=items.find(i=>i.qty>i.outstanding+0.000001);if(over)return window.notify?.(`จำนวนรับ ${over.product} มากกว่าจำนวนค้างรับ`);
+  if(!items.length)return window.notify?.('กรุณากรอกจำนวนรับอย่างน้อย 1 รายการ');const current=new Map();items.forEach(i=>current.set(productKey(i),(current.get(productKey(i))||0)+i.qty));const over=items.find(i=>current.get(productKey(i))>Math.max(0,p.items.filter(x=>productKey(x)===productKey(i)).reduce((s,x)=>s+num(x.qty),0)-poReceivedQty(p.id,productKey(i)))+0.000001);if(over)return window.notify?.(`จำนวนรับ ${over.product} มากกว่าจำนวนค้างรับ`);
   const no=document.getElementById('gr-no')?.value||docNo('GR',KEYS.goodsReceipts,date);if(grRows().some(g=>g.no===no))return window.notify?.(`เลขที่รับสินค้า ${no} มีอยู่แล้ว`);
-  const gr={id:id('gr'),no,date,branch,poId:p.id,poNo:p.no,supplier:p.supplier,items,subtotal:items.reduce((s,i)=>s+i.qty*i.unitCost,0),note:document.getElementById('gr-note')?.value.trim()||'',status:'posted',createdAt:nowIso(),updatedAtIso:nowIso()};const grs=grRows();grs.unshift(gr);saveGrRows(grs);cloudSave('goodsReceipts',gr);
-  const moves=movementRows();items.forEach(i=>{const mv={id:id('mv'),date,branch,kind:'receipt',qty:i.qty,productCode:i.productCode,product:i.product,unit:i.unit,unitCost:i.unitCost,refType:'goods_receipt',refId:gr.id,refNo:gr.no,poNo:p.no,note:`รับสินค้าจาก ${p.supplier}`,createdAt:nowIso(),updatedAtIso:nowIso()};moves.unshift(mv);cloudSave('inventoryMovements',mv);});saveMovementRows(moves);
-  const pos=poRows(),idx=pos.findIndex(x=>x.id===p.id);if(idx>=0){pos[idx].status=recalcPoStatus(pos[idx]);pos[idx].updatedAt=nowIso();pos[idx].updatedAtIso=nowIso();savePoRows(pos);cloudSave('purchaseOrders',pos[idx]);}audit('post','goods_receipt',gr.no,`รับสินค้า ${items.length} รายการ อ้างอิง ${p.no} · ฿${money(gr.subtotal)}`,{branch});window.notify?.('Post รับสินค้าเข้าคลังเรียบร้อย');resetGr();renderGoodsReceipts();renderPoList();renderInventory();window.renderMasterData?.();
+  const gr={id:id('gr'),no,date,branch,poId:p.id,poNo:p.no,supplier:p.supplier,items,subtotal:items.reduce((s,i)=>s+i.qty*i.unitCost,0),note:document.getElementById('gr-note')?.value.trim()||'',status:'posted',createdAt:nowIso(),updatedAtIso:nowIso()};
+  const grs=[gr,...grRows()],newMoves=items.map(i=>({id:id('mv'),date,branch,kind:'receipt',qty:i.qty,productCode:i.productCode,product:i.product,unit:i.unit,unitCost:i.unitCost,refType:'goods_receipt',refId:gr.id,refNo:gr.no,poNo:p.no,note:`รับสินค้าจาก ${p.supplier}`,createdAt:nowIso(),updatedAtIso:nowIso()}));
+  const moves=[...newMoves,...movementRows()],pos=poRows(),target=pos.find(x=>x.id===p.id);
+  if(target){const fully=target.items.every(i=>grs.filter(g=>g.poId===target.id&&!g.reversed).reduce((sum,g)=>sum+(g.items||[]).filter(x=>productKey(x)===productKey(i)).reduce((sum,x)=>sum+num(x.qty),0),0)>=num(i.qty)-0.000001);target.status=fully?'received':'partial';target.updatedAt=nowIso();target.updatedAtIso=nowIso();}
+  const event={id:id('audit'),at:nowIso(),action:'post',entity:'goods_receipt',ref:gr.no,detail:`รับสินค้า ${items.length} รายการ อ้างอิง ${p.no}`,branch,user:userLabel(),createdAt:nowIso(),updatedAtIso:nowIso()};
+  try{window.ERPIntegrity.transaction([[scopedKey(KEYS.goodsReceipts),grs],[scopedKey(KEYS.inventoryMovements),moves],[scopedKey(KEYS.purchaseOrders),pos],[scopedKey(KEYS.audit),[event,...read(KEYS.audit)].slice(0,2500)]]);}
+  catch(error){window.notify?.('รับสินค้าไม่สำเร็จ: '+error.message+' กรุณาตรวจพื้นที่จัดเก็บแล้วลองใหม่','error');return;}
+  // External side effects only start after all local records commit.
+  cloudSave('goodsReceipts',gr);newMoves.forEach(m=>cloudSave('inventoryMovements',m));if(target)cloudSave('purchaseOrders',target);cloudSave('auditLogs',event);
+  window.ERPIntegrity.changed();window.notify?.('Post รับสินค้าเข้าคลังเรียบร้อย');resetGr();renderGoodsReceipts();renderPoList();renderInventory();window.renderMasterData?.();
 }
 function renderGoodsReceipts(){
   const root=document.getElementById('gr-list-table');if(!root)return;const rows=grRows().filter(g=>canSeeBranch(g.branch)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));document.getElementById('gr-list-count').textContent=`${rows.length} ใบ`;
   if(!rows.length){root.innerHTML='<div class="empty">ยังไม่มีการรับสินค้า</div>';return;}
   root.innerHTML=`<div class="tbl-wrap"><table class="prodcore-table"><thead><tr><th>GR</th><th>วันที่</th><th>สาขา</th><th>PO</th><th>ผู้จำหน่าย</th><th>มูลค่า</th><th>สถานะ</th><th></th></tr></thead><tbody>${rows.map(g=>`<tr><td><b>${esc(g.no)}</b></td><td>${esc(g.date)}</td><td>${esc(BRANCH_LABEL[g.branch]||g.branch)}</td><td>${esc(g.poNo||'-')}</td><td>${esc(g.supplier||'-')}</td><td class="tn">฿${money(g.subtotal)}</td><td>${statusPill(g.reversed?'reversed':'posted')}</td><td>${!g.reversed?`<button class="btn btn-danger btn-sm" onclick="pcReverseGr('${g.id}')">กลับรายการ</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
 }
-function reverseGr(idv){const grs=grRows(),g=grs.find(x=>x.id===idv);if(!g||g.reversed)return;if(!confirm(`กลับรายการรับสินค้า ${g.no} ใช่หรือไม่? Stock จะถูกลดคืนตามจำนวนที่รับ`))return;const moves=movementRows();(g.items||[]).forEach(i=>{const mv={id:id('mv'),date:today(),branch:g.branch,kind:'receipt_reversal',qty:-num(i.qty),productCode:i.productCode,product:i.product,unit:i.unit,unitCost:i.unitCost,refType:'goods_receipt_reversal',refId:g.id,refNo:g.no,note:`กลับรายการ ${g.no}`,createdAt:nowIso(),updatedAtIso:nowIso()};moves.unshift(mv);cloudSave('inventoryMovements',mv);});saveMovementRows(moves);g.reversed=true;g.reversedAt=nowIso();g.updatedAtIso=nowIso();saveGrRows(grs);cloudSave('goodsReceipts',g);const pos=poRows(),p=pos.find(x=>x.id===g.poId);if(p){p.status=recalcPoStatus(p);p.updatedAt=nowIso();p.updatedAtIso=nowIso();savePoRows(pos);cloudSave('purchaseOrders',p);}audit('post','goods_receipt',g.no,'กลับรายการรับสินค้าและสร้าง Stock Movement ติดลบ',{branch:g.branch});renderGoodsReceipts();renderPoList();populateOpenPo();renderInventory();window.renderMasterData?.();}
+function reverseGr(idv){const grs=grRows(),g=grs.find(x=>x.id===idv);if(!g||g.reversed)return;for(const i of g.items||[]){const p=productBy(i.product,i.productCode);if(p&&availableStock(p,g.branch)<num(i.qty)-0.000001)return window.notify?.('สินค้าที่รับถูกใช้หรือจองแล้ว ไม่สามารถกลับรายการจนสต๊อกพร้อมใช้เพียงพอ');}if(!confirm(`กลับรายการรับสินค้า ${g.no} ใช่หรือไม่? Stock จะถูกลดคืนตามจำนวนที่รับ`))return;const moves=movementRows();(g.items||[]).forEach(i=>{const mv={id:id('mv'),date:today(),branch:g.branch,kind:'receipt_reversal',qty:-num(i.qty),productCode:i.productCode,product:i.product,unit:i.unit,unitCost:i.unitCost,refType:'goods_receipt_reversal',refId:g.id,refNo:g.no,note:`กลับรายการ ${g.no}`,createdAt:nowIso(),updatedAtIso:nowIso()};moves.unshift(mv);cloudSave('inventoryMovements',mv);});saveMovementRows(moves);g.reversed=true;g.reversedAt=nowIso();g.updatedAtIso=nowIso();saveGrRows(grs);cloudSave('goodsReceipts',g);const pos=poRows(),p=pos.find(x=>x.id===g.poId);if(p){p.status=recalcPoStatus(p);p.updatedAt=nowIso();p.updatedAtIso=nowIso();savePoRows(pos);cloudSave('purchaseOrders',p);}audit('post','goods_receipt',g.no,'กลับรายการรับสินค้าและสร้าง Stock Movement ติดลบ',{branch:g.branch});renderGoodsReceipts();renderPoList();populateOpenPo();renderInventory();window.renderMasterData?.();}
 
 function postAdjustment(){
   const date=document.getElementById('adj-date')?.value,branch=lockedBranch()||document.getElementById('adj-branch')?.value,productName=document.getElementById('adj-product')?.value.trim(),type=document.getElementById('adj-type')?.value,qty=num(document.getElementById('adj-qty')?.value),reason=document.getElementById('adj-reason')?.value.trim();const p=productBy(productName);
-  if(!date||!branch||!p||qty<=0||!reason)return window.notify?.('กรุณากรอกวันที่ สาขา สินค้า จำนวน และเหตุผลให้ครบ');if(!branchActive(branch))return window.notify?.('สาขานี้ยังไม่เปิดใช้งานในแพ็กเกจ');if(p.fulfillmentType!=='stock'||p.flowType!=='inventory')return window.notify?.('Stock Adjustment ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const delta=type==='decrease'?-qty:qty;if(delta<0&&stockOnHand(p,branch)<qty-0.000001)return window.notify?.(`Stock ไม่พอ: ${p.name} มี ${qtyFmt(stockOnHand(p,branch))} ${p.unit||''}`);
+  if(!date||!branch||!p||qty<=0||!reason)return window.notify?.('กรุณากรอกวันที่ สาขา สินค้า จำนวน และเหตุผลให้ครบ');if(!branchActive(branch))return window.notify?.('สาขานี้ยังไม่เปิดใช้งานในแพ็กเกจ');if(p.fulfillmentType!=='stock'||p.flowType!=='inventory')return window.notify?.('Stock Adjustment ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const delta=type==='decrease'?-qty:qty;if(delta<0&&availableStock(p,branch)<qty-0.000001)return window.notify?.(`Stock ไม่พอ: ${p.name} มี ${qtyFmt(stockOnHand(p,branch))} ${p.unit||''}`);
   const rows=movementRows();const mv={id:id('mv'),date,branch,kind:'adjustment',qty:delta,productCode:p.code||'',product:p.name,unit:p.unit||'',unitCost:p.standardCost||0,refType:'adjustment',refNo:`ADJ-${Date.now()}`,note:reason,createdAt:nowIso(),updatedAtIso:nowIso()};rows.unshift(mv);saveMovementRows(rows);cloudSave('inventoryMovements',mv);audit('adjust','inventory',p.code||p.name,`${delta>0?'เพิ่ม':'ลด'} Stock ${qtyFmt(qty)} ${p.unit||''} · ${reason}`,{branch});document.getElementById('adj-qty').value='';document.getElementById('adj-reason').value='';renderInventory();window.renderMasterData?.();window.notify?.('บันทึก Stock Adjustment เรียบร้อย');
 }
 function postTransfer(){
   const date=document.getElementById('transfer-date')?.value||today(),productName=document.getElementById('transfer-product')?.value.trim(),from=lockedBranch()||document.getElementById('transfer-from')?.value,to=document.getElementById('transfer-to')?.value,qty=num(document.getElementById('transfer-qty')?.value),note=document.getElementById('transfer-note')?.value.trim()||'';const p=productBy(productName);
-  if(!p||!from||!to||qty<=0)return window.notify?.('กรุณากรอกสินค้า ต้นทาง ปลายทาง และจำนวนให้ครบ');if(!branchActive(from)||!branchActive(to))return window.notify?.('ต้นทางหรือปลายทางยังไม่เปิดใช้งานในแพ็กเกจ');if(from===to)return window.notify?.('สาขาต้นทางและปลายทางต้องไม่ใช่สาขาเดียวกัน');if(p.flowType!=='inventory'||p.fulfillmentType!=='stock')return window.notify?.('Stock Transfer ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const available=stockOnHand(p,from);if(available<qty-0.000001)return window.notify?.(`Stock ต้นทางไม่พอ: ${p.name} มี ${qtyFmt(available)} ${p.unit||''}`);
+  if(!p||!from||!to||qty<=0)return window.notify?.('กรุณากรอกสินค้า ต้นทาง ปลายทาง และจำนวนให้ครบ');if(!branchActive(from)||!branchActive(to))return window.notify?.('ต้นทางหรือปลายทางยังไม่เปิดใช้งานในแพ็กเกจ');if(from===to)return window.notify?.('สาขาต้นทางและปลายทางต้องไม่ใช่สาขาเดียวกัน');if(p.flowType!=='inventory'||p.fulfillmentType!=='stock')return window.notify?.('Stock Transfer ใช้กับสินค้า Inventory / สินค้าในสต็อกเท่านั้น');const available=availableStock(p,from);if(available<qty-0.000001)return window.notify?.(`Stock ต้นทางไม่พอ: ${p.name} มี ${qtyFmt(available)} ${p.unit||''}`);
   const d=new Date(`${date}T00:00:00`),ref=`TRF${String(d.getFullYear()+543).slice(-2)}${String(d.getMonth()+1).padStart(2,'0')}${String(Date.now()).slice(-5)}`;const common={date,productCode:p.code||'',product:p.name,unit:p.unit||'',unitCost:p.standardCost||0,refType:'stock_transfer',refNo:ref,createdAt:nowIso(),updatedAtIso:nowIso()};const out={id:id('mv'),...common,branch:from,kind:'transfer_out',qty:-qty,note:`โอนไป ${BRANCH_LABEL[to]}${note?` · ${note}`:''}`};const inn={id:id('mv'),...common,branch:to,kind:'transfer_in',qty:qty,note:`รับโอนจาก ${BRANCH_LABEL[from]}${note?` · ${note}`:''}`};const rows=movementRows();rows.unshift(inn,out);saveMovementRows(rows);cloudSave('inventoryMovements',out);cloudSave('inventoryMovements',inn);audit('adjust','inventory',ref,`โอน ${p.code||p.name} ${qtyFmt(qty)} ${p.unit||''} · ${BRANCH_LABEL[from]} → ${BRANCH_LABEL[to]}`,{branch:from});document.getElementById('transfer-qty').value='';document.getElementById('transfer-note').value='';renderInventory();renderOpsDashboard();window.renderMasterData?.();window.notify?.(`โอนสต็อกเรียบร้อย · ${ref}`);
 }
 function derivedSalesMovements(){
@@ -213,12 +221,12 @@ function renderInventory(){
   renderMovementTable();
 }
 function renderMovementTable(){const root=document.getElementById('inventory-movement-table');if(!root)return;const requestedBranch=document.getElementById('inv-branch-filter')?.value||'all',branch=lockedBranch()||requestedBranch;const rows=allMovements().filter(r=>canSeeBranch(r.branch)&&(branch==='all'||r.branch===branch)).slice(0,250);document.getElementById('inventory-movement-count').textContent=`แสดง ${rows.length} รายการ`;if(!rows.length){root.innerHTML='<div class="empty">ยังไม่มี Stock Movement</div>';return;}root.innerHTML=`<div class="tbl-wrap"><table class="prodcore-table"><thead><tr><th>วันที่</th><th>สาขา</th><th>สินค้า</th><th>ประเภท</th><th>อ้างอิง</th><th>เข้า</th><th>ออก</th><th>หมายเหตุ</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.date||'-')}</td><td>${esc(BRANCH_LABEL[r.branch]||r.branch||'-')}</td><td><b>${esc(r.productCode||'-')}</b><br>${esc(r.product||'')}</td><td>${esc({receipt:'รับสินค้า',receipt_reversal:'กลับรายการรับ',adjustment:'Adjustment',sale:'ขาย/ส่งสินค้า',transfer_out:'โอนออก',transfer_in:'รับโอน'}[r.kind]||r.kind)}</td><td>${esc(r.refNo||'-')}</td><td class="tn pos">${r.qty>0?qtyFmt(r.qty):'-'}</td><td class="tn neg">${r.qty<0?qtyFmt(Math.abs(r.qty)):'-'}</td><td>${esc(r.note||'')}</td></tr>`).join('')}</tbody></table></div>`;}
-function validateInvoiceStock(branch,items,editId=''){
-  const shortages=[];for(const i of items||[]){const p=productBy(i.product,i.productCode);if(!p||p.fulfillmentType!=='stock'||p.flowType!=='inventory')continue;let available=availableStock(p,branch);
-    // Editing an existing invoice: add its old quantity back before validating the replacement quantity.
-    if(editId&&typeof window.docsForYear==='function'&&typeof window.allYears==='function')for(const y of window.allYears()){const old=(window.docsForYear('invoices',y,branch)||[]).find(x=>String(x.id)===String(editId));if(old){for(const oi of old.items||[]){const op=productBy(oi.product,oi.productCode);if(op&&productKey(op)===productKey(p))available+=num(oi.qty);}break;}}
-    if(num(i.qty)>available+0.000001)shortages.push(`${p.code||''} ${p.name}: ต้องการ ${qtyFmt(i.qty)} แต่มี ${qtyFmt(available)} ${p.unit||''}`);
-  }return shortages.length?{ok:false,message:'Stock ไม่เพียงพอ\n'+shortages.join('\n')+'\nกรุณารับสินค้าเข้าคลังหรือปรับจำนวนก่อนออกใบส่งสินค้า'}:{ok:true};
+function validateInvoiceStock(branch,items,editId='',sourceOrderId=null){
+  const totals=new Map(),restored=new Map();let orderId=sourceOrderId===null?(window.ERPPreparedSalesOrderId||''):sourceOrderId;
+  if(editId)for(const y of window.allYears?.()||[]){const old=(window.docsForYear?.('invoices',y,branch)||[]).find(x=>String(x.id)===String(editId));if(old){orderId=old.sourceSalesOrderId||orderId;for(const i of old.items||[]){const p=productBy(i.product,i.productCode);if(p)restored.set(productKey(p),(restored.get(productKey(p))||0)+num(i.qty));}break;}}
+  for(const i of items||[]){const p=productBy(i.product,i.productCode);if(!p||p.fulfillmentType!=='stock'||p.flowType!=='inventory')continue;const k=productKey(p);totals.set(k,{p,qty:(totals.get(k)?.qty||0)+num(i.qty)});}
+  const shortages=[];totals.forEach(({p,qty},k)=>{const available=availableStock(p,branch,orderId)+(restored.get(k)||0);if(qty>available+0.000001)shortages.push(`${p.name}: ต้องการ ${qtyFmt(qty)} แต่พร้อมใช้ ${qtyFmt(available)} ${p.unit||''}`);});
+  return shortages.length?{ok:false,message:'Stock ไม่เพียงพอ (รวมสินค้ารหัสเดียวกันแล้ว)\n'+shortages.join('\n')}:{ok:true};
 }
 
 function renderAudit(){
@@ -229,14 +237,47 @@ function renderAudit(){
   root.innerHTML=auditHtml+trashHtml;
 }
 async function restoreTrash(idv){
-  const trash=read(KEYS.trash),idx=trash.findIndex(x=>x.id===idv);if(idx<0)return;const t=trash[idx];if(!canSeeBranch(t.branch))return window.notify?.('ไม่มีสิทธิ์กู้คืนข้อมูลของสาขานี้');if(!confirm(`กู้คืน ${t.record?.no||t.record?.id||''} กลับสู่ข้อมูลหลักใช่หรือไม่?`))return;
-  if(typeof window.loadFor!=='function'||typeof window.saveFor!=='function')return window.notify?.('เวอร์ชันนี้ไม่สามารถกู้คืนข้อมูลหลักได้');const d=window.loadFor(t.branch,t.year,t.month);d[t.type]=d[t.type]||[];if(d[t.type].some(x=>String(x.id)===String(t.record.id)))return window.notify?.('รายการนี้มีอยู่ในข้อมูลหลักแล้ว');d[t.type].push(t.record);window.saveFor(t.branch,t.year,t.month,d);
-  const saveMap={quotes:'saveQuote',invoices:'saveInvoice',receipts:'saveReceipt',expenses:'saveExpense',productions:'saveProduction'};const fn=saveMap[t.type];if(fn&&window.FirebaseService?.[fn])window.FirebaseService[fn]({...t.record,branch:t.branch,year:t.year,month:t.month}).catch(()=>{});
-  trash.splice(idx,1);write(KEYS.trash,trash);audit('create',t.type,t.record?.no||t.record?.id||'','กู้คืนจาก Recycle Bin',{branch:t.branch});window.notify?.('กู้คืนรายการแล้ว');renderAudit();window.renderDash?.();
+  const trash=read(KEYS.trash),idx=trash.findIndex(x=>x.id===idv);if(idx<0)return;const t=trash[idx];
+  if(!canSeeBranch(t.branch))return window.notify?.('ไม่มีสิทธิ์กู้คืนข้อมูลของสาขานี้');
+  if(!confirm(`กู้คืน ${t.record?.no||t.record?.id||''} กลับสู่ข้อมูลหลักใช่หรือไม่?`))return;
+  try{
+    const allowed=['quotes','invoices','issuedInvoices','receipts','issuedReceipts','productions','expenses'];
+    if(!allowed.includes(t.type))throw new Error('ไม่รองรับประเภทเอกสารที่กู้คืน');
+    const record={...t.record,branch:t.branch},all=window.ERPIntegrity.business();
+    const existing=all[t.type]||window.ERPIntegrity.packs().flatMap(p=>(p.data[t.type]||[]).map(r=>({...r,branch:p.branch})));
+    if(existing.some(r=>r.branch===t.branch&&(String(r.id)===String(record.id)||(record.no&&r.no===record.no))))throw new Error('มีรหัสหรือเลขเอกสารนี้อยู่แล้ว');
+    if(t.type==='invoices'){
+      window.ERPIntegrity.validateItems(record.items);window.ERPIntegrity.validateDelivery(record);
+      const check=validateInvoiceStock(t.branch,record.items,'',record.sourceSalesOrderId||'');if(!check.ok)throw new Error(check.message);
+    }
+    if(t.type==='receipts'){
+      if(record.paymentId)throw new Error('ใบเสร็จจาก Payment ต้องจัดการผ่านรายการรับเงิน');
+      window.ERPIntegrity.validateReceipt(record);
+    }
+    if(t.type==='issuedInvoices'||t.type==='issuedReceipts'){
+      const type=t.type==='issuedInvoices'?'Invoice':'Receipt',base=all[type==='Invoice'?'invoices':'receipts'].find(r=>!String(r._type).startsWith('issued')&&window.ERPIntegrity.sameDoc(r,record,type));
+      if(!base||!window.ERPIntegrity.live(base))throw new Error('ไม่พบต้นทางที่ยังใช้งานได้สำหรับฉบับพิมพ์');
+      if(window.ERPIntegrity.amount(base)!==window.ERPIntegrity.amount(record)||base.customer!==record.customer||JSON.stringify(base.items)!==JSON.stringify(record.items))throw new Error('ฉบับพิมพ์ที่กู้ไม่ตรงกับต้นทาง กรุณาสร้างฉบับพิมพ์จากต้นทางใหม่');
+    }
+    const data=window.loadFor(t.branch,t.year,t.month);data[t.type]||=[];data[t.type].push(record);trash.splice(idx,1);
+    const event={id:id('audit'),at:nowIso(),action:'create',entity:t.type,ref:record.no||String(record.id),detail:'กู้คืนจาก Recycle Bin หลังตรวจสอบข้อมูล',branch:t.branch,user:userLabel(),createdAt:nowIso()};
+    const packKey=scopedKey(`biz2_${t.branch}_${t.year}_${String(Number(t.month)+1).padStart(2,'0')}`);
+    window.ERPIntegrity.transaction([[packKey,data],[scopedKey(KEYS.trash),trash],[scopedKey(KEYS.audit),[event,...read(KEYS.audit)].slice(0,2500)]]);
+    window.ERPIntegrity.changed();window.notify?.('กู้คืนรายการแล้ว');renderAudit();window.renderDash?.();renderInventory();
+  }catch(error){window.notify?.('กู้คืนไม่สำเร็จ: '+error.message,'error');}
 }
 function exportAudit(){const rows=read(KEYS.audit).filter(r=>canSeeBranch(r.branch)||!r.branch);const head=['Timestamp','Action','Entity','Reference','Branch','Detail','User'];const lines=[head,...rows.map(r=>[r.at,r.action,ENTITY_LABEL[r.entity]||r.entity,r.ref,BRANCH_LABEL[r.branch]||r.branch,r.detail,r.user])].map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));const blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`audit-log-${today()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);}
 function exportData(){const visible=r=>canSeeBranch(r.branch);return{purchaseOrders:poRows().filter(visible),goodsReceipts:grRows().filter(visible),inventoryMovements:read(KEYS.inventoryMovements).filter(visible),audit:read(KEYS.audit).filter(r=>visible(r)||!r.branch),trash:read(KEYS.trash).filter(visible),version:2};}
-function importData(data={}){const locked=lockedBranch(),scope=rows=>Array.isArray(rows)?rows.filter(r=>!locked||r.branch===locked):null;if(Array.isArray(data.purchaseOrders))write(KEYS.purchaseOrders,mergeCloudRows(poRows(),scope(data.purchaseOrders)));if(Array.isArray(data.goodsReceipts))write(KEYS.goodsReceipts,mergeCloudRows(grRows(),scope(data.goodsReceipts)));if(Array.isArray(data.inventoryMovements))write(KEYS.inventoryMovements,mergeCloudRows(read(KEYS.inventoryMovements),scope(data.inventoryMovements)));if(Array.isArray(data.audit))write(KEYS.audit,mergeCloudRows(read(KEYS.audit),scope(data.audit)));if(Array.isArray(data.trash))write(KEYS.trash,mergeCloudRows(read(KEYS.trash),scope(data.trash)));}
+function importData(data={},options={}){
+  const locked=lockedBranch(),writes=[];
+  for(const field of ['purchaseOrders','goodsReceipts','inventoryMovements','audit','trash'])if(data[field]!==undefined){
+    if(!Array.isArray(data[field]))throw new Error('ข้อมูล '+field+' ต้องเป็นรายการ');
+    const incoming=data[field].filter(r=>!locked||r.branch===locked),old=read(KEYS[field]);
+    const rows=window.ERPIntegrity.mergeRows(locked?old.filter(r=>r.branch===locked):old,incoming,!!options.replace);
+    writes.push([scopedKey(KEYS[field]),locked?[...old.filter(r=>r.branch!==locked),...rows]:rows]);
+  }
+  window.ERPIntegrity.transaction(writes);
+}
 
 
 function renderOpsDashboard(){

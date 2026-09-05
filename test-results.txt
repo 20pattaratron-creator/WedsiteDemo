@@ -1,0 +1,63 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> example-company-erp-local-demo-integrated-v3@1.3.0 test
+> node --test tests/*.test.cjs
+
+✔ attachment portable export/import restores exact bytes with checksum (56.099228ms)
+✔ corrupt or conflicting backup attachments are rejected without partial imports (11.102364ms)
+ปฏิเสธการเปิดไฟล์ Local ของบริษัทอื่น
+✔ local attachment access stays tenant scoped (12.107089ms)
+✔ restore_invoice_bypasses_stock (1864.235332ms)
+✔ valid invoice and receipt restoration succeeds and removes trash entry (1352.612422ms)
+✔ GR rolls back and can retry after failure at comform_goods_receipts_v1 (916.10922ms)
+✔ GR rolls back and can retry after failure at comform_purchase_orders_v1 (909.960893ms)
+✔ GR rolls back and can retry after failure at comform_audit_log_v1 (1202.774847ms)
+✔ printed receipt locks its base against edits as well (973.951551ms)
+✔ unknown SO costs are visibly marked as preliminary (1007.18891ms)
+✔ restore_receipt_bypasses_overpayment (697.737498ms)
+✔ invoice_edit_leaves_issued_snapshot_stale (663.555859ms)
+✔ billing_does_not_close_after_standalone_receipt (820.416505ms)
+✔ sales_order_delivery_ignores_actual_production_cost (1228.128357ms)
+✔ goods_receipt_write_failure_leaves_partial_commit (887.257845ms)
+✔ all local modules boot with real HTML in simulated DOM (1322.745327ms)
+✔ quote → SO → two deliveries → receipt + billing payment → reversal (2786.726837ms)
+✔ JSON merge preserves prior master/order and backup captured before import (910.952612ms)
+✔ invoice form stock guard rejects duplicate rows above on-hand quantity (976.787201ms)
+✔ pricing policy imports into a fresh store and merge keeps a newer policy (924.54134ms)
+✔ failed JSON import rolls back an earlier master update (750.161157ms)
+✔ sales KPI and customer/product/agency charts use the same nonduplicated basis (751.277651ms)
+✔ partial receipt keeps invoice outstanding; printed copy is not duplicate cash (6.570052ms)
+✔ full payment settles invoice; reversal reopens balance (9.275091ms)
+✔ branch references do not mix identical invoice numbers (2.662066ms)
+✔ receipt overpayment and customer mismatch blocked; edit excludes its old receipt (4.843437ms)
+✔ SO remains partial after payment for first 3 of 10 units (5.481177ms)
+✔ SO completes only when all units delivered and paid (2.588931ms)
+✔ duplicate line requests aggregate and cannot exceed SO remaining (2.227486ms)
+✔ delivery edit excludes original quantity but still respects ready quantity (12.769811ms)
+✔ stock guard aggregates duplicate SKU rows and deducts other SO reservations (26.939117ms)
+✔ product code takes precedence over display name; PO product fields supported (4.682426ms)
+✔ merge preserves old rows and newer updates; replace removes absent rows (3.571302ms)
+✔ flow import merges instead of overwriting existing sales orders (2.174181ms)
+✔ backup rejects invalid arrays, unsafe keys and nonnumeric amounts (1.560784ms)
+✔ failed local multi-key write rolls back earlier writes (1.246577ms)
+✔ backup snapshot restores masters and flow in current tenant only (1.323529ms)
+✔ generated payment receipts retain correct tax split and never double cash (1.926515ms)
+✔ VAT modes add, extract and none are consistent (4.66158ms)
+✔ target margin 95% and markup over 95% calculate correctly (2.535964ms)
+✔ direct inventory invoices count as sales; SO production is not counted twice (5.388559ms)
+✔ invalid quantities and nonfinite prices are rejected (0.972466ms)
+✔ portable backup permits Thai attachment filenames (0.959195ms)
+✔ delivery and payment references reject customer, SKU and invoice-number mismatches (1.656334ms)
+✔ billing excludes receipts already applied before it was created (1.562935ms)
+✔ billing direct receipts allocate FIFO and reverse without double payment (3.179608ms)
+✔ production costs are allocated over partial deliveries with final cent retained (1.883483ms)
+✔ legacy billing migrates its already-paid creation balance once (1.480418ms)
+✔ a production record without cost evidence cannot label zero cost as actual (1.037343ms)
+ℹ tests 49
+ℹ suites 0
+ℹ pass 49
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13007.341745

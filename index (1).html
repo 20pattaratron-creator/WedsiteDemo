@@ -4,14 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-  <script type="module" crossorigin src="./assets/main-B0XufB9h.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/main-COqHZkUH.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="delivery-tax-document.css">
+<link rel="stylesheet" href="quotation-document.css">
+<link rel="stylesheet" href="receipt-document.css">
+<link rel="stylesheet" href="trial-mode.css">
+<link rel="stylesheet" href="business-rules.css">
+<link rel="stylesheet" href="local-demo-mode.css">
+<link rel="stylesheet" href="erp-order-flow-v3.css">
+<link rel="stylesheet" href="erp-customer-experience.css">
+<link rel="stylesheet" href="local-demo-health.css">
 </head>
 <body>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
-  <img class="company-logo" src="./assets/logo-FgPzZbhG.png" alt="Company Logo">
+  <img class="company-logo" src="./logo.png" alt="Company Logo">
   <div class="company-title-wrap">
     <div class="company-main-title" id="tenant-company-title">ERP Business Platform</div>
     <div class="company-sub-title" id="tenant-company-subtitle">ฝ่ายขาย / จัดซื้อ / คลังสินค้า / ค่าใช้จ่าย / วิเคราะห์ธุรกิจ</div>
@@ -1784,9 +1792,26 @@
 
 </div><!-- /app-content -->
 
+<script type="module" src="boot-status.js"></script>
+<script type="module" src="tenant-context.js"></script>
+<script type="module" src="local-demo-mode.js"></script>
+<script type="module" src="local-file-store.js"></script>
+<script type="module" src="erp-integrity.js"></script>
+<script type="module" src="erp-backup.js"></script>
+<script type="module" src="click-fallback.js"></script>
 <!-- Load printable document modules before app.js so inline previews are ready when forms boot. -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script type="module" src="delivery-tax-document.js"></script>
+<script type="module" src="quotation-document.js"></script>
+<script type="module" src="receipt-document.js"></script>
+<script type="module" src="app.js"></script>
+<script type="module" src="business-rules.js"></script>
+<script type="module" src="trial-mode.js"></script>
+<script type="module" src="erp-production-core.js"></script>
+<script type="module" src="erp-order-flow-v3.js"></script>
+<script type="module" src="erp-customer-experience.js"></script>
+<script type="module" src="local-demo-health.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>
 </body>
