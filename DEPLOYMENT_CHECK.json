@@ -1,0 +1,45 @@
+{
+  "scope": "Local HTTP under /demo-repo/; not live GitHub Pages or visual browser testing",
+  "html_asset_references": [
+    "./assets/main-B0XufB9h.js",
+    "./assets/main-COqHZkUH.css",
+    "./assets/logo-FgPzZbhG.png"
+  ],
+  "checks": [
+    {
+      "file": "assets/logo-FgPzZbhG.png",
+      "status": 200,
+      "content_type": "image/png",
+      "sha256": "d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07",
+      "matches_dist": true
+    },
+    {
+      "file": "assets/main-B0XufB9h.js",
+      "status": 200,
+      "content_type": "text/javascript",
+      "sha256": "885ecbb93cb4c012f6a269fd9509cf82ad9aa12d24352b37e02977754ad908bc",
+      "matches_dist": true
+    },
+    {
+      "file": "assets/main-COqHZkUH.css",
+      "status": 200,
+      "content_type": "text/css",
+      "sha256": "5d425c2d04304b8e7fa8ce999fb9ce03e6de56b088537c8029d06ad92f7ab357",
+      "matches_dist": true
+    },
+    {
+      "file": "assets/quotation-document-D1nx9Y5M.css",
+      "status": 200,
+      "content_type": "text/css",
+      "sha256": "7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94",
+      "matches_dist": true
+    },
+    {
+      "file": "index.html",
+      "status": 200,
+      "content_type": "text/html",
+      "sha256": "cf05c1b8e2008504d3c4beebac55c7a43acbfe9b599c3382b22705a3c5f6b84b",
+      "matches_dist": true
+    }
+  ]
+}
