@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="3.3.0-pages-review">
+<meta name="erp-demo-build" content="3.3.0-flat">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,9 +27,9 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 3.3.0 · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 3.3.0 FLAT · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
-      help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
+      help.textContent = 'อัปโหลดไฟล์จากชุด FLAT ทั้งหมดไว้ระดับเดียวกับ index.html แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
       const link = document.createElement('a'); link.href = './deployment-check.html'; link.textContent = 'เปิดหน้าตรวจไฟล์เว็บ';
       box.append(title, help, list, link); document.body.appendChild(box);
@@ -54,14 +54,14 @@
   setTimeout(() => { bootTimedOut = true; render(); }, 8000);
 })();
 </script>
-  <script type="module" crossorigin src="./assets/main-DWeF-kiG.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/main-COqHZkUH.css">
+  <script type="module" crossorigin src="./main-CFYlSnbc.js"></script>
+  <link rel="stylesheet" crossorigin href="./main-COqHZkUH.css">
 </head>
 <body>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
-  <img class="company-logo" src="./assets/logo-FgPzZbhG.png" width="52" height="52" alt="Company Logo">
+  <img class="company-logo" src="./logo-FgPzZbhG.png" width="52" height="52" alt="Company Logo">
   <div class="company-title-wrap">
     <div class="company-main-title" id="tenant-company-title">ERP Business Platform</div>
     <div class="company-sub-title" id="tenant-company-subtitle">ฝ่ายขาย / จัดซื้อ / คลังสินค้า / ค่าใช้จ่าย / วิเคราะห์ธุรกิจ</div>

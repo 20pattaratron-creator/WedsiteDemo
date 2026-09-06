@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ตรวจไฟล์ ERP DEMO 3.3.0</title>
+<title>ตรวจไฟล์ ERP DEMO 3.3.0 FLAT</title>
 <style>body{font:16px/1.7 system-ui,sans-serif;background:#eff6ff;color:#172554;margin:0;padding:24px}main{max-width:1000px;margin:auto;background:white;padding:24px;border-radius:14px}button,a{font:inherit;color:#1d4ed8}button{padding:8px 20px;cursor:pointer}.scroll{overflow:auto}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd}td:first-child{overflow-wrap:anywhere}.fail{color:#b91c1c}.pass{color:#166534}#site{overflow-wrap:anywhere}</style>
-<main><h1>ตรวจไฟล์ ERP DEMO 3.3.0</h1><p>หน้านี้ทำงานแยกจากระบบหลัก ตรวจไฟล์ที่อัปโหลดและเวอร์ชันของชุดเว็บ ไม่มีการแก้ไขข้อมูล ERP</p><p id="site"></p>
+<main><h1>ตรวจไฟล์ ERP DEMO 3.3.0 FLAT</h1><p>หน้านี้ทำงานแยกจากระบบหลัก ตรวจไฟล์ที่อัปโหลดและเวอร์ชันของชุดเว็บ ไม่มีการแก้ไขข้อมูล ERP</p><p id="site"></p>
 <button id="check">ตรวจอีกครั้ง</button> <a href="./">กลับหน้า ERP</a>
 <p id="summary" role="status">กำลังตรวจ…</p><div class="scroll"><table><thead><tr><th>ไฟล์</th><th>HTTP</th><th>ผลตรวจ</th></tr></thead><tbody id="rows"></tbody></table></div>
-<p>ถ้าพบ 404 หรือไฟล์ไม่ตรงรุ่น ให้อัปโหลดไฟล์จาก ZIP ชุดเดียวกันครบทั้ง index.html, assets และ deployment-check.html แล้วรอเผยแพร่สำเร็จ ผลผ่านหมายถึงไฟล์ครบตามชุดนี้ ยังไม่ใช่การรับรองการทำงานทุกเมนูหรือหน้าพิมพ์</p></main>
+<p>ถ้าพบ 404 หรือไฟล์ไม่ตรงรุ่น ให้อัปโหลดไฟล์จาก ZIP ชุดเดียวกันโดยวางไฟล์ทั้งหมดระดับเดียวกัน รวม index.html และ deployment-check.html แล้วรอเผยแพร่สำเร็จ ผลผ่านหมายถึงไฟล์ครบตามชุดนี้ ยังไม่ใช่การรับรองการทำงานทุกเมนูหรือหน้าพิมพ์</p></main>
 <script>
-const manifest=[{"file":"index.html","sha256":"04e12392a7b8a5078ae78102c170dd7ebda3b52731499472ad3ea20092455b96"},{"file":"assets/main-DWeF-kiG.js","sha256":"6d7579833f544e24234cd285c4a6854d128a16976eb4ff10daa6a046d93be135"},{"file":"assets/main-COqHZkUH.css","sha256":"5d425c2d04304b8e7fa8ce999fb9ce03e6de56b088537c8029d06ad92f7ab357"},{"file":"assets/logo-FgPzZbhG.png","sha256":"d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07"},{"file":"assets/delivery-tax-document-CjcpZHAi.css","sha256":"adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5"},{"file":"assets/quotation-document-D1nx9Y5M.css","sha256":"7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94"},{"file":"assets/receipt-document-C_3LyvKh.css","sha256":"ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24"}];
+const manifest=[{"file":"index.html","sha256":"bd95c0b05b7aaea04f39193f7a5e3f14815cc62ea850e011a7813cba4e8cb30d"},{"file":"main-CFYlSnbc.js","sha256":"6d7579833f544e24234cd285c4a6854d128a16976eb4ff10daa6a046d93be135"},{"file":"main-COqHZkUH.css","sha256":"5d425c2d04304b8e7fa8ce999fb9ce03e6de56b088537c8029d06ad92f7ab357"},{"file":"logo-FgPzZbhG.png","sha256":"d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07"},{"file":"delivery-tax-document-CjcpZHAi.css","sha256":"adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5"},{"file":"quotation-document-D1nx9Y5M.css","sha256":"7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94"},{"file":"receipt-document-C_3LyvKh.css","sha256":"ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24"}];
 document.getElementById('site').textContent=location.href;
 async function check(){
  const button=document.getElementById('check'), rows=document.getElementById('rows');button.disabled=true;rows.replaceChildren();let failures=0;
@@ -23,13 +23,13 @@ async function check(){
    if(!crypto.subtle)throw Error('ต้องเปิดผ่าน HTTPS หรือ localhost เพื่อตรวจเวอร์ชัน');
    const bytes=await response.arrayBuffer();const digest=await crypto.subtle.digest('SHA-256',bytes);
    const hash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
-   if(hash!==item.sha256)throw Error('ไฟล์ไม่ตรงกับชุด DEMO 3.3.0 นี้');
+   if(hash!==item.sha256)throw Error('ไฟล์ไม่ตรงกับชุด DEMO 3.3.0 FLAT นี้');
    ok=true;message='ผ่าน · ไฟล์ตรงรุ่น';
   }catch(error){failures++;message=error.message;}
   const tr=document.createElement('tr');tr.className=ok?'pass':'fail';
   for(const value of [item.file,String(status),message]){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}rows.appendChild(tr);
  }
- document.getElementById('summary').textContent=failures?'พบปัญหา '+failures+' ไฟล์ — ส่งภาพผลตรวจนี้ให้ผู้ดูแล':'ผ่านครบ '+manifest.length+' ไฟล์ — ไฟล์ตรงกับชุด DEMO 3.3.0';button.disabled=false;
+ document.getElementById('summary').textContent=failures?'พบปัญหา '+failures+' ไฟล์ — ส่งภาพผลตรวจนี้ให้ผู้ดูแล':'ผ่านครบ '+manifest.length+' ไฟล์ — ไฟล์ตรงกับชุด DEMO 3.3.0 FLAT';button.disabled=false;
 }
 document.getElementById('check').addEventListener('click',check);check();
 </script></html>
