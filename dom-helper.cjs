@@ -7,7 +7,7 @@ async function boot(){
   const name=script.getAttribute('src');if(/^https?:/.test(name))continue;
   let s=fs.readFileSync(path.join(root,name),'utf8').replace(/^export\s+(?=(async\s+)?function|const|class|let)/gm,'').replace(/^export\s*\{[^}]*\};?/gm,'').replaceAll('import.meta.url',JSON.stringify('https://erp.test/'+name));
   if(name==='erp-order-flow-v3.js')s=s.replace('  window.ERPOrderFlow = {','  window.testFlow={saveSalesOrderFromQuote,saveFulfillment,saveBilling,saveBillingPayment,derivedOrderStage};\n  window.ERPOrderFlow = {');
-  if(name==='app.js')s+='\nwindow.testApp={collectDashboardSalesRows,buildDashboardProductCompare,buildMonthlyCustomerLeaderRows,dashboardAgencyRows,customerRows,collectLocalMasterBackup,restoreLocalMasterBackup,branchStats,buildReceivableAgingRows,createLocalBackupSnapshot};';
+  if(name==='app.js')s+='\nwindow.testApp={keyFor,now,analyticsForecastHistorySeries,dashBranches,forecastMonthKey,forecastMonthFromKey,forecastActiveSeries,forecastStoredHistory,forecastRollingCv,forecastMaseScale,forecastSmape,forecastWape,buildStandardForecastModel,forecastFutureTableHtml,forecastMoney,analyticsTrendSummary,quantBusinessRegime,quantRevenueAnomalies,quantMaxDrawdown,quantMonteCarlo,quantCompositeRiskScore,quantForecastDecision,quantDecisionTableRows,buildSalesForecast,collectDashboardSalesRows,buildDashboardProductCompare,buildMonthlyCustomerLeaderRows,dashboardAgencyRows,customerRows,collectLocalMasterBackup,restoreLocalMasterBackup,branchStats,buildReceivableAgingRows,createLocalBackupSnapshot};';
   w.eval(`(()=>{${s}\n})();`);
  }
  await new Promise(r=>setTimeout(r,450));w.notify=(...a)=>messages.push(a.join(' '));

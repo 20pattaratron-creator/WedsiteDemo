@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ตรวจไฟล์ ERP DEMO 3.3.0</title>
+<style>body{font:16px/1.7 system-ui,sans-serif;background:#eff6ff;color:#172554;margin:0;padding:24px}main{max-width:1000px;margin:auto;background:white;padding:24px;border-radius:14px}button,a{font:inherit;color:#1d4ed8}button{padding:8px 20px;cursor:pointer}.scroll{overflow:auto}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:10px;border-bottom:1px solid #ddd}td:first-child{overflow-wrap:anywhere}.fail{color:#b91c1c}.pass{color:#166534}#site{overflow-wrap:anywhere}</style>
+<main><h1>ตรวจไฟล์ ERP DEMO 3.3.0</h1><p>หน้านี้ทำงานแยกจากระบบหลัก ตรวจไฟล์ที่อัปโหลดและเวอร์ชันของชุดเว็บ ไม่มีการแก้ไขข้อมูล ERP</p><p id="site"></p>
+<button id="check">ตรวจอีกครั้ง</button> <a href="./">กลับหน้า ERP</a>
+<p id="summary" role="status">กำลังตรวจ…</p><div class="scroll"><table><thead><tr><th>ไฟล์</th><th>HTTP</th><th>ผลตรวจ</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p>ถ้าพบ 404 หรือไฟล์ไม่ตรงรุ่น ให้อัปโหลดไฟล์จาก ZIP ชุดเดียวกันครบทั้ง index.html, assets และ deployment-check.html แล้วรอเผยแพร่สำเร็จ ผลผ่านหมายถึงไฟล์ครบตามชุดนี้ ยังไม่ใช่การรับรองการทำงานทุกเมนูหรือหน้าพิมพ์</p></main>
+<script>
+const manifest=[{"file":"index.html","sha256":"9e59bf9ec31a695b670c72fc51e0198fa93e3673fb27014b399dd9292816b0c4"},{"file":"style.css","sha256":"ef32e30e16122beeb650a3cbbe7de39046027855a594500c6a70b978c9bbf3d6"},{"file":"delivery-tax-document.css","sha256":"adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5"},{"file":"quotation-document.css","sha256":"7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94"},{"file":"receipt-document.css","sha256":"ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24"},{"file":"trial-mode.css","sha256":"cfda6be7a29774a3b72590e2f89c9d66fa51fa55c3d259a87110a69b43734045"},{"file":"business-rules.css","sha256":"7f8ea0202cec6a945f6ab9a3ed94478d328aa7d600d7b984b2bbc93e0f57852f"},{"file":"local-demo-mode.css","sha256":"b1bf1561e6d08f70f5d1e1b455a37c4a6ee09ddf0d6693908a56a908577eacc0"},{"file":"erp-order-flow-v3.css","sha256":"203edc696c07a2c7034508f226973cb92320b7c737c77209ddfd3008680955fc"},{"file":"erp-customer-experience.css","sha256":"0a0c083bedd8e599de5d69fe7c998ea95b4ec5c655f520b6a8b08157daeb57ce"},{"file":"local-demo-health.css","sha256":"bec97add4749a1bc83ae58e3faa64776bbf7cfb752545619b35014505d528440"},{"file":"logo.png","sha256":"d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07"},{"file":"boot-status.js","sha256":"5cc8fd074a0fc36a92237e6052de3446ff74bcd57918d55558f85a39119ff53a"},{"file":"tenant-context.js","sha256":"f05776ad93e695b20a3ebe9a78db52f76d1c9ddbf5bc76094135b047854816f2"},{"file":"local-demo-mode.js","sha256":"0e77842e020fea03a73085527b3e51807fab92e7cfbcaa73ecec682d48a1901f"},{"file":"local-file-store.js","sha256":"c5d09a2e45ff698e17b71546c7898dd148d030ca209502b5225be512a5aab124"},{"file":"erp-integrity.js","sha256":"3eccdd0fb843db89e1a1c980f312edcc600725569f4d328c3d40131974f7cd96"},{"file":"erp-backup.js","sha256":"48bd83f7e30297af21cdd611a2fdb3643edc849f8ca28b152462fb5953a98d39"},{"file":"click-fallback.js","sha256":"b0fa7ea585201b58c14c9238b9346842f59915cff61c9062729f1565ad903b9d"},{"file":"delivery-tax-document.js","sha256":"74d34ceb115841d7adb96d46fe163644ebffda06e1b661908a5b424893f3f3c6"},{"file":"quotation-document.js","sha256":"9076115ffea15561a01f9f0b0fa035024669ba76f87cf1b5b5f99fc545b2ecd6"},{"file":"receipt-document.js","sha256":"fcffbc03cdb7740cadfcecef0a8fc30e5365ecac9d8467a8cf415ba977dcee8b"},{"file":"app.js","sha256":"ebb6d946e035f1d235d34f865e389ae886666ec429d916ca7438a70b18b8e9f4"},{"file":"business-rules.js","sha256":"7db664bb41e2cfcb1230a0c0620676febf7fc149da3f4e9a6e9fd72788292474"},{"file":"trial-mode.js","sha256":"2170c887d57ba18039ffa075b5091a4ea47625b3ce76b99dd5911287b3b87e2c"},{"file":"erp-production-core.js","sha256":"55038e7f888378cff7e0f8c99d66fd41043b36635e80ad4caeba651681763199"},{"file":"erp-order-flow-v3.js","sha256":"4868eaba7b47dd714a226b0314e93d81c9fb9a40f4e529c386cb6ef9e8e1847f"},{"file":"erp-customer-experience.js","sha256":"a1c9f6821d0251c28e32542bc1c961541a2d40d8e6d15404bf0bd822c6e61dae"},{"file":"local-demo-health.js","sha256":"aafa071e98360e37551105e7a66ffb3f4f5aa231867cafb2a4c161872225cd9c"}];
+document.getElementById('site').textContent=location.href;
+async function check(){
+ const button=document.getElementById('check'), rows=document.getElementById('rows');button.disabled=true;rows.replaceChildren();let failures=0;
+ for(const item of manifest){
+  let status='—',message='',ok=false;
+  try{
+   const response=await fetch(new URL(item.file,location.href),{cache:'no-store',signal:AbortSignal.timeout(12000)});status=response.status;
+   if(!response.ok)throw Error('โหลดไม่สำเร็จ');
+   const type=response.headers.get('content-type')||'';
+   const ext=item.file.split('.').pop();
+   const wanted={css:'text/css',js:'javascript',png:'image/png',html:'text/html'}[ext];
+   if(wanted&&!type.includes(wanted))throw Error('ชนิดไฟล์ผิด: '+type);
+   if(!crypto.subtle)throw Error('ต้องเปิดผ่าน HTTPS หรือ localhost เพื่อตรวจเวอร์ชัน');
+   const bytes=await response.arrayBuffer();const digest=await crypto.subtle.digest('SHA-256',bytes);
+   const hash=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+   if(hash!==item.sha256)throw Error('ไฟล์ไม่ตรงกับชุด DEMO 3.3.0 นี้');
+   ok=true;message='ผ่าน · ไฟล์ตรงรุ่น';
+  }catch(error){failures++;message=error.message;}
+  const tr=document.createElement('tr');tr.className=ok?'pass':'fail';
+  for(const value of [item.file,String(status),message]){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}rows.appendChild(tr);
+ }
+ document.getElementById('summary').textContent=failures?'พบปัญหา '+failures+' ไฟล์ — ส่งภาพผลตรวจนี้ให้ผู้ดูแล':'ผ่านครบ '+manifest.length+' ไฟล์ — ไฟล์ตรงกับชุด DEMO 3.3.0';button.disabled=false;
+}
+document.getElementById('check').addEventListener('click',check);check();
+</script></html>

@@ -32,7 +32,7 @@
     ensureStyle();
     const banner = document.createElement('div');
     banner.id = 'runtime-status-banner';
-    banner.innerHTML = `<span><b>ระบบโหลดไม่สมบูรณ์</b><br>ลองรีเฟรชหน้าเว็บ หากยังไม่หายให้ตรวจ Vercel Environment Variables และ Console</span><button type="button">โหลดใหม่</button>`;
+    banner.innerHTML = `<span><b>ระบบโหลดไม่สมบูรณ์</b><br>ลองโหลดใหม่ หากยังไม่สำเร็จ ให้เปิดหน้าตรวจไฟล์เว็บและส่งผลให้ผู้ดูแล</span><a href="./deployment-check.html">ตรวจไฟล์เว็บ</a><button type="button">โหลดใหม่</button>`;
     banner.querySelector('button').addEventListener('click', () => location.reload());
     document.body.appendChild(banner);
   }
@@ -50,6 +50,11 @@
   window.addEventListener('comform-app-ready', () => {
     document.getElementById('runtime-status-banner')?.remove();
     setTimeout(showDemoBadge, 100);
+  });
+
+  window.addEventListener('comform-app-failed', event => {
+    addError('boot', event.detail?.message || 'App initialization failed');
+    showBanner();
   });
 
   window.addEventListener('DOMContentLoaded', () => {

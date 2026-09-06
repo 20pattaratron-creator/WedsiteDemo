@@ -2155,6 +2155,21 @@ function forecastMonthLabel(year,month){return `${MONTHS[month]} พ.ศ. ${year
 function forecastSalesForMonth(year,month,branches=dashBranches()){
   return branches.reduce((sum,br)=>sum+metricFromData(loadFor(br,year,month),'sales',year,month),0);
 }
+function forecastStoredHistory(rows=[],branches=[]){
+  // A missing/corrupt month pack is unknown, not a zero-sale month.
+  // Stored empty packs represent zero recorded sales; completeness still needs review.
+  const checked=rows.map(row=>{
+    const observed=branches.length>0&&branches.every(branch=>{
+      try{const raw=localStorage.getItem(keyFor(branch,row.year,row.month));
+        if(!raw)return false;const pack=JSON.parse(raw);
+        return pack&&typeof pack==='object'&&!Array.isArray(pack)&&['quotes','invoices','receipts','productions'].every(k=>Array.isArray(pack[k]));
+      }catch(_){return false;}
+    });
+    return {...row,observed,value:observed?row.value:null};
+  });
+  const first=checked.findIndex(row=>row.observed);
+  return first<0?[]:checked.slice(first);
+}
 function forecastQuotePipeline(year,month,branches=dashBranches()){
   let total=0,count=0;
   branches.forEach(br=>{
@@ -2178,12 +2193,11 @@ function forecastReferencePeriod(){
   return{year:selectedYear,month:11,explicit:false};
 }
 function forecastActiveSeries(values=[]){
-  const raw=values.map(v=>Math.max(0,safeNum(v)));
-  let first=raw.findIndex(v=>v>0),last=-1;
-  for(let i=raw.length-1;i>=0;i--){if(raw[i]>0){last=i;break;}}
-  if(first<0||last<0)return[];
-  return raw.slice(first,last+1);
+  // Preserve calendar positions, including leading/trailing zero months.
+  // Invalid/missing values invalidate the series instead of becoming zero.
+  return values.every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0)?values.slice():[];
 }
+
 function forecastMean(values=[]){return values.length?values.reduce((s,v)=>s+safeNum(v),0)/values.length:0;}
 function forecastRmse(actual=[],pred=[]){
   if(!actual.length)return Infinity;
@@ -2199,7 +2213,8 @@ function forecastSmape(actual=[],pred=[]){
   actual.forEach((a,i)=>{
     const av=Math.abs(safeNum(a)),pv=Math.abs(safeNum(pred[i]));
     const denom=(av+pv)/2;
-    if(denom>0){total+=Math.abs(av-pv)/denom*100;count++;}
+    if(denom>0)total+=Math.abs(av-pv)/denom*100;
+    count++;
   });
   return count?total/count:0;
 }
@@ -2330,9 +2345,10 @@ function forecastLinearFit(values=[],horizon=1){
   const r2=ssTot?Math.max(0,Math.min(1,1-ssRes/ssTot)):0;
   return{forecast:Array.from({length:horizon},(_,i)=>Math.max(0,intercept+slope*(n+i))),slope,r2:r2*100};
 }
-function forecastModelLabel(id){return({sma:'Moving Average 3 เดือน',ses:'Simple Exponential Smoothing',holt:'Holt Trend (Damped)',hw:'Holt-Winters Additive (12 เดือน)',linear:'Linear Regression (Benchmark)'})[id]||id;}
-function forecastModelMinHistory(id){return id==='hw'?24:id==='holt'?6:id==='linear'?4:3;}
+function forecastModelLabel(id){return({naive:'ยอดเดือนล่าสุด (Naive baseline)',sma:'Moving Average 3 เดือน',ses:'Simple Exponential Smoothing',holt:'Holt Trend (Damped)',hw:'Holt-Winters Additive (12 เดือน)',linear:'Linear Regression (Benchmark)'})[id]||id;}
+function forecastModelMinHistory(id){return id==='naive'?1:id==='hw'?24:id==='holt'?6:id==='linear'?4:3;}
 function forecastModelRun(id,values,horizon=1){
+  if(id==='naive')return{forecast:Array(horizon).fill(values.at(-1)??0),params:'last observed month'};
   if(id==='sma')return{forecast:forecastSma(values,horizon,3),params:'window=3'};
   if(id==='ses'){
     const fit=forecastSesFit(values,horizon);return{forecast:fit.forecast,params:`α=${fit.alpha?.toFixed(2)}`};
@@ -2348,48 +2364,52 @@ function forecastModelRun(id,values,horizon=1){
   }
   return{forecast:forecastSma(values,horizon,3),params:'window=3'};
 }
-function forecastRollingCv(values=[],id='sma'){
+function forecastRollingCv(values=[],id='sma',start=null){
   const v=forecastActiveSeries(values),minTrain=forecastModelMinHistory(id);
-  if(v.length<=minTrain)return{id,label:forecastModelLabel(id),eligible:false,rmse:Infinity,mae:Infinity,smape:Infinity,mase:Infinity,wape:Infinity,bias:0,biasPct:0,trackingSignal:0,n:0,reason:`Auto-CV ต้องมีอย่างน้อย ${minTrain+1} เดือน`};
-  const actual=[],pred=[];
-  for(let i=minTrain;i<v.length;i++){
-    const out=forecastModelRun(id,v.slice(0,i),1).forecast[0];
-    if(Number.isFinite(out)){actual.push(v[i]);pred.push(out);}
+  const origin=Math.max(minTrain,start??minTrain);
+  const unavailable={id,label:forecastModelLabel(id),eligible:false,rmse:Infinity,mae:Infinity,smape:Infinity,mase:Infinity,wape:Infinity,bias:0,biasPct:0,trackingSignal:0,n:0,origins:[],errors:[],reason:'ต้องมีข้อมูลฝึกและช่วงทดสอบร่วมอย่างน้อย 3 เดือน'};
+  if(v.length-origin<3)return unavailable;
+  const actual=[],pred=[],scaled=[],origins=[];
+  for(let i=origin;i<v.length;i++){
+    const training=v.slice(0,i),out=forecastModelRun(id,training,1).forecast[0];
+    if(!Number.isFinite(out))return unavailable;
+    actual.push(v[i]);pred.push(out);origins.push(i);
+    const scale=forecastMaseScale(training);
+    scaled.push(scale>0?Math.abs(v[i]-out)/scale:Infinity);
   }
-  if(!actual.length)return{id,label:forecastModelLabel(id),eligible:false,rmse:Infinity,mae:Infinity,smape:Infinity,mase:Infinity,wape:Infinity,bias:0,biasPct:0,trackingSignal:0,n:0,reason:'ข้อมูลไม่พอสำหรับ Cross-validation'};
   const bias=forecastBias(actual,pred);
-  return{id,label:forecastModelLabel(id),eligible:true,rmse:forecastRmse(actual,pred),mae:forecastMae(actual,pred),smape:forecastSmape(actual,pred),mase:forecastMase(actual,pred,v),wape:forecastWape(actual,pred),bias:bias.mean,biasPct:bias.pct,trackingSignal:forecastTrackingSignal(actual,pred),n:actual.length,reason:''};
+  return{id,label:forecastModelLabel(id),eligible:true,rmse:forecastRmse(actual,pred),mae:forecastMae(actual,pred),smape:forecastSmape(actual,pred),mase:scaled.every(Number.isFinite)?forecastMean(scaled):Infinity,wape:forecastWape(actual,pred),bias:bias.mean,biasPct:bias.pct,trackingSignal:forecastTrackingSignal(actual,pred),n:actual.length,origins,errors:actual.map((v,i)=>v-pred[i]),reason:''};
 }
+
 function buildStandardForecastModel(values=[],requested='auto',horizon=6){
-  const active=forecastActiveSeries(values);
-  const ids=['sma','ses','holt','hw','linear'];
-  const candidates=ids.map(id=>forecastRollingCv(active,id));
-  const eligible=candidates.filter(x=>x.eligible&&Number.isFinite(x.rmse)).sort((a,b)=>a.rmse-b.rmse);
-  let selectedId=requested;
-  let fallbackReason='';
-  if(requested==='auto')selectedId=eligible[0]?.id||'sma';
-  else{
-    const fitEligible=active.length>=forecastModelMinHistory(requested);
-    if(!fitEligible){selectedId=eligible[0]?.id||'sma';fallbackReason=`${forecastModelLabel(requested)} ต้องมีข้อมูลอย่างน้อย ${forecastModelMinHistory(requested)} เดือน จึงเปลี่ยนเป็น ${forecastModelLabel(selectedId)} อัตโนมัติ`;}
+  const active=forecastActiveSeries(values),ids=['naive','sma','ses','holt','hw','linear'];
+  const valid=active.length>0;
+  const pool=ids.filter(id=>active.length>=forecastModelMinHistory(id)+3);
+  const commonStart=pool.length?Math.max(...pool.map(forecastModelMinHistory)):active.length;
+  const candidates=ids.map(id=>forecastRollingCv(active,id,pool.includes(id)?commonStart:active.length));
+  const eligible=candidates.filter(x=>x.eligible).sort((a,b)=>a.rmse-b.rmse);
+  let selectedId=requested,fallbackReason='';
+  if(requested==='auto')selectedId=eligible[0]?.id||'naive';
+  else if(!ids.includes(requested)||active.length<forecastModelMinHistory(requested)){
+    selectedId=eligible[0]?.id||'naive';fallbackReason='ข้อมูลไม่พอสำหรับโมเดลที่เลือก ใช้ยอดเดือนล่าสุดเป็นฐานชั่วคราว';
   }
-  const run=forecastModelRun(selectedId,active,horizon);
-  const cv=candidates.find(x=>x.id===selectedId)||{rmse:0,mae:0,smape:0,n:0};
-  const future=(run.forecast||Array.from({length:horizon},()=>0)).map(v=>roundMoneyValue(Math.max(0,safeNum(v))));
-  const rmse=Number.isFinite(cv.rmse)?cv.rmse:0;
+  const run=valid?forecastModelRun(selectedId,active,horizon):{forecast:Array(horizon).fill(null),params:'ข้อมูลขาดหายหรือไม่มีข้อมูลที่ใช้ได้'};
+  const cv=candidates.find(x=>x.id===selectedId);
+  const future=run.forecast.map(v=>Number.isFinite(v)?roundMoneyValue(Math.max(0,v)):null);
+  // Forecast errors differ by horizon. Never extrapolate one-step RMSE with sqrt(h).
+  // One-step empirical residual quantiles are descriptive scenarios, not calibrated coverage.
+  const errors=cv.errors.slice().sort((a,b)=>a-b);
+  const quantile=p=>{const x=(errors.length-1)*p,i=Math.floor(x);return errors[i]+(errors[Math.ceil(x)]-errors[i])*(x-i);};
   const intervals=future.map((value,index)=>{
-    // 80% normal-approximation interval: lower=P10, center=P50, upper=P90.
-    // RMSE from rolling-origin CV is used as an empirical one-step error scale.
-    const margin=1.28*rmse*Math.sqrt(index+1);
-    const p10=roundMoneyValue(Math.max(0,value-margin));
-    const p50=roundMoneyValue(value);
-    const p90=roundMoneyValue(value+margin);
-    return{lower:p10,upper:p90,p10,p50,p90};
+    const available=index===0&&Number.isFinite(value)&&errors.length>=8;
+    const lower=available?roundMoneyValue(Math.max(0,value+quantile(.1))):null;
+    const upper=available?roundMoneyValue(Math.max(0,value+quantile(.9))):null;
+    return{lower,upper,p10:lower,p50:null,p90:upper,available,n:available?errors.length:0};
   });
-  const dataScore=Math.min(100,active.length/24*100);
-  const errorScore=Number.isFinite(cv.smape)?Math.max(0,100-cv.smape):35;
-  const confidence=Math.round(Math.max(20,Math.min(95,errorScore*.7+dataScore*.3)));
-  return{selectedId,label:forecastModelLabel(selectedId),params:run.params,future,forecast:future[0]||0,intervals,candidates,cv,historyCount:active.length,confidence,fallbackReason,requested};
+  const readiness=cv.eligible?`ทดสอบย้อนหลัง ${cv.n} เดือน · ยังไม่ได้ยืนยันความแม่นยำนอกชุดทดสอบ`:'ข้อมูลไม่พอสำหรับเปรียบเทียบโมเดล';
+  return{selectedId,label:forecastModelLabel(selectedId),params:run.params,future,forecast:future[0]??null,intervals,candidates,cv,historyCount:active.length,readiness,fallbackReason,requested,commonStart,valid};
 }
+
 function recentMeanVolatility(values){
   const vals=(values||[]).filter(v=>Number.isFinite(Number(v))).map(Number);
   if(vals.length<2)return 0;
@@ -2407,20 +2427,22 @@ function buildSalesForecast(){
     const d=forecastMonthFromKey(refKey-offset);
     history.push({...d,value:forecastSalesForMonth(d.year,d.month,branches)});
   }
-  const model=buildStandardForecastModel(history.map(x=>x.value),method,24);
+  const observedHistory=forecastStoredHistory(history,branches);
+  const model=buildStandardForecastModel(observedHistory.map(x=>x.value),method,24);
   const future=model.future.map((value,index)=>{
     const d=forecastMonthFromKey(refKey+index+1),band=model.intervals[index]||{lower:value,upper:value};
     return{...d,value,lower:band.lower,upper:band.upper,p10:band.p10??band.lower,p50:band.p50??value,p90:band.p90??band.upper};
   });
-  const next=future[0]?.value||0,current=history.at(-1)?.value||0;
+  const next=future[0]?.value??null,current=observedHistory.at(-1)?.value??null;
   const nextRef=future[0]||forecastMonthFromKey(refKey+1);
   const pipeline=forecastQuotePipeline(nextRef.year,nextRef.month,branches);
   const yoy=forecastSalesForMonth(nextRef.year-1,nextRef.month,branches);
-  const changeCurrent=current?((next-current)/current)*100:null;
-  const changeYoy=yoy?((next-yoy)/yoy)*100:null;
-  const recent=forecastActiveSeries(history.map(x=>x.value)).slice(-6);
-  return{history,future,next,current,yoy,changeCurrent,changeYoy,confidence:model.confidence,volatility:recentMeanVolatility(recent),pipeline,ref,branches,model,scenarioNext:roundMoneyValue(next+pipeline.weighted)};
+  const changeCurrent=Number.isFinite(next)&&current?((next-current)/current)*100:null;
+  const changeYoy=Number.isFinite(next)&&yoy?((next-yoy)/yoy)*100:null;
+  const recent=forecastActiveSeries(observedHistory.map(x=>x.value)).slice(-6);
+  return{history:observedHistory,future,next,current,yoy,changeCurrent,changeYoy,readiness:model.readiness,volatility:recentMeanVolatility(recent),pipeline,ref,branches,model,scenarioNext:Number.isFinite(next)?roundMoneyValue(next+pipeline.weighted):null};
 }
+function forecastMoney(value){return Number.isFinite(value)?chartMoney(value):'—';}
 function forecastPercent(value){
   if(value===null||!Number.isFinite(value))return 'ยังเทียบไม่ได้';
   return `${value>=0?'+':''}${value.toFixed(1)}%`;
@@ -2435,55 +2457,55 @@ function forecastAccuracyTableHtml(model){
     const diag=forecastBiasDiagnostic(row);
     const biasText=row.eligible?`${row.biasPct>=0?'+':''}${row.biasPct.toFixed(1)}%`:'—';
     const biasDir=row.biasPct>0?'พยากรณ์ต่ำกว่าจริง':row.biasPct<0?'พยากรณ์สูงกว่าจริง':'สมดุล';
-    return `<tr class="${selected?'is-model-selected':''}"><td><b>${escapeHtml(row.label)}</b>${selected?'<span class="model-selected-badge">เลือกใช้</span>':''}<small>${selected?escapeHtml(model.params||''):''}</small></td><td>${row.eligible?'<span class="status-pill good">พร้อมใช้</span>':`<span class="status-pill muted">${escapeHtml(row.reason)}</span>`}</td><td class="num"><b>${row.eligible?chartMoney(row.rmse):'—'}</b><small>MAE ${row.eligible?chartMoney(row.mae):'—'}</small></td><td class="num"><b>${row.eligible&&Number.isFinite(row.wape)?row.wape.toFixed(1)+'%':'—'}</b><small>sMAPE ${row.eligible?row.smape.toFixed(1)+'%':'—'}</small></td><td class="num"><b class="${Math.abs(safeNum(row.trackingSignal))>=4?'risk-text-danger':Math.abs(safeNum(row.biasPct))>=10?'risk-text-warn':'risk-text-good'}">${biasText}</b><small>${escapeHtml(biasDir)} · TS ${row.eligible?safeNum(row.trackingSignal).toFixed(2):'—'}</small></td><td class="num">${row.eligible&&Number.isFinite(row.mase)?row.mase.toFixed(2):'—'}</td><td><span class="quant-diagnostic-pill ${diag.cls}">${escapeHtml(diag.label)}</span><small>${escapeHtml(diag.detail)}</small></td><td class="num">${row.n||0}</td></tr>`;
+    return `<tr class="${selected?'is-model-selected':''}"><td><b>${escapeHtml(row.label)}</b>${selected?'<span class="model-selected-badge">เลือกใช้</span>':''}<small>${selected?escapeHtml(model.params||''):''}</small></td><td>${row.eligible?'<span class="status-pill good">พร้อมใช้</span>':`<span class="status-pill muted">${escapeHtml(row.reason)}</span>`}</td><td class="num"><b>${row.eligible?forecastMoney(row.rmse):'—'}</b><small>MAE ${row.eligible?forecastMoney(row.mae):'—'}</small></td><td class="num"><b>${row.eligible&&Number.isFinite(row.wape)?row.wape.toFixed(1)+'%':'—'}</b><small>sMAPE ${row.eligible?row.smape.toFixed(1)+'%':'—'}</small></td><td class="num"><b class="${Math.abs(safeNum(row.trackingSignal))>=4?'risk-text-danger':Math.abs(safeNum(row.biasPct))>=10?'risk-text-warn':'risk-text-good'}">${biasText}</b><small>${escapeHtml(biasDir)} · TS ${row.eligible?safeNum(row.trackingSignal).toFixed(2):'—'}</small></td><td class="num">${row.eligible&&Number.isFinite(row.mase)?row.mase.toFixed(2):'—'}</td><td><span class="quant-diagnostic-pill ${diag.cls}">${escapeHtml(diag.label)}</span><small>${escapeHtml(diag.detail)}</small></td><td class="num">${row.n||0}</td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function forecastDiagnosticSummaryHtml(model){
   const selected=model?.candidates?.find(row=>row.id===model.selectedId)||model?.cv||null;
   if(!selected||!selected.eligible)return '<div class="forecast-diagnostic-card muted"><b>Model Governance</b><span>ข้อมูลย้อนหลังยังไม่พอสำหรับตรวจ Bias และ Tracking Signal</span></div>';
   const diag=forecastBiasDiagnostic(selected);
-  const wape=safeNum(selected.wape),ts=safeNum(selected.trackingSignal),bias=safeNum(selected.biasPct);
-  const accuracyLabel=wape<=15?'แม่นยำสูง':wape<=25?'ใช้งานได้ดี':wape<=40?'ปานกลาง':'ความคลาดเคลื่อนสูง';
-  return `<div class="forecast-diagnostic-grid"><div class="forecast-diagnostic-card"><small>Forecast Accuracy</small><b>${wape.toFixed(1)}% WAPE</b><span>${accuracyLabel} · MASE ${Number.isFinite(selected.mase)?selected.mase.toFixed(2):'—'}</span></div><div class="forecast-diagnostic-card ${diag.cls}"><small>Bias Check</small><b>${bias>=0?'+':''}${bias.toFixed(1)}%</b><span>${bias>0?'โมเดลมีแนวโน้มพยากรณ์ต่ำกว่ายอดจริง':bias<0?'โมเดลมีแนวโน้มพยากรณ์สูงกว่ายอดจริง':'Bias ใกล้ศูนย์'}</span></div><div class="forecast-diagnostic-card ${Math.abs(ts)>=4?'danger':'good'}"><small>Tracking Signal</small><b>${ts.toFixed(2)}</b><span>${Math.abs(ts)>=4?'เกินกรอบเฝ้าระวัง ±4 ควรตรวจโมเดล':'อยู่ในกรอบเฝ้าระวัง ±4'}</span></div><div class="forecast-diagnostic-card"><small>Model Governance</small><b>${escapeHtml(model.label)}</b><span>${escapeHtml(diag.label)} · ทดสอบย้อนหลัง ${selected.n||0} รอบ</span></div></div>`;
+  const wape=selected.wape,ts=safeNum(selected.trackingSignal),bias=safeNum(selected.biasPct);
+  const accuracyLabel=!Number.isFinite(wape)?'คำนวณ WAPE ไม่ได้เมื่อยอดจริงรวมเป็นศูนย์':wape<=15?'แม่นยำสูง':wape<=25?'ใช้งานได้ดี':wape<=40?'ปานกลาง':'ความคลาดเคลื่อนสูง';
+  return `<div class="forecast-diagnostic-grid"><div class="forecast-diagnostic-card"><small>Forecast Accuracy</small><b>${Number.isFinite(wape)?wape.toFixed(1)+'%':'—'} WAPE</b><span>${accuracyLabel} · MASE ${Number.isFinite(selected.mase)?selected.mase.toFixed(2):'—'}</span></div><div class="forecast-diagnostic-card ${diag.cls}"><small>Bias Check</small><b>${bias>=0?'+':''}${bias.toFixed(1)}%</b><span>${bias>0?'โมเดลมีแนวโน้มพยากรณ์ต่ำกว่ายอดจริง':bias<0?'โมเดลมีแนวโน้มพยากรณ์สูงกว่ายอดจริง':'Bias ใกล้ศูนย์'}</span></div><div class="forecast-diagnostic-card ${Math.abs(ts)>=4?'danger':'good'}"><small>Tracking Signal</small><b>${ts.toFixed(2)}</b><span>${Math.abs(ts)>=4?'เกินกรอบเฝ้าระวัง ±4 ควรตรวจโมเดล':'อยู่ในกรอบเฝ้าระวัง ±4'}</span></div><div class="forecast-diagnostic-card"><small>Model Governance</small><b>${escapeHtml(model.label)}</b><span>${escapeHtml(diag.label)} · ทดสอบย้อนหลัง ${selected.n||0} รอบ</span></div></div>`;
 }
 function forecastFutureTableHtml(f){
   const rows=f.future.slice(0,6);
-  return `<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>P10</th><th>P50 / Base</th><th>P90</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${chartMoney(row.p10??row.lower)}</td><td class="num"><b>${chartMoney(row.p50??row.value)}</b></td><td class="num">${chartMoney(row.p90??row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>สถานการณ์ต่ำ*</th><th>Base Forecast</th><th>สถานการณ์สูง*</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${forecastMoney(row.p10??row.lower)}</td><td class="num"><b>${forecastMoney(row.p50??row.value)}</b></td><td class="num">${forecastMoney(row.p90??row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderSalesForecast(){
   const host=document.getElementById('forecast-metrics');if(!host)return;
   const f=buildSalesForecast(),trendClass=(f.changeCurrent??0)>=0?'positive':'negative';
   const banner=document.getElementById('forecast-model-banner');
-  if(banner)banner.innerHTML=`<div><span class="forecast-model-dot"></span><b>${escapeHtml(f.model.label)}</b><span>${escapeHtml(f.model.params||'')}</span></div><div>CV RMSE ${Number.isFinite(f.model.cv.rmse)?chartMoney(f.model.cv.rmse):'—'} · sMAPE ${Number.isFinite(f.model.cv.smape)?f.model.cv.smape.toFixed(1)+'%':'—'} · ข้อมูลจริง ${f.model.historyCount} เดือน</div>${f.model.fallbackReason?`<small>${escapeHtml(f.model.fallbackReason)}</small>`:''}`;
+  if(banner)banner.innerHTML=`<div><span class="forecast-model-dot"></span><b>${escapeHtml(f.model.label)}</b><span>${escapeHtml(f.model.params||'')}</span></div><div>CV RMSE ${Number.isFinite(f.model.cv.rmse)?forecastMoney(f.model.cv.rmse):'—'} · sMAPE ${Number.isFinite(f.model.cv.smape)?f.model.cv.smape.toFixed(1)+'%':'—'} · ข้อมูลต่อเนื่องที่ใช้ได้ ${f.model.historyCount} เดือน</div>${f.model.fallbackReason?`<small>${escapeHtml(f.model.fallbackReason)}</small>`:''}`;
   const nextRef=f.future[0]||forecastMonthFromKey(forecastMonthKey(f.ref.year,f.ref.month)+1);
   host.innerHTML=
-    forecastKpi('Base Forecast เดือนถัดไป',chartMoney(f.next),`${forecastMonthLabel(nextRef.year,nextRef.month)} · คะแนนความน่าเชื่อถือ ${f.confidence}%`,trendClass)+
-    forecastKpi('เทียบเดือนล่าสุด',forecastPercent(f.changeCurrent),`ยอดล่าสุด ${chartMoney(f.current)}`,trendClass)+
-    forecastKpi('เทียบเดือนเดียวกันปีก่อน',forecastPercent(f.changeYoy),f.yoy?`ปีก่อน ${chartMoney(f.yoy)}`:'ยังไม่มีข้อมูลปีก่อน',(f.changeYoy??0)>=0?'positive':'negative')+
-    forecastKpi('Upside Scenario จาก Pipeline',chartMoney(f.scenarioNext),`${f.pipeline.count} ใบเสนอราคารออนุมัติ · Approval proxy ${(f.pipeline.probability*100).toFixed(1)}%`,'pipeline');
+    forecastKpi('Base Forecast เดือนถัดไป',forecastMoney(f.next),`${forecastMonthLabel(nextRef.year,nextRef.month)} · ${f.readiness}`,trendClass)+
+    forecastKpi('เทียบเดือนล่าสุด',forecastPercent(f.changeCurrent),`ยอดล่าสุด ${forecastMoney(f.current)}`,trendClass)+
+    forecastKpi('เทียบเดือนเดียวกันปีก่อน',forecastPercent(f.changeYoy),f.yoy?`ปีก่อน ${forecastMoney(f.yoy)}`:'ยังไม่มีข้อมูลปีก่อน',(f.changeYoy??0)>=0?'positive':'negative')+
+    forecastKpi('Upside Scenario จาก Pipeline',forecastMoney(f.scenarioNext),`${f.pipeline.count} ใบเสนอราคารออนุมัติ · Approval proxy ${(f.pipeline.probability*100).toFixed(1)}%`,'pipeline');
 
   const chartRows=[...f.history.slice(-6).map(x=>({...x,future:false})),...f.future.slice(0,6).map(x=>({...x,future:true}))];
   const max=Math.max(...chartRows.map(x=>safeNum(x.value)),1);
   const chart=document.getElementById('forecast-chart');
   if(chart)chart.innerHTML=chartRows.map(x=>`<div class="forecast-row">
     <div class="forecast-label">${MONTHS[x.month].slice(0,3)} ${String(yearLabelBE(x.year)).slice(-2)}${x.future?' *':''}</div>
-    <div class="forecast-track"><div class="forecast-fill ${x.future?'future':''}" style="width:${Math.max(2,x.value/max*100)}%"></div></div>
-    <div class="forecast-value">${chartMoney(x.value)}</div>
+    <div class="forecast-track"><div class="forecast-fill ${x.future?'future':''}" style="width:${Number.isFinite(x.value)?Math.max(0,x.value/max*100):0}%"></div></div>
+    <div class="forecast-value">${forecastMoney(x.value)}</div>
   </div>`).join('');
   const note=document.getElementById('forecast-note');
-  if(note)note.innerHTML=`ยอดจริง = แถบทึบ · Base Forecast = แถบลาย · ใช้ข้อมูลถึง ${forecastMonthLabel(f.ref.year,f.ref.month)} · ช่วงต่ำ/สูงเป็นช่วงประมาณ 80% จาก Cross-validation RMSE และไม่ใช่การรับประกันยอดขาย`;
+  if(note)note.innerHTML=`ยอดจริง = แถบทึบ · Base Forecast = แถบลาย · ใช้ข้อมูลถึง ${forecastMonthLabel(f.ref.year,f.ref.month)} · * ต่ำ/สูง = Base บวกเปอร์เซ็นไทล์ 10/90 ของข้อผิดพลาดทดสอบ 1 เดือน เมื่อมีอย่างน้อย 8 รอบ · ไม่ใช่ช่วงรับประกัน 80% · — หมายถึงข้อมูลไม่พอหรือยังไม่ประเมินระยะนั้น · เดือนที่มีชุดข้อมูลว่างนับเป็น 0 · เดือนที่ยังไม่มีชุดข้อมูลหรือข้อมูลเสียเป็นข้อมูลขาดหาย ระบบงดพยากรณ์เมื่อมีช่องว่าง · ตรวจความครบถ้วนทุกสาขาก่อนใช้ผล`;
   const futureTable=document.getElementById('forecast-future-table');if(futureTable)futureTable.innerHTML=forecastFutureTableHtml(f);
   const accuracy=document.getElementById('forecast-accuracy-table');if(accuracy)accuracy.innerHTML=forecastAccuracyTableHtml(f.model);
   const diagSummary=document.getElementById('forecast-diagnostic-summary');if(diagSummary)diagSummary.innerHTML=forecastDiagnosticSummaryHtml(f.model);
-  const methodNote=document.getElementById('forecast-method-note');if(methodNote)methodNote.innerHTML=`Auto จะเลือกโมเดลที่มี <b>RMSE ต่ำสุดจาก Rolling-origin Cross-validation</b> ในข้อมูลชุดนี้ · Holt-Winters ใช้ได้เมื่อมีข้อมูลอย่างน้อย 24 เดือน (Auto-CV ต้องมีอย่างน้อย 25 เดือน) · Pipeline ใช้ Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% (${f.pipeline.history?.source==='history'?'ข้อมูลย้อนหลัง':'fallback'}) แยกจาก Base Forecast`;
+  const methodNote=document.getElementById('forecast-method-note');if(methodNote)methodNote.innerHTML=`Auto จะเลือกโมเดลที่มี <b>RMSE ต่ำสุดจาก Rolling-origin Cross-validation</b> บนเดือนทดสอบเดียวกันอย่างน้อย 3 รอบ รวม Naive baseline · MASE ใช้สเกลจากข้อมูลฝึกของแต่ละรอบเท่านั้น · Holt-Winters ต้องมีอย่างน้อย 27 เดือนเพื่อเข้าเปรียบเทียบ · Pipeline ใช้ Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% (${f.pipeline.history?.source==='history'?'อัตราอนุมัติเอกสารย้อนหลัง ไม่ใช่อัตราชนะงาน':'สมมติฐาน DEMO 35% ไม่ได้เรียนรู้จากข้อมูล'}) แยกจาก Base Forecast`;
 
-  const nextYear=f.ref.year+1,annualRows=f.future.filter(x=>x.year===nextYear),annualTotal=annualRows.reduce((s,x)=>s+x.value,0);
+  const nextYear=f.ref.year+1,annualRows=f.future.filter(x=>x.year===nextYear),annualTotal=annualRows.length&&annualRows.every(x=>Number.isFinite(x.value))?annualRows.reduce((s,x)=>s+x.value,0):null;
   const currentYearTotal=Array.from({length:12},(_,m)=>forecastSalesForMonth(f.ref.year,m,f.branches)).reduce((a,b)=>a+b,0);
-  const annualGrowth=currentYearTotal?((annualTotal-currentYearTotal)/currentYearTotal)*100:null;
-  const best=f.future.slice(0,12).sort((a,b)=>b.value-a.value)[0],low=f.future.slice(0,12).sort((a,b)=>a.value-b.value)[0];
+  const annualGrowth=Number.isFinite(annualTotal)&&currentYearTotal?((annualTotal-currentYearTotal)/currentYearTotal)*100:null;
+  const best=f.future.slice(0,12).filter(x=>Number.isFinite(x.value)).sort((a,b)=>b.value-a.value)[0],low=f.future.slice(0,12).filter(x=>Number.isFinite(x.value)).sort((a,b)=>a.value-b.value)[0];
   const yearSummary=document.getElementById('forecast-year-summary');
   if(yearSummary)yearSummary.innerHTML=`
-    <div class="forecast-year-total">${chartMoney(annualTotal)}</div>
+    <div class="forecast-year-total">${forecastMoney(annualTotal)}</div>
     <div class="forecast-year-caption">ยอดขายรวมที่คาดการณ์สำหรับปี พ.ศ. ${yearLabelDual(nextYear)}${annualRows.length<12?' (เฉพาะเดือนที่อยู่ใน Forecast Horizon)':''}</div>
     <div class="forecast-year-grid">
       <div class="forecast-mini"><span>เติบโตเทียบปีที่เลือก</span><b>${forecastPercent(annualGrowth)}</b></div>
@@ -2494,11 +2516,11 @@ function renderSalesForecast(){
 
   const alerts=[];
   if(f.model.historyCount<6)alerts.push({cls:'danger',text:'ข้อมูลย้อนหลังยังน้อยกว่า 6 เดือน ผลพยากรณ์ควรใช้เพื่อดูทิศทางเบื้องต้นเท่านั้น'});
-  if(f.model.selectedId==='hw')alerts.push({cls:'good',text:'ระบบตรวจพบข้อมูลเพียงพอสำหรับฤดูกาลรายปี และเลือก Holt-Winters ซึ่งรองรับ Trend + Seasonality'});
+  if(f.model.selectedId==='hw')alerts.push({cls:'good',text:'เลือก Holt-Winters จากข้อมูลที่มี ยังต้องตรวจผลกับข้อมูลใหม่เพื่อยืนยันฤดูกาล'});
   if((f.changeCurrent??0)<-10)alerts.push({cls:'danger',text:`Base Forecast เดือนถัดไปลดลง ${Math.abs(f.changeCurrent).toFixed(1)}% จากเดือนล่าสุด ควรตรวจ Pipeline และลูกค้ารายใหญ่`});
   else if((f.changeCurrent??0)>10)alerts.push({cls:'good',text:`Base Forecast เดือนถัดไปเพิ่มขึ้น ${f.changeCurrent.toFixed(1)}% ควรเตรียมกำลังผลิต สต็อก และกระแสเงินสด`});
-  else alerts.push({cls:'',text:'แนวโน้มเดือนถัดไปค่อนข้างทรงตัวเมื่อเทียบเดือนล่าสุด'});
-  if(f.pipeline.count>0)alerts.push({cls:'warn',text:`มี Pipeline ${f.pipeline.count} รายการ มูลค่า ${chartMoney(f.pipeline.total)}; Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% ให้ Expected Pipeline ${chartMoney(f.pipeline.weighted)} และ Upside Scenario ${chartMoney(f.scenarioNext)}`});
+  else if(f.model.valid)alerts.push({cls:'',text:'แนวโน้มเดือนถัดไปค่อนข้างทรงตัวเมื่อเทียบเดือนล่าสุด'});
+  if(f.pipeline.count>0)alerts.push({cls:'warn',text:`มี Pipeline ${f.pipeline.count} รายการ มูลค่า ${forecastMoney(f.pipeline.total)}; Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% ให้ Expected Pipeline ${forecastMoney(f.pipeline.weighted)} และ Upside Scenario ${forecastMoney(f.scenarioNext)}`});
   if(f.volatility>35)alerts.push({cls:'warn',text:'ยอดขายย้อนหลังผันผวนสูง ควรพิจารณาช่วงคาดการณ์ต่ำ–สูงควบคู่กับค่ากลาง'});
   const alertsEl=document.getElementById('forecast-alerts');if(alertsEl)alertsEl.innerHTML=alerts.map(a=>`<div class="forecast-alert ${a.cls}">${a.text}</div>`).join('');
 }
@@ -3164,14 +3186,14 @@ function analyticsMonthlySeries(year,branch,agencyGroup='',agencyType=''){
 }
 function analyticsForecastHistorySeries(year,branch,agencyGroup='',agencyType='',selectedMonth=''){
   let endMonth=selectedMonth===''?11:Number(selectedMonth);
-  if(selectedMonth===''&&Number(year)===now.getFullYear())endMonth=Math.max(0,now.getMonth()-1);
+  if(selectedMonth===''&&Number(year)===now.getFullYear())endMonth=now.getMonth()-1;
   const endKey=forecastMonthKey(Number(year),endMonth);
   const rows=[];
   for(let offset=35;offset>=0;offset--){
     const d=forecastMonthFromKey(endKey-offset);
     rows.push(analyticsMonthlyPoint(d.year,d.month,branch,agencyGroup,agencyType));
   }
-  return rows;
+  return forecastStoredHistory(rows,analyticsBranchList(branch));
 }
 function movingAverage(values,windowSize=3){
   const clean=forecastActiveSeries(values);
@@ -3196,21 +3218,21 @@ function buildForecastModel(values,method='auto'){
   const hw=forecastModelRun('hw',active,1);
   return{
     ...standard,
-    ma3:roundMoneyValue(sma),
-    exp:roundMoneyValue(ses.forecast[0]||0),
-    holt:roundMoneyValue(holt.forecast[0]||0),
-    hw:roundMoneyValue(hw.forecast[0]||0),
+    ma3:active.length>=3?roundMoneyValue(sma):null,
+    exp:active.length>=3?roundMoneyValue(ses.forecast[0]||0):null,
+    holt:active.length>=6?roundMoneyValue(holt.forecast[0]||0):null,
+    hw:active.length>=24?roundMoneyValue(hw.forecast[0]||0):null,
     linear,
     count:active.length
   };
 }
-function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',historyRows=[]){
-  const series=selectedMonth===''?rows:rows.slice(0,Number(selectedMonth)+1);
+function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',historyRows=null){
+  const series=selectedMonth===''?rows.filter(r=>!Number.isFinite(r.year)||forecastMonthKey(r.year,r.month)<forecastMonthKey(now.getFullYear(),now.getMonth())):rows.slice(0,Number(selectedMonth)+1);
   const values=series.map(r=>r[metric]??r.value);
-  const lastIndex=[...values].reduce((last,v,i)=>safeNum(v)>0?i:last,-1);
-  const current=lastIndex>=0?series[lastIndex]:series[series.length-1]||rows[0];
+  const lastIndex=values.length-1;
+  const current=lastIndex>=0?series[lastIndex]:series[series.length-1];
   const prev=lastIndex>0?series[lastIndex-1]:null;
-  const modelRows=historyRows.length?historyRows:series;
+  const modelRows=historyRows??series;
   const modelValues=modelRows.map(r=>r[metric]??r.value);
   const avg3=movingAverage(modelValues,3);
   const mom=prev&&safeNum(prev[metric]??prev.value)>0?(safeNum(current?.[metric]??current?.value)-safeNum(prev[metric]??prev.value))/safeNum(prev[metric]??prev.value)*100:0;
@@ -3219,10 +3241,9 @@ function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',h
   const mean=forecastMean(active);
   const variance=active.length?active.reduce((s,v)=>s+Math.pow(v-mean,2),0)/active.length:0;
   const volatility=mean>0?Math.sqrt(variance)/mean*100:0;
-  const best=rows.slice().sort((a,b)=>safeNum(b[metric]??b.value)-safeNum(a[metric]??a.value))[0];
-  const worst=rows.filter(r=>safeNum(r[metric]??r.value)>0).sort((a,b)=>safeNum(a[metric]??a.value)-safeNum(b[metric]??b.value))[0];
-  let forecastBase=null;
-  for(let i=modelRows.length-1;i>=0;i--){if(safeNum(modelRows[i]?.[metric]??modelRows[i]?.value)>0){forecastBase=modelRows[i];break;}}
+  const best=series.slice().sort((a,b)=>safeNum(b[metric]??b.value)-safeNum(a[metric]??a.value))[0];
+  const worst=series.slice().sort((a,b)=>safeNum(a[metric]??a.value)-safeNum(b[metric]??b.value))[0];
+  const forecastBase=modelRows.at(-1)||null;
   return{current,prev,avg3,mom,forecast:forecastModel.forecast,forecastModel,volatility:roundMoneyValue(volatility),best,worst,total:modelValues.reduce((s,v)=>s+safeNum(v),0),mean:roundMoneyValue(mean),lastIndex,forecastBase};
 }
 function buildCustomerDeepRows(data){
@@ -3579,7 +3600,7 @@ function renderDataAnalytics(){
   const trendLabel=document.getElementById('analytics-trend-label');
   if(trendLabel)trendLabel.textContent=`${branchText} · พ.ศ. ${yearLabelDual(filter.year)}`;
   const trendSummary=document.getElementById('analytics-trend-summary');
-  if(trendSummary)trendSummary.innerHTML=`ยอดล่าสุดที่พบ: <b>${viewTrend.current?.label||'-'}</b> ${chartMoney((viewTrend.current?.[metric]??viewTrend.current?.value) || 0)} · เปลี่ยนจากเดือนก่อน ${percentText(viewTrend.mom)} · ค่าเฉลี่ยย้อนหลัง 3 เดือน ${chartMoney(viewTrend.avg3)}${metric==='value'?` · Sales Forecast เดือนถัดไป ${chartMoney(forecastTrend.forecast)} (${escapeHtml(forecastTrend.forecastModel.label)})`:''}`;
+  if(trendSummary)trendSummary.innerHTML=`ยอดล่าสุดที่พบ: <b>${viewTrend.current?.label||'-'}</b> ${chartMoney((viewTrend.current?.[metric]??viewTrend.current?.value) || 0)} · เปลี่ยนจากเดือนก่อน ${percentText(viewTrend.mom)} · ค่าเฉลี่ยย้อนหลัง 3 เดือน ${chartMoney(viewTrend.avg3)}${metric==='value'?` · Sales Forecast เดือนถัดไป ${forecastMoney(forecastTrend.forecast)} (${escapeHtml(forecastTrend.forecastModel.label)})`:''}`;
 
   renderBarRows('analytics-customer-chart',customerGroups.slice(0,10).map(row=>({label:`${row.label} (${row.abc})`,value:row.sales,sub:`${row.count} เอกสาร · สัดส่วน ${percentText(row.contributionPercent)} · สะสม ${percentText(row.cumulativePercent)}`})),{fillClass:'green'});
   const customerSummary=document.getElementById('analytics-customer-summary');
@@ -3613,14 +3634,14 @@ function renderDataAnalytics(){
 
   const forecastEl=document.getElementById('analytics-forecast-summary');
   if(forecastEl)forecastEl.innerHTML=`<div class="analytics-formula-grid">
-    <div class="${forecastTrend.forecastModel.selectedId==='sma'?'is-selected':''}"><span>Moving Average 3 เดือน</span><b>${chartMoney(forecastTrend.forecastModel.ma3)}</b><small>เหมาะกับข้อมูลค่อนข้างทรงตัว</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='ses'?'is-selected':''}"><span>Simple Exponential Smoothing</span><b>${chartMoney(forecastTrend.forecastModel.exp)}</b><small>ให้น้ำหนักข้อมูลใหม่มากกว่าข้อมูลเก่า</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='holt'?'is-selected':''}"><span>Holt Trend (Damped)</span><b>${chartMoney(forecastTrend.forecastModel.holt)}</b><small>รองรับแนวโน้มขึ้น/ลง</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='hw'?'is-selected':''}"><span>Holt-Winters Additive</span><b>${forecastTrend.forecastModel.count>=24?chartMoney(forecastTrend.forecastModel.hw):'ต้องมี ≥ 24 เดือน'}</b><small>รองรับ Trend + Seasonality ราย 12 เดือน</small></div>
+    <div class="${forecastTrend.forecastModel.selectedId==='sma'?'is-selected':''}"><span>Moving Average 3 เดือน</span><b>${forecastMoney(forecastTrend.forecastModel.ma3)}</b><small>เหมาะกับข้อมูลค่อนข้างทรงตัว</small></div>
+    <div class="${forecastTrend.forecastModel.selectedId==='ses'?'is-selected':''}"><span>Simple Exponential Smoothing</span><b>${forecastMoney(forecastTrend.forecastModel.exp)}</b><small>ให้น้ำหนักข้อมูลใหม่มากกว่าข้อมูลเก่า</small></div>
+    <div class="${forecastTrend.forecastModel.selectedId==='holt'?'is-selected':''}"><span>Holt Trend (Damped)</span><b>${forecastMoney(forecastTrend.forecastModel.holt)}</b><small>รองรับแนวโน้มขึ้น/ลง</small></div>
+    <div class="${forecastTrend.forecastModel.selectedId==='hw'?'is-selected':''}"><span>Holt-Winters Additive</span><b>${forecastTrend.forecastModel.count>=24?forecastMoney(forecastTrend.forecastModel.hw):'ต้องมี ≥ 24 เดือน'}</b><small>รองรับ Trend + Seasonality ราย 12 เดือน</small></div>
   </div>`;
   const methodSummary=document.getElementById('analytics-method-summary');
   const selectedDiag=forecastTrend.forecastModel.candidates?.find(r=>r.id===forecastTrend.forecastModel.selectedId)||forecastTrend.forecastModel.cv||{};
-  if(methodSummary)methodSummary.innerHTML=`ระบบใช้ <b>${escapeHtml(forecastTrend.forecastModel.label)}</b> เป็นค่าคาดการณ์หลัก เพราะ ${filter.forecastMethod==='auto'?'มี RMSE ต่ำสุดจาก Rolling-origin Cross-validation':'ผู้ใช้เลือกโมเดลนี้'} · CV RMSE ${Number.isFinite(forecastTrend.forecastModel.cv.rmse)?chartMoney(forecastTrend.forecastModel.cv.rmse):'—'} · WAPE ${Number.isFinite(selectedDiag.wape)?selectedDiag.wape.toFixed(1)+'%':'—'} · Bias ${Number.isFinite(selectedDiag.biasPct)?`${selectedDiag.biasPct>=0?'+':''}${selectedDiag.biasPct.toFixed(1)}%`:'—'} · Tracking ${Number.isFinite(selectedDiag.trackingSignal)?selectedDiag.trackingSignal.toFixed(2):'—'} · ความผันผวน ${percentText(forecastTrend.volatility)}`;
+  if(methodSummary)methodSummary.innerHTML=`ระบบใช้ <b>${escapeHtml(forecastTrend.forecastModel.label)}</b> เป็นค่าคาดการณ์หลัก เพราะ ${filter.forecastMethod==='auto'?'เปรียบเทียบ RMSE บนเดือนทดสอบเดียวกันเมื่อข้อมูลพอ มิฉะนั้นใช้ฐานชั่วคราว':'ผู้ใช้เลือกโมเดลนี้'} · CV RMSE ${Number.isFinite(forecastTrend.forecastModel.cv.rmse)?chartMoney(forecastTrend.forecastModel.cv.rmse):'—'} · WAPE ${Number.isFinite(selectedDiag.wape)?selectedDiag.wape.toFixed(1)+'%':'—'} · Bias ${Number.isFinite(selectedDiag.biasPct)?`${selectedDiag.biasPct>=0?'+':''}${selectedDiag.biasPct.toFixed(1)}%`:'—'} · Tracking ${Number.isFinite(selectedDiag.trackingSignal)?selectedDiag.trackingSignal.toFixed(2):'—'} · ความผันผวน ${percentText(forecastTrend.volatility)} · ชุดข้อมูลว่างนับเป็น 0 แต่เดือนที่ขาดชุดข้อมูลจะงดพยากรณ์ ต้องตรวจความครบถ้วนทุกสาขา · ช่วงต่ำ/สูงแสดงเฉพาะ 1 เดือนเมื่อมีข้อผิดพลาดทดสอบ ≥ 8 รอบ เป็นสถานการณ์จาก residual ไม่ใช่ช่วงรับประกัน 80%`;
   const forecastAccuracyEl=document.getElementById('analytics-forecast-accuracy-table');
   if(forecastAccuracyEl)forecastAccuracyEl.innerHTML=forecastAccuracyTableHtml(forecastTrend.forecastModel);
   const analyticsDiag=document.getElementById('analytics-forecast-diagnostic-summary');if(analyticsDiag)analyticsDiag.innerHTML=forecastDiagnosticSummaryHtml(forecastTrend.forecastModel);
@@ -3630,7 +3651,7 @@ function renderDataAnalytics(){
     const baseYear=Number(forecastTrend.forecastBase?.year??filter.year);
     const baseKey=forecastMonthKey(baseYear,baseMonth);
     const rows=forecastTrend.forecastModel.future.slice(0,6).map((value,index)=>{const d=forecastMonthFromKey(baseKey+index+1),band=forecastTrend.forecastModel.intervals[index]||{lower:value,upper:value};return{...d,value,lower:band.lower,upper:band.upper,p10:band.p10??band.lower,p50:band.p50??value,p90:band.p90??band.upper};});
-    forecastFutureEl.innerHTML=`<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>P10</th><th>P50 / Forecast</th><th>P90</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${chartMoney(row.lower)}</td><td class="num"><b>${chartMoney(row.value)}</b></td><td class="num">${chartMoney(row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
+    forecastFutureEl.innerHTML=`<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>สถานการณ์ต่ำ*</th><th>Base Forecast</th><th>สถานการณ์สูง*</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${forecastMoney(row.lower)}</td><td class="num"><b>${forecastMoney(row.value)}</b></td><td class="num">${forecastMoney(row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
   }
   renderAnalyticsFunnel('analytics-funnel-chart',buildAnalyticsFunnel(kpis));
   const funnelSummary=document.getElementById('analytics-funnel-summary');
@@ -3799,12 +3820,12 @@ async function refreshDataAnalytics(force=false){
 function quantClamp(value,min=0,max=100){return Math.max(min,Math.min(max,safeNum(value)));}
 function quantMean(values=[]){const v=values.filter(x=>Number.isFinite(Number(x))).map(Number);return v.length?v.reduce((s,x)=>s+x,0)/v.length:0;}
 function quantSampleSd(values=[]){const v=values.filter(x=>Number.isFinite(Number(x))).map(Number);if(v.length<2)return 0;const m=quantMean(v);return Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/(v.length-1));}
-function quantCv(values=[]){const m=quantMean(values);return m>0?quantSampleSd(values)/m*100:0;}
+function quantCv(values=[]){const m=quantMean(values);return values.length>=2&&m>0?quantSampleSd(values)/m*100:null;}
 function quantMedian(values=[]){const v=values.filter(x=>Number.isFinite(Number(x))).map(Number).sort((a,b)=>a-b);if(!v.length)return 0;const i=Math.floor(v.length/2);return v.length%2?v[i]:(v[i-1]+v[i])/2;}
 function quantMad(values=[]){const med=quantMedian(values);return quantMedian(values.map(x=>Math.abs(safeNum(x)-med)));}
 function quantModifiedZ(value,values=[]){const med=quantMedian(values),mad=quantMad(values);if(!mad)return 0;return .6745*(safeNum(value)-med)/mad;}
 function quantRevenueAnomalies(series=[]){
-  const active=(series||[]).filter(r=>safeNum(r.value)>0);const vals=active.map(r=>safeNum(r.value));
+  const active=(series||[]).filter(r=>Number.isFinite(r.value)&&r.value>=0);const vals=active.map(r=>safeNum(r.value));
   if(vals.length<5)return[];
   return active.map(r=>({...r,modifiedZ:quantModifiedZ(r.value,vals)})).filter(r=>Math.abs(r.modifiedZ)>3.5).sort((a,b)=>Math.abs(b.modifiedZ)-Math.abs(a.modifiedZ));
 }
@@ -3821,7 +3842,7 @@ function quantHhi(rows=[],valueKey='sales'){
   return{hhi,top1:shares[0]||0,top5,total,label,cls};
 }
 function quantBusinessRegime(series=[]){
-  const vals=(series||[]).map(r=>safeNum(r.value)).filter(v=>v>0);if(vals.length<4)return{label:'ข้อมูลไม่พอ',cls:'muted',momentum:0,slope:0,detail:'ควรมีอย่างน้อย 4 เดือน'};
+  const vals=(series||[]).map(r=>r.value).filter(v=>Number.isFinite(v)&&v>=0);if(vals.length<4)return{label:'ข้อมูลไม่พอ',cls:'muted',momentum:0,slope:0,detail:'ควรมีอย่างน้อย 4 เดือน'};
   const recent=vals.slice(-Math.min(3,vals.length));const prior=vals.slice(-Math.min(6,vals.length),-3);const r=quantMean(recent),p=prior.length?quantMean(prior):vals.at(-2);
   const momentum=p?((r-p)/p)*100:0;const lr=forecastLinearFit(vals.slice(-Math.min(6,vals.length)),1);const slopePct=r?lr.slope/r*100:0;
   if(momentum>=10&&slopePct>0)return{label:'Strong Growth',cls:'good',momentum,slope:slopePct,detail:'ยอดเฉลี่ย 3 เดือนล่าสุดเร่งตัวชัดเจน'};
@@ -3847,6 +3868,7 @@ function quantSeed(text=''){let h=2166136261>>>0;for(const ch of String(text)){h
 function quantRng(seed){let s=seed>>>0;return()=>{s=(Math.imul(1664525,s)+1013904223)>>>0;return(s+1)/4294967297;};}
 function quantNormal(rng){let u=0,v=0;while(u<=Number.EPSILON)u=rng();while(v<=Number.EPSILON)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 function quantMonteCarlo(base,sigma,target=0,n=5000,seedText='quant'){
+  if(!Number.isFinite(base)||!Number.isFinite(sigma)||sigma<0||!Number.isInteger(n)||n<1)return{n:0,p05:null,p10:null,p50:null,p90:null,p95:null,mean:null,sd:null,downsideTailMean:null,revenueAtRisk:null,targetProbability:null,targetShortfallProbability:null,expectedTargetGap:null};
   const rng=quantRng(quantSeed(seedText)),vals=[];let hit=0;const sd=Math.max(0,safeNum(sigma)),center=Math.max(0,safeNum(base));
   for(let i=0;i<n;i++){const x=Math.max(0,center+sd*quantNormal(rng));vals.push(x);if(target>0&&x>=target)hit++;}
   vals.sort((a,b)=>a-b);const q=p=>vals[Math.min(vals.length-1,Math.max(0,Math.floor((vals.length-1)*p)))]||0;
@@ -3860,7 +3882,8 @@ function quantMonteCarlo(base,sigma,target=0,n=5000,seedText='quant'){
 }
 function quantRiskPill(label,cls='neutral'){return `<span class="quant-risk-pill ${cls}">${escapeHtml(label)}</span>`;}
 function quantKpi(label,value,detail,cls='neutral'){return `<div class="quant-kpi ${cls}"><small>${escapeHtml(label)}</small><b>${value}</b><span>${detail||''}</span></div>`;}
-function quantCompositeRiskScore({cv=0,hhi=0,drawdown=0,overdueRate=0,wape=0,trackingSignal=0}={}){
+function quantCompositeRiskScore({cv,hhi,drawdown,overdueRate,wape,trackingSignal}={}){
+  if(![cv,hhi,drawdown,overdueRate,wape,trackingSignal].every(Number.isFinite))return{score:"—",label:"ข้อมูลไม่พอสำหรับคะแนนรวม",cls:"muted",parts:{}};
   const parts={
     volatility:quantClamp(cv/50*100),
     concentration:quantClamp(hhi/2500*100),
@@ -3874,7 +3897,7 @@ function quantCompositeRiskScore({cv=0,hhi=0,drawdown=0,overdueRate=0,wape=0,tra
 }
 function quantDecisionStatus(label,cls='neutral',detail=''){return{label,cls,detail};}
 function quantForecastDecision(selected={}){
-  if(!selected?.eligible)return quantDecisionStatus('ข้อมูลไม่พอ','muted','เพิ่มข้อมูลย้อนหลังเพื่อประเมินโมเดล');
+  if(!selected?.eligible||!Number.isFinite(selected.wape))return quantDecisionStatus('ข้อมูลไม่พอ','muted','เพิ่มข้อมูลย้อนหลังเพื่อประเมินโมเดล');
   if(Math.abs(safeNum(selected.trackingSignal))>=4)return quantDecisionStatus('Bias Alert','danger',selected.trackingSignal>0?'Forecast ต่ำกว่ายอดจริงต่อเนื่อง':'Forecast สูงกว่ายอดจริงต่อเนื่อง');
   if(safeNum(selected.wape)>35)return quantDecisionStatus('Accuracy Risk','warn','WAPE สูง ควรดู P10/P50/P90 มากกว่าค่าจุดเดียว');
   if(safeNum(selected.wape)<=20&&Math.abs(safeNum(selected.biasPct))<10)return quantDecisionStatus('Healthy','good','ความคลาดเคลื่อนและ Bias อยู่ในกรอบที่อ่านง่าย');
@@ -3884,13 +3907,13 @@ function quantDecisionTableRows({selected,cv,hhi,drawdown,overdueRate,mc,target}
   const forecastDecision=quantForecastDecision(selected||{});
   const targetProb=mc?.targetProbability;
   return[
-    {metric:'Forecast Accuracy',value:selected?.eligible?`${safeNum(selected.wape).toFixed(1)}% WAPE`:'—',status:forecastDecision.label,cls:forecastDecision.cls,action:forecastDecision.detail},
-    {metric:'Forecast Bias',value:selected?.eligible?`${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · TS ${safeNum(selected.trackingSignal).toFixed(2)}`:'—',status:Math.abs(safeNum(selected?.trackingSignal))>=4?'Bias Alert':'In Control',cls:Math.abs(safeNum(selected?.trackingSignal))>=4?'danger':'good',action:Math.abs(safeNum(selected?.trackingSignal))>=4?'ทบทวนโมเดลหรือปรับ Forecast ก่อนใช้วางแผน':'ยังไม่พบ Bias ต่อเนื่องเด่นชัด'},
-    {metric:'Revenue Volatility',value:`${safeNum(cv).toFixed(1)}% CV`,status:cv>35?'High':cv>20?'Medium':'Low',cls:cv>35?'danger':cv>20?'warn':'good',action:cv>35?'ใช้ Scenario และกัน Safety Buffer เพิ่ม':'ใช้ Base Forecast ร่วมกับช่วง P10–P90'},
+    {metric:'Forecast Accuracy',value:selected?.eligible&&Number.isFinite(selected.wape)?`${selected.wape.toFixed(1)}% WAPE`:'—',status:forecastDecision.label,cls:forecastDecision.cls,action:forecastDecision.detail},
+    {metric:'Forecast Bias',value:selected?.eligible?`${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · TS ${safeNum(selected.trackingSignal).toFixed(2)}`:'—',status:!selected?.eligible?'ข้อมูลไม่พอ':Math.abs(safeNum(selected?.trackingSignal))>=4?'Bias Alert':'In Control',cls:!selected?.eligible?'muted':Math.abs(safeNum(selected?.trackingSignal))>=4?'danger':'good',action:!selected?.eligible?'เพิ่มข้อมูลทดสอบย้อนหลัง':Math.abs(safeNum(selected?.trackingSignal))>=4?'ทบทวนโมเดลหรือปรับ Forecast ก่อนใช้วางแผน':'ยังไม่พบ Bias ต่อเนื่องเด่นชัด'},
+    {metric:'Revenue Volatility',value:`${Number.isFinite(cv)?cv.toFixed(1)+'%':'—'} CV`,status:!Number.isFinite(cv)?'N/A':cv>35?'High':cv>20?'Medium':'Low',cls:!Number.isFinite(cv)?'muted':cv>35?'danger':cv>20?'warn':'good',action:cv>35?'ใช้ Scenario และกัน Safety Buffer เพิ่ม':'ใช้ Base Forecast ร่วมกับช่วง P10–P90'},
     {metric:'Customer Concentration',value:`HHI ${safeNum(hhi).toFixed(0)}`,status:hhi>1800?'High':hhi>=1000?'Medium':'Low',cls:hhi>1800?'danger':hhi>=1000?'warn':'good',action:hhi>1800?'ลดการพึ่งลูกค้ากลุ่มใหญ่และเพิ่มฐานลูกค้า':'ติดตาม Top customer share ต่อเนื่อง'},
     {metric:'Peak-to-Trough',value:`-${safeNum(drawdown).toFixed(1)}%`,status:drawdown>35?'Severe':drawdown>20?'Watch':'Normal',cls:drawdown>35?'danger':drawdown>20?'warn':'good',action:drawdown>20?'ตรวจสาเหตุยอดขายลดและ Recovery Plan':'ยังไม่พบ Drawdown สูงผิดปกติ'},
     {metric:'Overdue Exposure',value:`${safeNum(overdueRate).toFixed(1)}%`,status:overdueRate>30?'High':overdueRate>10?'Watch':'Healthy',cls:overdueRate>30?'danger':overdueRate>10?'warn':'good',action:overdueRate>10?'เร่งติดตามลูกหนี้และวางแผน Cash Flow':'Cash collection อยู่ในกรอบที่ดี'},
-    {metric:'Target Probability',value:target>0&&targetProb!==null?`${targetProb.toFixed(1)}%`:'ยังไม่ตั้งเป้า',status:target<=0?'N/A':targetProb>=70?'Strong':targetProb>=40?'Uncertain':'Low',cls:target<=0?'muted':targetProb>=70?'good':targetProb>=40?'warn':'danger',action:target<=0?'ตั้งเป้ายอดขายเพื่อใช้ Probability':targetProb<40?'เพิ่ม Pipeline หรือปรับแผนยอดขาย':targetProb<70?'ติดตาม Pipeline รายสัปดาห์':'โอกาสถึงเป้าอยู่ในระดับดี'}
+    {metric:'Target Probability',value:target>0&&Number.isFinite(targetProb)?`${targetProb.toFixed(1)}%`:target>0?'ข้อมูลไม่พอ':'ยังไม่ตั้งเป้า',status:target<=0||!Number.isFinite(targetProb)?'N/A':targetProb>=70?'Strong':targetProb>=40?'Uncertain':'Low',cls:target<=0||!Number.isFinite(targetProb)?'muted':targetProb>=70?'good':targetProb>=40?'warn':'danger',action:!Number.isFinite(targetProb)?'ต้องมีเป้าหมายและผลทดสอบโมเดลก่อนประเมิน':target<=0?'ตั้งเป้ายอดขายเพื่อใช้ Probability':targetProb<40?'เพิ่ม Pipeline หรือปรับแผนยอดขาย':targetProb<70?'ติดตาม Pipeline รายสัปดาห์':'โอกาสถึงเป้าอยู่ในระดับดี'}
   ];
 }
 function quantDecisionTableHtml(rows=[]){
@@ -3906,31 +3929,31 @@ function renderQuantDashboard(){
   const f=buildSalesForecast(),qd=quantDashboardData();
   const series=[];const refKey=forecastMonthKey(f.ref.year,f.ref.month);
   for(let off=11;off>=0;off--){const d=forecastMonthFromKey(refKey-off);series.push({...d,value:forecastSalesForMonth(d.year,d.month,f.branches)});}
-  const active=series.filter(r=>r.value>0),cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),conc=quantHhi(qd.customers,'sales'),draw=quantMaxDrawdown(active.map(r=>r.value));
+  const active=f.history.every(r=>Number.isFinite(r.value))?f.history:[],cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),conc=quantHhi(qd.customers,'sales'),draw=quantMaxDrawdown(active.map(r=>r.value));
   const arTotal=qd.ar.reduce((s,r)=>s+r.outstanding,0),overdue=qd.ar.filter(r=>r.state==='overdue').reduce((s,r)=>s+r.outstanding,0),overdueRate=ratioPercent(overdue,arTotal),anomalies=quantRevenueAnomalies(active);
   const selected=f.model?.candidates?.find(r=>r.id===f.model.selectedId)||f.model?.cv||{};
-  const riskScore=quantCompositeRiskScore({cv,hhi:conc.hhi,drawdown:draw.percent,overdueRate,wape:safeNum(selected.wape),trackingSignal:safeNum(selected.trackingSignal)});
+  const riskScore=quantCompositeRiskScore({cv,hhi:conc.hhi,drawdown:draw.percent,overdueRate,wape:selected.wape,trackingSignal:safeNum(selected.trackingSignal)});
   host.innerHTML=
     quantKpi('Composite Risk Score',`${riskScore.score}/100`,`${riskScore.label} · Internal heuristic 5 ด้าน`,riskScore.cls)+
     quantKpi('Business Regime',quantRiskPill(regime.label,regime.cls),`3M Momentum ${forecastPercent(regime.momentum)}`,regime.cls)+
-    quantKpi('Revenue Volatility',`${cv.toFixed(1)}%`,`CV จากยอดขายรายเดือน 12 เดือน`,cv>35?'danger':cv>20?'warn':'good')+
+    quantKpi('Revenue Volatility',`${Number.isFinite(cv)?cv.toFixed(1)+'%':'—'}`,`CV จากยอดขายรายเดือน 12 เดือน`,!Number.isFinite(cv)?'muted':cv>35?'danger':cv>20?'warn':'good')+
     quantKpi('Customer HHI',conc.hhi.toFixed(0),`${conc.label} · Top 5 ${conc.top5.toFixed(1)}%`,conc.cls)+
     quantKpi('Peak-to-Trough Decline',`-${draw.percent.toFixed(1)}%`,`จุดสูง ${chartMoney(draw.peak)} → ต่ำ ${chartMoney(draw.trough)}`,draw.percent>35?'danger':draw.percent>20?'warn':'neutral')+
-    quantKpi('Forecast Bias',selected?.eligible?`${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}%`:'—',selected?.eligible?`Tracking Signal ${safeNum(selected.trackingSignal).toFixed(2)} · WAPE ${safeNum(selected.wape).toFixed(1)}%`:'ข้อมูล CV ยังไม่พอ',Math.abs(safeNum(selected?.trackingSignal))>=4?'danger':Math.abs(safeNum(selected?.biasPct))>=10?'warn':'good')+
+    quantKpi('Forecast Bias',selected?.eligible?`${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}%`:'—',selected?.eligible?`Tracking Signal ${safeNum(selected.trackingSignal).toFixed(2)} · WAPE ${(Number.isFinite(selected.wape)?selected.wape.toFixed(1):'—')}%`:'ข้อมูล CV ยังไม่พอ',Math.abs(safeNum(selected?.trackingSignal))>=4?'danger':Math.abs(safeNum(selected?.biasPct))>=10?'warn':'good')+
     quantKpi('Overdue Exposure',`${overdueRate.toFixed(1)}%`,`ค้างเกินกำหนด ${chartMoney(overdue)} / AR ${chartMoney(arTotal)}`,overdueRate>30?'danger':overdueRate>10?'warn':'good')+
     quantKpi('Robust Anomaly',`${anomalies.length} เดือน`,`Modified Z-score |M| > 3.5`,anomalies.length?'warn':'good');
 
-  const target=currentSalesTarget(),sigma=Number.isFinite(f.model.cv.rmse)?f.model.cv.rmse:quantSampleSd(active.map(r=>r.value)),mc=quantMonteCarlo(f.next,sigma,target,5000,`${f.ref.year}-${f.ref.month}-${f.model.selectedId}-${f.next}`);
+  const target=currentSalesTarget(),sigma=Number.isFinite(f.model.cv.rmse)?f.model.cv.rmse:null,mc=quantMonteCarlo(f.next,sigma,target,5000,`${f.ref.year}-${f.ref.month}-${f.model.selectedId}-${f.next}`);
   const monte=document.getElementById('quant-dashboard-montecarlo');
-  if(monte)monte.innerHTML=`<div class="quant-mc-main"><div><small>P50 / Median Scenario</small><strong>${chartMoney(mc.p50)}</strong><span>${escapeHtml(forecastMonthLabel(f.future[0]?.year||f.ref.year,f.future[0]?.month??f.ref.month))}</span></div><div class="quant-prob-ring ${mc.targetProbability===null?'muted':mc.targetProbability>=70?'good':mc.targetProbability>=40?'warn':'danger'}"><b>${mc.targetProbability===null?'—':mc.targetProbability.toFixed(1)+'%'}</b><span>โอกาสถึงเป้า</span></div></div><div class="quant-quantiles"><div><span>P10</span><b>${chartMoney(mc.p10)}</b></div><div><span>P50</span><b>${chartMoney(mc.p50)}</b></div><div><span>P90</span><b>${chartMoney(mc.p90)}</b></div></div><p class="quant-help">จำลอง ${mc.n.toLocaleString('th-TH')} สถานการณ์จาก Base Forecast และ CV RMSE${target>0?` · เป้าหมาย ${chartMoney(target)}`:' · ยังไม่ได้ตั้งเป้ายอดขายสำหรับมุมมองนี้'}</p>`;
+  if(monte)monte.innerHTML=`<div class="quant-mc-main"><div><small>P50 / Median Scenario</small><strong>${forecastMoney(mc.p50)}</strong><span>${escapeHtml(forecastMonthLabel(f.future[0]?.year||f.ref.year,f.future[0]?.month??f.ref.month))}</span></div><div class="quant-prob-ring ${mc.targetProbability===null?'muted':mc.targetProbability>=70?'good':mc.targetProbability>=40?'warn':'danger'}"><b>${mc.targetProbability===null?'—':mc.targetProbability.toFixed(1)+'%'}</b><span>โอกาสถึงเป้า</span></div></div><div class="quant-quantiles"><div><span>P10</span><b>${forecastMoney(mc.p10)}</b></div><div><span>P50</span><b>${forecastMoney(mc.p50)}</b></div><div><span>P90</span><b>${forecastMoney(mc.p90)}</b></div></div><p class="quant-help">จำลอง ${mc.n.toLocaleString('th-TH')} สถานการณ์จาก Base Forecast และ CV RMSE · สมมติ error แบบ Normal อิสระและตัดยอดติดลบเป็น 0 · ความน่าจะเป็นตามสมมติฐานเท่านั้น · 0 รอบ = ข้อมูลไม่พอ${target>0?` · เป้าหมาย ${chartMoney(target)}`:' · ยังไม่ได้ตั้งเป้ายอดขายสำหรับมุมมองนี้'}</p>`;
   const tail=document.getElementById('quant-dashboard-tailrisk');
-  if(tail)tail.innerHTML=`<div class="quant-tail-grid"><div><small>Revenue-at-Risk (P10)</small><b>${chartMoney(mc.revenueAtRisk)}</b><span>ส่วนต่าง Base ถึง P10</span></div><div><small>Downside Tail Mean</small><b>${chartMoney(mc.downsideTailMean)}</b><span>ค่าเฉลี่ย 10% สถานการณ์แย่สุด</span></div><div><small>Target Shortfall</small><b>${mc.targetShortfallProbability===null?'—':mc.targetShortfallProbability.toFixed(1)+'%'}</b><span>${target>0?'ความน่าจะเป็นที่ต่ำกว่าเป้า':'ยังไม่ได้ตั้งเป้า'}</span></div><div><small>Expected Target Gap</small><b>${mc.expectedTargetGap===null?'—':chartMoney(mc.expectedTargetGap)}</b><span>ส่วนขาดเป้าเฉลี่ยจากทุก Scenario</span></div></div>`;
+  if(tail)tail.innerHTML=`<div class="quant-tail-grid"><div><small>Revenue-at-Risk (P10)</small><b>${forecastMoney(mc.revenueAtRisk)}</b><span>ส่วนต่าง Base ถึง P10</span></div><div><small>Downside Tail Mean</small><b>${forecastMoney(mc.downsideTailMean)}</b><span>ค่าเฉลี่ย 10% สถานการณ์แย่สุด</span></div><div><small>Target Shortfall</small><b>${mc.targetShortfallProbability===null?'—':mc.targetShortfallProbability.toFixed(1)+'%'}</b><span>${target>0?'ความน่าจะเป็นที่ต่ำกว่าเป้า':'ยังไม่ได้ตั้งเป้า'}</span></div><div><small>Expected Target Gap</small><b>${mc.expectedTargetGap===null?'—':forecastMoney(mc.expectedTargetGap)}</b><span>ส่วนขาดเป้าเฉลี่ยจากทุก Scenario</span></div></div>`;
 
   const risk=document.getElementById('quant-dashboard-risklist');
   if(risk){
     const items=[
       {title:'Composite risk',value:`${riskScore.score}/100 · ${riskScore.label}`,detail:'Volatility + Concentration + Drawdown + Collection + Forecast',cls:riskScore.cls},
-      {title:'Forecast governance',value:selected?.eligible?`${safeNum(selected.wape).toFixed(1)}% WAPE`:'ข้อมูลไม่พอ',detail:selected?.eligible?`Bias ${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · Tracking ${safeNum(selected.trackingSignal).toFixed(2)}`:'ต้องมีรอบ Cross-validation เพิ่ม',cls:quantForecastDecision(selected).cls},
+      {title:'Forecast governance',value:selected?.eligible?`${(Number.isFinite(selected.wape)?selected.wape.toFixed(1):'—')}% WAPE`:'ข้อมูลไม่พอ',detail:selected?.eligible?`Bias ${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · Tracking ${safeNum(selected.trackingSignal).toFixed(2)}`:'ต้องมีรอบ Cross-validation เพิ่ม',cls:quantForecastDecision(selected).cls},
       {title:'Revenue regime',value:regime.label,detail:regime.detail,cls:regime.cls},
       {title:'Customer concentration',value:`HHI ${conc.hhi.toFixed(0)}`,detail:`Top customer ${conc.top1.toFixed(1)}% · Top 5 ${conc.top5.toFixed(1)}%`,cls:conc.cls},
       {title:'Collection risk',value:`${overdueRate.toFixed(1)}% overdue exposure`,detail:`ยอดเกินกำหนด ${chartMoney(overdue)}`,cls:overdueRate>30?'danger':overdueRate>10?'warn':'good'},
@@ -3946,14 +3969,14 @@ function quantCustomerConcentrationRows(customerGroups=[]){const total=customerG
 function renderQuantBusinessAnalytics(filter,data,kpis,customerGroups,productGroups,arRows,forecastTrend){
   const host=document.getElementById('quant-analytics-kpis');if(!host)return;
   const hist=analyticsForecastHistorySeries(filter.year,filter.branch,filter.agencyGroup,filter.agencyType,filter.month);
-  const active=hist.filter(r=>safeNum(r.value)>0),cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),cHhi=quantHhi(customerGroups,'sales'),pHhi=quantHhi(productGroups,'value'),draw=quantMaxDrawdown(active.map(r=>r.value)),anomalies=quantRevenueAnomalies(active);
+  const active=hist.every(r=>Number.isFinite(r.value))?hist:[],cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),cHhi=quantHhi(customerGroups,'sales'),pHhi=quantHhi(productGroups,'value'),draw=quantMaxDrawdown(active.map(r=>r.value)),anomalies=quantRevenueAnomalies(active);
   const arTotal=arRows.reduce((s,r)=>s+r.outstanding,0),overdue=arRows.filter(r=>r.state==='overdue').reduce((s,r)=>s+r.outstanding,0),overdueRate=ratioPercent(overdue,arTotal);
   const selected=forecastTrend.forecastModel?.candidates?.find(r=>r.id===forecastTrend.forecastModel.selectedId)||forecastTrend.forecastModel?.cv||{};
-  const riskScore=quantCompositeRiskScore({cv,hhi:cHhi.hhi,drawdown:draw.percent,overdueRate,wape:safeNum(selected.wape),trackingSignal:safeNum(selected.trackingSignal)});
+  const riskScore=quantCompositeRiskScore({cv,hhi:cHhi.hhi,drawdown:draw.percent,overdueRate,wape:selected.wape,trackingSignal:safeNum(selected.trackingSignal)});
   host.innerHTML=
     quantKpi('Composite Risk',`${riskScore.score}/100`,`${riskScore.label} · Internal heuristic`,riskScore.cls)+
-    quantKpi('Revenue CV',`${cv.toFixed(1)}%`,'Sample SD ÷ Mean',cv>35?'danger':cv>20?'warn':'good')+
-    quantKpi('Forecast WAPE',selected?.eligible?`${safeNum(selected.wape).toFixed(1)}%`:'—',selected?.eligible?`Bias ${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · TS ${safeNum(selected.trackingSignal).toFixed(2)}`:'ข้อมูล CV ยังไม่พอ',quantForecastDecision(selected).cls)+
+    quantKpi('Revenue CV',`${Number.isFinite(cv)?cv.toFixed(1)+'%':'—'}`,'Sample SD ÷ Mean',!Number.isFinite(cv)?'muted':cv>35?'danger':cv>20?'warn':'good')+
+    quantKpi('Forecast WAPE',selected?.eligible?`${(Number.isFinite(selected.wape)?selected.wape.toFixed(1):'—')}%`:'—',selected?.eligible?`Bias ${safeNum(selected.biasPct)>=0?'+':''}${safeNum(selected.biasPct).toFixed(1)}% · TS ${safeNum(selected.trackingSignal).toFixed(2)}`:'ข้อมูล CV ยังไม่พอ',quantForecastDecision(selected).cls)+
     quantKpi('Customer HHI',cHhi.hhi.toFixed(0),`${cHhi.label} · Top 5 ${cHhi.top5.toFixed(1)}%`,cHhi.cls)+
     quantKpi('Product HHI',pHhi.hhi.toFixed(0),`${pHhi.label} · Top 5 ${pHhi.top5.toFixed(1)}%`,pHhi.cls)+
     quantKpi('Max Sales Decline',`-${draw.percent.toFixed(1)}%`,'Peak-to-trough',draw.percent>35?'danger':draw.percent>20?'warn':'neutral')+
@@ -3979,7 +4002,7 @@ function renderQuantBusinessAnalytics(filter,data,kpis,customerGroups,productGro
     {label:'Unconverted Exposure',html:r=>chartMoney(r.unconverted),cls:'num'}
   ],pending.slice(0,25),'ไม่มีใบเสนอราคาที่รออนุมัติในช่วงที่เลือก');
   const pipelineTotal=pending.reduce((s,r)=>s+r.value,0),pipelineExpected=pending.reduce((s,r)=>s+r.expected,0),pipelineExposure=pending.reduce((s,r)=>s+r.unconverted,0);
-  const ps=document.getElementById('quant-pipeline-summary');if(ps)ps.innerHTML=`Open Pipeline <b>${chartMoney(pipelineTotal)}</b> · Expected Pipeline <b>${chartMoney(pipelineExpected)}</b> · Unconverted Exposure <b>${chartMoney(pipelineExposure)}</b> · Overall approval proxy ${(quoteModel.overallProbability*100).toFixed(1)}% จากประวัติ ${quoteModel.overall.n} ใบ`;
+  const ps=document.getElementById('quant-pipeline-summary');if(ps)ps.innerHTML=`Open Pipeline <b>${chartMoney(pipelineTotal)}</b> · Expected Pipeline <b>${chartMoney(pipelineExpected)}</b> · Unconverted Exposure <b>${chartMoney(pipelineExposure)}</b> · Overall approval proxy ${(quoteModel.overallProbability*100).toFixed(1)}% จากประวัติ ${quoteModel.overall.n} ใบ · ${quoteModel.overall.n<5?'ใช้สมมติฐาน DEMO 35%':'ใช้อัตราอนุมัติเอกสารปรับด้วย Laplace smoothing'} ไม่ใช่อัตราชนะงาน`;
 
   const concRows=quantCustomerConcentrationRows(customerGroups).map(r=>({...r,hhiContribution:r.share*r.share,risk:r.share>=25?'สูง':r.share>=15?'กลาง':'ปกติ'}));
   analyticsRenderTable('quant-concentration-table',[
@@ -4009,13 +4032,13 @@ function renderQuantBusinessAnalytics(filter,data,kpis,customerGroups,productGro
   const contribution=kpis.sales-kpis.cost-kpis.commission,contributionRate=kpis.sales>0?contribution/kpis.sales:0,breakEvenSales=contributionRate>0?kpis.expenses/contributionRate:null,safetyMargin=breakEvenSales!==null&&kpis.sales>0?(kpis.sales-breakEvenSales)/kpis.sales*100:null;
   const stress=document.getElementById('quant-stress-output');if(stress)stress.innerHTML=`<div class="quant-stress-result"><div><small>กำไรฐาน</small><b>${chartMoney(kpis.profit)}</b></div><div class="${stressedProfit<0?'danger':''}"><small>กำไร Stress</small><b>${chartMoney(stressedProfit)}</b></div><div><small>ผลกระทบกำไร</small><b>${forecastPercent(profitImpact)}</b></div><div><small>Expected Pipeline หลัง Stress</small><b>${chartMoney(stressedPipeline)}</b></div><div><small>Break-even Sales</small><b>${breakEvenSales===null?'—':chartMoney(breakEvenSales)}</b></div><div class="${safetyMargin!==null&&safetyMargin<15?'danger':''}"><small>Margin of Safety</small><b>${safetyMargin===null?'—':`${safetyMargin.toFixed(1)}%`}</b></div></div><p class="quant-help">Scenario: Sales ${salesShock>=0?'+':''}${salesShock}% · Cost ${costShock>=0?'+':''}${costShock}% · Pipeline conversion ${conversionShock>=0?'+':''}${conversionShock}% · Break-even คำนวณจาก Contribution Margin ปัจจุบัน</p>`;
 
-  const sigma=Number.isFinite(forecastTrend.forecastModel?.cv?.rmse)?forecastTrend.forecastModel.cv.rmse:quantSampleSd(active.map(r=>r.value));
+  const sigma=Number.isFinite(forecastTrend.forecastModel?.cv?.rmse)?forecastTrend.forecastModel.cv.rmse:null;
   const mc=quantMonteCarlo(forecastTrend.forecast, sigma, 0, 5000, `analytics-${filter.year}-${filter.month}-${forecastTrend.forecastModel?.selectedId||'auto'}`);
   const decisionRows=quantDecisionTableRows({selected,cv,hhi:cHhi.hhi,drawdown:draw.percent,overdueRate,mc,target:0});
   const decision=document.getElementById('quant-decision-table');if(decision)decision.innerHTML=quantDecisionTableHtml(decisionRows);
-  const ds=document.getElementById('quant-decision-summary');if(ds)ds.innerHTML=`Composite Risk <b>${riskScore.score}/100 (${riskScore.label})</b> · Forecast Governance: ${escapeHtml(quantForecastDecision(selected).label)} · Revenue-at-Risk จาก P10 ประมาณ <b>${chartMoney(mc.revenueAtRisk)}</b> · Score เป็น Internal Heuristic เพื่อจัดลำดับประเด็น ไม่ใช่คะแนนมาตรฐานสากล`;
+  const ds=document.getElementById('quant-decision-summary');if(ds)ds.innerHTML=`Composite Risk <b>${riskScore.score}/100 (${riskScore.label})</b> · Forecast Governance: ${escapeHtml(quantForecastDecision(selected).label)} · Revenue-at-Risk จาก P10 ประมาณ <b>${forecastMoney(mc.revenueAtRisk)}</b> · Score เป็น Internal Heuristic เพื่อจัดลำดับประเด็น ไม่ใช่คะแนนมาตรฐานสากล`;
 
-  const note=document.getElementById('quant-methodology-note');if(note)note.innerHTML=`<b>วิธีอ่าน Quant Layer:</b> Forecast ใช้ Rolling-origin Cross-validation และอ่านร่วมกันทั้ง RMSE, WAPE, MASE, Bias และ Tracking Signal · CV ใช้ Sample SD/Mean เพื่อวัดความผันผวนสัมพัทธ์ · HHI = ผลรวมกำลังสองของสัดส่วนยอดขาย · Monte Carlo ใช้ CV RMSE เป็น empirical error scale เพื่อสร้าง P10/P50/P90 และ Revenue-at-Risk · Anomaly ใช้ Modified Z-score จาก Median/MAD · Composite Risk Score เป็น Internal Heuristic 0–100 ที่ให้น้ำหนักเท่ากัน 5 ด้าน: Volatility, Concentration, Drawdown, Collection และ Forecast Risk · Quote Probability เป็น historical approval proxy ไม่ใช่โมเดล ML และจะใช้ fallback 35% เมื่อข้อมูลย้อนหลังน้อยกว่า 5 ใบ`;
+  const note=document.getElementById('quant-methodology-note');if(note)note.innerHTML=`<b>วิธีอ่าน Quant Layer:</b> Forecast ใช้ Rolling-origin Cross-validation และอ่านร่วมกันทั้ง RMSE, WAPE, MASE, Bias และ Tracking Signal · CV ใช้ Sample SD/Mean เพื่อวัดความผันผวนสัมพัทธ์ · HHI = ผลรวมกำลังสองของสัดส่วนยอดขาย · Monte Carlo ใช้ CV RMSE เป็น error scale โดยสมมติ Normal อิสระและตัดยอดติดลบเป็น 0 ความน่าจะเป็นจึงขึ้นกับสมมติฐานนี้ งดจำลองเมื่อไม่มีผล CV · Anomaly ใช้ Modified Z-score จาก Median/MAD · Composite Risk Score เป็น Internal Heuristic 0–100 ที่ให้น้ำหนักเท่ากัน 5 ด้าน: Volatility, Concentration, Drawdown, Collection และ Forecast Risk · Quote Probability เป็นอัตราอนุมัติเอกสารย้อนหลัง ไม่ใช่ความน่าจะเป็นชนะงานหรือโมเดล ML และจะใช้ fallback 35% เมื่อข้อมูลย้อนหลังน้อยกว่า 5 ใบ`;
 }
 
 // ============================================================
@@ -7541,7 +7564,6 @@ function exposeInlineHandlers() {
     countCloudRowsByTypeForYear
   };
 
-  window.ComformAppReady = true;
 }
 
 // Expose handlers immediately so inline onclick/onchange works even when app is loaded as a Vite module.
@@ -8001,6 +8023,8 @@ function migrateLegacyIssuedDocuments(){
 Object.assign(window,{loadFor,saveFor,productMasterRows,productMasterMeta,productEstimatedStock,productOpeningStock,productSoldQty,findContactMaster,contactMasterRows,applySuggestedQuotePrice,docsForYear,docsFor,allYears,renderLinkedFlow,setLinkedBranch,openLinkedList,refreshLinkedFlow,renderDataAnalytics,refreshDataAnalytics,applyProductMasterToInput,applyProductionProductPreset,applyCustomerDemo,useAutoDocumentNumber,refreshAutoDocumentNumber,handleDocumentDateChange,switchMasterTab,renderMasterData,saveCustomerMaster,saveSupplierMaster,saveProductMasterLocal,resetCustomerMasterForm,resetSupplierMasterForm,resetProductMasterForm,editContactMaster,deleteContactMaster,editProductMasterLocal,deleteProductMasterLocal,handleCustomerMasterInput,applyCustomerMasterToForm,rememberCustomerFromForm,rememberSupplierFromProduction,syncProductFulfillmentFromFlowType,handleCsvImportFile,changeCsvImportType,setCsvMapping,commitCsvImport,downloadCsvTemplate,resetCsvImportWizard});
 
 function bootComformApp() {
+  if (window.ComformAppReady === true) return;
+  window.ComformAppReady = false;
   exposeInlineHandlers();
 
   try {
@@ -8028,8 +8052,12 @@ function bootComformApp() {
     calcP();
     // เผื่อ comform-auth-ready เกิดก่อน app.js โหลดเสร็จ ให้ลอง sync อีกครั้งหลัง boot
     setTimeout(() => scheduleCloudSync(getCurrentSelectedYear()), 600);
+    window.ComformAppReady = true;
+    window.dispatchEvent(new CustomEvent('comform-app-ready'));
   } catch (err) {
+    window.ComformAppReady = false;
     console.error('Comform app boot failed:', err);
+    window.dispatchEvent(new CustomEvent('comform-app-failed', {detail: {message: err.message}}));
   }
 }
 

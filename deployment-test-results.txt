@@ -1,0 +1,20 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> example-company-erp-local-demo-integrated-v3@1.3.2 test:deployment
+> node --experimental-vm-modules --test tests/deployment.check.cjs
+
+(node:27) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ compiled ESM bundle starts under repository prefix and can save after delayed wrappers (5373.010411ms)
+✔ all three print forms use emitted CSS and keep a writable popup handle (1831.251982ms)
+✔ missing main bundle and stylesheet are reported without application JavaScript (281.302692ms)
+✔ late initialization failure does not report ready (1567.440268ms)
+✔ late decorator cannot make single-flight guard block its own first save (1514.941412ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12110.630243

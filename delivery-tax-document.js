@@ -1385,12 +1385,14 @@ function printDocuments(mode = 'all') {
     notify(error);
     return;
   }
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  const printWindow = window.open('', '_blank');
   if (!printWindow) {
     notify('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
     return;
   }
-  const cssUrl = new URL('./delivery-tax-document.css', window.location.href).href;
+  // Keep the parent handle for document.write; remove child access to the opener.
+  printWindow.opener = null;
+  const cssUrl = new URL('./delivery-tax-document.css', import.meta.url).href;
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
   const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.dtd-document-page{page-break-after:always;margin:0 auto}.dtd-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);

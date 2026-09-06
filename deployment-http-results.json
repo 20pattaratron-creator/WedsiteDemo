@@ -1,0 +1,53 @@
+{
+  "scope": "Local HTTP under /test-repository/; no live GitHub Pages or browser visual test",
+  "results": [
+    {
+      "file": "assets/delivery-tax-document-CjcpZHAi.css",
+      "status": 200,
+      "mime": "text/css",
+      "sha256": "adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5"
+    },
+    {
+      "file": "assets/logo-FgPzZbhG.png",
+      "status": 200,
+      "mime": "image/png",
+      "sha256": "d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07"
+    },
+    {
+      "file": "assets/main-BtwP6E5F.js",
+      "status": 200,
+      "mime": "text/javascript",
+      "sha256": "cefd5149f6789d9e30d824eb09ce3fc8a3e9e7518d4ce2019f5454589d47abc5"
+    },
+    {
+      "file": "assets/main-COqHZkUH.css",
+      "status": 200,
+      "mime": "text/css",
+      "sha256": "5d425c2d04304b8e7fa8ce999fb9ce03e6de56b088537c8029d06ad92f7ab357"
+    },
+    {
+      "file": "assets/quotation-document-D1nx9Y5M.css",
+      "status": 200,
+      "mime": "text/css",
+      "sha256": "7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94"
+    },
+    {
+      "file": "assets/receipt-document-C_3LyvKh.css",
+      "status": 200,
+      "mime": "text/css",
+      "sha256": "ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24"
+    },
+    {
+      "file": "deployment-check.html",
+      "status": 200,
+      "mime": "text/html",
+      "sha256": "119f9293ae87f34a088fc9b9f6b31632041f83eae6eb0f405d895a3c143d87b0"
+    },
+    {
+      "file": "index.html",
+      "status": 200,
+      "mime": "text/html",
+      "sha256": "9306491667799940aaaa7bcaf88e04cd11d3ce198f2c21911b6a406325501bc2"
+    }
+  ]
+}

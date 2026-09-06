@@ -462,11 +462,13 @@ async function downloadQuotePdf(button, mode = 'all') {
 
 function printQuote(mode = 'all') {
   if (!currentQuote) return;
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  const printWindow = window.open('', '_blank');
   if (!printWindow) {
     notify('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up สำหรับเว็บไซต์นี้');
     return;
   }
+  // Keep the parent handle for document.write; remove child access to the opener.
+  printWindow.opener = null;
   const cssUrl = QUOTE_CSS_URL;
   const html = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(currentQuote.no || 'Quotation')}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.qdoc-document-page{page-break-after:always;margin:0 auto}.qdoc-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);

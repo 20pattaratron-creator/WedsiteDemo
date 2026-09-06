@@ -1,0 +1,23 @@
+✔ forecast preserves zero months at both boundaries and in the middle (47.009495ms)
+✔ missing, negative and nonfinite observations invalidate rather than compress a series (0.801122ms)
+✔ missing monthly storage differs from a stored empty month and corrupt data (8.766019ms)
+✔ all eligible models including Naive share identical rolling-origin test months (46.156075ms)
+✔ MASE uses training data at each fold, excluding the new actual (0.724005ms)
+✔ zero denominators produce unavailable WAPE/MASE rather than perfect accuracy (2.114677ms)
+✔ few observations have no accuracy percentage or invented zero-width intervals (0.459879ms)
+✔ residual scenarios require eight errors and are not extrapolated to longer horizons (14.678492ms)
+✔ forecast table renders unavailable ranges as a dash and does not call base P50 (1.057139ms)
+✔ analytics uses the latest zero month for actual and forecast date (1.015737ms)
+✔ Quant includes zero-revenue contractions, drawdowns and low outliers (1.189696ms)
+✔ Monte Carlo does not simulate when error scale is unavailable (19.481906ms)
+✔ empty dashboard has unavailable forecast and renders without boot errors (134.923912ms)
+✔ January automatic history ends in previous December (4.844699ms)
+✔ complete stored zero-sales months remain usable history in the dashboard (8.005696ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3173.211261
