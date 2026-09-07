@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {JSDOM,VirtualConsole}=require('jsdom');
-const root=path.resolve(__dirname,'..'),dist=path.join(root,'dist');
+const root=path.resolve(__dirname,'..'),dist=path.join(root,process.env.ERP_DEPLOY_DIR||'dist');
 async function page({execute=true,breakBoot=false}={}){
  const errors=[],vc=new VirtualConsole();vc.on('error',(...args)=>errors.push(args.join(' ')));vc.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(fs.readFileSync(dist+'/index.html','utf8'),{url:'https://example.test/demo-repo/',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
@@ -38,13 +38,14 @@ test('all three print forms use emitted CSS and keep a writable popup handle',as
   w.ComformReceiptDocument.loadFromReceipt(row,{b:'ubon',previewOnly:true});w.ComformReceiptDocument.print('current');
   w.ComformQuotationDocument.loadFromData(row,{b:'ubon',previewOnly:true});w.printQuote('current');
   assert.equal(outputs.length,3);
-  for(const {html,popup} of outputs){assert.equal(popup.opener,null);const doc=new JSDOM(html);const url=new URL(doc.window.document.querySelector('link').href);assert.ok(url.pathname.startsWith('/demo-repo/assets/'));assert.ok(fs.existsSync(path.join(dist,url.pathname.replace('/demo-repo/',''))));doc.window.close();}
+  for(const {html,popup} of outputs){assert.equal(popup.opener,null);const doc=new JSDOM(html);const url=new URL(doc.window.document.querySelector('link').href);assert.ok(url.pathname.startsWith(process.env.ERP_DEPLOY_DIR==='dist-flat'?'/demo-repo/':'/demo-repo/assets/'));
+   if(process.env.ERP_DEPLOY_DIR==='dist-flat')assert.ok(!url.pathname.includes('/assets/'));assert.ok(fs.existsSync(path.join(dist,url.pathname.replace('/demo-repo/',''))));doc.window.close();}
  }finally{h.close();}
 });
 test('missing main bundle and stylesheet are reported without application JavaScript',async()=>{
  const h=await page({execute:false});try{
   const script=h.w.document.querySelector('script[type="module"][src]');script.dispatchEvent(new h.w.Event('error'));h.watchdog();
-  const box=h.w.document.getElementById('deployment-load-error');assert.ok(box);assert.match(box.textContent,/main-.*\.js/);assert.match(box.textContent,/main-.*\.css/);assert.match(box.textContent,/3\.3\.0/);
+  const box=h.w.document.getElementById('deployment-load-error');assert.ok(box);assert.match(box.textContent,/main-.*\.js/);assert.match(box.textContent,/main-.*\.css/);assert.match(box.textContent,/3\.4\.0/);
   assert.equal(h.w.getComputedStyle(h.w.document.querySelector('.sidebar svg')).width,'18px');
  }finally{h.close();}
 });
@@ -63,4 +64,27 @@ test('late decorator cannot make single-flight guard block its own first save',a
   await w.saveQuote();assert.equal(saves,1,'immediate duplicate still blocked');
   await new Promise(r=>setTimeout(r,300));await w.saveQuote();assert.equal(saves,2,'subsequent intentional save works');
  }finally{w.close();}
+});
+
+test('deployment diagnostic hashes match every emitted resource',()=>{
+ const crypto=require('node:crypto');
+ const diag=fs.readFileSync(path.join(dist,'deployment-check.html'),'utf8');
+ const manifest=JSON.parse(diag.match(/const manifest=(\[[^\n]+\]);/)[1]);
+ assert.equal(manifest.length,7);
+ for(const item of manifest){
+  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dist,item.file))).digest('hex'),item.sha256,item.file);
+  if(process.env.ERP_DEPLOY_DIR==='dist-flat')assert.ok(!item.file.includes('/'),item.file);
+ }
+ if(process.env.ERP_DEPLOY_DIR==='dist-flat'){
+  assert.match(diag,/3\.4\.0 FLAT/);
+  const html=fs.readFileSync(path.join(dist,'index.html'),'utf8');
+  assert.doesNotMatch(html,/\.\/assets\//);
+  const doc=new JSDOM(html);
+  for(const el of doc.window.document.querySelectorAll('script[src],link[rel="stylesheet"],img[src]')){
+   const ref=el.getAttribute('src')||el.getAttribute('href');
+   if(/^https?:/.test(ref))continue;
+   assert.ok(fs.existsSync(path.join(dist,ref)),ref);
+  }
+  doc.window.close();
+ }
 });

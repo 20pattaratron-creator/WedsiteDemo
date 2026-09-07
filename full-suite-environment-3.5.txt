@@ -1,0 +1,7 @@
+DEMO 3.5.0 full-suite note
+- Decision Council tests: PASS 6/6
+- Integrity + Decision Council tests: PASS 32/32
+- Runtime/build-script syntax: PASS 22 files
+- Static local references: PASS, missing 0
+- Source Pages HTTP smoke: PASS
+- Full `npm test` was attempted, but this container could not complete `npm ci`; jsdom/fake-indexeddb were unavailable. Failures observed were MODULE_NOT_FOUND environment failures, not assertion failures. Run the full release gate on a machine where `npm ci` completes.

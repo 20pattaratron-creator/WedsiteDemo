@@ -1,0 +1,50 @@
+
+> example-company-erp-local-demo-integrated-v3@1.5.0 test:council
+> node --test tests/decision-council.test.cjs
+
+TAP version 13
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 1 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 22.976972
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 2 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 3.187051
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 3 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 2.628528
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 4 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 2.664051
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 5 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 1.538833
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 6 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 2.191998
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 82.210782

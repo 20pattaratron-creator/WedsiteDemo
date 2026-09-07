@@ -9,7 +9,7 @@ function context(){
 }
 const invoice=(over={})=>({id:'INV1',no:'INV690901',branch:'ubon',customer:'ลูกค้า ก',date:'2026-09-05',subtotal:1000,total:1070,useVat:1,items:[{product:'สินค้า',productCode:'P1',qty:10,priceUnit:100}],...over});
 const order=()=>({id:'SO1',no:'SO690901',branch:'ubon',customer:'ลูกค้า ก',items:[{id:'L1',product:'สินค้า',productCode:'P1',qty:10,stockQty:10,readyQty:10,priceUnit:100}]});
-function flowModule(c){let s=source('erp-order-flow-v3.js').replace('  window.ERPOrderFlow = {','  window.flowInternal={derivedOrderStage,saveBilling,saveBillingPayment,saveFulfillment};\n  window.ERPOrderFlow = {');vm.runInContext(s,c);}
+function flowModule(c){let s=source('erp-order-flow.js').replace('  window.ERPOrderFlow = {','  window.flowInternal={derivedOrderStage,saveBilling,saveBillingPayment,saveFulfillment};\n  window.ERPOrderFlow = {');vm.runInContext(s,c);}
 function appFunctions(c,names){let s=source('app.js');for(const name of names){const m=new RegExp('^(?:async )?function '+name+'\\(','m').exec(s);assert.ok(m,name);let start=m.index,nl=s.indexOf('\n',start),end;if(s.slice(start,nl).trimEnd().endsWith('}'))end=nl;else end=nl+/^\}/m.exec(s.slice(nl)).index+1;vm.runInContext(s.slice(start,end),c);}}
 
 test('partial receipt keeps invoice outstanding; printed copy is not duplicate cash',()=>{const c=context(),i=invoice();c.pack({invoices:[i],issuedInvoices:[{...i,id:'PRINT1',sourceInvoiceId:i.id}],receipts:[{id:'R1',invNo:i.no,customer:i.customer,total:300}],issuedReceipts:[{id:'PRINT-R',sourceReceiptId:'R1',invNo:i.no,total:300}]});const s=c.ERPIntegrity.paymentSummary(i);assert.equal(s.paid,300);assert.equal(s.outstanding,770);c.ERPIntegrity.reconcilePayments();assert.equal(c.ERPIntegrity.business().invoices[0].paid,false);});

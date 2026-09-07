@@ -5,16 +5,17 @@ npm warn Unknown env config "http-proxy". This will stop working in the next maj
 
 (node:27) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
-✔ compiled ESM bundle starts under repository prefix and can save after delayed wrappers (5373.010411ms)
-✔ all three print forms use emitted CSS and keep a writable popup handle (1831.251982ms)
-✔ missing main bundle and stylesheet are reported without application JavaScript (281.302692ms)
-✔ late initialization failure does not report ready (1567.440268ms)
-✔ late decorator cannot make single-flight guard block its own first save (1514.941412ms)
-ℹ tests 5
+✔ compiled ESM bundle starts under repository prefix and can save after delayed wrappers (3942.194084ms)
+✔ all three print forms use emitted CSS and keep a writable popup handle (1254.091588ms)
+✔ missing main bundle and stylesheet are reported without application JavaScript (158.192221ms)
+✔ late initialization failure does not report ready (1191.815679ms)
+✔ late decorator cannot make single-flight guard block its own first save (1507.852197ms)
+✔ deployment diagnostic hashes match every emitted resource (2.515693ms)
+ℹ tests 6
 ℹ suites 0
-ℹ pass 5
+ℹ pass 6
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 12110.630243
+ℹ duration_ms 8522.866924
