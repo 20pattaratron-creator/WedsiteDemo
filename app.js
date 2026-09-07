@@ -1766,6 +1766,21 @@ function renderDashboardComparison(){
 const DELIVERY_TARGET_STORAGE_KEY='comform_delivery_targets_v2';
 const DEFAULT_COMPANY_MONTHLY_TARGET=1600000;
 
+const DELIVERY_TARGET_PERIOD_STORAGE_KEY='comform_delivery_target_period_overrides_v1';
+function targetPeriodOverrideKey(scope,year,month){return `${scope}:${Number(year)}-${String(Number(month)+1).padStart(2,'0')}`;}
+function readTargetPeriodOverrides(storageKey){
+  try{const raw=localStorage.getItem(tenantLocalKey(storageKey));const parsed=raw?JSON.parse(raw):{};return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{};}catch(error){console.warn('อ่านเป้าหมายรายเดือนไม่สำเร็จ',storageKey,error);return{};}
+}
+function getTargetPeriodOverride(storageKey,scope,year,month){
+  const rows=readTargetPeriodOverrides(storageKey),key=targetPeriodOverrideKey(scope,year,month);
+  return Object.prototype.hasOwnProperty.call(rows,key)?Math.max(0,safeNum(rows[key])):null;
+}
+function setTargetPeriodOverride(storageKey,scope,year,month,value){
+  const rows=readTargetPeriodOverrides(storageKey);rows[targetPeriodOverrideKey(scope,year,month)]=Math.max(0,safeNum(value));
+  localStorage.setItem(tenantLocalKey(storageKey),JSON.stringify(rows));
+}
+
+
 // Legacy compatibility switch is disabled: imported sales are not proof of delivery.
 // Delivery must come from delivery/invoice records; no business records are changed.
 const HISTORICAL_SALES_DELIVERY_MIRROR=Object.freeze({
@@ -1800,9 +1815,12 @@ function readDeliveryTargets(){
 }
 function currentTargetScope(){return dashTab==='khonkaen'||dashTab==='ubon'?dashTab:'all';}
 function currentDeliveryTarget(year,month){
-  // เดือน ม.ค.–มิ.ย. 2569 เป้าหมายส่งสินค้าใช้ค่าเดียวกับเป้าหมายยอดขาย
-  if(shouldMirrorHistoricalSalesAsDelivery(year,month))return currentSalesTarget();
-  return readDeliveryTargets()[currentTargetScope()]||0;
+  // รองรับเป้าหมายรายเดือนแยกปี/เดือน โดยใช้ค่าเดิมรายสาขาเป็น fallback เพื่อไม่ทำข้อมูลเก่าหาย
+  const scope=currentTargetScope();
+  const override=getTargetPeriodOverride(DELIVERY_TARGET_PERIOD_STORAGE_KEY,scope,year,month);
+  if(override!==null)return override;
+  if(shouldMirrorHistoricalSalesAsDelivery(year,month))return currentSalesTarget(year,month);
+  return readDeliveryTargets()[scope]||0;
 }
 function saveDeliveryTarget(){
   const input=document.getElementById('delivery-monthly-target');
@@ -1811,17 +1829,13 @@ function saveDeliveryTarget(){
   const scope=currentTargetScope();
   try{
     if(shouldMirrorHistoricalSalesAsDelivery(year,month)){
-      // บันทึกไปยังเป้าหมายยอดขายเพื่อให้สองเป้าหมายเท่ากันเฉพาะช่วงย้อนหลัง
-      const salesTargets=readSalesTargets();
-      salesTargets[scope]=value;
-      localStorage.setItem(tenantLocalKey(SALES_TARGET_STORAGE_KEY),JSON.stringify(salesTargets));
+      setTargetPeriodOverride(SALES_TARGET_PERIOD_STORAGE_KEY,scope,year,month,value);
       renderSalesTargetDashboard();
     }else{
-      const targets=readDeliveryTargets();
-      targets[scope]=value;
-      localStorage.setItem(tenantLocalKey(DELIVERY_TARGET_STORAGE_KEY),JSON.stringify(targets));
+      setTargetPeriodOverride(DELIVERY_TARGET_PERIOD_STORAGE_KEY,scope,year,month,value);
     }
     renderDeliveryTargetDashboard();
+    renderExecutiveComparisonCharts();
   }catch(error){
     console.error('บันทึกเป้าหมายไม่สำเร็จ',error);
     notify('บันทึกเป้าหมายไม่สำเร็จ: '+(error?.message||error));
@@ -2003,6 +2017,7 @@ function renderDeliveryTargetDashboard(){
 // ============================================================
 const SALES_TARGET_STORAGE_KEY='comform_sales_targets_v1';
 const DEFAULT_COMPANY_MONTHLY_SALES_TARGET=2000000;
+const SALES_TARGET_PERIOD_STORAGE_KEY='comform_sales_target_period_overrides_v1';
 
 function readSalesTargets(){
   const defaults={all:DEFAULT_COMPANY_MONTHLY_SALES_TARGET,khonkaen:0,ubon:0};
@@ -2020,15 +2035,20 @@ function readSalesTargets(){
     return defaults;
   }
 }
-function currentSalesTarget(){return readSalesTargets()[currentTargetScope()]||0;}
+function currentSalesTarget(year,month){
+  const scope=currentTargetScope();
+  if(!Number.isInteger(Number(year))||!Number.isInteger(Number(month))){const period=targetPeriod();year=period.year;month=period.month;}
+  const override=getTargetPeriodOverride(SALES_TARGET_PERIOD_STORAGE_KEY,scope,year,month);
+  return override!==null?override:(readSalesTargets()[scope]||0);
+}
 function saveSalesTarget(){
   const input=document.getElementById('sales-monthly-target');
   const value=Math.max(0,safeNum(input?.value));
-  const targets=readSalesTargets();
-  targets[currentTargetScope()]=value;
+  const {year,month}=targetPeriod();
   try{
-    localStorage.setItem(tenantLocalKey(SALES_TARGET_STORAGE_KEY),JSON.stringify(targets));
+    setTargetPeriodOverride(SALES_TARGET_PERIOD_STORAGE_KEY,currentTargetScope(),year,month,value);
     renderSalesTargetDashboard();
+    renderExecutiveComparisonCharts();
   }catch(error){
     console.error('บันทึกเป้าหมายยอดขายไม่สำเร็จ',error);
     notify('บันทึกเป้าหมายยอดขายไม่สำเร็จ: '+(error?.message||error));
@@ -2772,6 +2792,96 @@ function renderDashboardAgencyChart(){
   const monthText=mVal===-1?'ทั้งปี':MONTHS[mVal];
   if(summary)summary.innerHTML=rows.length?`ช่วง ${monthText} พ.ศ. ${yearLabelDual(year)} ยอดรวมตามกลุ่มลูกค้า <b>${chartMoney(total)}</b> · กลุ่มสูงสุดคือ <b>${escapeHtml(top.label)}</b> ${chartMoney(top.value)}`:'ยังไม่มีข้อมูลกลุ่มลูกค้าในช่วงที่เลือก';
 }
+
+// ============================================================
+// EXECUTIVE VISUAL COMPARISON — DEMO 3.7
+// Pure SVG/CSS charts; no external chart library and no duplicated business totals.
+// ============================================================
+function executiveCompactMoney(value){
+  const n=Math.abs(safeNum(value));
+  if(n>=1000000)return `฿${(safeNum(value)/1000000).toLocaleString('th-TH',{maximumFractionDigits:1})}M`;
+  if(n>=1000)return `฿${(safeNum(value)/1000).toLocaleString('th-TH',{maximumFractionDigits:0})}k`;
+  return chartMoney(value);
+}
+function executiveKpi(label,value,detail){return `<div class="exec-kpi"><small>${escapeHtml(label)}</small><b>${escapeHtml(value)}</b><span>${escapeHtml(detail||'')}</span></div>`;}
+function executiveSeriesBarSvg(rows,series,opt={}){
+  if(!rows?.length||!series?.length)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลสำหรับแสดงกราฟ</div>';
+  const width=Math.max(780,rows.length*(opt.groupWidth||68)+90),height=300,pad={l:58,r:18,t:24,b:52};
+  const all=rows.flatMap(row=>series.map(s=>Math.max(0,safeNum(row[s.key]))));
+  const max=Math.max(...all,1)*1.08,plotW=width-pad.l-pad.r,plotH=height-pad.t-pad.b;
+  const y=v=>height-pad.b-(safeNum(v)/max)*plotH;
+  const ticks=[0,.25,.5,.75,1].map(p=>{const value=max*p,yy=y(value);return `<line x1="${pad.l}" y1="${yy.toFixed(1)}" x2="${width-pad.r}" y2="${yy.toFixed(1)}" class="exec-axis"/><text x="${pad.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" class="exec-axis-label">${escapeHtml(executiveCompactMoney(value).replace('฿',''))}</text>`;}).join('');
+  const slot=plotW/rows.length,groupW=Math.min(slot*.78,54),barW=Math.max(4,groupW/series.length-2);
+  let bars='',labels='';
+  rows.forEach((row,i)=>{
+    const center=pad.l+slot*i+slot/2,totalW=series.length*barW+(series.length-1)*2,start=center-totalW/2;
+    series.forEach((sr,j)=>{const value=Math.max(0,safeNum(row[sr.key])),yy=y(value),h=Math.max(0,height-pad.b-yy),x=start+j*(barW+2);bars+=`<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" class="exec-series-${j%5}"><title>${escapeHtml(row.label)} · ${escapeHtml(sr.label)} · ${chartMoney(value)}</title></rect>`;});
+    labels+=`<text x="${center.toFixed(1)}" y="${height-25}" text-anchor="middle" class="exec-axis-label">${escapeHtml(opt.shortLabels?String(row.label).slice(0,3):row.label)}</text>`;
+  });
+  const legend=series.map((sr,i)=>`<span><i class="s${i%5}"></i>${escapeHtml(sr.label)}</span>`).join('');
+  return `<div class="exec-chart-scroll"><svg class="exec-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(opt.ariaLabel||'กราฟเปรียบเทียบ')}">${ticks}${bars}${labels}</svg></div><div class="exec-chart-legend">${legend}</div>`;
+}
+function executivePieArc(cx,cy,r,startAngle,endAngle){
+  const polar=a=>{const rad=(a-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}};
+  const start=polar(endAngle),end=polar(startAngle),large=endAngle-startAngle<=180?0:1;
+  return `M ${cx} ${cy} L ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)} Z`;
+}
+function executiveDonutChart(rows){
+  const valid=(rows||[]).filter(r=>safeNum(r.value)>0),total=valid.reduce((s,r)=>s+safeNum(r.value),0);
+  if(!total)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลกลุ่มลูกค้าในช่วงที่เลือก</div>';
+  let angle=0;const paths=valid.map((r,i)=>{const sweep=safeNum(r.value)/total*360,start=angle,end=angle+sweep;angle=end;return `<path d="${executivePieArc(100,100,82,start,end)}" class="exec-series-${i%5}"><title>${escapeHtml(r.label)} · ${chartMoney(r.value)} · ${ratioPercent(r.value,total).toFixed(1)}%</title></path>`;}).join('');
+  const legend=valid.map((r,i)=>`<div class="exec-pie-row"><i class="s${i%5}" style="background:${['#2563eb','#8b5cf6','#16a34a','#f59e0b','#ef4444'][i%5]}"></i><div>${escapeHtml(r.label)}<small>${ratioPercent(r.value,total).toFixed(1)}% ของยอดในช่วงนี้</small></div><strong>${executiveCompactMoney(r.value)}</strong></div>`).join('');
+  return `<div class="exec-pie-layout"><svg class="exec-pie-svg" viewBox="0 0 200 200" role="img" aria-label="กราฟวงกลมสัดส่วนลูกค้าตามกลุ่มธุรกิจ">${paths}<circle cx="100" cy="100" r="48" fill="white"/><text x="100" y="97" text-anchor="middle" class="exec-pie-center-value">${escapeHtml(executiveCompactMoney(total))}</text><text x="100" y="116" text-anchor="middle" class="exec-pie-center-label">ยอดรวมก่อน VAT</text></svg><div class="exec-pie-legend">${legend}</div></div>`;
+}
+function buildExecutiveProductMonthly(year,branches){
+  const items=analyticsItemRows(collectDashboardSalesRows(year,-1,branches));
+  const top=groupAnalytics(items,row=>row.product,row=>row.value).slice(0,3);
+  const rows=MONTHS.map((label,month)=>{const row={label};top.forEach((p,i)=>{row[`p${i}`]=items.filter(x=>Number(x._month)===month&&x.product===p.label).reduce((s,x)=>s+safeNum(x.value),0);});return row;});
+  return{rows,series:top.map((p,i)=>({key:`p${i}`,label:p.label,total:p.value})),top};
+}
+function buildExecutiveAgencyComparison(year,month,branches){
+  const salesRows=collectDashboardSalesRows(year,month,branches),map=new Map();
+  salesRows.forEach(row=>{const agency=customerAgencyForRecord(row),key=agency.customerAgencyGroup||'other',cur=map.get(key)||{key,label:agency.customerAgencyGroupLabel||agencyGroupLabel(key),value:0,customers:new Set(),docs:0};cur.value+=analyticsSalesValue(row);cur.docs++;const customer=analyticsCustomer(row);if(customer&&customer!=='ไม่ระบุลูกค้า')cur.customers.add(customer);map.set(key,cur);});
+  const rows=[...map.values()].map(r=>({...r,customerCount:r.customers.size})).sort((a,b)=>b.value-a.value);
+  return{rows,government:rows.find(r=>r.key==='government')||{value:0,customerCount:0,label:'ราชการ / หน่วยงานรัฐ'},privateCompany:rows.find(r=>r.key==='private_company')||{value:0,customerCount:0,label:'บริษัทเอกชน'}};
+}
+function executiveGovPrivateBars(model){
+  const rows=[{...model.government,key:'government'},{...model.privateCompany,key:'private'}],max=Math.max(...rows.map(r=>safeNum(r.value)),1);
+  return `<div class="exec-compare-bars">${rows.map(r=>`<div class="exec-compare-row"><div class="exec-compare-label"><b>${escapeHtml(r.label)}</b><small>${fmt(r.customerCount)} ลูกค้า</small></div><div class="exec-compare-track"><div class="exec-compare-fill ${r.key==='private'?'private':''}" style="width:${Math.max(r.value?3:0,r.value/max*100)}%"></div></div><div class="exec-compare-value">${chartMoney(r.value)}</div></div>`).join('')}</div>`;
+}
+function executiveMonthlyTargetRows(year,metric){
+  const actual=rowsForMonthlyChart(year,dashBranches(),metric);
+  return actual.map((r,month)=>({label:r.label,actual:safeNum(r.value),target:metric==='sales'?currentSalesTarget(year,month):currentDeliveryTarget(year,month)}));
+}
+function executiveTargetSummary(rows,label){
+  const active=rows.filter(r=>r.target>0),hits=active.filter(r=>r.actual>=r.target).length,totalActual=rows.reduce((s,r)=>s+r.actual,0),totalTarget=active.reduce((s,r)=>s+r.target,0),best=rows.slice().sort((a,b)=>b.actual-a.actual)[0];
+  if(!active.length)return `ยังไม่ได้กำหนด${label}สำหรับช่วงนี้`;
+  return `ทำได้ถึง/เกินเป้า <b>${hits}/${active.length} เดือน</b> · ยอดจริงรวม <b>${chartMoney(totalActual)}</b> เทียบเป้ารวม <b>${chartMoney(totalTarget)}</b>${best?.actual>0?` · เดือนสูงสุด <b>${escapeHtml(best.label)}</b> ${chartMoney(best.actual)}`:''}`;
+}
+function renderExecutiveComparisonCharts(){
+  const host=document.getElementById('executive-visual-kpis');if(!host)return;
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),month=parseInt(document.getElementById('dash-month')?.value??-1,10),branches=dashBranches();
+  const scope=dashTab==='all'?'รวมทั้ง 2 สาขา':BRANCH_TH[dashTab],period=month===-1?'ทั้งปี':MONTHS[month];
+  const periodEl=document.getElementById('executive-visual-period');if(periodEl)periodEl.textContent=`${period} พ.ศ. ${yearLabelDual(year)} · ${scope}`;
+  const products=buildExecutiveProductMonthly(year,branches),agency=buildExecutiveAgencyComparison(year,month,branches),salesTarget=executiveMonthlyTargetRows(year,'sales'),deliveryTarget=executiveMonthlyTargetRows(year,'delivery');
+  const gov=agency.government,priv=agency.privateCompany,delta=priv.value>0?(gov.value-priv.value)/priv.value*100:null;
+  const salesCurrent=month>=0?salesTarget[month]:salesTarget.reduce((s,r)=>s+r.actual,0),deliveryCurrent=month>=0?deliveryTarget[month]:deliveryTarget.reduce((s,r)=>s+r.actual,0);
+  host.innerHTML=executiveKpi('สินค้าขายดีอันดับ 1',products.top[0]?.label||'ยังไม่มีข้อมูล',products.top[0]?`ทั้งปี ${chartMoney(products.top[0].value)}`:'')+
+    executiveKpi('ราชการ / หน่วยงานรัฐ',chartMoney(gov.value),`${fmt(gov.customerCount)} ลูกค้า`)+
+    executiveKpi('บริษัทเอกชน',chartMoney(priv.value),`${fmt(priv.customerCount)} ลูกค้า`)+
+    executiveKpi('ยอดขาย / ยอดส่งในมุมมอง',`${chartMoney(salesCurrent.actual??salesCurrent)} / ${chartMoney(deliveryCurrent.actual??deliveryCurrent)}`,month>=0?'เดือนที่เลือก':'รวมทั้งปี');
+  document.getElementById('exec-product-monthly-chart').innerHTML=executiveSeriesBarSvg(products.rows,products.series,{shortLabels:true,ariaLabel:'กราฟแท่งสินค้าขายดี Top 3 เปรียบเทียบรายเดือน'});
+  const productSummary=document.getElementById('exec-product-monthly-summary');if(productSummary)productSummary.innerHTML=products.top.length?`Top 3 ของปีนี้คือ ${products.top.map((p,i)=>`<b>${i+1}. ${escapeHtml(p.label)}</b> ${chartMoney(p.value)}`).join(' · ')} · ใช้ดูฤดูกาลขายและวางแผน Stock/ผลิต`:'ยังไม่มีข้อมูลสินค้าในปีที่เลือก';
+  document.getElementById('exec-agency-pie-chart').innerHTML=executiveDonutChart(agency.rows);
+  const agencySummary=document.getElementById('exec-agency-pie-summary');if(agencySummary)agencySummary.innerHTML=agency.rows.length?`กลุ่มที่สร้างยอดสูงสุดคือ <b>${escapeHtml(agency.rows[0].label)}</b> ${chartMoney(agency.rows[0].value)} · กราฟนี้ใช้ยอดขายก่อน VAT ชุดเดียวกับ Dashboard`:'ยังไม่มีข้อมูลกลุ่มลูกค้า';
+  document.getElementById('exec-gov-private-chart').innerHTML=executiveGovPrivateBars(agency);
+  const gpSummary=document.getElementById('exec-gov-private-summary');if(gpSummary){if(!gov.value&&!priv.value)gpSummary.textContent='ยังไม่มีข้อมูลราชการหรือบริษัทเอกชนในช่วงที่เลือก';else if(delta===null)gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐมียอด <b>${chartMoney(gov.value)}</b> ขณะที่ยังไม่มียอดจากบริษัทเอกชนในช่วงนี้`;else if(Math.abs(delta)<.01)gpSummary.innerHTML='ยอดราชการ/หน่วยงานรัฐและบริษัทเอกชนใกล้เคียงกัน';else gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐ${delta>0?'มากกว่า':'น้อยกว่า'}บริษัทเอกชน <b>${Math.abs(delta).toFixed(1)}%</b> (${chartMoney(gov.value)} vs ${chartMoney(priv.value)})`;}
+  document.getElementById('exec-sales-target-chart').innerHTML=executiveSeriesBarSvg(salesTarget,[{key:'actual',label:'ยอดขายจริง'},{key:'target',label:'เป้าหมายยอดขาย'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดขายจริงเทียบเป้าหมายรายเดือน'});
+  const st=document.getElementById('exec-sales-target-summary');if(st)st.innerHTML=executiveTargetSummary(salesTarget,'เป้าหมายยอดขาย');
+  document.getElementById('exec-delivery-target-chart').innerHTML=executiveSeriesBarSvg(deliveryTarget,[{key:'actual',label:'ยอดส่งจริง'},{key:'target',label:'เป้าหมายยอดส่ง'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดส่งสินค้าจริงเทียบเป้าหมายรายเดือน'});
+  const dt=document.getElementById('exec-delivery-target-summary');if(dt)dt.innerHTML=executiveTargetSummary(deliveryTarget,'เป้าหมายยอดส่งสินค้า');
+}
+
 function renderDashCharts(){
   renderMainDashChart();
   renderCustomerChart();
@@ -2779,6 +2889,7 @@ function renderDashCharts(){
   renderDashboardProductCompareChart();
   renderDashboardMonthlyCustomerLeaderTable();
   renderDashboardSupplierCompareChart();
+  renderExecutiveComparisonCharts();
 }
 
 function collectDashboardSalesRows(year,monthVal,branches){

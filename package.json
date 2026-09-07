@@ -1,6 +1,6 @@
 {
   "name": "example-company-erp-local-demo",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,7 +17,8 @@
     "test:deployment:flat": "node --experimental-vm-modules --test tests/deployment-flat.check.cjs",
     "test:council": "node --test tests/decision-council.test.cjs",
     "audit:code": "node scripts/audit-codebase.mjs",
-    "test:codebase": "node --test tests/codebase-audit.test.cjs"
+    "test:codebase": "node --test tests/codebase-audit.test.cjs",
+    "test:executive": "node --test tests/executive-charts.test.cjs"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",

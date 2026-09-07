@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="3.6.0-source">
+<meta name="erp-demo-build" content="3.7.0-source">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,7 +27,7 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 3.6.0 · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 3.7.0 · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
       help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
@@ -65,6 +65,7 @@
 <link rel="stylesheet" href="erp-customer-experience.css">
 <link rel="stylesheet" href="erp-decision-council.css">
 <link rel="stylesheet" href="local-demo-health.css">
+<link rel="stylesheet" href="executive-charts.css">
 </head>
 <body>
 
@@ -178,6 +179,46 @@
         <span class="analytics-mini-label">MoM · YoY · Delivery · Collection · Margin</span>
       </div>
       <div id="dash-monthly-compare-table"></div>
+    </div>
+  </section>
+
+
+  <!-- EXECUTIVE VISUAL COMPARISON — DEMO 3.7 -->
+  <section class="executive-visual-section" aria-labelledby="executive-visual-title">
+    <div class="executive-visual-head">
+      <div>
+        <h3 id="executive-visual-title">📊 กราฟเปรียบเทียบสำหรับผู้บริหาร</h3>
+        <p>ใช้ข้อมูลชุดเดียวกับ Dashboard เพื่อเทียบสินค้า กลุ่มลูกค้า ยอดขาย และการส่งมอบ โดยเปลี่ยนตามสาขา/เดือน/ปีด้านบนอัตโนมัติ</p>
+      </div>
+      <span id="executive-visual-period" class="executive-visual-badge">กำลังอ่านข้อมูล</span>
+    </div>
+    <div id="executive-visual-kpis" class="executive-visual-kpis"></div>
+    <div class="executive-chart-grid">
+      <article class="card executive-chart-card wide">
+        <div class="card-title chart-title-row"><span>📦 สินค้าขายดีเปรียบเทียบรายเดือน</span><span class="analytics-mini-label">Top 3 · Monthly Product Mix</span></div>
+        <div id="exec-product-monthly-chart" class="exec-chart-host"></div>
+        <div id="exec-product-monthly-summary" class="exec-summary"></div>
+      </article>
+      <article class="card executive-chart-card">
+        <div class="card-title chart-title-row"><span>🏛️ สัดส่วนลูกค้าตามกลุ่มธุรกิจ</span><span class="analytics-mini-label">Pie / Donut</span></div>
+        <div id="exec-agency-pie-chart" class="exec-chart-host"></div>
+        <div id="exec-agency-pie-summary" class="exec-summary"></div>
+      </article>
+      <article class="card executive-chart-card">
+        <div class="card-title chart-title-row"><span>⚖️ ราชการเทียบเอกชน</span><span class="analytics-mini-label">Sales Value · Distinct Customers</span></div>
+        <div id="exec-gov-private-chart" class="exec-chart-host"></div>
+        <div id="exec-gov-private-summary" class="exec-summary"></div>
+      </article>
+      <article class="card executive-chart-card">
+        <div class="card-title chart-title-row"><span>💰 ยอดขายจริงเทียบเป้าหมายรายเดือน</span><span class="analytics-mini-label">Actual vs Target</span></div>
+        <div id="exec-sales-target-chart" class="exec-chart-host"></div>
+        <div id="exec-sales-target-summary" class="exec-summary"></div>
+      </article>
+      <article class="card executive-chart-card">
+        <div class="card-title chart-title-row"><span>🚚 ยอดส่งสินค้าจริงเทียบเป้าหมายรายเดือน</span><span class="analytics-mini-label">Actual vs Target</span></div>
+        <div id="exec-delivery-target-chart" class="exec-chart-host"></div>
+        <div id="exec-delivery-target-summary" class="exec-summary"></div>
+      </article>
     </div>
   </section>
 
