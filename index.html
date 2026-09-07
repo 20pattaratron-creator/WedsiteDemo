@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="3.7.0-source">
+<meta name="erp-demo-build" content="3.8.0-source">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,7 +27,7 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 3.7.0 · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 3.8.0 · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
       help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
@@ -183,7 +183,28 @@
   </section>
 
 
-  <!-- EXECUTIVE VISUAL COMPARISON — DEMO 3.7 -->
+  <!-- MONTHLY TARGET PLANNER — DEMO 3.8 -->
+  <section class="monthly-target-planner" aria-labelledby="monthly-target-planner-title">
+    <div class="monthly-target-planner-head">
+      <div>
+        <h3 id="monthly-target-planner-title">🎯 วางแผนเป้าหมายยอดขายและยอดส่งสินค้า 12 เดือน</h3>
+        <p>กำหนดเป้ารายเดือนในหน้าเดียว แล้วเทียบกับยอดจริงอัตโนมัติ แยกตามปีและสาขาที่เลือกบน Dashboard</p>
+      </div>
+      <span id="monthly-target-planner-scope" class="executive-visual-badge">กำลังอ่านข้อมูล</span>
+    </div>
+    <div class="monthly-target-planner-actions">
+      <label>เป้ายอดขายรวมทั้งปี <span class="annual-target-input"><input id="annual-sales-target-input" type="number" min="0" step="10000" inputmode="decimal"><span>บาท</span></span></label>
+      <button type="button" class="btn-secondary" onclick="distributeAnnualTarget('sales')">เฉลี่ยยอดขาย 12 เดือน</button>
+      <label>เป้ายอดส่งรวมทั้งปี <span class="annual-target-input"><input id="annual-delivery-target-input" type="number" min="0" step="10000" inputmode="decimal"><span>บาท</span></span></label>
+      <button type="button" class="btn-secondary" onclick="distributeAnnualTarget('delivery')">เฉลี่ยยอดส่ง 12 เดือน</button>
+      <button type="button" class="btn-secondary" onclick="copySalesTargetsToDelivery()">คัดลอกเป้ายอดขาย → ยอดส่ง</button>
+      <button type="button" class="btn-primary" onclick="saveMonthlyTargetPlanner()">💾 บันทึกเป้าหมายทั้งปี</button>
+    </div>
+    <div id="monthly-target-planner-table"></div>
+    <div class="monthly-target-planner-note">ค่าเป้าหมายใน DEMO จะบันทึกแยก Tenant + สาขา + ปี + เดือน และยังใช้ค่าเดิมเป็น fallback เพื่อไม่ทำข้อมูลเก่าหาย</div>
+  </section>
+
+  <!-- EXECUTIVE VISUAL COMPARISON — DEMO 3.8 -->
   <section class="executive-visual-section" aria-labelledby="executive-visual-title">
     <div class="executive-visual-head">
       <div>

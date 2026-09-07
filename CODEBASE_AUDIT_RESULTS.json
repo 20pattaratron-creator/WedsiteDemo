@@ -1,10 +1,10 @@
 {
-  "version": "3.7.0",
-  "packageVersion": "1.7.0",
-  "checkedAt": "2026-09-07T10:39:11.730Z",
+  "version": "3.8.0",
+  "packageVersion": "1.8.0",
+  "checkedAt": "2026-09-07T11:14:40.979Z",
   "runtimeRootFiles": 39,
   "jsFiles": 20,
-  "inlineHandlerFunctions": 98,
+  "inlineHandlerFunctions": 101,
   "issues": [],
   "notes": [
     {

@@ -1835,6 +1835,7 @@ function saveDeliveryTarget(){
       setTargetPeriodOverride(DELIVERY_TARGET_PERIOD_STORAGE_KEY,scope,year,month,value);
     }
     renderDeliveryTargetDashboard();
+    renderMonthlyTargetPlanner();
     renderExecutiveComparisonCharts();
   }catch(error){
     console.error('บันทึกเป้าหมายไม่สำเร็จ',error);
@@ -2048,6 +2049,7 @@ function saveSalesTarget(){
   try{
     setTargetPeriodOverride(SALES_TARGET_PERIOD_STORAGE_KEY,currentTargetScope(),year,month,value);
     renderSalesTargetDashboard();
+    renderMonthlyTargetPlanner();
     renderExecutiveComparisonCharts();
   }catch(error){
     console.error('บันทึกเป้าหมายยอดขายไม่สำเร็จ',error);
@@ -2794,9 +2796,14 @@ function renderDashboardAgencyChart(){
 }
 
 // ============================================================
-// EXECUTIVE VISUAL COMPARISON — DEMO 3.7
-// Pure SVG/CSS charts; no external chart library and no duplicated business totals.
+// MONTHLY TARGET PLANNER + EXECUTIVE INTERACTIVE CHARTS — DEMO 3.8
+// Uses the same ERP business totals as the Dashboard. No external chart library.
 // ============================================================
+const EXECUTIVE_DETAIL_REGISTRY=new Map();
+let executiveDetailSeq=0;
+function executiveResetDetails(){EXECUTIVE_DETAIL_REGISTRY.clear();executiveDetailSeq=0;}
+function executiveRegisterDetail(detail={}){const id=`exec-detail-${++executiveDetailSeq}`;EXECUTIVE_DETAIL_REGISTRY.set(id,detail);return id;}
+function executiveDetailAttrs(detail={}){const id=executiveRegisterDetail(detail);return `data-exec-detail-id="${id}" tabindex="0" role="button" aria-label="ดูรายละเอียด ${escapeHtml(detail.title||detail.label||'กราฟ')}"`;}
 function executiveCompactMoney(value){
   const n=Math.abs(safeNum(value));
   if(n>=1000000)return `฿${(safeNum(value)/1000000).toLocaleString('th-TH',{maximumFractionDigits:1})}M`;
@@ -2804,85 +2811,115 @@ function executiveCompactMoney(value){
   return chartMoney(value);
 }
 function executiveKpi(label,value,detail){return `<div class="exec-kpi"><small>${escapeHtml(label)}</small><b>${escapeHtml(value)}</b><span>${escapeHtml(detail||'')}</span></div>`;}
+function executiveDetailRowsHtml(detail={}){
+  const rows=Array.isArray(detail.rows)?detail.rows:[];
+  return rows.map(row=>`<div class="exec-detail-row"><span>${escapeHtml(row.label||'')}</span><b>${row.html===true?String(row.value??''):escapeHtml(String(row.value??'-'))}</b></div>`).join('');
+}
+function ensureExecutiveDetailUi(){
+  if(!document.getElementById('exec-chart-tooltip')){
+    const tip=document.createElement('div');tip.id='exec-chart-tooltip';tip.className='exec-chart-tooltip';tip.hidden=true;document.body.appendChild(tip);
+  }
+  if(!document.getElementById('exec-chart-detail-modal')){
+    const modal=document.createElement('div');modal.id='exec-chart-detail-modal';modal.className='exec-chart-detail-modal';modal.hidden=true;modal.innerHTML=`<div class="exec-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="exec-detail-title"><div class="exec-detail-head"><div><small id="exec-detail-kicker"></small><h3 id="exec-detail-title"></h3></div><button type="button" class="exec-detail-close" aria-label="ปิดรายละเอียด">×</button></div><div id="exec-detail-body" class="exec-detail-body"></div><div id="exec-detail-note" class="exec-detail-note"></div></div>`;document.body.appendChild(modal);
+    modal.addEventListener('click',event=>{if(event.target===modal||event.target.closest('.exec-detail-close'))closeExecutiveChartDetail();});
+  }
+}
+function showExecutiveTooltip(target,event){
+  const id=target?.dataset?.execDetailId,detail=EXECUTIVE_DETAIL_REGISTRY.get(id);if(!detail)return;
+  ensureExecutiveDetailUi();const tip=document.getElementById('exec-chart-tooltip');
+  const primary=detail.primary||detail.rows?.[0]?.value||'';const secondary=detail.secondary||detail.rows?.[1]?.value||'';
+  tip.innerHTML=`<b>${escapeHtml(detail.title||'รายละเอียด')}</b>${primary?`<span>${escapeHtml(String(primary))}</span>`:''}${secondary?`<small>${escapeHtml(String(secondary))}</small>`:''}`;
+  const rect=target.getBoundingClientRect(),x=event?.clientX||rect.left+rect.width/2,y=event?.clientY||rect.top;
+  tip.style.left=`${Math.min(window.innerWidth-16,Math.max(12,x))}px`;tip.style.top=`${Math.max(12,y-10)}px`;tip.hidden=false;
+}
+function hideExecutiveTooltip(){const tip=document.getElementById('exec-chart-tooltip');if(tip)tip.hidden=true;}
+function openExecutiveChartDetail(id){
+  const detail=EXECUTIVE_DETAIL_REGISTRY.get(String(id||''));if(!detail)return;
+  ensureExecutiveDetailUi();hideExecutiveTooltip();
+  const modal=document.getElementById('exec-chart-detail-modal');
+  document.getElementById('exec-detail-kicker').textContent=detail.kicker||'รายละเอียดกราฟ';
+  document.getElementById('exec-detail-title').textContent=detail.title||'รายละเอียด';
+  document.getElementById('exec-detail-body').innerHTML=executiveDetailRowsHtml(detail);
+  const note=document.getElementById('exec-detail-note');note.textContent=detail.note||'';note.hidden=!detail.note;
+  modal.hidden=false;document.body.classList.add('exec-detail-open');
+  setTimeout(()=>modal.querySelector('.exec-detail-close')?.focus(),0);
+}
+function closeExecutiveChartDetail(){const modal=document.getElementById('exec-chart-detail-modal');if(modal)modal.hidden=true;document.body.classList.remove('exec-detail-open');}
+function installExecutiveChartInteractions(){
+  if(document.documentElement.dataset.execChartInteractions==='1')return;document.documentElement.dataset.execChartInteractions='1';ensureExecutiveDetailUi();
+  document.addEventListener('pointerover',event=>{const target=event.target.closest?.('[data-exec-detail-id]');if(target&&event.pointerType!=='touch')showExecutiveTooltip(target,event);});
+  document.addEventListener('pointerout',event=>{if(event.target.closest?.('[data-exec-detail-id]'))hideExecutiveTooltip();});
+  document.addEventListener('focusin',event=>{const target=event.target.closest?.('[data-exec-detail-id]');if(target)showExecutiveTooltip(target);});
+  document.addEventListener('focusout',event=>{if(event.target.closest?.('[data-exec-detail-id]'))hideExecutiveTooltip();});
+  document.addEventListener('click',event=>{const target=event.target.closest?.('[data-exec-detail-id]');if(!target)return;event.preventDefault();openExecutiveChartDetail(target.dataset.execDetailId);});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeExecutiveChartDetail();hideExecutiveTooltip();return;}if((event.key==='Enter'||event.key===' ')&&event.target.closest?.('[data-exec-detail-id]')){event.preventDefault();openExecutiveChartDetail(event.target.closest('[data-exec-detail-id]').dataset.execDetailId);}});
+  document.addEventListener('input',event=>{const id=String(event.target?.id||'');const match=/^target-plan-(sales|delivery)-\d+$/.exec(id);if(!match)return;const kind=match[1],total=Array.from({length:12},(_,month)=>Math.max(0,safeNum(document.getElementById(`target-plan-${kind}-${month}`)?.value))).reduce((sum,value)=>sum+value,0),annual=document.getElementById(kind==='sales'?'annual-sales-target-input':'annual-delivery-target-input');if(annual)annual.value=Math.round(total);});
+}
+function monthlyTargetPlannerRows(year){
+  const branches=dashBranches(),salesActual=rowsForMonthlyChart(year,branches,'sales'),deliveryActual=rowsForMonthlyChart(year,branches,'delivery');
+  return MONTHS.map((label,month)=>{const salesTarget=currentSalesTarget(year,month),deliveryTarget=currentDeliveryTarget(year,month),sales=safeNum(salesActual[month]?.value),delivery=safeNum(deliveryActual[month]?.value);return{month,label,salesTarget,deliveryTarget,salesActual:sales,deliveryActual:delivery,salesRate:salesTarget>0?sales/salesTarget*100:0,deliveryRate:deliveryTarget>0?delivery/deliveryTarget*100:0};});
+}
+function targetPlannerRateBadge(rate,target){if(!target)return'<span class="target-rate neutral">ยังไม่ตั้งเป้า</span>';const cls=rate>=100?'good':rate>=80?'watch':'risk';return`<span class="target-rate ${cls}">${Math.max(0,rate).toFixed(1)}%</span>`;}
+function renderMonthlyTargetPlanner(){
+  const host=document.getElementById('monthly-target-planner-table');if(!host)return;
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),scope=currentTargetScope(),scopeLabel=scope==='all'?'รวมทั้ง 2 สาขา':BRANCH_TH[scope],rows=monthlyTargetPlannerRows(year);
+  const badge=document.getElementById('monthly-target-planner-scope');if(badge)badge.textContent=`พ.ศ. ${yearLabelDual(year)} · ${scopeLabel}`;
+  const salesTotal=rows.reduce((s,r)=>s+r.salesTarget,0),deliveryTotal=rows.reduce((s,r)=>s+r.deliveryTarget,0),salesActual=rows.reduce((s,r)=>s+r.salesActual,0),deliveryActual=rows.reduce((s,r)=>s+r.deliveryActual,0);
+  const annualSales=document.getElementById('annual-sales-target-input'),annualDelivery=document.getElementById('annual-delivery-target-input');if(annualSales&&document.activeElement!==annualSales)annualSales.value=Math.round(salesTotal||0);if(annualDelivery&&document.activeElement!==annualDelivery)annualDelivery.value=Math.round(deliveryTotal||0);
+  host.innerHTML=`<div class="monthly-target-table-wrap"><table class="monthly-target-table"><thead><tr><th>เดือน</th><th>เป้ายอดขาย</th><th>ยอดขายจริง</th><th>ทำได้</th><th>เป้ายอดส่ง</th><th>ยอดส่งจริง</th><th>ทำได้</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${escapeHtml(r.label)}</b></td><td><div class="target-cell-input"><input id="target-plan-sales-${r.month}" type="number" min="0" step="10000" inputmode="decimal" value="${Math.round(r.salesTarget)}"><span>฿</span></div></td><td class="num">${chartMoney(r.salesActual)}</td><td>${targetPlannerRateBadge(r.salesRate,r.salesTarget)}</td><td><div class="target-cell-input"><input id="target-plan-delivery-${r.month}" type="number" min="0" step="10000" inputmode="decimal" value="${Math.round(r.deliveryTarget)}"><span>฿</span></div></td><td class="num">${chartMoney(r.deliveryActual)}</td><td>${targetPlannerRateBadge(r.deliveryRate,r.deliveryTarget)}</td></tr>`).join('')}</tbody><tfoot><tr><td>รวมทั้งปี</td><td class="num">${chartMoney(salesTotal)}</td><td class="num">${chartMoney(salesActual)}</td><td>${targetPlannerRateBadge(salesTotal>0?salesActual/salesTotal*100:0,salesTotal)}</td><td class="num">${chartMoney(deliveryTotal)}</td><td class="num">${chartMoney(deliveryActual)}</td><td>${targetPlannerRateBadge(deliveryTotal>0?deliveryActual/deliveryTotal*100:0,deliveryTotal)}</td></tr></tfoot></table></div>`;
+}
+function distributeAnnualTarget(kind){
+  const source=document.getElementById(kind==='delivery'?'annual-delivery-target-input':'annual-sales-target-input'),total=Math.max(0,safeNum(source?.value)),base=Math.floor(total/12);let assigned=0;
+  for(let month=0;month<12;month++){const el=document.getElementById(`target-plan-${kind}-${month}`);if(!el)continue;const value=month===11?Math.max(0,total-assigned):base;el.value=Math.round(value);assigned+=value;}
+}
+function copySalesTargetsToDelivery(){for(let month=0;month<12;month++){const src=document.getElementById(`target-plan-sales-${month}`),dst=document.getElementById(`target-plan-delivery-${month}`);if(src&&dst)dst.value=src.value;}const annual=document.getElementById('annual-delivery-target-input'),salesAnnual=document.getElementById('annual-sales-target-input');if(annual&&salesAnnual)annual.value=salesAnnual.value;}
+function saveMonthlyTargetPlanner(){
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),scope=currentTargetScope();
+  try{for(let month=0;month<12;month++){setTargetPeriodOverride(SALES_TARGET_PERIOD_STORAGE_KEY,scope,year,month,Math.max(0,safeNum(document.getElementById(`target-plan-sales-${month}`)?.value)));setTargetPeriodOverride(DELIVERY_TARGET_PERIOD_STORAGE_KEY,scope,year,month,Math.max(0,safeNum(document.getElementById(`target-plan-delivery-${month}`)?.value)));}renderMonthlyTargetPlanner();renderSalesTargetDashboard();renderDeliveryTargetDashboard();renderExecutiveComparisonCharts();notify('บันทึกเป้าหมายยอดขายและยอดส่งสินค้า 12 เดือนแล้ว');}catch(error){console.error('บันทึกเป้าหมายทั้งปีไม่สำเร็จ',error);notify('บันทึกเป้าหมายทั้งปีไม่สำเร็จ: '+(error?.message||error));}
+}
 function executiveSeriesBarSvg(rows,series,opt={}){
   if(!rows?.length||!series?.length)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลสำหรับแสดงกราฟ</div>';
   const width=Math.max(780,rows.length*(opt.groupWidth||68)+90),height=300,pad={l:58,r:18,t:24,b:52};
-  const all=rows.flatMap(row=>series.map(s=>Math.max(0,safeNum(row[s.key]))));
-  const max=Math.max(...all,1)*1.08,plotW=width-pad.l-pad.r,plotH=height-pad.t-pad.b;
-  const y=v=>height-pad.b-(safeNum(v)/max)*plotH;
+  const all=rows.flatMap(row=>series.map(s=>Math.max(0,safeNum(row[s.key]))));const max=Math.max(...all,1)*1.08,plotW=width-pad.l-pad.r,plotH=height-pad.t-pad.b,y=v=>height-pad.b-(safeNum(v)/max)*plotH;
   const ticks=[0,.25,.5,.75,1].map(p=>{const value=max*p,yy=y(value);return `<line x1="${pad.l}" y1="${yy.toFixed(1)}" x2="${width-pad.r}" y2="${yy.toFixed(1)}" class="exec-axis"/><text x="${pad.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" class="exec-axis-label">${escapeHtml(executiveCompactMoney(value).replace('฿',''))}</text>`;}).join('');
-  const slot=plotW/rows.length,groupW=Math.min(slot*.78,54),barW=Math.max(4,groupW/series.length-2);
-  let bars='',labels='';
-  rows.forEach((row,i)=>{
-    const center=pad.l+slot*i+slot/2,totalW=series.length*barW+(series.length-1)*2,start=center-totalW/2;
-    series.forEach((sr,j)=>{const value=Math.max(0,safeNum(row[sr.key])),yy=y(value),h=Math.max(0,height-pad.b-yy),x=start+j*(barW+2);bars+=`<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="2" class="exec-series-${j%5}"><title>${escapeHtml(row.label)} · ${escapeHtml(sr.label)} · ${chartMoney(value)}</title></rect>`;});
-    labels+=`<text x="${center.toFixed(1)}" y="${height-25}" text-anchor="middle" class="exec-axis-label">${escapeHtml(opt.shortLabels?String(row.label).slice(0,3):row.label)}</text>`;
-  });
-  const legend=series.map((sr,i)=>`<span><i class="s${i%5}"></i>${escapeHtml(sr.label)}</span>`).join('');
-  return `<div class="exec-chart-scroll"><svg class="exec-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(opt.ariaLabel||'กราฟเปรียบเทียบ')}">${ticks}${bars}${labels}</svg></div><div class="exec-chart-legend">${legend}</div>`;
+  const slot=plotW/rows.length,groupW=Math.min(slot*.78,54),barW=Math.max(4,groupW/series.length-2);let bars='',labels='';
+  rows.forEach((row,i)=>{const center=pad.l+slot*i+slot/2,totalW=series.length*barW+(series.length-1)*2,start=center-totalW/2;series.forEach((sr,j)=>{const value=Math.max(0,safeNum(row[sr.key])),yy=y(value),h=Math.max(0,height-pad.b-yy),x=start+j*(barW+2),detail=typeof opt.detailFor==='function'?opt.detailFor(row,sr,j):{title:`${row.label} · ${sr.label}`,primary:chartMoney(value),rows:[{label:'มูลค่า',value:chartMoney(value)}]};bars+=`<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="exec-series-${j%5} exec-interactive-mark" ${executiveDetailAttrs(detail)}><title>${escapeHtml(row.label)} · ${escapeHtml(sr.label)} · ${chartMoney(value)}</title></rect>`;});labels+=`<text x="${center.toFixed(1)}" y="${height-25}" text-anchor="middle" class="exec-axis-label">${escapeHtml(opt.shortLabels?String(row.label).slice(0,3):row.label)}</text>`;});
+  const legend=series.map((sr,i)=>`<span><i class="s${i%5}"></i>${escapeHtml(sr.label)}</span>`).join('');return `<div class="exec-chart-scroll"><svg class="exec-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(opt.ariaLabel||'กราฟเปรียบเทียบ')}">${ticks}${bars}${labels}</svg></div><div class="exec-chart-legend">${legend}</div>`;
 }
-function executivePieArc(cx,cy,r,startAngle,endAngle){
-  const polar=a=>{const rad=(a-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}};
-  const start=polar(endAngle),end=polar(startAngle),large=endAngle-startAngle<=180?0:1;
-  return `M ${cx} ${cy} L ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)} Z`;
-}
+function executivePieArc(cx,cy,r,startAngle,endAngle){const polar=a=>{const rad=(a-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}};const start=polar(endAngle),end=polar(startAngle),large=endAngle-startAngle<=180?0:1;return `M ${cx} ${cy} L ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)} Z`;}
 function executiveDonutChart(rows){
-  const valid=(rows||[]).filter(r=>safeNum(r.value)>0),total=valid.reduce((s,r)=>s+safeNum(r.value),0);
-  if(!total)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลกลุ่มลูกค้าในช่วงที่เลือก</div>';
-  let angle=0;const paths=valid.map((r,i)=>{const sweep=safeNum(r.value)/total*360,start=angle,end=angle+sweep;angle=end;return `<path d="${executivePieArc(100,100,82,start,end)}" class="exec-series-${i%5}"><title>${escapeHtml(r.label)} · ${chartMoney(r.value)} · ${ratioPercent(r.value,total).toFixed(1)}%</title></path>`;}).join('');
-  const legend=valid.map((r,i)=>`<div class="exec-pie-row"><i class="s${i%5}" style="background:${['#2563eb','#8b5cf6','#16a34a','#f59e0b','#ef4444'][i%5]}"></i><div>${escapeHtml(r.label)}<small>${ratioPercent(r.value,total).toFixed(1)}% ของยอดในช่วงนี้</small></div><strong>${executiveCompactMoney(r.value)}</strong></div>`).join('');
-  return `<div class="exec-pie-layout"><svg class="exec-pie-svg" viewBox="0 0 200 200" role="img" aria-label="กราฟวงกลมสัดส่วนลูกค้าตามกลุ่มธุรกิจ">${paths}<circle cx="100" cy="100" r="48" fill="white"/><text x="100" y="97" text-anchor="middle" class="exec-pie-center-value">${escapeHtml(executiveCompactMoney(total))}</text><text x="100" y="116" text-anchor="middle" class="exec-pie-center-label">ยอดรวมก่อน VAT</text></svg><div class="exec-pie-legend">${legend}</div></div>`;
+  const valid=(rows||[]).filter(r=>safeNum(r.value)>0),total=valid.reduce((s,r)=>s+safeNum(r.value),0);if(!total)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลกลุ่มลูกค้าในช่วงที่เลือก</div>';
+  let angle=0;const paths=valid.map((r,i)=>{const sweep=safeNum(r.value)/total*360,start=angle,end=angle+sweep;angle=end;const pct=ratioPercent(r.value,total),detail={kicker:'สัดส่วนลูกค้า',title:r.label,primary:chartMoney(r.value),secondary:`${pct.toFixed(1)}% ของกราฟ`,rows:[{label:'ยอดขายรวม',value:chartMoney(r.value)},{label:'สัดส่วน',value:`${pct.toFixed(1)}%`},{label:'จำนวนลูกค้า',value:`${fmt(r.customerCount||0)} ราย`},{label:'จำนวนเอกสาร',value:`${fmt(r.docs||0)} รายการ`}],note:'ยอดขายก่อน VAT ตามช่วงและสาขาที่เลือก'};return `<path d="${executivePieArc(100,100,82,start,end)}" class="exec-series-${i%5} exec-interactive-mark" ${executiveDetailAttrs(detail)}><title>${escapeHtml(r.label)} · ${chartMoney(r.value)} · ${pct.toFixed(1)}%</title></path>`;}).join('');
+  const legend=valid.map((r,i)=>`<div class="exec-pie-row"><i class="s${i%5}" style="background:${['#2563eb','#8b5cf6','#16a34a','#f59e0b','#ef4444'][i%5]}"></i><div>${escapeHtml(r.label)}<small>${ratioPercent(r.value,total).toFixed(1)}% ของยอดในช่วงนี้</small></div><strong>${executiveCompactMoney(r.value)}</strong></div>`).join('');return `<div class="exec-pie-layout"><svg class="exec-pie-svg" viewBox="0 0 200 200" role="img" aria-label="กราฟวงกลมสัดส่วนลูกค้าตามกลุ่มธุรกิจ">${paths}<circle cx="100" cy="100" r="48" fill="white"/><text x="100" y="97" text-anchor="middle" class="exec-pie-center-value">${escapeHtml(executiveCompactMoney(total))}</text><text x="100" y="116" text-anchor="middle" class="exec-pie-center-label">ยอดรวมก่อน VAT</text></svg><div class="exec-pie-legend">${legend}</div></div>`;
 }
 function buildExecutiveProductMonthly(year,branches){
-  const items=analyticsItemRows(collectDashboardSalesRows(year,-1,branches));
-  const top=groupAnalytics(items,row=>row.product,row=>row.value).slice(0,3);
-  const rows=MONTHS.map((label,month)=>{const row={label};top.forEach((p,i)=>{row[`p${i}`]=items.filter(x=>Number(x._month)===month&&x.product===p.label).reduce((s,x)=>s+safeNum(x.value),0);});return row;});
+  const items=analyticsItemRows(collectDashboardSalesRows(year,-1,branches)),top=groupAnalytics(items,row=>row.product,row=>row.value).slice(0,3);
+  const rows=MONTHS.map((label,month)=>{const monthItems=items.filter(x=>Number(x._month)===month),monthTotal=monthItems.reduce((s,x)=>s+safeNum(x.value),0),row={label,month,monthTotal,details:{}};top.forEach((p,i)=>{const productItems=monthItems.filter(x=>x.product===p.label),value=productItems.reduce((s,x)=>s+safeNum(x.value),0),qty=productItems.reduce((s,x)=>s+safeNum(x.qty),0),unit=mostCommonLabel(productItems.map(x=>x.unit)),customers=new Set(productItems.map(x=>x.customer).filter(Boolean));row[`p${i}`]=value;row.details[`p${i}`]={product:p.label,value,qty,unit,avgPrice:qty>0?value/qty:0,share:ratioPercent(value,monthTotal),customerCount:customers.size};});return row;});
   return{rows,series:top.map((p,i)=>({key:`p${i}`,label:p.label,total:p.value})),top};
 }
-function buildExecutiveAgencyComparison(year,month,branches){
-  const salesRows=collectDashboardSalesRows(year,month,branches),map=new Map();
-  salesRows.forEach(row=>{const agency=customerAgencyForRecord(row),key=agency.customerAgencyGroup||'other',cur=map.get(key)||{key,label:agency.customerAgencyGroupLabel||agencyGroupLabel(key),value:0,customers:new Set(),docs:0};cur.value+=analyticsSalesValue(row);cur.docs++;const customer=analyticsCustomer(row);if(customer&&customer!=='ไม่ระบุลูกค้า')cur.customers.add(customer);map.set(key,cur);});
-  const rows=[...map.values()].map(r=>({...r,customerCount:r.customers.size})).sort((a,b)=>b.value-a.value);
-  return{rows,government:rows.find(r=>r.key==='government')||{value:0,customerCount:0,label:'ราชการ / หน่วยงานรัฐ'},privateCompany:rows.find(r=>r.key==='private_company')||{value:0,customerCount:0,label:'บริษัทเอกชน'}};
-}
+function buildExecutiveAgencyComparison(year,month,branches){const salesRows=collectDashboardSalesRows(year,month,branches),map=new Map();salesRows.forEach(row=>{const agency=customerAgencyForRecord(row),key=agency.customerAgencyGroup||'other',cur=map.get(key)||{key,label:agency.customerAgencyGroupLabel||agencyGroupLabel(key),value:0,customers:new Set(),docs:0};cur.value+=analyticsSalesValue(row);cur.docs++;const customer=analyticsCustomer(row);if(customer&&customer!=='ไม่ระบุลูกค้า')cur.customers.add(customer);map.set(key,cur);});const rows=[...map.values()].map(r=>({...r,customerCount:r.customers.size})).sort((a,b)=>b.value-a.value);return{rows,government:rows.find(r=>r.key==='government')||{value:0,customerCount:0,label:'ราชการ / หน่วยงานรัฐ'},privateCompany:rows.find(r=>r.key==='private_company')||{value:0,customerCount:0,label:'บริษัทเอกชน'}};}
 function executiveGovPrivateBars(model){
-  const rows=[{...model.government,key:'government'},{...model.privateCompany,key:'private'}],max=Math.max(...rows.map(r=>safeNum(r.value)),1);
-  return `<div class="exec-compare-bars">${rows.map(r=>`<div class="exec-compare-row"><div class="exec-compare-label"><b>${escapeHtml(r.label)}</b><small>${fmt(r.customerCount)} ลูกค้า</small></div><div class="exec-compare-track"><div class="exec-compare-fill ${r.key==='private'?'private':''}" style="width:${Math.max(r.value?3:0,r.value/max*100)}%"></div></div><div class="exec-compare-value">${chartMoney(r.value)}</div></div>`).join('')}</div>`;
+  const rows=[{...model.government,key:'government'},{...model.privateCompany,key:'private'}],max=Math.max(...rows.map(r=>safeNum(r.value)),1),total=rows.reduce((s,r)=>s+safeNum(r.value),0);
+  return `<div class="exec-compare-bars">${rows.map(r=>{const pct=ratioPercent(r.value,total),detail={kicker:'ราชการเทียบเอกชน',title:r.label,primary:chartMoney(r.value),secondary:`${pct.toFixed(1)}% ของสองกลุ่ม`,rows:[{label:'ยอดขาย',value:chartMoney(r.value)},{label:'สัดส่วน',value:`${pct.toFixed(1)}%`},{label:'ลูกค้าไม่ซ้ำ',value:`${fmt(r.customerCount)} ราย`}]};return `<div class="exec-compare-row exec-interactive-row" ${executiveDetailAttrs(detail)}><div class="exec-compare-label"><b>${escapeHtml(r.label)}</b><small>${fmt(r.customerCount)} ลูกค้า</small></div><div class="exec-compare-track"><div class="exec-compare-fill ${r.key==='private'?'private':''}" style="width:${Math.max(r.value?3:0,r.value/max*100)}%"></div></div><div class="exec-compare-value">${chartMoney(r.value)}</div></div>`;}).join('')}</div>`;
 }
-function executiveMonthlyTargetRows(year,metric){
-  const actual=rowsForMonthlyChart(year,dashBranches(),metric);
-  return actual.map((r,month)=>({label:r.label,actual:safeNum(r.value),target:metric==='sales'?currentSalesTarget(year,month):currentDeliveryTarget(year,month)}));
-}
-function executiveTargetSummary(rows,label){
-  const active=rows.filter(r=>r.target>0),hits=active.filter(r=>r.actual>=r.target).length,totalActual=rows.reduce((s,r)=>s+r.actual,0),totalTarget=active.reduce((s,r)=>s+r.target,0),best=rows.slice().sort((a,b)=>b.actual-a.actual)[0];
-  if(!active.length)return `ยังไม่ได้กำหนด${label}สำหรับช่วงนี้`;
-  return `ทำได้ถึง/เกินเป้า <b>${hits}/${active.length} เดือน</b> · ยอดจริงรวม <b>${chartMoney(totalActual)}</b> เทียบเป้ารวม <b>${chartMoney(totalTarget)}</b>${best?.actual>0?` · เดือนสูงสุด <b>${escapeHtml(best.label)}</b> ${chartMoney(best.actual)}`:''}`;
-}
+function executiveMonthlyTargetRows(year,metric){const actual=rowsForMonthlyChart(year,dashBranches(),metric);return actual.map((r,month)=>({month,label:r.label,actual:safeNum(r.value),target:metric==='sales'?currentSalesTarget(year,month):currentDeliveryTarget(year,month)}));}
+function executiveTargetSummary(rows,label){const active=rows.filter(r=>r.target>0),hits=active.filter(r=>r.actual>=r.target).length,totalActual=rows.reduce((s,r)=>s+r.actual,0),totalTarget=active.reduce((s,r)=>s+r.target,0),best=rows.slice().sort((a,b)=>b.actual-a.actual)[0];if(!active.length)return `ยังไม่ได้กำหนด${label}สำหรับช่วงนี้`;return `ทำได้ถึง/เกินเป้า <b>${hits}/${active.length} เดือน</b> · ยอดจริงรวม <b>${chartMoney(totalActual)}</b> เทียบเป้ารวม <b>${chartMoney(totalTarget)}</b>${best?.actual>0?` · เดือนสูงสุด <b>${escapeHtml(best.label)}</b> ${chartMoney(best.actual)}`:''}`;}
+function targetDetail(row,kind){const label=kind==='sales'?'ยอดขาย':'ยอดส่งสินค้า',actual=safeNum(row.actual),target=safeNum(row.target),rate=target>0?actual/target*100:0,gap=actual-target;return{kicker:`${label}เทียบเป้าหมาย`,title:row.label,primary:chartMoney(actual),secondary:target>0?`${rate.toFixed(1)}% ของเป้าหมาย`:'ยังไม่กำหนดเป้าหมาย',rows:[{label:`${label}จริง`,value:chartMoney(actual)},{label:'เป้าหมาย',value:target>0?chartMoney(target):'ยังไม่กำหนด'},{label:'ความสำเร็จ',value:target>0?`${rate.toFixed(1)}%`:'-'},{label:gap>=0?'เกินเป้า':'ยังขาด',value:target>0?chartMoney(Math.abs(gap)):'-'}],note:'แตะ/คลิกแท่งเดือนอื่นเพื่อเปรียบเทียบรายละเอียด'};}
 function renderExecutiveComparisonCharts(){
-  const host=document.getElementById('executive-visual-kpis');if(!host)return;
-  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),month=parseInt(document.getElementById('dash-month')?.value??-1,10),branches=dashBranches();
-  const scope=dashTab==='all'?'รวมทั้ง 2 สาขา':BRANCH_TH[dashTab],period=month===-1?'ทั้งปี':MONTHS[month];
-  const periodEl=document.getElementById('executive-visual-period');if(periodEl)periodEl.textContent=`${period} พ.ศ. ${yearLabelDual(year)} · ${scope}`;
-  const products=buildExecutiveProductMonthly(year,branches),agency=buildExecutiveAgencyComparison(year,month,branches),salesTarget=executiveMonthlyTargetRows(year,'sales'),deliveryTarget=executiveMonthlyTargetRows(year,'delivery');
-  const gov=agency.government,priv=agency.privateCompany,delta=priv.value>0?(gov.value-priv.value)/priv.value*100:null;
-  const salesCurrent=month>=0?salesTarget[month]:salesTarget.reduce((s,r)=>s+r.actual,0),deliveryCurrent=month>=0?deliveryTarget[month]:deliveryTarget.reduce((s,r)=>s+r.actual,0);
-  host.innerHTML=executiveKpi('สินค้าขายดีอันดับ 1',products.top[0]?.label||'ยังไม่มีข้อมูล',products.top[0]?`ทั้งปี ${chartMoney(products.top[0].value)}`:'')+
-    executiveKpi('ราชการ / หน่วยงานรัฐ',chartMoney(gov.value),`${fmt(gov.customerCount)} ลูกค้า`)+
-    executiveKpi('บริษัทเอกชน',chartMoney(priv.value),`${fmt(priv.customerCount)} ลูกค้า`)+
-    executiveKpi('ยอดขาย / ยอดส่งในมุมมอง',`${chartMoney(salesCurrent.actual??salesCurrent)} / ${chartMoney(deliveryCurrent.actual??deliveryCurrent)}`,month>=0?'เดือนที่เลือก':'รวมทั้งปี');
-  document.getElementById('exec-product-monthly-chart').innerHTML=executiveSeriesBarSvg(products.rows,products.series,{shortLabels:true,ariaLabel:'กราฟแท่งสินค้าขายดี Top 3 เปรียบเทียบรายเดือน'});
-  const productSummary=document.getElementById('exec-product-monthly-summary');if(productSummary)productSummary.innerHTML=products.top.length?`Top 3 ของปีนี้คือ ${products.top.map((p,i)=>`<b>${i+1}. ${escapeHtml(p.label)}</b> ${chartMoney(p.value)}`).join(' · ')} · ใช้ดูฤดูกาลขายและวางแผน Stock/ผลิต`:'ยังไม่มีข้อมูลสินค้าในปีที่เลือก';
-  document.getElementById('exec-agency-pie-chart').innerHTML=executiveDonutChart(agency.rows);
-  const agencySummary=document.getElementById('exec-agency-pie-summary');if(agencySummary)agencySummary.innerHTML=agency.rows.length?`กลุ่มที่สร้างยอดสูงสุดคือ <b>${escapeHtml(agency.rows[0].label)}</b> ${chartMoney(agency.rows[0].value)} · กราฟนี้ใช้ยอดขายก่อน VAT ชุดเดียวกับ Dashboard`:'ยังไม่มีข้อมูลกลุ่มลูกค้า';
-  document.getElementById('exec-gov-private-chart').innerHTML=executiveGovPrivateBars(agency);
-  const gpSummary=document.getElementById('exec-gov-private-summary');if(gpSummary){if(!gov.value&&!priv.value)gpSummary.textContent='ยังไม่มีข้อมูลราชการหรือบริษัทเอกชนในช่วงที่เลือก';else if(delta===null)gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐมียอด <b>${chartMoney(gov.value)}</b> ขณะที่ยังไม่มียอดจากบริษัทเอกชนในช่วงนี้`;else if(Math.abs(delta)<.01)gpSummary.innerHTML='ยอดราชการ/หน่วยงานรัฐและบริษัทเอกชนใกล้เคียงกัน';else gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐ${delta>0?'มากกว่า':'น้อยกว่า'}บริษัทเอกชน <b>${Math.abs(delta).toFixed(1)}%</b> (${chartMoney(gov.value)} vs ${chartMoney(priv.value)})`;}
-  document.getElementById('exec-sales-target-chart').innerHTML=executiveSeriesBarSvg(salesTarget,[{key:'actual',label:'ยอดขายจริง'},{key:'target',label:'เป้าหมายยอดขาย'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดขายจริงเทียบเป้าหมายรายเดือน'});
-  const st=document.getElementById('exec-sales-target-summary');if(st)st.innerHTML=executiveTargetSummary(salesTarget,'เป้าหมายยอดขาย');
-  document.getElementById('exec-delivery-target-chart').innerHTML=executiveSeriesBarSvg(deliveryTarget,[{key:'actual',label:'ยอดส่งจริง'},{key:'target',label:'เป้าหมายยอดส่ง'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดส่งสินค้าจริงเทียบเป้าหมายรายเดือน'});
-  const dt=document.getElementById('exec-delivery-target-summary');if(dt)dt.innerHTML=executiveTargetSummary(deliveryTarget,'เป้าหมายยอดส่งสินค้า');
+  const host=document.getElementById('executive-visual-kpis');if(!host)return;executiveResetDetails();installExecutiveChartInteractions();
+  const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),month=parseInt(document.getElementById('dash-month')?.value??-1,10),branches=dashBranches(),scope=dashTab==='all'?'รวมทั้ง 2 สาขา':BRANCH_TH[dashTab],period=month===-1?'ทั้งปี':MONTHS[month];const periodEl=document.getElementById('executive-visual-period');if(periodEl)periodEl.textContent=`${period} พ.ศ. ${yearLabelDual(year)} · ${scope}`;
+  const products=buildExecutiveProductMonthly(year,branches),agency=buildExecutiveAgencyComparison(year,month,branches),salesTarget=executiveMonthlyTargetRows(year,'sales'),deliveryTarget=executiveMonthlyTargetRows(year,'delivery'),gov=agency.government,priv=agency.privateCompany,delta=priv.value>0?(gov.value-priv.value)/priv.value*100:null,salesCurrent=month>=0?salesTarget[month]:salesTarget.reduce((s,r)=>s+r.actual,0),deliveryCurrent=month>=0?deliveryTarget[month]:deliveryTarget.reduce((s,r)=>s+r.actual,0);
+  host.innerHTML=executiveKpi('สินค้าขายดีอันดับ 1',products.top[0]?.label||'ยังไม่มีข้อมูล',products.top[0]?`ทั้งปี ${chartMoney(products.top[0].value)}`:'')+executiveKpi('ราชการ / หน่วยงานรัฐ',chartMoney(gov.value),`${fmt(gov.customerCount)} ลูกค้า`)+executiveKpi('บริษัทเอกชน',chartMoney(priv.value),`${fmt(priv.customerCount)} ลูกค้า`)+executiveKpi('ยอดขาย / ยอดส่งในมุมมอง',`${chartMoney(salesCurrent.actual??salesCurrent)} / ${chartMoney(deliveryCurrent.actual??deliveryCurrent)}`,month>=0?'เดือนที่เลือก':'รวมทั้งปี');
+  document.getElementById('exec-product-monthly-chart').innerHTML=executiveSeriesBarSvg(products.rows,products.series,{shortLabels:true,ariaLabel:'กราฟแท่งสินค้าขายดี Top 3 เปรียบเทียบรายเดือน',detailFor:(row,sr)=>{const d=row.details?.[sr.key]||{},value=safeNum(d.value),qty=safeNum(d.qty);return{kicker:'สินค้าขายดีรายเดือน',title:`${sr.label} · ${row.label}`,primary:chartMoney(value),secondary:`${safeNum(d.share).toFixed(1)}% ของยอดขายเดือนนี้`,rows:[{label:'จำนวนขาย',value:qty>0?`${fmt(qty)} ${d.unit&&d.unit!=='-'?d.unit:''}`.trim():'ไม่ระบุจำนวน'},{label:'ยอดขายรวม',value:chartMoney(value)},{label:'ราคาเฉลี่ย/หน่วย',value:qty>0?chartMoney(d.avgPrice):'-'},{label:'สัดส่วนของเดือน',value:`${safeNum(d.share).toFixed(1)}%`},{label:'ลูกค้าไม่ซ้ำ',value:`${fmt(d.customerCount||0)} ราย`}],note:'ยอดขายก่อน VAT จากรายการสินค้าในเอกสารขายของเดือนและสาขาที่เลือก'};}});
+  const productSummary=document.getElementById('exec-product-monthly-summary');if(productSummary)productSummary.innerHTML=products.top.length?`Top 3 ของปีนี้คือ ${products.top.map((p,i)=>`<b>${i+1}. ${escapeHtml(p.label)}</b> ${chartMoney(p.value)}`).join(' · ')} · <b>แตะหรือคลิกแท่งกราฟ</b> เพื่อดูจำนวนขาย ยอดรวม ราคาเฉลี่ย และ % ของเดือน`:'ยังไม่มีข้อมูลสินค้าในปีที่เลือก';
+  document.getElementById('exec-agency-pie-chart').innerHTML=executiveDonutChart(agency.rows);const agencySummary=document.getElementById('exec-agency-pie-summary');if(agencySummary)agencySummary.innerHTML=agency.rows.length?`กลุ่มที่สร้างยอดสูงสุดคือ <b>${escapeHtml(agency.rows[0].label)}</b> ${chartMoney(agency.rows[0].value)} · แตะชิ้นกราฟเพื่อดูยอด ลูกค้า เอกสาร และสัดส่วน %`:'ยังไม่มีข้อมูลกลุ่มลูกค้า';
+  document.getElementById('exec-gov-private-chart').innerHTML=executiveGovPrivateBars(agency);const gpSummary=document.getElementById('exec-gov-private-summary');if(gpSummary){if(!gov.value&&!priv.value)gpSummary.textContent='ยังไม่มีข้อมูลราชการหรือบริษัทเอกชนในช่วงที่เลือก';else if(delta===null)gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐมียอด <b>${chartMoney(gov.value)}</b> ขณะที่ยังไม่มียอดจากบริษัทเอกชนในช่วงนี้`;else if(Math.abs(delta)<.01)gpSummary.innerHTML='ยอดราชการ/หน่วยงานรัฐและบริษัทเอกชนใกล้เคียงกัน';else gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐ${delta>0?'มากกว่า':'น้อยกว่า'}บริษัทเอกชน <b>${Math.abs(delta).toFixed(1)}%</b> (${chartMoney(gov.value)} vs ${chartMoney(priv.value)})`;}
+  document.getElementById('exec-sales-target-chart').innerHTML=executiveSeriesBarSvg(salesTarget,[{key:'actual',label:'ยอดขายจริง'},{key:'target',label:'เป้าหมายยอดขาย'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดขายจริงเทียบเป้าหมายรายเดือน',detailFor:row=>targetDetail(row,'sales')});const st=document.getElementById('exec-sales-target-summary');if(st)st.innerHTML=executiveTargetSummary(salesTarget,'เป้าหมายยอดขาย')+' · แตะแท่งเพื่อดู % ทำได้และยอดที่ยังขาด/เกิน';
+  document.getElementById('exec-delivery-target-chart').innerHTML=executiveSeriesBarSvg(deliveryTarget,[{key:'actual',label:'ยอดส่งจริง'},{key:'target',label:'เป้าหมายยอดส่ง'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดส่งสินค้าจริงเทียบเป้าหมายรายเดือน',detailFor:row=>targetDetail(row,'delivery')});const dt=document.getElementById('exec-delivery-target-summary');if(dt)dt.innerHTML=executiveTargetSummary(deliveryTarget,'เป้าหมายยอดส่งสินค้า')+' · แตะแท่งเพื่อดู % ทำได้และยอดที่ยังขาด/เกิน';
 }
 
 function renderDashCharts(){
+  renderMonthlyTargetPlanner();
   renderMainDashChart();
   renderCustomerChart();
   renderDashboardAgencyChart();
@@ -7644,6 +7681,12 @@ function exposeInlineHandlers() {
     saveDeliveryTarget,
     renderSalesTargetDashboard,
     saveSalesTarget,
+    renderMonthlyTargetPlanner,
+    saveMonthlyTargetPlanner,
+    distributeAnnualTarget,
+    copySalesTargetsToDelivery,
+    openExecutiveChartDetail,
+    closeExecutiveChartDetail,
     renderQLList,
     renderIList,
     renderRList,
