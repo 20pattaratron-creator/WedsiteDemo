@@ -1,6 +1,8 @@
 // boot-status.js — lightweight runtime diagnostics for static/Vercel deployment.
 (function () {
   const state = { errors: [] };
+  Object.defineProperty(state, 'errorCount', { enumerable: true, get: () => state.errors.length });
+  state.getErrors = () => state.errors.map(item => ({ ...item }));
 
   function addError(kind, message) {
     const text = String(message || '').trim();
@@ -66,5 +68,6 @@
     }, 6500);
   });
 
+  state.addError = addError;
   window.ComformRuntimeStatus = state;
 })();

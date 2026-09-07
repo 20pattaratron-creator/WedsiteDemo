@@ -40,6 +40,14 @@ window.notify = notify;
 // เก็บ window.alert ไว้เป็น fallback เผื่อโค้ดส่วนอื่นเรียกตรง ๆ ให้ยังไม่พังหน้าจอไปเลย
 if (!window.__nativeAlert) window.__nativeAlert = window.alert.bind(window);
 
+// Shared transient workflow context. Keep cross-module handoff state under one
+// namespace instead of scattering writable globals across window.
+const ERPWorkflowContext = window.ERPWorkflowContext || {
+  preparedSalesOrderId: '',
+  preparedProductionOrderId: ''
+};
+window.ERPWorkflowContext = ERPWorkflowContext;
+
 function getElValue(id){
   const el=document.getElementById(id);
   return el ? String(el.value||'').trim() : '';
@@ -1488,6 +1496,8 @@ function go(id,el){
   if(['dashboard','analytics','quote-list','invoice-list','receipt-list','issued-invoice-list','issued-receipt-list','expense-list','production-list','linked-flow','quote-form','production-form','invoice-form','receipt-form'].includes(id)){
     scheduleCloudSync(getCurrentSelectedYear());
   }
+  if(!el){const nav=[...document.querySelectorAll('.sidebar .nav-item')].find(n=>(n.getAttribute('onclick')||'').includes("go('"+id+"'"));nav?.classList.add('active');}
+  document.dispatchEvent(new CustomEvent('erp:navigation',{detail:{id}}));
   if (window.innerWidth <= 900) {
     setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
   }
@@ -1646,6 +1656,7 @@ function renderDash(){
   renderSalesForecast();
   renderQuantDashboard();
   renderProductionDeliveryComparison();
+  document.dispatchEvent(new Event('erp:dashboard-rendered'));
 }
 
 function mc(lbl,val,sub,color,bc){return`<div class="mc" ${bc?`style="border-color:${bc}"`:''}><div class="lbl">${lbl}</div><div class="val" style="color:${color||'var(--g)'}">${val}</div><div class="sub">${sub}</div></div>`;}
@@ -1755,11 +1766,10 @@ function renderDashboardComparison(){
 const DELIVERY_TARGET_STORAGE_KEY='comform_delivery_targets_v2';
 const DEFAULT_COMPANY_MONTHLY_TARGET=1600000;
 
-// มกราคม–มิถุนายน 2569 ใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน
-// เพราะฐานข้อมูลนำเข้าจาก Excel ไม่มีใบส่งสินค้า / ใบกำกับภาษีแยกต่างหาก
-// ช่วงดังกล่าวจึงกำหนดให้ทั้งยอดจริงและเป้าหมายส่งสินค้าเท่ากับยอดขาย
+// Legacy compatibility switch is disabled: imported sales are not proof of delivery.
+// Delivery must come from delivery/invoice records; no business records are changed.
 const HISTORICAL_SALES_DELIVERY_MIRROR=Object.freeze({
-  enabled:true,
+  enabled:false,
   year:2026,
   startMonthIndex:0,
   endMonthIndex:5
@@ -2153,7 +2163,7 @@ function forecastMonthKey(year,month){return year*12+month;}
 function forecastMonthFromKey(key){return{year:Math.floor(key/12),month:key%12};}
 function forecastMonthLabel(year,month){return `${MONTHS[month]} พ.ศ. ${yearLabelDual(year)}`;}
 function forecastSalesForMonth(year,month,branches=dashBranches()){
-  return branches.reduce((sum,br)=>sum+metricFromData(loadFor(br,year,month),'sales',year,month),0);
+  return branches.reduce((sum,br)=>sum+metricFromData(loadFor(br,year,month),'sales',year,month,br),0);
 }
 function forecastStoredHistory(rows=[],branches=[]){
   // A missing/corrupt month pack is unknown, not a zero-sale month.
@@ -2610,7 +2620,7 @@ function renderProductionDeliveryComparison(){
       <div class="flow-bar-line"><span class="flow-bar delivery" style="width:${Math.max(r.delivery?2:0,r.delivery/max*100)}%"></span><b>${chartMoney(r.delivery)}</b></div>
     </div>
   </div>`).join('');
-  document.getElementById('flow-chart-note').textContent='เดือน ม.ค.–มิ.ย. 2569 ระบบให้ยอดส่งสินค้าเท่ากับยอดขาย/สั่งผลิตย้อนหลัง ส่วนเดือนอื่นใช้ยอดก่อน VAT จากใบส่งสินค้า / ใบกำกับภาษี';
+  document.getElementById('flow-chart-note').textContent='ยอดส่งสินค้าใช้ยอดก่อน VAT จากใบส่งสินค้า / ใบกำกับภาษีทุกเดือน ข้อมูลยอดขายย้อนหลังอย่างเดียวไม่ยืนยันว่ามีการส่งสินค้าแล้ว';
 
   const rate=Math.max(0,Math.min(100,d.linkRate));
   document.getElementById('flow-conversion').innerHTML=`
@@ -2637,32 +2647,25 @@ function dashBranches(){return dashTab==='all'?tenantActiveBranchIds():[dashTab]
 function safeNum(n){return Number.isFinite(Number(n))?Number(n):0;}
 function chartMoney(n){return '฿'+fmt(Math.round(safeNum(n)*100)/100);}
 function chartCount(n){return fmt(safeNum(n))+' รายการ';}
-function dashMetricLabel(metric){return{sales:'ยอดขายก่อน VAT จากใบสั่งผลิต/ฐานข้อมูลยอดขาย',delivery:'ยอดส่งสินค้า',production:'ยอดสั่งผลิตสินค้า',profit:'กำไรสุทธิ',expense:'ค่าใช้จ่าย'}[metric]||metric;}
+function dashMetricLabel(metric){return{sales:'ยอดขายก่อน VAT (ฐานเดียวกับสรุปภาพรวม)',delivery:'ยอดส่งสินค้า',production:'ยอดสั่งผลิตสินค้า',profit:'กำไรสุทธิ',expense:'ค่าใช้จ่าย'}[metric]||metric;}
 function dashMetricClass(metric){return{sales:'',delivery:'purple',production:'purple',profit:'green',expense:'red'}[metric]||'';}
-function metricFromData(d,metric,year,month){
+function metricFromData(d,metric,year,month,branch){
   const expenses=d.expenses||[];
-  const productions=dedupeRecords(d.productions||[]);
-  const invoices=dedupeRecords(d.invoices||[]);
-  if(metric==='sales')return productions.reduce((s,x)=>s+productionNetSalesValue(x),0);
-  if(metric==='delivery')return shouldMirrorHistoricalSalesAsDelivery(year,month)
-    ? productions.reduce((s,x)=>s+productionNetSalesValue(x),0)
-    : invoices.reduce((s,x)=>s+invoiceNetSales(x),0);
-  if(metric==='production')return productions.reduce((s,x)=>s+productionNetSalesValue(x),0);
-  if(metric==='expense')return expenses.reduce((s,x)=>s+safeNum(x.amount),0);
-  if(metric==='profit'){
-    const productionProfit=productions.reduce((s,x)=>{
-      if(Number.isFinite(Number(x.profit)))return s+safeNum(x.profit);
-      return s+productionNetSalesValue(x)-safeNum(x.costTotal??x.costSubtotal)-safeNum(x.commAmt);
-    },0);
-    const exp=expenses.reduce((s,x)=>s+safeNum(x.amount),0);
-    return productionProfit-exp;
-  }
+  const productions=dedupeRecords(d.productions||[]).map(r=>({...r,branch:branch||r.branch||r._branch}));
+  const invoices=dedupeRecords(d.invoices||[]).map(r=>({...r,branch:branch||r.branch||r._branch}));
+  const salesRows=analyticsPrimarySalesRows({productions,invoices});
+  if(metric==='sales')return salesRows.reduce((sum,r)=>sum+analyticsSalesValue(r),0);
+  if(metric==='delivery')return invoices.filter(window.ERPIntegrity.live).reduce((sum,r)=>sum+invoiceNetSales(r),0);
+  if(metric==='production')return productions.filter(window.ERPIntegrity.live).reduce((sum,r)=>sum+productionNetSalesValue(r),0);
+  const expense=expenses.reduce((sum,r)=>sum+safeNum(r.amount),0);
+  if(metric==='expense')return expense;
+  if(metric==='profit')return salesRows.reduce((sum,r)=>sum+analyticsSalesValue(r)-analyticsCostValue(r)-safeNum(r.commAmt),0)-expense;
   return 0;
 }
 function rowsForMonthlyChart(year,branches,metric){
   return MONTHS.map((name,m)=>{
     let value=0;
-    branches.forEach(br=>{value+=metricFromData(loadFor(br,year,m),metric,year,m);});
+    branches.forEach(br=>{value+=metricFromData(loadFor(br,year,m),metric,year,m,br);});
     return{label:name,value,sub:`${name} พ.ศ. ${yearLabelDual(year)}`};
   });
 }
@@ -2670,13 +2673,13 @@ function rowsForYearlyChart(branches,metric){
   const years=allYears().slice().sort((a,b)=>a-b);
   return years.map(year=>{
     let value=0;
-    branches.forEach(br=>{for(let m=0;m<12;m++)value+=metricFromData(loadFor(br,year,m),metric,year,m);});
+    branches.forEach(br=>{for(let m=0;m<12;m++)value+=metricFromData(loadFor(br,year,m),metric,year,m,br);});
     return{label:String(year+543),value,sub:`ปี พ.ศ. ${yearLabelDual(year)}`};
   });
 }
 function renderBarRows(containerId,rows,opt={}){
   const el=document.getElementById(containerId);if(!el)return;
-  const filtered=rows.filter(r=>safeNum(r.value)>0);
+  const filtered=rows.filter(r=>safeNum(r.value)!==0);
   if(!filtered.length){el.innerHTML='<div class="chart-empty">ยังไม่มีข้อมูลสำหรับแสดงกราฟ</div>';return;}
   const max=Math.max(...filtered.map(r=>Math.abs(safeNum(r.value))),1);
   const cls=opt.fillClass||'';
@@ -2685,7 +2688,7 @@ function renderBarRows(containerId,rows,opt={}){
     const valText=opt.mode==='count'?chartCount(v):chartMoney(v);
     return `<div class="chart-bar-row" title="${r.sub||r.label}">
       <div><div class="chart-label">${r.label}</div>${r.sub?`<div class="chart-note">${r.sub}</div>`:''}</div>
-      <div class="chart-track"><div class="chart-fill ${cls}" style="width:${w}%"></div></div>
+      <div class="chart-track"><div class="chart-fill ${v<0?'red':cls}" style="width:${w}%"></div></div>
       <div class="chart-value">${valText}</div>
     </div>`;
   }).join('');
@@ -3131,8 +3134,8 @@ function buildAnalyticsQuality(data){
   const linkIssues=invoiceLinkRows.length+receiptLinkRows.length;
   const missingAgency=missingAgencyRows.length;
   const issues=missingDate+missingCustomer+zeroAmount+duplicates+missingVatMode+linkIssues+missingAgency;
-  const score=total?Math.max(0,Math.min(100,100-(issues/Math.max(1,total*2))*100)):100;
-  return{total,missingDate,missingCustomer,zeroAmount,duplicates,missingVatMode,linkIssues,missingAgency,issues,score:roundMoneyValue(score),samples};
+  const score=total?Math.max(0,Math.min(100,100-(issues/Math.max(1,total*2))*100)):null;
+  return{total,missingDate,missingCustomer,zeroAmount,duplicates,missingVatMode,linkIssues,missingAgency,issues,score:score===null?null:roundMoneyValue(score),samples};
 }
 function analyticsDeliveryRows(data){
   const rows=[];
@@ -3502,10 +3505,10 @@ function renderAnalyticsExecutiveSummary(kpis,quality,trend,arRows,deliveryRows,
   const overdueSupplier=supplierRows.filter(r=>r.state==='overdue');
   const dueSoonSupplier=supplierRows.filter(r=>r.state==='soon'||r.state==='dueToday');
   const periodText=filter.month===''?`ทั้งปี พ.ศ. ${yearLabelDual(filter.year)}`:`${MONTHS[filter.month]} พ.ศ. ${yearLabelDual(filter.year)}`;
-  const mirrorNote=Number(filter.year)===2026 && (filter.month==='' || Number(filter.month)<=5)
+  const mirrorNote=HISTORICAL_SALES_DELIVERY_MIRROR.enabled && Number(filter.year)===2026 && (filter.month==='' || Number(filter.month)<=5)
     ? '<div class="analytics-note">หมายเหตุ: เดือน ม.ค.–มิ.ย. พ.ศ. 2569 ระบบใช้ยอดขายย้อนหลังเป็นยอดส่งสินค้าแทน เพื่อไม่สร้างใบส่งสินค้าซ้ำในข้อมูลทดลอง</div>' : '';
   el.innerHTML=`<div class="analytics-executive-card">
-    <div><small>สรุปสำหรับผู้บริหาร</small><b>${escapeHtml(periodText)}</b><span>ยอดขาย ${chartMoney(kpis.sales)} · กำไรสุทธิ ${chartMoney(kpis.profit)} · คุณภาพข้อมูล ${quality.score}/100</span></div>
+    <div><small>สรุปสำหรับผู้บริหาร</small><b>${escapeHtml(periodText)}</b><span>ยอดขาย ${chartMoney(kpis.sales)} · กำไรสุทธิ ${chartMoney(kpis.profit)} · คุณภาพข้อมูล ${quality.total?quality.score+'/100':'ยังไม่มีเอกสารให้ประเมิน'}</span></div>
     <div><small>เงินที่ต้องติดตาม</small><b>${chartMoney(overdueAr.reduce((s,r)=>s+r.outstanding,0))}</b><span>เกินกำหนด ${overdueAr.length} บิล · ใกล้ครบกำหนด ${dueSoonAr.length} บิล</span></div>
     <div><small>งานส่งสินค้า</small><b>${overdueDelivery.length}</b><span>เลยกำหนดส่ง · ใกล้ครบกำหนด ${dueSoonDelivery.length} งาน</span></div>
     <div><small>จ่ายผู้ผลิต</small><b>${chartMoney(overdueSupplier.reduce((s,r)=>s+r.amount,0))}</b><span>เกินกำหนด ${overdueSupplier.length} รายการ · ใกล้ครบกำหนด ${dueSoonSupplier.length} รายการ</span></div>
@@ -3514,8 +3517,8 @@ function renderAnalyticsExecutiveSummary(kpis,quality,trend,arRows,deliveryRows,
 function renderAnalyticsExplainPanel(){
   const el=document.getElementById('analytics-explain-panel');if(!el)return;
   el.innerHTML=`<div class="analytics-explain-grid">
-    <div><b>1) ยอดขาย</b><p>อ่านจากรายการสั่งผลิตเป็นหลัก เพื่อสะท้อนงานที่เกิดขึ้นจริงในธุรกิจ หากเป็นเดือน ม.ค.–มิ.ย. 2569 ระบบใช้ยอดขายย้อนหลังช่วยแทนยอดส่งสินค้าใน Dashboard</p></div>
-    <div><b>2) ยอดส่งสินค้า</b><p>อ่านจากใบส่งสินค้า / ใบกำกับภาษี ยกเว้นช่วงข้อมูลย้อนหลังเดือน 1–6 พ.ศ. 2569 ที่กำหนดให้ยอดส่งสินค้าเท่ากับยอดขาย เพื่อไม่สร้างเอกสารซ้ำ</p></div>
+    <div><b>1) ยอดขาย</b><p>รวมยอดขายก่อน VAT จากงานสั่งผลิตเดิมและ Invoice ที่ไม่ซ้ำกับงานเดิม งานผลิตที่เชื่อม Sales Order จะนับยอดเมื่อออก Invoice ตัวเลขนี้เป็นฐานบริหารของ DEMO ยังไม่ใช่รายได้ตามบัญชีแยกประเภท</p></div>
+    <div><b>2) ยอดส่งสินค้า</b><p>อ่านจากใบส่งสินค้า / ใบกำกับภาษีทุกเดือน ไม่มีการแทนยอดส่งสินค้าด้วยยอดขายย้อนหลัง ข้อมูลเก่าที่ไม่มีเอกสารส่งจะแสดงเฉพาะยอดที่มีหลักฐานในระบบ</p></div>
     <div><b>3) ยอดค้างรับเงิน</b><p>คำนวณจากยอดใบส่งสินค้า / ใบกำกับภาษี ลบยอดใบเสร็จรับเงินที่อ้างอิงบิลเดียวกัน ใช้ดูว่าควรติดตามเงินจากลูกค้ารายใดก่อน</p></div>
     <div><b>4) เครดิตลูกค้า</b><p>ใช้วันครบกำหนดจากใบส่งสินค้า / ใบกำกับภาษี แบ่งเป็น ใกล้ครบกำหนด, ครบกำหนดวันนี้, เกินกำหนด 1–7, 8–15, 16–30 และเกิน 30 วัน</p></div>
     <div><b>5) ระยะเวลาส่งสินค้า</b><p>ใช้วันที่สั่งผลิตบวกจำนวนวันส่งสินค้า เช่น 45 วัน เพื่อหางานที่ใกล้ส่งหรือเลยกำหนด ช่วยลดปัญหาส่งสินค้าไม่ทัน</p></div>
@@ -3527,7 +3530,7 @@ function renderAnalyticsExplainPanel(){
 function buildAnalyticsInsights(kpis,quality,trend,abcRows,filter){
   const insights=[];
   if(quality.total===0)insights.push({type:'warn',title:'ยังไม่มีข้อมูลในช่วงนี้',text:'กรุณาเลือกเดือน/ปีหรือสาขาที่มีข้อมูลก่อนวิเคราะห์'});
-  if(quality.score<90)insights.push({type:'warn',title:'ควรตรวจคุณภาพข้อมูล',text:`คะแนน Data Quality ${quality.score}/100 พบปัญหา ${quality.issues} จุด ก่อนใช้ตัวเลขวางแผนควรตรวจข้อมูลวันที่ ลูกค้า จำนวนเงิน VAT และการเชื่อมเอกสาร`});
+  if(quality.total>0&&quality.score<90)insights.push({type:'warn',title:'ควรตรวจคุณภาพข้อมูล',text:`คะแนน Data Quality ${quality.total?quality.score+'/100':'ยังไม่มีเอกสารให้ประเมิน'} พบปัญหา ${quality.issues} จุด ก่อนใช้ตัวเลขวางแผนควรตรวจข้อมูลวันที่ ลูกค้า จำนวนเงิน VAT และการเชื่อมเอกสาร`});
   if(kpis.sales>0&&kpis.netMargin<10)insights.push({type:'danger',title:'กำไรสุทธิต่ำ',text:`Net Margin อยู่ที่ ${percentText(kpis.netMargin)} ควรตรวจต้นทุน ค่าคอมมิชชัน ค่าใช้จ่าย และราคาขายเฉลี่ย`});
   if(kpis.sales>0&&kpis.deliveryRate<70)insights.push({type:'warn',title:'ยอดส่งสินค้าต่ำกว่ายอดขาย',text:`Delivery Rate ${percentText(kpis.deliveryRate)} อาจมีงานค้างส่งหรือเอกสารใบส่งสินค้า / ใบกำกับภาษียังไม่ได้บันทึก`});
   if(kpis.delivery>0&&kpis.collectionRate<75)insights.push({type:'warn',title:'ยอดเก็บเงินตามใบเสร็จยังต่ำ',text:`Collection Rate ${percentText(kpis.collectionRate)} ควรติดตามใบเสร็จหรือสถานะรับชำระจากลูกค้า`});
@@ -3589,7 +3592,7 @@ function renderDataAnalytics(){
     analyticsKpi('ยอดค้างส่ง',chartMoney(Math.max(0,kpis.deliveryGap)),`ยอดขาย - ยอดส่งสินค้า`,'amber')+
     analyticsKpi('ยอดค้างรับเงิน',chartMoney(Math.max(0,kpis.uncollected)),`ยอดเรียกเก็บรวม VAT - รับเงินจริง`,'amber')+
     analyticsKpi('ค่าเฉลี่ยต่อเอกสาร',chartMoney(kpis.avgOrder),`${kpis.orderCount} เอกสารขาย`,'blue')+
-    analyticsKpi('คุณภาพข้อมูล',`${quality.score}/100`,`${quality.issues} จุดที่ควรตรวจ`,quality.score>=90?'green':quality.score>=75?'amber':'red');
+    analyticsKpi('คุณภาพข้อมูล',`${quality.total?quality.score+'/100':'ยังไม่มีเอกสารให้ประเมิน'}`,`${quality.issues} จุดที่ควรตรวจ`,!quality.total?'':quality.score>=90?'green':quality.score>=75?'amber':'red');
   const insightsEl=document.getElementById('analytics-insights');
   if(insightsEl)insightsEl.innerHTML=insights.map(item=>`<div class="analytics-insight ${item.type}"><b>${item.title}</b><span>${item.text}</span></div>`).join('');
   renderAnalyticsExecutiveSummary(kpis,quality,forecastTrend,arRows,deliveryControlRows,supplierPayableRows,filter);
@@ -3630,7 +3633,7 @@ function renderDataAnalytics(){
   ];
   renderBarRows('analytics-quality-chart',qRows,{fillClass:quality.score>=90?'green':'red',mode:'count'});
   const qualitySummary=document.getElementById('analytics-quality-summary');
-  if(qualitySummary)qualitySummary.innerHTML=`ตรวจเอกสารทั้งหมด <b>${quality.total}</b> รายการ · คะแนนคุณภาพข้อมูล <b>${quality.score}/100</b> · ยิ่งคะแนนสูง ยิ่งเหมาะกับการใช้ทำ Dashboard และ Forecast`;
+  if(qualitySummary)qualitySummary.innerHTML=`ตรวจเอกสารทั้งหมด <b>${quality.total}</b> รายการ · คะแนนคุณภาพข้อมูล <b>${quality.total?quality.score+'/100':'ยังไม่มีเอกสารให้ประเมิน'}</b> · ยิ่งคะแนนสูง ยิ่งเหมาะกับการใช้ทำ Dashboard และ Forecast`;
 
   const forecastEl=document.getElementById('analytics-forecast-summary');
   if(forecastEl)forecastEl.innerHTML=`<div class="analytics-formula-grid">
@@ -3945,6 +3948,8 @@ function renderQuantDashboard(){
 
   const target=currentSalesTarget(),sigma=Number.isFinite(f.model.cv.rmse)?f.model.cv.rmse:null,mc=quantMonteCarlo(f.next,sigma,target,5000,`${f.ref.year}-${f.ref.month}-${f.model.selectedId}-${f.next}`);
   const monte=document.getElementById('quant-dashboard-montecarlo');
+  const simulationLabel=document.getElementById('quant-simulation-count');
+  if(simulationLabel)simulationLabel.textContent=mc.n?`${mc.n.toLocaleString('th-TH')} สถานการณ์`:'ข้อมูลยังไม่พอสำหรับจำลอง';
   if(monte)monte.innerHTML=`<div class="quant-mc-main"><div><small>P50 / Median Scenario</small><strong>${forecastMoney(mc.p50)}</strong><span>${escapeHtml(forecastMonthLabel(f.future[0]?.year||f.ref.year,f.future[0]?.month??f.ref.month))}</span></div><div class="quant-prob-ring ${mc.targetProbability===null?'muted':mc.targetProbability>=70?'good':mc.targetProbability>=40?'warn':'danger'}"><b>${mc.targetProbability===null?'—':mc.targetProbability.toFixed(1)+'%'}</b><span>โอกาสถึงเป้า</span></div></div><div class="quant-quantiles"><div><span>P10</span><b>${forecastMoney(mc.p10)}</b></div><div><span>P50</span><b>${forecastMoney(mc.p50)}</b></div><div><span>P90</span><b>${forecastMoney(mc.p90)}</b></div></div><p class="quant-help">จำลอง ${mc.n.toLocaleString('th-TH')} สถานการณ์จาก Base Forecast และ CV RMSE · สมมติ error แบบ Normal อิสระและตัดยอดติดลบเป็น 0 · ความน่าจะเป็นตามสมมติฐานเท่านั้น · 0 รอบ = ข้อมูลไม่พอ${target>0?` · เป้าหมาย ${chartMoney(target)}`:' · ยังไม่ได้ตั้งเป้ายอดขายสำหรับมุมมองนี้'}</p>`;
   const tail=document.getElementById('quant-dashboard-tailrisk');
   if(tail)tail.innerHTML=`<div class="quant-tail-grid"><div><small>Revenue-at-Risk (P10)</small><b>${forecastMoney(mc.revenueAtRisk)}</b><span>ส่วนต่าง Base ถึง P10</span></div><div><small>Downside Tail Mean</small><b>${forecastMoney(mc.downsideTailMean)}</b><span>ค่าเฉลี่ย 10% สถานการณ์แย่สุด</span></div><div><small>Target Shortfall</small><b>${mc.targetShortfallProbability===null?'—':mc.targetShortfallProbability.toFixed(1)+'%'}</b><span>${target>0?'ความน่าจะเป็นที่ต่ำกว่าเป้า':'ยังไม่ได้ตั้งเป้า'}</span></div><div><small>Expected Target Gap</small><b>${mc.expectedTargetGap===null?'—':forecastMoney(mc.expectedTargetGap)}</b><span>ส่วนขาดเป้าเฉลี่ยจากทุก Scenario</span></div></div>`;
@@ -4532,7 +4537,7 @@ function calcQ(){
   const v=calculateVatSummary(raw,document.getElementById('q-vat').value);document.getElementById('q-sub').value=fmt(v.subtotal);document.getElementById('q-vat-amt').value=fmt(v.vatAmt);document.getElementById('q-total').value=fmt(v.total);
 }
 function syncInvoiceOrderCosts(){
-  const state=editState.invoice,orderId=state?.original?.sourceSalesOrderId||window.ERPPreparedSalesOrderId;
+  const state=editState.invoice,orderId=state?.original?.sourceSalesOrderId||ERPWorkflowContext.preparedSalesOrderId;
   const warnings=[];
   document.querySelectorAll('#i-items-body tr').forEach(tr=>{
     const input=tr.querySelector('[data-field="costValue"]'),mode=tr.querySelector('[data-field="costMode"]');
@@ -5163,7 +5168,7 @@ ${stockItems.map(x=>'• '+x.product).join('\n')}
     invoiceId:state?(original.invoiceId||''):'',
     note:document.getElementById('p-note').value.trim(),attachments:attachedFiles['p-att']||[]
   };
-  productionRecord.sourceSalesOrderId=original?.sourceSalesOrderId||window.ERPPreparedProductionOrderId||'';
+  productionRecord.sourceSalesOrderId=original?.sourceSalesOrderId||ERPWorkflowContext.preparedProductionOrderId||'';
   productionRecord=withThaiCalendarMeta(productionRecord,year,month);
   try{
     if(state){
@@ -5183,7 +5188,7 @@ ${stockItems.map(x=>'• '+x.product).join('\n')}
   }
 }
 function resetProduction(){
-  window.ERPPreparedProductionOrderId='';
+  ERPWorkflowContext.preparedProductionOrderId='';
   clearEditState('production');
   formBranch.p=null;['p-br-kk','p-br-ub'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='br-opt';});document.getElementById('p-br-warn')?.classList.remove('show');
   ['p-no','p-maker','p-maker-address','p-maker-tax-id','p-maker-contact','p-maker-phone','p-maker-email','p-cust','p-job','p-sale-raw','p-sub-total','p-vat-total','p-total','p-cost-raw','p-cost-total','p-cost-subtotal','p-cost-vat-total','p-cost-grandtotal','p-cr','p-ca','p-profit','p-note','p-delivery-lead-days','p-delivery-due-date','p-supplier-credit','p-supplier-due-date','p-supplier-payment-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -5492,7 +5497,7 @@ async function saveInvoice(){
     note:document.getElementById('i-note').value.trim(),attachments:attachedFiles['i-att']||[]};
   if(items.some(i=>i.costAllocation?.conflict)){notify('ต้นทุนต้นทางต่ำกว่าที่จัดสรรไปแล้ว กรุณาตรวจงานผลิตก่อนบันทึก');return;}
   invoiceRecord.costReviewRequired=items.some(i=>i.costAllocation&&i.costAllocation.basis!=='production_actual');
-  const soId=state?.original?.sourceSalesOrderId||window.ERPPreparedSalesOrderId||'';
+  const soId=state?.original?.sourceSalesOrderId||ERPWorkflowContext.preparedSalesOrderId||'';
   const so=window.ERPOrderFlow?.getStore?.().salesOrders.find(o=>String(o.id)===String(soId));
   Object.assign(invoiceRecord,{branch:b,sourceSalesOrderId:soId,sourceSalesOrderNo:so?.no||state?.original?.sourceSalesOrderNo||'',paymentManaged:state?.original?.paymentManaged??true});
   invoiceRecord=withThaiCalendarMeta(invoiceRecord,year,month);
@@ -5603,7 +5608,7 @@ function saveExpense(){
 // RESET FORMS
 // ============================================================
 function resetF(t){
-  if(t==='invoice')window.ERPPreparedSalesOrderId='';
+  if(t==='invoice')ERPWorkflowContext.preparedSalesOrderId='';
   clearEditState(t);
   const f=t[0];formBranch[f]=null;
   document.getElementById(f+'-br-kk').className='br-opt';
@@ -7920,7 +7925,7 @@ function setupDocumentEntryWorkspace(options){
   editor.className = 'doc-entry-editor';
   const preview = document.createElement('section');
   preview.className = 'doc-entry-preview';
-  preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div><div class="doc-entry-zoom"><button type="button" data-zoom="out" title="ย่อ">－</button><button type="button" data-zoom="in" title="ขยาย">＋</button></div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-tab-hint" id="${options.prefix}-inline-tab-hint"></div><div class="doc-entry-preview-frame"><div id="${options.prefix}-inline-preview" class="doc-entry-empty">กำลังโหลดตัวอย่างเอกสาร...</div></div>`;
+  preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div><div class="doc-entry-zoom"><button type="button" data-zoom="fit" title="พอดีกรอบ" aria-label="ปรับตัวอย่างพอดีกรอบ">พอดี</button><button type="button" data-zoom="out" title="ย่อ" aria-label="ย่อตัวอย่าง">－</button><button type="button" data-zoom="in" title="ขยาย" aria-label="ขยายตัวอย่าง">＋</button></div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-tab-hint" id="${options.prefix}-inline-tab-hint"></div><div class="doc-entry-preview-frame"><div class="doc-preview-stage"><div id="${options.prefix}-inline-preview" class="doc-preview-content">กำลังโหลดตัวอย่างเอกสาร...</div></div></div>`;
   shell.appendChild(toolbar); shell.appendChild(workspace); workspace.appendChild(editor); workspace.appendChild(preview);
   const nodes = [editBanner,card.querySelector('#i-cost-status'), title, fg, hint, actions].filter(Boolean);
   card.innerHTML = '';
@@ -7970,16 +7975,27 @@ function setupDocumentEntryWorkspace(options){
     updateTabHint();
     scheduleInlineDocumentPreview(options.prefix);
   });
-  const zoomLevels = [.5, .66, .82, 1];
-  let zoomIndex = 1;
-  const applyZoom = () => preview.style.setProperty('--doc-preview-scale', zoomLevels[zoomIndex]);
-  applyZoom();
-  preview.querySelector('.doc-entry-zoom').addEventListener('click', event => {
-    const dir = event.target.closest('[data-zoom]')?.dataset.zoom;
-    if (!dir) return;
-    zoomIndex = dir === 'in' ? Math.min(zoomIndex + 1, zoomLevels.length - 1) : Math.max(zoomIndex - 1, 0);
-    applyZoom();
+  const frame=preview.querySelector('.doc-entry-preview-frame'),stage=preview.querySelector('.doc-preview-stage'),content=stage.firstElementChild;
+  let zoomFactor=1,fitQueued=false;
+  const applyZoom=()=>{
+    fitQueued=false;if(!frame.clientWidth)return;
+    const width=794,available=Math.max(100,frame.clientWidth-28);
+    const scale=Math.min(1,available/width)*zoomFactor;
+    content.style.width=width+'px';content.style.transform=`scale(${scale})`;
+    stage.style.width=(width*scale)+'px';stage.style.height=(content.scrollHeight*scale)+'px';
+    preview.dataset.previewScale=String(scale);
+  };
+  const scheduleFit=()=>{if(!fitQueued){fitQueued=true;requestAnimationFrame(applyZoom);}};
+  if(typeof ResizeObserver!=='undefined')new ResizeObserver(scheduleFit).observe(frame);
+  new MutationObserver(scheduleFit).observe(content,{childList:true,subtree:true,characterData:true});
+  content.addEventListener('load',scheduleFit,true);
+  document.addEventListener('erp:navigation',scheduleFit);
+  preview.querySelector('.doc-entry-zoom').addEventListener('click',event=>{
+    const dir=event.target.closest('[data-zoom]')?.dataset.zoom;if(!dir)return;
+    zoomFactor=dir==='fit'?1:dir==='in'?Math.min(2,zoomFactor+.2):Math.max(.4,zoomFactor-.2);
+    scheduleFit();
   });
+  scheduleFit();
   card.dataset.entryWorkspaceReady = '1';
   panel.addEventListener('input', () => scheduleInlineDocumentPreview(options.prefix));
   panel.addEventListener('change', () => scheduleInlineDocumentPreview(options.prefix));

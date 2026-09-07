@@ -1,0 +1,41 @@
+{
+  "version": "3.6.0",
+  "packageVersion": "1.6.0",
+  "checkedAt": "2026-09-07T09:40:15.233Z",
+  "runtimeRootFiles": 38,
+  "jsFiles": 20,
+  "inlineHandlerFunctions": 98,
+  "issues": [],
+  "notes": [
+    {
+      "code": "CSS_CROSS_FILE_OVERLAP",
+      "count": 3,
+      "detail": [
+        {
+          "selector": ":root",
+          "files": [
+            "delivery-tax-document.css",
+            "quotation-document.css",
+            "receipt-document.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".local-demo-banner-actions",
+          "files": [
+            "erp-customer-experience.css",
+            "local-demo-mode.css"
+          ]
+        },
+        {
+          "selector": "body",
+          "files": [
+            "quotation-document.css",
+            "style.css"
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS"
+}

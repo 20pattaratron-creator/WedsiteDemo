@@ -1,4 +1,6 @@
-# เผยแพร่ ERP DEMO 3.3.0 บน GitHub Pages
+# เผยแพร่ ERP DEMO 3.6.0 บน GitHub Pages
+
+> **DEMO 3.6.0:** แพ็กเกจ Source รอบนี้เอา `dist/` และ `dist-flat/` รุ่นเก่าออกเพื่อไม่ให้ปนกับ Council รุ่นใหม่ หากยังไม่ build ให้ใช้เนื้อหาใน ใช้ ZIP Static/Pages 3.6.0 ที่แยกให้ หรือรัน `npm ci && npm run build` เพื่อสร้าง `dist/` ใหม่บนเครื่องพัฒนา
 
 ZIP สำหรับ Pages เป็นชุด build พร้อมใช้ ส่วน ZIP ซอร์สใช้แก้โค้ดหรือ build ใหม่
 
@@ -13,6 +15,6 @@ ZIP สำหรับ Pages เป็นชุด build พร้อมใช�
 
 หากอัปโหลดเฉพาะ index.html หน้าเว็บจะยังผิดรูปแบบได้ ต้องมีโฟลเดอร์ assets ที่เป็นชุดเดียวกัน ไม่ควรปนไฟล์จาก source หรือ dist รุ่นก่อน
 
-ดูรายละเอียดการตรวจและสิ่งที่แก้ใน DEMO_V3_3_CHANGES_TH.md เลขรุ่นระบบใน meta และหน้า diagnostic คือ 3.3.0 ชื่อ ZIP อาจคงชื่อเดิมเพื่อรักษาประวัติไฟล์
+ดูรายละเอียดการตรวจและสิ่งที่แก้ใน DEMO_V3_3_CHANGES_TH.md เลขรุ่นระบบใน meta และหน้า diagnostic คือ 3.6.0 ชื่อ ZIP อาจคงชื่อเดิมเพื่อรักษาประวัติไฟล์
 
 อ้างอิง: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site

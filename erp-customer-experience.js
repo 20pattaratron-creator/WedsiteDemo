@@ -5,9 +5,10 @@
  */
 (() => {
   'use strict';
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   let palette = null;
   let customerModal = null;
+  let searchReturnFocus = null;
   const esc = (v='') => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = v => Number.isFinite(Number(v)) ? Number(v) : 0;
   const money = v => num(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -48,21 +49,35 @@
   function ensureButton(){
     const top=document.querySelector('.comform-topbar'); if(!top||document.getElementById('erp-global-search-btn'))return;
     const btn=document.createElement('button'); btn.id='erp-global-search-btn'; btn.type='button'; btn.className='erp-global-search-btn';
-    btn.innerHTML='<span>🔎 ค้นหาทั้งระบบ</span><kbd>Ctrl K</kbd>'; btn.addEventListener('click',openPalette);
+    btn.innerHTML='<span>🔎 ค้นหาทั้งระบบ</span><kbd>Ctrl K</kbd>'; btn.addEventListener('click',()=>openPalette());
     const ctx=document.getElementById('topbar-ctx'); top.insertBefore(btn,ctx||null);
   }
 
   function openPalette(query=''){
     closePalette();
+    searchReturnFocus=document.activeElement;
+    query=typeof query==='string'?query:'';
     palette=document.createElement('div'); palette.className='erp-search-overlay';
     palette.innerHTML=`<section class="erp-search-dialog" role="dialog" aria-modal="true" aria-label="ค้นหาทั้งระบบ"><div class="erp-search-input-wrap"><span>🔎</span><input id="erp-global-search-input" autocomplete="off" placeholder="ค้นหา ลูกค้า เลขเอกสาร Customer PO หรือสินค้า..."><kbd>Esc</kbd></div><div id="erp-global-search-results" class="erp-search-results"></div><footer>พิมพ์อย่างน้อย 1 ตัวอักษร · Enter เพื่อเปิดผลลัพธ์แรก · Ctrl+K เปิดจากทุกหน้า</footer></section>`;
     palette.addEventListener('click',e=>{if(e.target===palette)closePalette();}); document.body.appendChild(palette);
     const input=palette.querySelector('input'); input.value=query; input.focus();
     input.addEventListener('input',()=>renderResults(input.value));
-    input.addEventListener('keydown',e=>{if(e.key==='Enter'){palette.querySelector('[data-search-index="0"]')?.click();}});
+    palette.addEventListener('keydown',e=>{
+      const results=[...palette.querySelectorAll('.erp-search-result')];
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();const i=results.indexOf(document.activeElement);
+        if(results.length)results[e.key==='ArrowDown'?(i+1)%results.length:(i<=0?results.length-1:i-1)].focus();
+      }
+      if(e.key==='Enter'&&e.target===input){e.preventDefault();results[0]?.click();}
+      if(e.key==='Tab'){
+        const focusable=[input,...results],i=focusable.indexOf(document.activeElement);
+        if(e.shiftKey&&i<=0){e.preventDefault();focusable.at(-1).focus();}
+        else if(!e.shiftKey&&i===focusable.length-1){e.preventDefault();input.focus();}
+      }
+    });
     renderResults(query);
   }
-  function closePalette(){palette?.remove();palette=null;}
+  function closePalette(){const wasOpen=Boolean(palette);palette?.remove();palette=null;if(wasOpen)searchReturnFocus?.focus?.();searchReturnFocus=null;}
 
   function renderResults(query){
     const root=document.getElementById('erp-global-search-results'); if(!root)return;
@@ -128,12 +143,67 @@
 
   function keydown(e){
     if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){e.preventDefault();openPalette();return;}
-    if(e.key==='Escape'){closePalette();closeCustomer360();}
+    if(e.key==='Escape'){closePalette();closeCustomer360();const guide=document.getElementById('trial-onboarding');if(guide&&!guide.classList.contains('collapsed')){window.TrialService?.toggleOnboarding(true);document.getElementById('local-demo-guide-btn')?.focus();}}
   }
+
+  function enhanceNavigation(){
+    const labels={'quote-form':'สร้างใบเสนอราคา','invoice-form':'สร้างใบส่งสินค้า / ใบกำกับภาษี','receipt-form':'สร้างใบเสร็จรับเงิน','quote-list':'รายการใบเสนอราคา','invoice-list':'รายการใบส่งสินค้า / ใบกำกับภาษี','receipt-list':'รายการใบเสร็จรับเงิน','expense-list':'รายการค่าใช้จ่าย'};
+    document.querySelectorAll('.sidebar .nav-item').forEach(item=>{
+      const target=(item.getAttribute('onclick')||'').match(/go\('([^']+)'/ )?.[1];
+      if(labels[target]&&!item.dataset.uxNamed){
+        [...item.childNodes].filter(node=>node.nodeType===3).forEach(node=>node.remove());
+        item.append(document.createTextNode(labels[target]));item.dataset.uxNamed='1';
+      }
+      item.setAttribute('role','button');item.tabIndex=0;
+      if(item.classList.contains('active'))item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');
+    });
+  }
+  function initDashboardViews(){
+    const dash=document.getElementById('panel-dashboard');if(!dash||document.getElementById('erp-dashboard-welcome'))return;
+    const welcome=document.createElement('section');welcome.id='erp-dashboard-welcome';welcome.className='erp-dashboard-welcome';
+    welcome.innerHTML='<div><span class="erp-demo-label">DEMO 3.6.0 · พื้นที่ทดลอง</span><h1>ภาพรวมธุรกิจ</h1><p>เริ่มงานขาย ติดตามเอกสาร และเลือกดูข้อมูลที่ต้องใช้</p></div><div class="erp-welcome-actions"><button type="button" class="btn btn-primary" data-ux-go="quote-form">+ สร้างใบเสนอราคา</button><button type="button" class="btn btn-ghost" data-ux-go="master-data">ข้อมูลลูกค้าและสินค้า</button><button type="button" class="btn btn-ghost" data-ux-guide>วิธีเริ่มทดลอง</button></div>';
+    dash.prepend(welcome);
+    const empty=document.createElement('div');empty.id='erp-dashboard-empty';empty.className='erp-dashboard-empty';
+    empty.innerHTML='<b>ยังไม่มีเอกสารในพื้นที่ทดลองนี้</b><p>เพิ่มลูกค้าและสินค้า แล้วทดลองสร้างใบเสนอราคา ตัวเลข 0 ด้านล่างหมายถึงยังไม่มีรายการบันทึก ไม่ใช่ผลประกอบการจริง</p><button type="button" class="btn btn-ghost btn-sm" data-ux-go="files">นำเข้าข้อมูล / สำรองข้อมูล</button>';
+    welcome.after(empty);
+    const views=[['summary','ภาพรวม'],['sales','ยอดขายและเป้าหมาย'],['forecast','คาดการณ์'],['risk','ความเสี่ยง (Quant)']];
+    const nav=document.createElement('div');nav.className='erp-dashboard-views';nav.id='erp-dashboard-views';nav.setAttribute('role','group');nav.setAttribute('aria-label','เลือกหมวด Dashboard');
+    nav.innerHTML=views.map(([id,label])=>`<button type="button" data-dashboard-view="${id}" aria-pressed="${id==='summary'}">${label}</button>`).join('');
+    dash.querySelector('.filter-bar').after(nav);
+    dash.dataset.dashboardView='summary';
+    dash.addEventListener('click',event=>{
+      const view=event.target.closest('button[data-dashboard-view]');
+      if(view){dash.dataset.dashboardView=view.dataset.dashboardView;renderDashboardExperience();return;}
+      const go=event.target.closest('[data-ux-go]');if(go)window.go?.(go.dataset.uxGo);
+      if(event.target.closest('[data-ux-guide]'))window.TrialService?.toggleOnboarding(false);
+    });
+    // Group the branch comparison as optional detail; its original nodes and IDs are retained.
+    const compare=dash.querySelector('#dash-combined .compare-grid');
+    if(compare){const detail=document.createElement('details');detail.className='erp-branch-detail';const summary=document.createElement('summary');summary.textContent='เปรียบเทียบสำนักงานใหญ่และสาขา';compare.before(detail);detail.append(summary,compare);}
+    renderDashboardExperience();
+  }
+  function renderDashboardExperience(){
+    const dash=document.getElementById('panel-dashboard');if(!dash||!document.getElementById('erp-dashboard-views'))return;
+    const view=dash.dataset.dashboardView||'summary';
+    const groups=[['summary','#dash-combined,#dash-single,.prodcore-dashboard-ops,#erp-flow-dashboard-queue'],['sales','.dash-decision-section,.target-section,.flow-section,.dash-chart-grid'],['forecast','.forecast-section'],['risk','.quant-section']];
+    groups.forEach(([name,selector])=>dash.querySelectorAll(selector).forEach(el=>{el.classList.toggle('erp-view-hidden',name!==view);}));
+    const recent=document.getElementById('dash-quotes')?.parentElement?.parentElement;
+    if(recent&&recent.parentElement===dash)recent.classList.toggle('erp-view-hidden',view!=='summary');
+    dash.querySelectorAll('[data-dashboard-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.dashboardView===view)));
+    const data=business();const hasDocuments=['quotes','invoices','receipts','productions'].some(key=>(data[key]||[]).length>0);
+    const empty=document.getElementById('erp-dashboard-empty');if(empty)empty.hidden=hasDocuments;
+  }
+
   function init(){
     if(window.__ERP_CUSTOMER_EXPERIENCE__)return; window.__ERP_CUSTOMER_EXPERIENCE__=true;
-    ensureButton(); document.addEventListener('keydown',keydown);
+    ensureButton(); initDashboardViews(); enhanceNavigation();document.addEventListener('keydown',keydown);
+    document.querySelector('.sidebar')?.addEventListener('keydown',event=>{
+      if((event.key==='Enter'||event.key===' ')&&event.target.matches('.nav-item')){event.preventDefault();event.target.click();}
+    });
+    document.addEventListener('erp:navigation',enhanceNavigation);
+    document.addEventListener('erp:dashboard-rendered',renderDashboardExperience);
+    document.addEventListener('erp:flow-ready',()=>{enhanceNavigation();renderDashboardExperience();});
   }
-  window.ERPCustomerExperience={VERSION,openSearch:openPalette,openCustomer360,indexRows};
+  window.ERPCustomerExperience={VERSION,openSearch:openPalette,openCustomer360,indexRows,renderDashboardExperience};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,120));else setTimeout(init,120);
 })();

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="3.3.0-flat">
+<meta name="erp-demo-build" content="3.6.0-source">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,9 +27,9 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 3.3.0 FLAT · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 3.6.0 · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
-      help.textContent = 'อัปโหลดไฟล์จากชุด FLAT ทั้งหมดไว้ระดับเดียวกับ index.html แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
+      help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
       const link = document.createElement('a'); link.href = './deployment-check.html'; link.textContent = 'เปิดหน้าตรวจไฟล์เว็บ';
       box.append(title, help, list, link); document.body.appendChild(box);
@@ -54,14 +54,23 @@
   setTimeout(() => { bootTimedOut = true; render(); }, 8000);
 })();
 </script>
-  <script type="module" crossorigin src="./main-CFYlSnbc.js"></script>
-  <link rel="stylesheet" crossorigin href="./main-COqHZkUH.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="delivery-tax-document.css">
+<link rel="stylesheet" href="quotation-document.css">
+<link rel="stylesheet" href="receipt-document.css">
+<link rel="stylesheet" href="trial-mode.css">
+<link rel="stylesheet" href="business-rules.css">
+<link rel="stylesheet" href="local-demo-mode.css">
+<link rel="stylesheet" href="erp-order-flow.css">
+<link rel="stylesheet" href="erp-customer-experience.css">
+<link rel="stylesheet" href="erp-decision-council.css">
+<link rel="stylesheet" href="local-demo-health.css">
 </head>
 <body>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
-  <img class="company-logo" src="./logo-FgPzZbhG.png" width="52" height="52" alt="Company Logo">
+  <img class="company-logo" src="./logo.png" width="52" height="52" alt="Company Logo">
   <div class="company-title-wrap">
     <div class="company-main-title" id="tenant-company-title">ERP Business Platform</div>
     <div class="company-sub-title" id="tenant-company-subtitle">ฝ่ายขาย / จัดซื้อ / คลังสินค้า / ค่าใช้จ่าย / วิเคราะห์ธุรกิจ</div>
@@ -219,7 +228,7 @@
     <div class="target-heading">
       <div>
         <h3 id="sales-target-section-title">💰 เป้าหมายยอดขายรายเดือน</h3>
-        <p>ยอดขายใช้มูลค่าขายก่อน VAT จากใบสั่งผลิต และแยกจากยอดส่งสินค้าจริงเพื่อไม่ให้คำนวณซ้ำ</p>
+        <p>ยอดขายก่อน VAT ใช้ฐานเดียวกับสรุปภาพรวม: งานเดิมและ Invoice ที่ไม่ซ้ำกัน โดยงานจาก Sales Order นับเมื่อออก Invoice</p>
       </div>
       <div class="target-setting">
         <label for="sales-monthly-target">เป้าหมายของมุมมองนี้</label>
@@ -320,7 +329,7 @@
     <div id="quant-dashboard-kpis" class="quant-kpi-grid"></div>
     <div class="quant-dashboard-grid">
       <div class="card quant-card">
-        <div class="card-title chart-title-row"><span>🎲 Monte Carlo Forecast</span><span class="analytics-mini-label">5,000 simulations</span></div>
+        <div class="card-title chart-title-row"><span>🎲 Monte Carlo Forecast</span><span id="quant-simulation-count" class="analytics-mini-label">กำลังตรวจข้อมูล</span></div>
         <div id="quant-dashboard-montecarlo"></div>
         <div id="quant-dashboard-tailrisk"></div>
       </div>
@@ -918,7 +927,7 @@
   <div class="form-quick-guide"><span class="guide-step active">1 ข้อมูลเอกสาร</span><span class="guide-step">2 ลูกค้าและสินค้า</span><span class="guide-step">3 ตรวจสอบและบันทึก</span></div>
   <div class="fg">
     <div class="ff doc-number-field"><label>เลขที่ใบเสนอราคา *</label><div class="doc-number-input-group"><input type="text" id="q-no" class="quote-auto-no" placeholder="QT690801"><button type="button" class="doc-number-auto-btn" onclick="useAutoDocumentNumber('quote')" title="สร้างเลขถัดไปอัตโนมัติ">↻ ใช้เลขอัตโนมัติ</button></div><div class="doc-number-help"><span class="doc-number-help-chip auto">ระบบสร้างเลขให้อัตโนมัติ</span><span class="doc-number-help-chip manual">พิมพ์แก้เลขเองได้</span></div><div class="doc-number-help-note">หากต้องการกลับไปใช้เลขจากระบบ ให้กดปุ่ม “ใช้เลขอัตโนมัติ”</div></div>
-    <div class="ff"><label>วันที่เสนอราคา *</label><input type="date" id="q-date" onchange="refreshAutoQuoteNumber()"><small class="section-hint">เปลี่ยนวันที่แล้วเลขใบเสนอราคาจะเปลี่ยนตามปี/เดือนโดยอัตโนมัติ</small></div>
+    <div class="ff"><label>วันที่เสนอราคา *</label><input type="date" id="q-date"><small class="section-hint">เปลี่ยนวันที่แล้วเลขใบเสนอราคาจะเปลี่ยนตามปี/เดือนโดยอัตโนมัติ</small></div>
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
@@ -1836,9 +1845,27 @@
 
 </div><!-- /app-content -->
 
+<script type="module" src="boot-status.js"></script>
+<script type="module" src="tenant-context.js"></script>
+<script type="module" src="local-demo-mode.js"></script>
+<script type="module" src="local-file-store.js"></script>
+<script type="module" src="erp-integrity.js"></script>
+<script type="module" src="erp-backup.js"></script>
+<script type="module" src="click-fallback.js"></script>
 <!-- Load printable document modules before app.js so inline previews are ready when forms boot. -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script type="module" src="delivery-tax-document.js"></script>
+<script type="module" src="quotation-document.js"></script>
+<script type="module" src="receipt-document.js"></script>
+<script type="module" src="app.js"></script>
+<script type="module" src="business-rules.js"></script>
+<script type="module" src="trial-mode.js"></script>
+<script type="module" src="erp-production-core.js"></script>
+<script type="module" src="erp-order-flow.js"></script>
+<script type="module" src="erp-customer-experience.js"></script>
+<script type="module" src="local-demo-health.js"></script>
+<script type="module" src="erp-decision-council.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>
 </body>

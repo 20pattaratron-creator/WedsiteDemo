@@ -83,13 +83,15 @@ function injectDemoBanner() {
   banner.innerHTML=`
     <div class="local-demo-banner-main">
       <span class="local-demo-lock">🔒</span>
-      <div><b>LOCAL DEMO · ไม่เชื่อม Firebase / Cloud</b><small>ข้อมูลที่กรอกจะถูกบันทึกเฉพาะ Browser เครื่องนี้ เหมาะสำหรับให้ลูกค้าทดลองระบบก่อนตัดสินใจ</small></div>
+      <div><b>DEMO · ข้อมูลอยู่ในเบราว์เซอร์นี้</b><small>ทดลองด้วยข้อมูลสมมติ และสำรองข้อมูลก่อนเปลี่ยนเครื่องหรือเบราว์เซอร์</small></div>
     </div>
     <div class="local-demo-banner-actions">
-      <button type="button" id="local-demo-backup-btn">⬇ Backup JSON</button>
+      <button type="button" id="local-demo-guide-btn">วิธีเริ่มทดลอง</button>
+      <button type="button" id="local-demo-backup-btn">สำรองข้อมูล</button>
       <button type="button" id="local-demo-clear-btn" class="danger">ล้างข้อมูลทดลอง</button>
     </div>`;
   top.insertAdjacentElement('afterend',banner);
+  banner.querySelector('#local-demo-guide-btn')?.addEventListener('click',()=>window.TrialService?.toggleOnboarding(false));
   banner.querySelector('#local-demo-backup-btn')?.addEventListener('click',()=>{
     if(typeof window.exportAllJSON==='function') window.exportAllJSON();
     else window.notify?.('ฟังก์ชัน Backup กำลังโหลด กรุณาลองอีกครั้ง','info');

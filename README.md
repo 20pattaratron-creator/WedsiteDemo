@@ -1,8 +1,27 @@
-# ERP Integrated v3.3.0 — Local DEMO
+# ERP Integrated v3.6.0 — Local DEMO
 
-รุ่นแพ็กเกจ 1.3.2 · ตรวจและปรับปรุง 6 กันยายน 2569
+รุ่นแพ็กเกจ 1.6.0 · ตรวจและปรับปรุง 7 กันยายน 2569
 
 ใช้ `example-company-erp-local-demo-integrated-v3` เป็นฐาน และเทียบกับ `example-company-erp-trial-business-rules` ทั้ง 52 ไฟล์ เพื่อรักษาฟังก์ชันที่มีอยู่แล้วและแก้จุดเชื่อมงานให้สอดคล้องกัน ชื่อบริษัท โลโก้ สีเอกสาร และสาขายังคงตามฐานเดิม
+
+## รอบ Code Safety / De-duplication (v3.6.0)
+
+- ลบสำเนา `pages-source/` ออกจาก Full Source เพื่อลดไฟล์ชื่อซ้ำและป้องกันแก้ผิดชุด (ชุด Deploy แจกแยก ZIP)
+- แก้ `q-date` ที่เคยเรียก inline handler ซึ่งไม่ได้ expose และซ้ำกับ listener ภายใน `app.js`
+- เปลี่ยน Production Core / Order Flow จากการ wrap `window.go` ซ้อนกัน เป็นฟัง event `erp:navigation`
+- รวม transient Sales Order / Production handoff ไว้ใต้ `window.ERPWorkflowContext`
+- รวม Runtime Error capture ให้ `boot-status.js` เป็น source เดียว; Health/Council อ่านจากแหล่งเดียวกัน
+- เพิ่ม `npm run audit:code` และ `npm run test:codebase` สำหรับตรวจชื่อไฟล์, HTML id, resource refs, inline handlers และ global-collision guard
+
+
+## รอบ Decision Council / Governance (v3.5.0)
+
+เพิ่ม Decision Council แบบ rule-based 6 มุมมอง: Sales, A/R, Fulfillment, Inventory, Governance และ Contrarian พร้อม Chairman Synthesis, หลักฐาน และ Rule Registry โดยไม่ส่งข้อมูลไป AI/API ภายนอก ระบบระบุชัดว่าไม่ใช่ Multi-LLM และไม่สร้าง confidence % ปลอม อ่านรายละเอียดใน `ERP_DEMO_3_5_CHANGES_TH.md`
+
+หน้า Dashboard มี `DECISION REVIEW` เพื่อบอกสิ่งที่ควรทำต่อสูงสุด 3 ข้อจากข้อมูล Local Demo ปัจจุบัน รอบนี้ไม่เพิ่มอัตราภาษีหรือค่าธรรมเนียมภายนอกแบบ hard-code
+
+ทดสอบเฉพาะ Council ได้ด้วย `npm run test:council` และ Full Gate ยังคงใช้ `npm test`, `npm run build`, `npm run test:deployment`
+
 
 ## รอบ Forecast / Business Analytics / Quant (v3.3.0)
 
@@ -17,6 +36,10 @@
 ## การแก้ไขรอบก่อน (v3.2)
 
 แก้ปัญหา 6 ข้อจากการตรวจเชิงลึก: กู้เอกสารไม่ให้สต๊อก/เงินรับเกิน ล็อกต้นทางที่ออกฉบับพิมพ์แล้ว เชื่อมสถานะ Billing กับเงินรับทุกช่องทาง จัดสรรต้นทุนผลิตไปยัง Invoice และย้อนการรับสินค้าเมื่อบันทึกไม่ครบชุด ดูรายละเอียดพร้อมผลก่อน–หลังใน `DEMO_V3_2_CHANGES_TH.md`
+
+## ชุด FLAT สำหรับอัปโหลดไฟล์ระดับเดียวกัน
+
+หากการอัปโหลดทำให้ไฟล์ assets ไปอยู่ข้าง index.html ให้ใช้ชุด FLAT: `npm run build:flat` และ `npm run test:deployment:flat` เว็บอยู่ใน `dist-flat/` อ่าน `README_FLAT_UPLOAD_TH.md`
 
 ## เริ่มใช้งาน
 
