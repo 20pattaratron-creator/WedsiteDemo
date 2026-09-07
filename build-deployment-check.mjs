@@ -32,8 +32,8 @@ const folders=process.argv.slice(2);
 for (const folder of (folders.length?folders:['.', 'dist'])) {
   const root=path.resolve(folder);
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  const flat=html.includes('3.6.0-flat');
-  const release=flat?'3.6.0 FLAT':'3.6.0';
+  const flat=html.includes('3.7.0-flat');
+  const release=flat?'3.7.0 FLAT':'3.7.0';
   const files=collectHtmlRefs(html); expandModuleRefs(root,files);
   if(folder!=='.'){
     if(fs.existsSync(path.join(root,'assets')))for(const file of fs.readdirSync(path.join(root,'assets')))files.add('assets/'+file);
