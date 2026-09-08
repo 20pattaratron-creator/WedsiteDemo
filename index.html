@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="3.8.0-source">
+<meta name="erp-demo-build" content="4.2.0-source">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,7 +27,7 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 3.8.0 · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 4.2.0 · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
       help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
@@ -66,6 +66,7 @@
 <link rel="stylesheet" href="erp-decision-council.css">
 <link rel="stylesheet" href="local-demo-health.css">
 <link rel="stylesheet" href="executive-charts.css">
+<link rel="stylesheet" href="erp-product-experience.css">
 </head>
 <body>
 
@@ -201,7 +202,7 @@
       <button type="button" class="btn-primary" onclick="saveMonthlyTargetPlanner()">💾 บันทึกเป้าหมายทั้งปี</button>
     </div>
     <div id="monthly-target-planner-table"></div>
-    <div class="monthly-target-planner-note">ค่าเป้าหมายใน DEMO จะบันทึกแยก Tenant + สาขา + ปี + เดือน และยังใช้ค่าเดิมเป็น fallback เพื่อไม่ทำข้อมูลเก่าหาย</div>
+    <div class="monthly-target-planner-note">ค่าเป้าหมายใน DEMO จะบันทึกแยกบริษัท + สาขา + ปี + เดือน และยังใช้ค่าเดิมเป็น fallback เพื่อไม่ทำข้อมูลเก่าหาย</div>
   </section>
 
   <!-- EXECUTIVE VISUAL COMPARISON — DEMO 3.8 -->
@@ -747,7 +748,7 @@
 <!-- MASTER DATA -->
 <div id="panel-master-data" class="panel">
   <section class="master-page-head">
-    <div><small>FLOWACCOUNT-INSPIRED MASTER DATA</small><h2>📚 ข้อมูลหลักสำหรับลูกค้า ผู้จำหน่าย และสินค้า</h2><p>บันทึกข้อมูลไว้ในเครื่องนี้ เพื่อเรียกกลับมาใช้ในเอกสารครั้งถัดไป ลดการพิมพ์ซ้ำ และแยกสินค้าสต็อก/สั่งผลิตให้ชัดเจน</p></div>
+    <div><small>MASTER DATA · ใช้ซ้ำ ลดการกรอกข้อมูล</small><h2>📚 ข้อมูลหลักสำหรับลูกค้า ผู้จำหน่าย และสินค้า</h2><p>บันทึกข้อมูลไว้ในเครื่องนี้ เพื่อเรียกกลับมาใช้ในเอกสารครั้งถัดไป ลดการพิมพ์ซ้ำ และแยกสินค้าสต็อก/สั่งผลิตให้ชัดเจน</p></div>
     <span class="master-local-pill">💾 Local Master</span>
   </section>
   <div class="master-tabs">
@@ -803,13 +804,13 @@
   <section id="master-tab-product" class="master-tab-panel">
     <div class="card master-editor-card">
       <div class="card-title">📦 Product Master & Stock Type</div>
-      <div class="master-flow-note"><b>แนวคิดจาก FlowAccount:</b> Service / Non-Inventory / Inventory และระบบนี้เพิ่ม “รูปแบบการจัดหา” เพื่อแยก <b>สินค้าในสต็อก</b> ออกจาก <b>สินค้าสั่งผลิต</b></div>
+      <div class="master-flow-note"><b>รูปแบบสินค้า:</b> Inventory / Non-Inventory / Service และระบบแยก “รูปแบบการจัดหา” เพื่อแยก <b>สินค้าในสต็อก</b> ออกจาก <b>สินค้าสั่งผลิต</b></div>
       <div class="master-form-grid">
         <label><span>รหัสสินค้า *</span><input id="md-p-code" placeholder="SKU-001"></label>
         <label><span>ชื่อสินค้า *</span><input id="md-p-name" placeholder="ชื่อสินค้า / บริการ"></label>
         <label><span>หมวดสินค้า</span><input id="md-p-category" placeholder="เช่น คอมพิวเตอร์และอุปกรณ์"></label>
         <label><span>หน่วยหลัก</span><select id="md-p-unit"></select></label>
-        <label><span>ประเภทสินค้าแบบ FlowAccount</span><select id="md-p-flow-type" onchange="syncProductFulfillmentFromFlowType()"><option value="inventory">Inventory · นับสต็อก</option><option value="non_inventory">Non-Inventory · ไม่นับสต็อก</option><option value="service">Service · บริการ</option></select></label>
+        <label><span>ประเภทสินค้า</span><select id="md-p-flow-type" onchange="syncProductFulfillmentFromFlowType()"><option value="inventory">Inventory · นับสต็อก</option><option value="non_inventory">Non-Inventory · ไม่นับสต็อก</option><option value="service">Service · บริการ</option></select></label>
         <label><span>รูปแบบการจัดหาในระบบนี้</span><select id="md-p-fulfillment"><option value="stock">📦 สินค้าในสต็อก</option><option value="made_to_order">🏭 สินค้าสั่งผลิต / สั่งซื้อเฉพาะงาน</option><option value="service">🧰 บริการ</option></select></label>
         <label><span>ยอดตั้งต้น · สำนักงานใหญ่</span><input id="md-p-opening-ub" type="number" min="0" step="0.01" placeholder="0"></label>
         <label><span>ยอดตั้งต้น · สาขาที่ 00001</span><input id="md-p-opening-kk" type="number" min="0" step="0.01" placeholder="0"></label>
@@ -826,7 +827,7 @@
 <!-- BUSINESS RULES / FORMULA LAB -->
 <div id="panel-business-rules" class="panel">
   <section class="brules-head">
-    <div><div class="brules-eyebrow">TENANT-SCOPED FORMULA SANDBOX</div><h2>🧮 Business Rules / Formula Lab</h2><p>แต่ละบริษัทมีสินค้า ลูกค้า ผู้ผลิต และวิธีคิดราคาไม่เหมือนกัน หน้านี้ใช้ทดลองกำหนดสูตรของบริษัทโดยไม่ต้องแก้ Source Code แยกรายลูกค้า และบันทึก Formula Version สำหรับ Audit</p></div>
+    <div><div class="brules-eyebrow">BUSINESS RULES · ADVANCED</div><h2>🧮 Business Rules / Formula Lab</h2><p>แต่ละบริษัทมีสินค้า ลูกค้า ผู้ผลิต และวิธีคิดราคาไม่เหมือนกัน หน้านี้ใช้ทดลองกำหนดสูตรของบริษัทโดยไม่ต้องแก้ Source Code แยกรายลูกค้า และบันทึก Formula Version สำหรับ Audit</p></div>
     <span id="br-version-badge" class="brules-version">Formula BR-001</span>
   </section>
 
@@ -1928,6 +1929,7 @@
 <script type="module" src="erp-customer-experience.js"></script>
 <script type="module" src="local-demo-health.js"></script>
 <script type="module" src="erp-decision-council.js"></script>
+<script type="module" src="erp-product-experience.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>
 </body>

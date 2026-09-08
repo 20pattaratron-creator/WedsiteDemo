@@ -1,3 +1,5 @@
+import { localDateISO, isBusinessDateBefore, addBusinessCalendarDays } from './erp-shared-core.js';
+import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-contracts.js';
 /*
  * Example Company ERP — Order Flow Upgrade v3
  * Proposal / UAT additive module. Does not replace app.js.
@@ -7,9 +9,9 @@
 (function () {
   'use strict';
 
-  const VERSION = '3.2.0';
-  const STORE_BASE_KEY = 'example_erp_order_flow_v3';
-  const PREF_BASE_KEY = 'example_erp_order_flow_preferences_v3';
+  const VERSION = '4.2.0';
+  const STORE_BASE_KEY = ORDER_FLOW_STORE_KEY;
+  const PREF_BASE_KEY = ORDER_FLOW_PREFERENCES_KEY;
   const BRANCH_LABEL = { khonkaen: 'สาขาที่ 00001', ubon: 'สาขาสำนักงานใหญ่' };
   const VALID_BRANCHES = new Set(Object.keys(BRANCH_LABEL));
   const STATUS_LABEL = {
@@ -33,7 +35,7 @@
   }[ch]));
   const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
   const money = value => num(value).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+  const today = () => localDateISO();
   const nowIso = () => new Date().toISOString();
   const uid = prefix => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const dateTh = value => {
@@ -216,8 +218,8 @@
     const activeOrders = store.salesOrders.filter(o => !['completed', 'cancelled'].includes(derivedOrderStage(o, business)));
     const outstandingInvoices = business.invoices.filter(inv => invoiceOutstanding(inv) > 0);
     const unbilled = outstandingInvoices.filter(inv => !billingForInvoice(inv).some(b => !['cancelled', 'paid'].includes(b.status)));
-    const overdue = outstandingInvoices.filter(inv => inv.dueDate && new Date(inv.dueDate) < new Date(today()));
-    const dueBilling = store.billingNotes.filter(b => !['paid', 'cancelled'].includes(b.status) && b.dueDate && new Date(b.dueDate) < new Date(today()));
+    const overdue = outstandingInvoices.filter(inv => inv.dueDate && isBusinessDateBefore(inv.dueDate, today()));
+    const dueBilling = store.billingNotes.filter(b => !['paid', 'cancelled'].includes(b.status) && b.dueDate && isBusinessDateBefore(b.dueDate, today()));
     return { acceptedQuotes, activeOrders, outstandingInvoices, unbilled, overdue, dueBilling };
   }
 
@@ -258,7 +260,7 @@
     document.getElementById('erp-flow-nav')?.classList.add('active');
     document.body.classList.remove('mobile-menu-open');
     render(tab);
-    document.dispatchEvent(new CustomEvent('erp:navigation',{detail:{id:'order-flow'}}));
+    document.dispatchEvent(new CustomEvent('erp:navigation',{detail:{id:'order-flow',subview:tab||'overview'}}));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -610,6 +612,7 @@
   function openFulfillment(orderId) {
     const order = getOrder(orderId);
     if (!order) return notify('ไม่พบ Sales Order', 'error');
+    document.dispatchEvent(new CustomEvent('erp:navigation',{detail:{id:'order-flow',subview:'fulfillment'}}));
     makeModal(`วางแผนสินค้า · ${order.no}`, `
       <div class="erp-modal-note"><b>${esc(order.customer)}</b> · ต้องการส่ง ${dateTh(order.requiredDate)}<br>ยอดพร้อมใช้หักการจองของงานอื่นแล้ว · ระบุจำนวนพร้อมส่งหลังตรวจรับสินค้า</div>
       <div class="tbl-wrap"><table class="erp-flow-table erp-fulfillment-table"><thead><tr><th>สินค้า</th><th>ต้องการ</th><th>Stock พร้อมใช้</th><th>วิธีจัดสินค้า</th><th>จาก Stock</th><th>ผลิต</th><th>จัดซื้อ</th><th>พร้อมส่งสะสม</th></tr></thead><tbody>${(order.items||[]).map((it,idx)=>fulfillmentRow(it,idx,order.branch,order.id)).join('')}</tbody></table></div>
@@ -765,8 +768,8 @@
     for(const [id,field] of [['i-cust','customer'],['i-address','customerAddress'],['i-tax-id','customerTaxId'],['i-contact','contact'],['i-phone','phone'],['i-email','email'],['i-sales','salesPerson']])set(id,order[field]||'');
     set('i-vat',order.vatMode==='none'?2:order.useVat);
     set('i-credit-term',order.paymentTerm==='cash'?'cash':'credit'+String(order.creditDays));
-    const date=document.getElementById('i-date')?.value||today(),due=new Date(`${date}T00:00:00`);due.setDate(due.getDate()+(order.paymentTerm==='cash'?0:num(order.creditDays)));
-    set('i-due-date',`${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}-${String(due.getDate()).padStart(2,'0')}`);
+    const date=document.getElementById('i-date')?.value||today(),dueDate=addBusinessCalendarDays(date,order.paymentTerm==='cash'?0:num(order.creditDays));
+    set('i-due-date',dueDate);
     const body=document.getElementById('i-items-body');if(body)body.innerHTML='';
     rows.forEach(({it,qty})=>window.addIItem?.({...it,qty,salesOrderLineId:it.id,costMode:'unit',costValue:num(productForItem(it)?.standardCost)}));
     set('i-note',`อ้างอิง Sales Order ${order.no} / Quote ${order.sourceQuoteNo||'-'}`);window.calcI?.();closeModal();notify('เตรียมใบส่งสินค้าจากจำนวนค้างส่งแล้ว','success');
@@ -907,8 +910,8 @@
   }
 
   function init() {
-    if (window.__ERP_ORDER_FLOW_V3__) return;
-    window.__ERP_ORDER_FLOW_V3__ = true;
+    if (window.__ERP_ORDER_FLOW__) return;
+    window.__ERP_ORDER_FLOW__ = true;
     if (!ensureNavAndPanel()) { setTimeout(init, 300); return; }
     window.addEventListener('erp-flow:changed', () => { renderDashboardQueue(); const root=document.getElementById('erp-flow-root'); if(root && document.getElementById('panel-order-flow')?.classList.contains('active')) render(root.dataset.tab); });
     window.addEventListener('storage', event => { if (event.key === storageKey(STORE_BASE_KEY) || isBusinessStorageKey(event.key)) { renderDashboardQueue(); } });

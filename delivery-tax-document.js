@@ -1,3 +1,4 @@
+import { roundMoneyValue as roundMoney, calculateVatSummary, localDateISO } from './erp-shared-core.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -91,7 +92,7 @@ let productionFilterSearch = '';
 
 function createDefaultState() {
   const today = new Date();
-  const iso = today.toISOString().slice(0, 10);
+  const iso = localDateISO(today);
   return {
     previewOnly: false,
     branch: 'khonkaen',
@@ -188,10 +189,6 @@ function formatDate(value) {
   return y && m && d ? `${d}-${m}-${Number(y)+543}` : value;
 }
 
-function roundMoney(value) {
-  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
-}
-
 function totals() {
   const itemTotal = roundMoney(
     state.items.reduce(
@@ -200,22 +197,10 @@ function totals() {
     )
   );
 
-  // ทำตามสูตรที่ผู้ใช้กำหนด:
-  // 1) รวม VAT 7%: มูลค่าสินค้า + VAT 7%
-  // 2) ไม่รวม VAT 7%: ถอด VAT จากมูลค่าสินค้าด้วย ×100÷107
-  //    แล้วนำมูลค่าก่อน VAT + VAT 7% กลับมาเป็นยอดรวมเดิม
-  if (state.vatNone) return {itemTotal,subtotal:itemTotal,vat:0,grand:itemTotal};
-  if (state.vatEnabled) {
-    const subtotal = itemTotal;
-    const vat = roundMoney(subtotal * 0.07);
-    const grand = roundMoney(subtotal + vat);
-    return { itemTotal, subtotal, vat, grand };
-  }
-
-  const subtotal = roundMoney(itemTotal * 100 / 107);
-  const vat = roundMoney(itemTotal - subtotal);
-  const grand = roundMoney(subtotal + vat);
-  return { itemTotal, subtotal, vat, grand };
+  // VAT uses the shared deterministic source of truth.
+  const useVat = state.vatNone ? 2 : (state.vatEnabled ? 1 : 0);
+  const summary = calculateVatSummary(itemTotal, useVat);
+  return { itemTotal: summary.itemTotal, subtotal: summary.subtotal, vat: summary.vatAmt, grand: summary.total };
 }
 
 function thaiIntegerText(num) {

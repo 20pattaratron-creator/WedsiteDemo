@@ -2,6 +2,7 @@
 // erp-decision-council.js — Local Demo Decision Council UI + adapter
 // =====================================================================
 import {analyzeCouncil, RULE_REGISTRY, COUNCIL_VERSION} from './erp-decision-council-core.js';
+import { localDateISO } from './erp-shared-core.js';
 
 (() => {
   'use strict';
@@ -10,7 +11,7 @@ import {analyzeCouncil, RULE_REGISTRY, COUNCIL_VERSION} from './erp-decision-cou
   const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const n=v=>Number.isFinite(Number(v))?Number(v):0;
   const money=v=>n(v).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const today=()=>new Date().toISOString().slice(0,10);
+  const today=()=>localDateISO();
 
   function business(){return window.ERPIntegrity?.business?.()||{quotes:[],invoices:[],receipts:[],productions:[]};}
   function flow(){return window.ERPOrderFlow?.getStore?.()||{salesOrders:[],billingNotes:[],payments:[]};}

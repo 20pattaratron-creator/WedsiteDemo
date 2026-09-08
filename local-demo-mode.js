@@ -1,3 +1,4 @@
+import { ACTIVE_TENANT_SESSION_KEY } from './erp-storage-contracts.js';
 // =====================================================================
 // local-demo-mode.js — CUSTOMER SHOWCASE / LOCAL-ONLY MODE
 // =====================================================================
@@ -68,7 +69,7 @@ function clearDemoData() {
     if(key.startsWith(prefix) || key.startsWith(`trial::${DEMO_TENANT_ID}::`) || key.startsWith('business_rules::customer-showcase-local')) remove.push(key);
   }
   remove.forEach(k=>localStorage.removeItem(k));
-  try { sessionStorage.removeItem('erp_active_tenant_v1'); } catch (_) {}
+  try { sessionStorage.removeItem(ACTIVE_TENANT_SESSION_KEY); } catch (_) {}
   alert('ล้างข้อมูล Local Demo แล้ว ระบบจะโหลดหน้าใหม่');
   location.reload();
 }

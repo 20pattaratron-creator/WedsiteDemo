@@ -1,3 +1,4 @@
+import { ACTIVE_TENANT_SESSION_KEY } from './erp-storage-contracts.js';
 // =====================================================================
 // tenant-context.js — tenant isolation helpers for the browser cache
 // =====================================================================
@@ -5,7 +6,7 @@
 // localStorage/IndexedDB caches from being shared when different companies
 // sign in on the same browser/device.
 
-const ACTIVE_TENANT_SESSION_KEY = 'erp_active_tenant_v1';
+
 
 function sanitizeTenantId(value) {
   return String(value || '')

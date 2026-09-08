@@ -1,3 +1,6 @@
+import { roundMoneyValue, calculateVatSummary, localDateISO, DEFAULT_VAT_RATE, DEFAULT_VAT_DIVISOR } from './erp-shared-core.js';
+import { CONTACT_MASTER_KEY, PRODUCT_MASTER_KEY, BUSINESS_RULES_KEY, ORDER_FLOW_PREFERENCES_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY } from './erp-storage-contracts.js';
+
 
 // ============================================================
 // BASIC HELPERS
@@ -58,21 +61,6 @@ function escapeHtml(str=''){
   }[ch]));
 }
 
-function roundMoneyValue(value){
-  return Math.round(((Number(value)||0)+Number.EPSILON)*100)/100;
-}
-function calculateVatSummary(rawSaleTotal,useVat){
-  const itemTotal=roundMoneyValue(rawSaleTotal);
-  if(Number(useVat)===2||useVat==='none')return {itemTotal,subtotal:itemTotal,vatAmt:0,total:itemTotal,vatMode:'none'};
-  if(Number(useVat)===1){
-    const subtotal=itemTotal;
-    const vatAmt=roundMoneyValue(subtotal*0.07);
-    return{itemTotal,subtotal,vatAmt,total:roundMoneyValue(subtotal+vatAmt),vatMode:'add'};
-  }
-  const subtotal=roundMoneyValue(itemTotal*100/107);
-  const vatAmt=roundMoneyValue(itemTotal-subtotal);
-  return{itemTotal,subtotal,vatAmt,total:roundMoneyValue(subtotal+vatAmt),vatMode:'extract'};
-}
 function resolveVatMode(doc={}){
   if(doc.vatMode==='add'||doc.vatMode==='extract'||doc.vatMode==='none')return doc.vatMode;
   if(Number(doc.vatAmt||0)>0)return Number(doc.useVat||0)===1?'add':'extract';
@@ -97,12 +85,12 @@ function invoiceNetSales(doc={}){
 
   if(mode==='extract'){
     const gross=itemSale??rawSale??grandTotal??0;
-    return roundMoneyValue(gross*100/107);
+    return roundMoneyValue(gross/DEFAULT_VAT_DIVISOR);
   }
   if(mode==='add'){
     if(itemSale!==null)return roundMoneyValue(itemSale);
     if(rawSale!==null)return roundMoneyValue(rawSale);
-    if(grandTotal!==null)return roundMoneyValue(grandTotal/1.07);
+    if(grandTotal!==null)return roundMoneyValue(grandTotal/DEFAULT_VAT_DIVISOR);
   }
   if(itemSale!==null)return roundMoneyValue(itemSale);
   if(rawSale!==null)return roundMoneyValue(rawSale);
@@ -149,8 +137,8 @@ const PRODUCT_MASTER=[
   {code:'SV-003',name:'บริการบำรุงรักษาระบบ (Maintenance)',category:'บริการ'},
   {code:'SV-004',name:'บริการอบรมการใช้งาน',category:'บริการ'}
 ];
-const CONTACT_MASTER_KEY='comform_contact_master_v1';
-const PRODUCT_MASTER_LOCAL_KEY='comform_product_master_v1';
+// CONTACT_MASTER_KEY imported from erp-storage-contracts.js
+const PRODUCT_MASTER_LOCAL_KEY=PRODUCT_MASTER_KEY;
 let masterEditState={customer:'',supplier:'',product:''};
 function normalizeProductKey(value){return String(value||'').toLowerCase().replace(/\s+/g,' ').trim();}
 function defaultProductFlowType(row={}){
@@ -701,7 +689,7 @@ function populateAnalyticsAgencyTypeOptions(shouldRender=true){
   if(shouldRender)renderDataAnalytics();
 }
 const now=new Date();
-const todayStr=now.toISOString().split('T')[0];
+const todayStr=localDateISO(now);
 
 
 // ============================================================
@@ -1763,7 +1751,7 @@ function renderDashboardComparison(){
 // ============================================================
 // MONTHLY DELIVERY TARGET — เป้าหมายยอดส่งสินค้า จันทร์–ศุกร์
 // ============================================================
-const DELIVERY_TARGET_STORAGE_KEY='comform_delivery_targets_v2';
+const DELIVERY_TARGET_STORAGE_KEY=DELIVERY_TARGETS_KEY;
 const DEFAULT_COMPANY_MONTHLY_TARGET=1600000;
 
 const DELIVERY_TARGET_PERIOD_STORAGE_KEY='comform_delivery_target_period_overrides_v1';
@@ -2016,7 +2004,7 @@ function renderDeliveryTargetDashboard(){
 // ============================================================
 // MONTHLY SALES TARGET — เป้าหมายยอดขายจากใบสั่งผลิต จันทร์–ศุกร์
 // ============================================================
-const SALES_TARGET_STORAGE_KEY='comform_sales_targets_v1';
+const SALES_TARGET_STORAGE_KEY=SALES_TARGETS_KEY;
 const DEFAULT_COMPANY_MONTHLY_SALES_TARGET=2000000;
 const SALES_TARGET_PERIOD_STORAGE_KEY='comform_sales_target_period_overrides_v1';
 
@@ -4864,7 +4852,7 @@ function calcP(){
   const saleVat=calculateVatSummary(rawSaleTotal,useVat);
   // ต้นทุน: รวม VAT = บวก 7%, ไม่รวม VAT = ใช้ยอดต้นทุนเดิมโดยไม่ถอด VAT
   const costSubtotal=roundMoneyValue(costTotalAll);
-  const costVatAmt=useCostVat===1?roundMoneyValue(costSubtotal*0.07):0;
+  const costVatAmt=useCostVat===1?roundMoneyValue(costSubtotal*DEFAULT_VAT_RATE):0;
   const costGrandTotal=roundMoneyValue(costSubtotal+costVatAmt);
   const costVatMode=useCostVat===1?'add':'none';
   const commMode=getCommMode('p');
@@ -6118,8 +6106,8 @@ function getInvoiceReportRows(inv){
   const items=(inv.items&&inv.items.length)?inv.items:[{product:'-',qty:0,unit:'',costUnit:0,priceUnit:0,costTotal:safeNum(inv.costTotal),saleTotal:safeNum(inv.itemSaleTotal ?? inv.saleTotal)}];
   const rawItemTotal=safeNum(inv.itemSaleTotal)||items.reduce((s,it)=>s+(safeNum(it.saleTotal)||safeNum(it.qty)*safeNum(it.priceUnit)),0)||safeNum(inv.saleTotal);
   const vatMode=resolveVatMode(inv);
-  const subtotal=safeNum(inv.subtotal)||(vatMode==='extract'?rawItemTotal*100/107:rawItemTotal);
-  const totalSaleWithVat=safeNum(inv.total)||(vatMode==='add'?subtotal*1.07:rawItemTotal);
+  const subtotal=safeNum(inv.subtotal)||(vatMode==='extract'?rawItemTotal/DEFAULT_VAT_DIVISOR:rawItemTotal);
+  const totalSaleWithVat=safeNum(inv.total)||(vatMode==='add'?subtotal*DEFAULT_VAT_DIVISOR:rawItemTotal);
   const totalComm=safeNum(inv.commAmt);
   return items.map((it,idx)=>{
     const qty=safeNum(it.qty);
@@ -6132,7 +6120,7 @@ function getInvoiceReportRows(inv){
     const saleTotal=safeNum(it.saleTotal)||qty*priceUnit;
     const share=rawItemTotal>0?saleTotal/rawItemTotal:(items.length?1/items.length:1);
     const grossWithVat=vatMode==='add'?totalSaleWithVat*share:saleTotal;
-    const netExVat=vatMode==='extract'?saleTotal*100/107:(vatMode==='add'?saleTotal:grossWithVat);
+    const netExVat=vatMode==='extract'?saleTotal/DEFAULT_VAT_DIVISOR:(vatMode==='add'?saleTotal:grossWithVat);
     const commShare=totalComm*share;
     // กำไรต่อรายการ = ยอดขายหลังถอด VAT - ต้นทุนรวม - สวัสดิการ/ค่าคอมมิชชั่น
     const profit=roundMoneyValue(netExVat-costTotal-commShare);
@@ -6804,15 +6792,15 @@ function downloadJSON(payload,filename){
 }
 
 function collectLocalMasterBackup(){
-  const settings={};for(const base of ['comform_sales_targets_v1','comform_delivery_targets_v2','example_erp_order_flow_preferences_v3']){const value=localStorage.getItem(tenantLocalKey(base));if(value!==null)settings[base]=JSON.parse(value);}
+  const settings={};for(const base of [SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY]){const value=localStorage.getItem(tenantLocalKey(base));if(value!==null)settings[base]=JSON.parse(value);}
   return {contacts:contactMasterRows(),products:readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),productionCore:window.ERPProductionCore?.exportData?.()||{},orderFlow:window.ERPOrderFlow?.exportData?.()||{},businessRules:window.BusinessRulesService?.read?.()||{},settings,version:4,exportedAt:new Date().toISOString()};
 }
 function restoreLocalMasterBackup(masterData={},options={}){
   const writes=[],merge=window.ERPIntegrity.mergeRows;
   if(masterData.contacts!==undefined)writes.push([tenantLocalKey(CONTACT_MASTER_KEY),merge(contactMasterRows(),masterData.contacts,!!options.replace)]);
   if(masterData.products!==undefined)writes.push([tenantLocalKey(PRODUCT_MASTER_LOCAL_KEY),merge(readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),masterData.products,!!options.replace)]);
-  if(masterData.businessRules&&Object.keys(masterData.businessRules).length){const old=window.BusinessRulesService?.read?.()||{},incoming=masterData.businessRules;if(options.replace||localStorage.getItem(tenantLocalKey('comform_business_rules_v1'))===null||(Date.parse(incoming.updatedAt||'')||0)>=(Date.parse(old.updatedAt||'')||0))writes.push([tenantLocalKey('comform_business_rules_v1'),incoming]);}
-  for(const [base,value] of Object.entries(masterData.settings||{})){if(['comform_sales_targets_v1','comform_delivery_targets_v2','example_erp_order_flow_preferences_v3'].includes(base)&&(options.replace||localStorage.getItem(tenantLocalKey(base))===null))writes.push([tenantLocalKey(base),value]);}
+  if(masterData.businessRules&&Object.keys(masterData.businessRules).length){const old=window.BusinessRulesService?.read?.()||{},incoming=masterData.businessRules;if(options.replace||localStorage.getItem(tenantLocalKey(BUSINESS_RULES_KEY))===null||(Date.parse(incoming.updatedAt||'')||0)>=(Date.parse(old.updatedAt||'')||0))writes.push([tenantLocalKey(BUSINESS_RULES_KEY),incoming]);}
+  for(const [base,value] of Object.entries(masterData.settings||{})){if([SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY].includes(base)&&(options.replace||localStorage.getItem(tenantLocalKey(base))===null))writes.push([tenantLocalKey(base),value]);}
   window.ERPIntegrity.transaction(writes);
   if(masterData.productionCore)window.ERPProductionCore.importData(masterData.productionCore,options);
   if(masterData.orderFlow)window.ERPOrderFlow.importData(masterData.orderFlow,options);

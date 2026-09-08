@@ -1,3 +1,4 @@
+import { localDateISO, businessDateOrdinal } from './erp-shared-core.js';
 // =====================================================================
 // erp-decision-council-core.js — deterministic multi-perspective review
 // =====================================================================
@@ -26,8 +27,8 @@ export const RULE_REGISTRY = Object.freeze({
 
 const n=v=>Number.isFinite(Number(v))?Number(v):0;
 const norm=v=>String(v??'').trim().toLowerCase();
-const dateValue=v=>{if(!v)return NaN;const d=new Date(String(v).length===10?`${v}T00:00:00`:v);return d.getTime();};
-const daysBetween=(a,b)=>Math.floor((dateValue(b)-dateValue(a))/86400000);
+const dateValue=v=>businessDateOrdinal(v);
+const daysBetween=(a,b)=>dateValue(b)-dateValue(a);
 const sum=(rows,fn)=>rows.reduce((s,x)=>s+n(fn(x)),0);
 const live=x=>x && !x.voided && !x.deleted && !['cancelled','void','reversed'].includes(norm(x.status));
 
@@ -59,7 +60,7 @@ function orderReadyGap(order){
 
 export function analyzeCouncil(snapshot={},options={}){
   const cfg={staleQuoteDays:14,dueSoonDays:7,minimumEvidenceDocs:5,...options};
-  const now=snapshot.now||new Date().toISOString().slice(0,10);
+  const now=snapshot.now||localDateISO();
   const quotes=(snapshot.quotes||[]).filter(live),invoices=(snapshot.invoices||[]).filter(live),orders=(snapshot.orders||[]).filter(live),billings=(snapshot.billingNotes||[]).filter(live),products=snapshot.products||[];
   const reviews=[];
 

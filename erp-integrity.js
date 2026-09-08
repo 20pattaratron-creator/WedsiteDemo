@@ -1,7 +1,8 @@
+import { ORDER_FLOW_STORE_KEY } from './erp-storage-contracts.js';
 /* Shared local business rules. Browser-only; not a multi-user transaction engine. */
 (() => {
   'use strict';
-  const FLOW_KEY = 'example_erp_order_flow_v3';
+  const FLOW_KEY = ORDER_FLOW_STORE_KEY;
   const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
   const round = v => Math.round((n(v) + Number.EPSILON) * 100) / 100;
   const norm = v => String(v ?? '').trim().toLowerCase();

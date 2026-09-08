@@ -1,3 +1,4 @@
+import { BUSINESS_RULES_KEY, CONTACT_MASTER_KEY, PRODUCT_MASTER_KEY } from './erp-storage-contracts.js';
 // =====================================================================
 // business-rules.js — Tenant-scoped Business Rule / Formula Lab
 // =====================================================================
@@ -7,9 +8,9 @@
 // - Store formula versions so old documents can preserve calculation context.
 // - Trial module only: taxes remain system-controlled; arbitrary JS formulas are NOT evaluated.
 
-const RULES_STORAGE_KEY = 'comform_business_rules_v1';
-const CONTACT_KEY = 'comform_contact_master_v1';
-const PRODUCT_KEY = 'comform_product_master_v1';
+const RULES_STORAGE_KEY = BUSINESS_RULES_KEY;
+const CONTACT_KEY = CONTACT_MASTER_KEY;
+const PRODUCT_KEY = PRODUCT_MASTER_KEY;
 const MAX_HISTORY = 20;
 
 const money = new Intl.NumberFormat('th-TH',{style:'currency',currency:'THB',minimumFractionDigits:2,maximumFractionDigits:2});

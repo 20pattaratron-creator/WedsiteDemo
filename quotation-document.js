@@ -1,3 +1,4 @@
+import { localDateISO } from './erp-shared-core.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -480,7 +481,7 @@ function buildInlineQuote(record = {}, ref = {}, copyId = 'original') {
   const quote = {
     id: record.id || 'inline-preview',
     no: record.no || '-',
-    date: record.date || new Date().toISOString().slice(0,10),
+    date: record.date || localDateISO(),
     branch: ref.b || record.branch || 'khonkaen',
     customer: record.customer || '-',
     customerAgencyGroupLabel: record.customerAgencyGroupLabel || record.customerAgencyGroup || '',
