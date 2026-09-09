@@ -40,17 +40,9 @@ test('workflow handoff state is namespaced',()=>{
 });
 
 test('shared storage contracts stay aligned across modules',()=>{
-  const flow=read('erp-order-flow.js');
-  const integrity=read('erp-integrity.js');
-  const app=read('app.js');
-  const rules=read('business-rules.js');
-  const flowKey=/STORE_BASE_KEY\s*=\s*['"]([^'"]+)/.exec(flow)?.[1];
-  const integrityKey=/FLOW_KEY\s*=\s*['"]([^'"]+)/.exec(integrity)?.[1];
-  assert.equal(flowKey,integrityKey,'Order Flow/Integrity storage key drift');
-  const appContact=/CONTACT_MASTER_KEY\s*=\s*['"]([^'"]+)/.exec(app)?.[1];
-  const rulesContact=/CONTACT_KEY\s*=\s*['"]([^'"]+)/.exec(rules)?.[1];
-  const appProduct=/PRODUCT_MASTER_LOCAL_KEY\s*=\s*['"]([^'"]+)/.exec(app)?.[1];
-  const rulesProduct=/PRODUCT_KEY\s*=\s*['"]([^'"]+)/.exec(rules)?.[1];
-  assert.equal(appContact,rulesContact,'Customer/Supplier master storage key drift');
-  assert.equal(appProduct,rulesProduct,'Product master storage key drift');
+  const contracts=read('erp-storage-contracts.js');
+  for(const name of ['ORDER_FLOW_STORE_KEY','ORDER_FLOW_PREFERENCES_KEY','BUSINESS_RULES_KEY','CONTACT_MASTER_KEY','PRODUCT_MASTER_KEY','ACTIVE_TENANT_SESSION_KEY'])assert.match(contracts,new RegExp(`export const ${name}\\s*=`),name);
+  for(const file of ['erp-order-flow.js','erp-integrity.js','business-rules.js','tenant-context.js','local-demo-mode.js'])assert.match(read(file),/erp-storage-contracts\.js/,file);
+  assert.doesNotMatch(read('erp-order-flow.js'),/['"]example_erp_order_flow_v3['"]/);
+  assert.doesNotMatch(read('erp-integrity.js'),/['"]example_erp_order_flow_v3['"]/);
 });

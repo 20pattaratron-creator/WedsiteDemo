@@ -1,0 +1,40 @@
+{
+  "release": "4.3.0",
+  "packageVersion": "2.3.0",
+  "status": "customer-trial-release-candidate",
+  "sourceOfTruth": {
+    "constitution": "specs/constitution/ERP_CONSTITUTION.md",
+    "traceability": "specs/TRACEABILITY.json",
+    "workflow": "erp-workflow-definitions.js",
+    "moneyAndDates": "erp-shared-core.js",
+    "storageContracts": "erp-storage-contracts.js"
+  },
+  "completed": [
+    "local business-date helpers",
+    "single VAT calculation source",
+    "shared persisted storage contracts",
+    "fail-closed workflow graph",
+    "ES-module-compatible integrity test harness",
+    "spec and requirement traceability foundation",
+    "issued document destructive-delete guard",
+    "master-data archive behavior",
+    "attachment URL allowlist and safer preview",
+    "same-browser document write lease",
+    "data-driven order/production action delegation"
+  ],
+  "knownDebt": [
+    "app.js remains large and should be split gradually with regression coverage",
+    "style.css has accumulated cascade overrides and needs visual-regression-backed refactor",
+    "full DOM/E2E suite requires jsdom/fake-indexeddb dependencies to install successfully",
+    "server-side RBAC/tenant isolation is not implemented in Local Demo",
+    "same-browser lease is not a server/database transaction",
+    "document numbering is not atomic across devices/users"
+  ],
+  "doNotRegress": [
+    "do not rename persisted storage keys without migration",
+    "do not duplicate VAT literals outside shared core",
+    "do not use UTC ISO slicing for business date",
+    "do not let AI or UI directly mutate accounting/inventory truth",
+    "do not treat UX role hiding as authorization"
+  ]
+}

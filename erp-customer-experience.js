@@ -162,7 +162,7 @@ import { localDateISO } from './erp-shared-core.js';
   function initDashboardViews(){
     const dash=document.getElementById('panel-dashboard');if(!dash||document.getElementById('erp-dashboard-welcome'))return;
     const welcome=document.createElement('section');welcome.id='erp-dashboard-welcome';welcome.className='erp-dashboard-welcome';
-    welcome.innerHTML='<div><span class="erp-demo-label">DEMO 4.2.0 · พื้นที่ทดลอง</span><h1>ภาพรวมธุรกิจ</h1><p>เริ่มงานขาย ติดตามเอกสาร และเลือกดูข้อมูลที่ต้องใช้</p></div><div class="erp-welcome-actions"><button type="button" class="btn btn-primary" data-ux-go="quote-form">+ สร้างใบเสนอราคา</button><button type="button" class="btn btn-ghost" data-ux-go="master-data">ข้อมูลลูกค้าและสินค้า</button><button type="button" class="btn btn-ghost" data-ux-guide>วิธีเริ่มทดลอง</button></div>';
+    welcome.innerHTML='<div><span class="erp-demo-label">DEMO 4.3.0 · พื้นที่ทดลอง</span><h1>ภาพรวมธุรกิจ</h1><p>เริ่มงานขาย ติดตามเอกสาร และเลือกดูข้อมูลที่ต้องใช้</p></div><div class="erp-welcome-actions"><button type="button" class="btn btn-primary" data-ux-go="quote-form">+ สร้างใบเสนอราคา</button><button type="button" class="btn btn-ghost" data-ux-go="master-data">ข้อมูลลูกค้าและสินค้า</button><button type="button" class="btn btn-ghost" data-ux-guide>วิธีเริ่มทดลอง</button></div>';
     dash.prepend(welcome);
     const empty=document.createElement('div');empty.id='erp-dashboard-empty';empty.className='erp-dashboard-empty';
     empty.innerHTML='<b>ยังไม่มีเอกสารในพื้นที่ทดลองนี้</b><p>เพิ่มลูกค้าและสินค้า แล้วทดลองสร้างใบเสนอราคา ตัวเลข 0 ด้านล่างหมายถึงยังไม่มีรายการบันทึก ไม่ใช่ผลประกอบการจริง</p><button type="button" class="btn btn-ghost btn-sm" data-ux-go="files">นำเข้าข้อมูล / สำรองข้อมูล</button>';

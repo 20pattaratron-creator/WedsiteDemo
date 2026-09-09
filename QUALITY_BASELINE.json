@@ -1,0 +1,5 @@
+{
+  "release": "4.2.0",
+  "appJsLines": 8261,
+  "note": "Frozen pre-4.3 baseline; 4.3 should not increase app.js without an ADR."
+}

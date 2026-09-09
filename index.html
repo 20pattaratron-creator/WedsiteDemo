@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
-<meta name="erp-demo-build" content="4.2.0-source">
+<meta name="erp-demo-build" content="4.3.0-source">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -27,7 +27,7 @@
       box.id = 'deployment-load-error'; box.setAttribute('role', 'alert');
       box.style.cssText = 'position:fixed;top:8px;left:8px;right:8px;z-index:100000;max-height:45vh;overflow:auto;padding:16px;background:#fff3cd;color:#542b00;border:2px solid #c56b00;border-radius:8px;font:14px/1.6 system-ui,sans-serif;box-shadow:0 3px 14px #0003';
       const title = document.createElement('strong');
-      title.textContent = 'DEMO 4.2.0 · โหลดหน้าเว็บไม่ครบ';
+      title.textContent = 'DEMO 4.3.0 · โหลดหน้าเว็บไม่ครบ';
       const help = document.createElement('p');
       help.textContent = 'ตรวจว่าได้อัปโหลด index.html และ assets จากชุดเดียวกัน แล้วเปิดหน้าตรวจไฟล์เว็บเพื่อดูรายละเอียด';
       const list = document.createElement('ul'); list.dataset.issues = 'true';
@@ -69,6 +69,7 @@
 <link rel="stylesheet" href="erp-product-experience.css">
 </head>
 <body>
+<div id="erp-trial-safety-banner" style="position:sticky;top:0;z-index:10000;padding:7px 12px;background:#fff7ed;border-bottom:1px solid #fdba74;color:#9a3412;font-size:12px;text-align:center">DEMO 4.3 · ข้อมูลทดลองเก็บใน Browser เครื่องนี้ · ยังไม่ใช่ระบบ Production หลายผู้ใช้</div>
 
 <div id="app-content">
 <div class="topbar comform-topbar">

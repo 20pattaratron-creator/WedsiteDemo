@@ -1,6 +1,6 @@
 // ============================================================================
 // erp-storage-contracts.js — persisted key contracts; do not rename casually.
-// DEMO 4.2.0
+// DEMO 4.3.0
 // ============================================================================
 export const STORAGE_CONTRACT_VERSION = '1.0.0';
 export const ORDER_FLOW_STORE_KEY = 'example_erp_order_flow_v3';

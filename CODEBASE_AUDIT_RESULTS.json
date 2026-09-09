@@ -1,9 +1,9 @@
 {
-  "version": "3.8.0",
-  "packageVersion": "1.8.0",
-  "checkedAt": "2026-09-07T11:14:40.979Z",
-  "runtimeRootFiles": 39,
-  "jsFiles": 20,
+  "version": "4.3.0",
+  "packageVersion": "2.3.0",
+  "checkedAt": "2026-09-09T02:14:31.110Z",
+  "runtimeRootFiles": 55,
+  "jsFiles": 28,
   "inlineHandlerFunctions": 101,
   "issues": [],
   "notes": [

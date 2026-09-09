@@ -1,0 +1,13 @@
+{
+  "release": "4.3.0",
+  "purpose": "Guard against silent over-engineering. Exceeding a hard limit requires deliberate refactor or ADR, not automatic suppression.",
+  "limits": {
+    "runtimeJsFilesMax": 30,
+    "runtimeLinesMax": 17000,
+    "rootJsFilesMax": 32,
+    "appJsLinesMax": 8350,
+    "devDependenciesMax": 3,
+    "windowAssignmentsMax": 75,
+    "inlineHandlerFunctionsMax": 110
+  }
+}

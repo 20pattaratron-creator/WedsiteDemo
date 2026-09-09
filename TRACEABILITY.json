@@ -1,0 +1,200 @@
+{
+  "release": "4.3.0",
+  "requirements": [
+    {
+      "id": "REQ-INV-001",
+      "spec": "specs/inventory/INVENTORY_REQUIREMENTS.md",
+      "testFile": "tests/product-experience.test.cjs",
+      "testName": "stock availability calculates on hand reserved available and incoming",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-INV-002",
+      "spec": "specs/inventory/INVENTORY_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "duplicate line requests aggregate and cannot exceed SO remaining",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-INV-003",
+      "spec": "specs/inventory/INVENTORY_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "delivery edit excludes original quantity but still respects ready quantity",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-INV-004",
+      "spec": "specs/inventory/INVENTORY_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "stock guard aggregates duplicate SKU rows and deducts other SO reservations",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-INV-005",
+      "spec": "specs/inventory/INVENTORY_REQUIREMENTS.md",
+      "testFile": "tests/refactor-4-1.test.cjs",
+      "testName": "fulfillment graph supports stock production and purchase in one plan",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-MNY-001",
+      "spec": "specs/money-tax/MONEY_TAX_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "VAT modes add, extract and none are consistent",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-MNY-002",
+      "spec": "specs/money-tax/MONEY_TAX_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "generated payment receipts retain correct tax split and never double cash",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-MNY-003",
+      "spec": "specs/money-tax/MONEY_TAX_REQUIREMENTS.md",
+      "testFile": "tests/decision-council.test.cjs",
+      "testName": "overpayment becomes critical and is never hidden by outstanding floor",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-MNY-004",
+      "spec": "specs/money-tax/MONEY_TAX_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "production costs are allocated over partial deliveries with final cent retained",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-MNY-005",
+      "spec": "specs/money-tax/MONEY_TAX_REQUIREMENTS.md",
+      "testFile": "tests/refactor-4-1.test.cjs",
+      "testName": "local business date does not depend on UTC ISO slicing",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-001",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/forms.test.cjs",
+      "testName": "quote → SO → two deliveries → receipt + billing payment → reversal",
+      "status": "automated-dom"
+    },
+    {
+      "id": "REQ-OTC-002",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "SO remains partial after payment for first 3 of 10 units",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-003",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "SO completes only when all units delivered and paid",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-004",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "full payment settles invoice; reversal reopens balance",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-005",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/decision-council.test.cjs",
+      "testName": "cash invoices are not incorrectly flagged as missing a billing note",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-006",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/integrity.test.cjs",
+      "testName": "billing excludes receipts already applied before it was created",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-OTC-007",
+      "spec": "specs/order-to-cash/ORDER_TO_CASH_REQUIREMENTS.md",
+      "testFile": "tests/refactor-4-1.test.cjs",
+      "testName": "workflow graph fails closed on missing guards and unmatched routes",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-001",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/codebase-audit.test.cjs",
+      "testName": "codebase audit passes",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-002",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/codebase-audit.test.cjs",
+      "testName": "quote date has no duplicate/unexposed inline auto-number handler",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-003",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/refactor-4-1.test.cjs",
+      "testName": "storage contracts are imported instead of copied",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-004",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/refactor-4-1.test.cjs",
+      "testName": "VAT calculation has one deterministic source of truth",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-005",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/spec-governance.test.cjs",
+      "testName": "spec audit passes and all requirements are traceable",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-QLT-006",
+      "spec": "specs/quality/QUALITY_REQUIREMENTS.md",
+      "testFile": "tests/spec-governance.test.cjs",
+      "testName": "release metadata is centralized",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-SEC-001",
+      "spec": "specs/security/SECURITY_REQUIREMENTS.md",
+      "testFile": "tests/agent-security.test.cjs",
+      "testName": "blocks Claude permission bypass configuration",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-SEC-002",
+      "spec": "specs/security/SECURITY_REQUIREMENTS.md",
+      "testFile": "tests/agent-security.test.cjs",
+      "testName": "blocks command-bearing MCP configuration",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-SEC-003",
+      "spec": "specs/security/SECURITY_REQUIREMENTS.md",
+      "testFile": "tests/agent-security.test.cjs",
+      "testName": "detects potential secret files",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-SEC-004",
+      "spec": "specs/security/SECURITY_REQUIREMENTS.md",
+      "testFile": "tests/codebase-audit.test.cjs",
+      "testName": "runtime error capture has one owner",
+      "status": "automated"
+    },
+    {
+      "id": "REQ-SEC-005",
+      "spec": "specs/security/SECURITY_REQUIREMENTS.md",
+      "status": "production-gap",
+      "evidence": "Local Demo has UX role/tenant context only; server-side tenant authorization is required before production."
+    }
+  ]
+}

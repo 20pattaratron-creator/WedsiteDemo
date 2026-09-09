@@ -1,7 +1,7 @@
 import { localDateISO, businessDateOrdinal } from './erp-shared-core.js';
 // =====================================================================
 // erp-product-experience-core.js — product/UX decision helpers
-// DEMO 4.2.0 · deterministic, local-only
+// DEMO 4.3.0 · deterministic, local-only
 // =====================================================================
 
 export const PRODUCT_EXPERIENCE_VERSION = '1.0.0';

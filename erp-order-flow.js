@@ -9,7 +9,7 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
 (function () {
   'use strict';
 
-  const VERSION = '4.2.0';
+  const VERSION = '4.3.0';
   const STORE_BASE_KEY = ORDER_FLOW_STORE_KEY;
   const PREF_BASE_KEY = ORDER_FLOW_PREFERENCES_KEY;
   const BRANCH_LABEL = { khonkaen: 'สาขาที่ 00001', ubon: 'สาขาสำนักงานใหญ่' };
@@ -441,7 +441,7 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
         <td>${mix}</td>
         <td><span class="erp-pill ${statusTone(stage)}">${esc(STATUS_LABEL[stage] || stage)}</span></td>
         <td><button type="button" class="erp-next-action tone-${next.tone}" ${next.action ? `onclick="${next.action}"` : 'disabled'}>${esc(next.text)}</button></td>
-        <td><button type="button" class="btn btn-ghost btn-sm" onclick="ERPOrderFlow.openOrder('${o.id}')">ดู</button></td>
+        <td><button type="button" class="btn btn-ghost btn-sm" data-order-action="open-order" data-record-id="${esc(o.id)}">ดู</button></td>
       </tr>`;
     }).join('')}</tbody></table></div>`;
   }
@@ -507,7 +507,7 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
       <td><b>${esc(b.no)}</b></td><td>${esc(b.customer)}</td><td>${dateTh(b.billingDate)}</td><td>${dateTh(b.dueDate)}</td>
       <td>${(b.lines||[]).map(l=>`<span class="erp-mini-chip gray">${esc(l.invoiceNo)}</span>`).join(' ')}</td><td class="tn">฿${money(b.totalBilled)}<small>คงค้าง ฿${money(b.outstandingAmount)}</small></td>
       <td><span class="erp-pill ${statusTone(b.status)}">${esc(STATUS_LABEL[b.status] || b.status)}</span></td>
-      <td class="erp-row-actions"><button class="btn btn-ghost btn-sm" onclick="ERPOrderFlow.printBilling('${b.id}')">พิมพ์</button><button class="btn btn-green btn-sm" onclick="ERPOrderFlow.receiveBillingPayment('${b.id}')" ${b.status==='paid'?'disabled':''}>รับชำระ</button></td>
+      <td class="erp-row-actions"><button class="btn btn-ghost btn-sm" data-order-action="print-billing" data-record-id="${esc(b.id)}">พิมพ์</button><button class="btn btn-green btn-sm" data-order-action="receive-payment" data-record-id="${esc(b.id)}" ${b.status==='paid'?'disabled':''}>รับชำระ</button></td>
     </tr>`).join('')}</tbody></table></div>`;
   }
 
@@ -516,7 +516,7 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
     return `<div class="tbl-wrap"><table class="erp-flow-table"><thead><tr><th>เลขอ้างอิง</th><th>วันที่</th><th>ลูกค้า</th><th>วิธีชำระ</th><th>ยอดรับ</th><th>จัดสรร</th><th>จัดการ</th></tr></thead><tbody>${rows.slice().sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))).map(p => `<tr>
       <td><b>${esc(p.no)}</b></td><td>${dateTh(p.date)}</td><td>${esc(p.customer||'-')}</td><td>${esc(p.method||'-')}</td><td class="tn">฿${money(p.amount)}</td>
       <td>${(p.allocations||[]).map(a=>`<span class="erp-mini-chip green">${esc(a.invoiceNo)} ฿${money(a.amount)}</span>`).join(' ')}</td>
-      <td>${p.voided?'ยกเลิกแล้ว':`<button class="btn btn-danger btn-sm" onclick="ERPOrderFlow.voidPayment('${p.id}')">ยกเลิกรับเงิน</button>`}</td>
+      <td>${p.voided?'ยกเลิกแล้ว':`<button class="btn btn-danger btn-sm" data-order-action="void-payment" data-record-id="${esc(p.id)}">ยกเลิกรับเงิน</button>`}</td>
     </tr>`).join('')}</tbody></table></div>`;
   }
 
@@ -699,12 +699,12 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
       <h4 class="erp-modal-subtitle">เอกสารที่เชื่อมแล้ว</h4>
       <div class="erp-linked-summary"><span>Production <b>${links.prods.length}</b></span><span>Invoice <b>${links.invoices.length}</b></span><span>Billing <b>${links.billings.length}</b></span><span>Receipt <b>${links.receipts.length}</b></span></div>
       <div class="erp-order-actions">
-        <button class="btn btn-primary" onclick="ERPOrderFlow.openFulfillment('${order.id}')">วางแผน Fulfillment</button>
-        ${order.items.some(i=>num(i.productionQty)>0) && order.sourceQuoteId ? `<button class="btn btn-purple" onclick="ERPOrderFlow.createProduction('${order.id}')">เปิดฟอร์มสั่งผลิตจาก Quote</button>` : ''}
-        ${order.items.some(i=>num(i.purchaseQty)>0) ? `<button class="btn btn-amber" onclick="ERPOrderFlow.createPurchaseOrder('${order.id}')">เตรียม PO จากส่วนที่ต้องซื้อ</button>` : ''}
-        <button class="btn btn-ghost" onclick="ERPOrderFlow.markReady('${order.id}')">✓ ยืนยันตรวจรับและพร้อมส่งครบ</button>
-        <button class="btn btn-green" onclick="ERPOrderFlow.prepareDelivery('${order.id}')">เตรียมใบส่งสินค้า</button>
-        ${links.invoices.length && order.paymentTerm!=='cash' ? `<button class="btn btn-ghost" onclick="ERPOrderFlow.openBillingForOrder('${order.id}')">วางบิล</button>` : ''}
+        <button class="btn btn-primary" data-order-action="open-fulfillment" data-record-id="${esc(order.id)}">วางแผน Fulfillment</button>
+        ${order.items.some(i=>num(i.productionQty)>0) && order.sourceQuoteId ? `<button class="btn btn-purple" data-order-action="create-production" data-record-id="${esc(order.id)}">เปิดฟอร์มสั่งผลิตจาก Quote</button>` : ''}
+        ${order.items.some(i=>num(i.purchaseQty)>0) ? `<button class="btn btn-amber" data-order-action="create-po" data-record-id="${esc(order.id)}">เตรียม PO จากส่วนที่ต้องซื้อ</button>` : ''}
+        <button class="btn btn-ghost" data-order-action="mark-ready" data-record-id="${esc(order.id)}">✓ ยืนยันตรวจรับและพร้อมส่งครบ</button>
+        <button class="btn btn-green" data-order-action="prepare-delivery" data-record-id="${esc(order.id)}">เตรียมใบส่งสินค้า</button>
+        ${links.invoices.length && order.paymentTerm!=='cash' ? `<button class="btn btn-ghost" data-order-action="open-billing" data-record-id="${esc(order.id)}">วางบิล</button>` : ''}
       </div>
     `, [{ label: 'ปิด', cls: 'btn btn-ghost', action: closeModal }]);
   }
@@ -913,6 +913,18 @@ import { ORDER_FLOW_STORE_KEY, ORDER_FLOW_PREFERENCES_KEY } from './erp-storage-
     if (window.__ERP_ORDER_FLOW__) return;
     window.__ERP_ORDER_FLOW__ = true;
     if (!ensureNavAndPanel()) { setTimeout(init, 300); return; }
+    if (!window.__ERP_ORDER_ACTIONS_BOUND__) {
+      window.__ERP_ORDER_ACTIONS_BOUND__=true;
+      document.addEventListener('click',event=>{
+        const btn=event.target.closest?.('[data-order-action]');if(!btn)return;
+        const rid=btn.dataset.recordId||'';
+        const map={
+          'open-order':()=>openOrder(rid),'print-billing':()=>printBilling(rid),'receive-payment':()=>receiveBillingPayment(rid),'void-payment':()=>voidPayment(rid),
+          'open-fulfillment':()=>openFulfillment(rid),'create-production':()=>createProduction(rid),'create-po':()=>createPurchaseOrder(rid),'mark-ready':()=>markReady(rid),'prepare-delivery':()=>prepareDelivery(rid),'open-billing':()=>openBillingForOrder(rid)
+        };
+        map[btn.dataset.orderAction]?.();
+      });
+    }
     window.addEventListener('erp-flow:changed', () => { renderDashboardQueue(); const root=document.getElementById('erp-flow-root'); if(root && document.getElementById('panel-order-flow')?.classList.contains('active')) render(root.dataset.tab); });
     window.addEventListener('storage', event => { if (event.key === storageKey(STORE_BASE_KEY) || isBusinessStorageKey(event.key)) { renderDashboardQueue(); } });
     document.addEventListener('erp:navigation', event => {

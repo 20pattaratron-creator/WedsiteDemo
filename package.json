@@ -1,6 +1,6 @@
 {
   "name": "example-company-erp-local-demo",
-  "version": "1.8.0",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,11 +18,28 @@
     "test:council": "node --test tests/decision-council.test.cjs",
     "audit:code": "node scripts/audit-codebase.mjs",
     "test:codebase": "node --test tests/codebase-audit.test.cjs",
-    "test:executive": "node --test tests/executive-charts.test.cjs"
+    "test:executive": "node --test tests/executive-charts.test.cjs",
+    "security:preflight": "node scripts/security/agent-repo-audit.mjs .",
+    "security:preflight:strict": "node scripts/security/agent-repo-audit.mjs . --fail-on-warn",
+    "security:scan": "node scripts/security/agent-repo-audit.mjs",
+    "security:baseline": "node scripts/security/create-security-baseline.mjs .",
+    "security:verify-baseline": "node scripts/security/verify-security-baseline.mjs .",
+    "test:security": "node --test tests/agent-security.test.cjs",
+    "audit:all": "npm run audit:code && npm run audit:deep && npm run audit:specs && npm run audit:complexity && npm run security:preflight",
+    "test:product": "node --test tests/product-experience.test.cjs",
+    "audit:deep": "node scripts/audit-deep.mjs",
+    "audit:specs": "node scripts/audit-specs.mjs",
+    "audit:complexity": "node scripts/audit-complexity.mjs",
+    "test:governance": "node --test tests/spec-governance.test.cjs",
+    "test:core": "node --test tests/integrity.test.cjs tests/decision-council.test.cjs tests/executive-charts.test.cjs tests/product-experience.test.cjs tests/refactor-4-1.test.cjs tests/codebase-audit.test.cjs tests/agent-security.test.cjs tests/spec-governance.test.cjs tests/trial-hardening-4-3.test.cjs",
+    "quality:gate": "npm run quality:core && npm test && npm run build && npm run test:deployment && npm run security:verify-baseline",
+    "evidence:core": "node scripts/run-core-evidence.mjs",
+    "quality:core": "npm run audit:code && npm run audit:deep && npm run audit:specs && npm run audit:complexity && npm run security:preflight && npm run test:core"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",
     "jsdom": "26.1.0",
     "vite": "8.1.5"
-  }
+  },
+  "erpRelease": "4.3.0"
 }

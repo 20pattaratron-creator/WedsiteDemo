@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-09T02:14:44.090Z",
+  "root": "example-company-erp-demo-4.3.0",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "cba6e5c7e0804b4e93a4338fa875584073b06010955d1a9554f79c6c3cdd6980",
+      "size": 348
+    },
+    {
+      "path": "index.html",
+      "sha256": "86763975d8e1b508510b1bbb77cc9a483dda4ca924eff1bde65e463b0f08eb9f",
+      "size": 183749
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "a90a93ddb17ecb6c78798b1beff91861126aac2cc9975471fb113d7414f29622",
+      "size": 46611
+    },
+    {
+      "path": "package.json",
+      "sha256": "9a0e81356242e63c96c50a8cce593f8e7d72af9f985b899315d0c13f42c59dd4",
+      "size": 2580
+    },
+    {
+      "path": "SAFE_AGENT_PREFLIGHT_WINDOWS.bat",
+      "sha256": "1cb0748c9dc26e5e00b2305100ecf76487b22e38aa9fa938620383b254c3fded",
+      "size": 492
+    },
+    {
+      "path": "scripts/security/agent-repo-audit.mjs",
+      "sha256": "0ac3664cffe86524501925f6b0ad6ffab82fcc6ee973f14c43934e26e1cfb2fb",
+      "size": 13093
+    },
+    {
+      "path": "scripts/security/create-security-baseline.mjs",
+      "sha256": "a15284203e69f74bf5df11c6437cc5b398c8a3086381212cd5816cd53d701fed",
+      "size": 1850
+    },
+    {
+      "path": "scripts/security/verify-security-baseline.mjs",
+      "sha256": "4a5e965866f66e410da8a104ad87b6038231d2833882be0756656ddca56582e4",
+      "size": 1015
+    },
+    {
+      "path": "SECURITY_AGENT_GUIDE_TH.md",
+      "sha256": "96fc63696b475ce6ca03db744fb7db9ea3d1cde54dbf33a3a62fbd06fa487d76",
+      "size": 5596
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "ab9f69bd0b284c8d7ae0821731a302a1abc8c8d4c8b18f5a229b6137f9d1ff12",
+      "size": 1144
+    },
+    {
+      "path": "vercel.json",
+      "sha256": "89fcb183f6db4b25022649bf323a9f61cab375bea17b3110ddfb50a7b30c712a",
+      "size": 195
+    },
+    {
+      "path": "vite.config.js",
+      "sha256": "8595d30809bf3219e98b3c9680aeb2257ffc42e6c43168c9e9fabe58b0b0eab4",
+      "size": 579
+    }
+  ]
+}

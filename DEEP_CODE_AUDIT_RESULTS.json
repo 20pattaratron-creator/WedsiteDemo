@@ -1,0 +1,221 @@
+{
+  "version": "4.3.0",
+  "packageVersion": "2.3.0",
+  "checkedAt": "2026-09-09T02:14:31.066Z",
+  "runtimeJsFiles": 27,
+  "runtimeLines": 15480,
+  "issues": [],
+  "notes": [
+    {
+      "code": "NORMALIZED_DUPLICATE_10_LINE_WINDOWS",
+      "count": 275,
+      "examples": [
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 16
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 19
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 17
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 20
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 18
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 21
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 19
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 22
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 20
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 23
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 21
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 24
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 22
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 25
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 23
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 26
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 24
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 27
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 25
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 28
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 26
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 29
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 27
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 30
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 28
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 31
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 29
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 32
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 30
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 33
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 31
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 34
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 32
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 35
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 33
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 36
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 34
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 37
+          }
+        ],
+        [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 35
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 38
+          }
+        ]
+      ]
+    },
+    {
+      "code": "MAINTENANCE_MARKERS",
+      "count": 0
+    }
+  ],
+  "status": "PASS"
+}

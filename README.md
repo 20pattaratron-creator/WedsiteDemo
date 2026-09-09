@@ -1,133 +1,123 @@
-# ERP Integrated v3.8.0 — Local DEMO
+# ERP Integrated v4.3.0 — Customer Trial Demo
 
-รุ่นแพ็กเกจ 1.8.0 · ตรวจและปรับปรุง 7 กันยายน 2569
+Package **2.3.0** · QA/Security hardening for controlled customer trial.
 
-ใช้ `example-company-erp-local-demo-integrated-v3` เป็นฐาน และเทียบกับ `example-company-erp-trial-business-rules` ทั้ง 52 ไฟล์ เพื่อรักษาฟังก์ชันที่มีอยู่แล้วและแก้จุดเชื่อมงานให้สอดคล้องกัน ชื่อบริษัท โลโก้ สีเอกสาร และสาขายังคงตามฐานเดิม
+> DEMO: ข้อมูลเก็บใน Browser และยังไม่ใช่ระบบ Production หลายผู้ใช้
 
-## รอบ Interactive Target & Charts (v3.8.0)
-- เพิ่ม Monthly Target Planner ตั้งเป้ายอดขายและยอดส่งสินค้าได้ครบ 12 เดือนในหน้าเดียว แยก Tenant + สาขา + ปี + เดือน
-- เพิ่มเป้ารวมทั้งปีและปุ่มเฉลี่ย 12 เดือน รวมถึงคัดลอกเป้ายอดขายไปเป็นเป้ายอดส่งสินค้า
-- กราฟ Top Product, Customer Donut, Government vs Private และ Actual vs Target รองรับ hover / keyboard / click / tap
-- คลิกสินค้ารายเดือนเพื่อดูจำนวนขาย ยอดรวม ราคาเฉลี่ยต่อหน่วย สัดส่วน % ของยอดเดือนนั้น และจำนวนลูกค้าไม่ซ้ำ
-- คลิกชิ้น Donut เพื่อดูยอดขาย จำนวนลูกค้า จำนวนเอกสาร และ % ของกราฟ
-- คลิก Actual vs Target เพื่อดูยอดจริง เป้า % ทำได้ และยอดที่ยังขาด/เกิน
-- เป้าหมายยังใช้ period override ของระบบเดิมและ fallback ค่าเก่าเพื่อไม่ทำข้อมูลเดิมหาย
-- กราฟอ่านข้อมูลชุดเดียวกับ Dashboard/Analytics ไม่สร้างยอดขายซ้ำ
-- อ่านรายละเอียดใน `ERP_DEMO_3_8_CHANGES_TH.md`
+ดู `ERP_DEMO_4_3_TRIAL_NOTES_TH.md` สำหรับข้อจำกัดและรายการแก้ไข
 
-## รอบ Code Safety / De-duplication (v3.6.0)
+---
 
-- ลบสำเนา `pages-source/` ออกจาก Full Source เพื่อลดไฟล์ชื่อซ้ำและป้องกันแก้ผิดชุด (ชุด Deploy แจกแยก ZIP)
-- แก้ `q-date` ที่เคยเรียก inline handler ซึ่งไม่ได้ expose และซ้ำกับ listener ภายใน `app.js`
-- เปลี่ยน Production Core / Order Flow จากการ wrap `window.go` ซ้อนกัน เป็นฟัง event `erp:navigation`
-- รวม transient Sales Order / Production handoff ไว้ใต้ `window.ERPWorkflowContext`
-- รวม Runtime Error capture ให้ `boot-status.js` เป็น source เดียว; Health/Council อ่านจากแหล่งเดียวกัน
-- เพิ่ม `npm run audit:code` และ `npm run test:codebase` สำหรับตรวจชื่อไฟล์, HTML id, resource refs, inline handlers และ global-collision guard
+# ERP Integrated v4.2.0 — Local DEMO
 
+Package **2.2.0** · Specification & Quality Governance Release
 
-## รอบ Decision Council / Governance (v3.5.0)
+ระบบนี้เป็น Local Demo สำหรับสาธิต Workflow ERP ของธุรกิจ B2B ไทยที่มี Sales Order, Stock, งานสั่งผลิต/MTO, Supplier/Purchase, Delivery/Invoice, Billing/Payment, Analytics และ Decision Review โดยข้อมูลทดลองยังอยู่ใน Browser ไม่ใช่ Production multi-user backend
 
-เพิ่ม Decision Council แบบ rule-based 6 มุมมอง: Sales, A/R, Fulfillment, Inventory, Governance และ Contrarian พร้อม Chairman Synthesis, หลักฐาน และ Rule Registry โดยไม่ส่งข้อมูลไป AI/API ภายนอก ระบบระบุชัดว่าไม่ใช่ Multi-LLM และไม่สร้าง confidence % ปลอม อ่านรายละเอียดใน `ERP_DEMO_3_5_CHANGES_TH.md`
+## จุดสำคัญของ 4.2
 
-หน้า Dashboard มี `DECISION REVIEW` เพื่อบอกสิ่งที่ควรทำต่อสูงสุด 3 ข้อจากข้อมูล Local Demo ปัจจุบัน รอบนี้ไม่เพิ่มอัตราภาษีหรือค่าธรรมเนียมภายนอกแบบ hard-code
+รุ่น 4.2 ไม่ได้เร่งเพิ่มฟีเจอร์ธุรกิจจำนวนมาก แต่ยกระดับ “วิธีที่ระบบถูกพัฒนาและตรวจสอบ” เพื่อลด Bug/Technical Debt จากการพัฒนาเร็วด้วย AI:
 
-ทดสอบเฉพาะ Council ได้ด้วย `npm run test:council` และ Full Gate ยังคงใช้ `npm test`, `npm run build`, `npm run test:deployment`
+- `specs/constitution/ERP_CONSTITUTION.md` — กติกาหลัก 12 ข้อ เช่น Business Date, VAT source-of-truth, Storage Contract, AI boundary และ Release evidence
+- `specs/TRACEABILITY.json` — Requirement → Test/Evidence mapping
+- `DEVELOPMENT_CONTEXT.json` — Context Ledger สรุป source of truth, งานที่เสร็จ, technical debt และข้อห้าม regression
+- `QUALITY_BUDGET.json` — Complexity budget กันการเพิ่มไฟล์/dependency/global/inline handler แบบเงียบ ๆ
+- `npm run audit:specs` — ตรวจ Requirement ID, Traceability และ test mapping
+- `npm run audit:complexity` — ตรวจ complexity budget
+- `npm run audit:deep` — ตรวจ runtime import, date/VAT/storage/global/dynamic-code/duplicate patterns
+- `npm run evidence:core` — บันทึกหลักฐานผล Core Test เป็น TAP + JSON
+- Release metadata ของ build/audit scripts อ่านจาก `package.json` แทน hard-code หลายจุด
 
+## Business Core ที่รักษาไว้
 
-## รอบ Forecast / Business Analytics / Quant (v3.3.0)
+- Quotation → Sales Order → Fulfillment → Delivery/Invoice → Billing → Payment/Receipt
+- Partial delivery / partial payment / reversal
+- Stock reservation และ Available = On Hand - Reserved
+- Stock / Production / Purchase แบบผสมใน Fulfillment Plan
+- PO / Goods Receipt / Inventory Movement
+- Billing Note และ Payment Allocation
+- Customer/Product/Supplier Master
+- Interactive Executive Charts + 12-month Targets
+- Forecast / Quant / Decision Council
+- Local Backup + Attachment checksum
+- Role-based UX / Approval Center / Customer Portal Preview (Demo UX เท่านั้น)
 
-รักษาเดือนยอดศูนย์ แยกข้อมูลขาด เปรียบเทียบโมเดลบนเดือนเดียวกัน เพิ่ม Naive แก้ MASE และแสดงข้อจำกัดของช่วงพยากรณ์/Monte Carlo อ่านรายละเอียดและเกณฑ์ยอมรับใน `DEMO_V3_3_CHANGES_TH.md` ผลทดสอบ 64 กรณี และ compiled deployment 5 กรณีผ่าน
+## Shared Sources of Truth
 
-## รอบตรวจหน้าเว็บและโค้ดทับซ้อน (6 กันยายน 2569)
+| Concern | Source |
+|---|---|
+| VAT / Money primitive / Business Date | `erp-shared-core.js` |
+| Persisted browser keys | `erp-storage-contracts.js` |
+| Workflow definition | `erp-workflow-definitions.js` |
+| Graph execution | `erp-workflow-graph-core.js` |
+| Transaction integrity | `erp-integrity.js` |
+| Engineering constitution | `specs/constitution/ERP_CONSTITUTION.md` |
+| Requirement traceability | `specs/TRACEABILITY.json` |
 
-แก้ guard บันทึกติดตั้งซ้ำ สถานะพร้อมก่อนเริ่มระบบเสร็จ พาธ CSS หน้าพิมพ์ และการเปิดหน้าต่างพิมพ์ เพิ่มการแจ้งไฟล์โหลดไม่ครบที่ทำงานแยกจาก bundle กับ `deployment-check.html` สำหรับตรวจไฟล์จริงบนเว็บไซต์ อ่าน `DEMO_V3_2_1_CODE_REVIEW_TH.md` และคู่มือ `README_GITHUB_PAGES_TH.md`
+## Quality commands
 
-หลัง `npm run build` จะสร้างทั้ง dist และหน้าวินิจฉัยอัตโนมัติ ทดสอบ compiled ESM เพิ่มด้วย `npm run test:deployment`
-
-## การแก้ไขรอบก่อน (v3.2)
-
-แก้ปัญหา 6 ข้อจากการตรวจเชิงลึก: กู้เอกสารไม่ให้สต๊อก/เงินรับเกิน ล็อกต้นทางที่ออกฉบับพิมพ์แล้ว เชื่อมสถานะ Billing กับเงินรับทุกช่องทาง จัดสรรต้นทุนผลิตไปยัง Invoice และย้อนการรับสินค้าเมื่อบันทึกไม่ครบชุด ดูรายละเอียดพร้อมผลก่อน–หลังใน `DEMO_V3_2_CHANGES_TH.md`
-
-## ชุด FLAT สำหรับอัปโหลดไฟล์ระดับเดียวกัน
-
-หากการอัปโหลดทำให้ไฟล์ assets ไปอยู่ข้าง index.html ให้ใช้ชุด FLAT: `npm run build:flat` และ `npm run test:deployment:flat` เว็บอยู่ใน `dist-flat/` อ่าน `README_FLAT_UPLOAD_TH.md`
-
-## เริ่มใช้งาน
-
-ต้องมี Node.js ที่ Vite รองรับ (อย่างน้อย 20.19 ในสาย 20 หรือ 22.12 ในสาย 22)
-
-1. แตก ZIP แล้วเปิด Terminal ในโฟลเดอร์ที่มี `package.json`
-2. ติดตั้งแพ็กเกจตามเวอร์ชันที่ล็อกไว้:
-
-   ```sh
-   npm ci
-   ```
-
-3. เปิดระบบ:
-
-   ```sh
-   npm run dev
-   ```
-
-4. เปิด URL ที่ Terminal แสดง โดยปกติคือ `http://localhost:5173`
-
-หากต้องการเปิดไฟล์ที่ build แล้ว ซึ่งแนบไว้ใน `dist/`:
-
-```sh
-npm run preview
+```bash
+npm run audit:code
+npm run audit:deep
+npm run audit:specs
+npm run audit:complexity
+npm run security:preflight
+npm run test:core
+npm run evidence:core
 ```
 
-ให้เปิดผ่านเว็บเซิร์ฟเวอร์ ไม่ดับเบิลคลิก `index.html` เพราะระบบใช้ JavaScript modules ใช้ URL/พอร์ตและโปรไฟล์ Browser เดิมเมื่อต้องการเห็นข้อมูลเดิม
+รวม Gate ที่ไม่ต้องใช้ DOM dependencies:
 
-## สิ่งที่ปรับปรุง
+```bash
+npm run quality:gate
+```
 
-- รับเงินบางส่วนแล้วแสดงยอดค้างจริง การรับเงินผ่านใบวางบิลสร้างใบเสร็จให้อัตโนมัติ และไม่นับฉบับพิมพ์เป็นเงินรับซ้ำ
-- ยกเลิกรายการรับเงินจากหน้าใบวางบิลได้ โดยยกเลิกใบเสร็จที่เชื่อมกันและคำนวณยอดค้างใหม่
-- SO ติดตามจำนวนส่งสะสม แยก “ส่งบางส่วน”, “ส่งครบ / รอรับเงิน” และ “ส่งครบและรับเงินครบ”
-- ป้องกันการส่งซ้ำเกินจำนวนพร้อมส่ง รวมจำนวนสินค้ารหัสเดียวกันก่อนตรวจสต๊อก และหักยอดจองของ SO อื่น
-- เตรียมใบส่งสินค้าจาก SO แล้วล้างข้อมูลลูกค้า/สถานะแก้ไขเดิม ก่อนเติมข้อมูลใหม่
-- ปรับสูตร Target Margin ที่ 95% และแยกตัวเลือก ไม่มี VAT / บวก VAT / ถอด VAT ให้ชัดเจน โดยรักษาความหมายของข้อมูลเก่า
-- รวมข้อมูล Backup แล้วเก็บรายการเดิม รวม Master, SO และนโยบายราคา สำรองข้อมูลก่อนนำเข้าและย้อนกลับหากล้มเหลว
-- Backup JSON รุ่นใหม่บรรจุไฟล์แนบที่อ้างถึง พร้อม SHA-256 สำหรับตรวจความสมบูรณ์
-- ยอดขายหลักและกราฟลูกค้า/สินค้า/กลุ่มหน่วยงานรวมบิลขายตรง และไม่นับใบสั่งผลิตของ SO ใหม่ซ้ำกับ Invoice
-- แก้ไฟล์แจ้งสถานะเริ่มระบบและโลโก้ในแถบเอกสารให้รวมอยู่ในผล build
+Full browser/DOM suite:
 
-รายละเอียดการเทียบไฟล์อยู่ใน `MERGE_REVIEW_TH.md` และ `MERGE_FILE_MAP.csv` ผลทดสอบและรายการตรวจสาธิตอยู่ใน `VALIDATION_TH.md`
-
-## ย้ายข้อมูลจากรุ่นเดิม
-
-1. เปิดรุ่นเดิมที่ URL เดิม แล้ว Export Backup JSON ทุกปีไว้ก่อน
-2. หากใช้ระบบใหม่ที่ URL เดิมและ Browser เดิม ระบบยังใช้ storage key เดิม จึงอ่านข้อมูลเดิมได้
-3. หากย้าย URL/เครื่อง ให้นำเข้า Backup และเลือก **รวมข้อมูลเดิม** เป็นค่าเริ่มต้น
-4. ตรวจ Master, รายการเอกสาร, ยอดค้างรับ และไฟล์แนบ ก่อนเริ่มลงข้อมูลต่อ
-
-Backup รุ่นเก่าอาจมีเพียงรหัสไฟล์แนบและไม่มีเนื้อไฟล์ ต้องเปิดรุ่นใหม่นี้บน Browser/URL ที่เก็บไฟล์เดิม แล้ว Export ใหม่ จึงจะนำไฟล์แนบไปเครื่องอื่นได้ หากไฟล์ต้นทางหายไปแล้ว ระบบสร้างเนื้อไฟล์คืนจากรหัสไม่ได้
-
-“แทนที่” จะแทนที่ชุดรายการ/เดือนและ Master ที่ปรากฏในไฟล์ ไม่ได้ล้างทุกปีทุกสาขาที่ไม่อยู่ในไฟล์ ควรใช้ “รวมข้อมูล” หากต้องการเพิ่มข้อมูล
-
-Snapshot ภายในเครื่องเก็บข้อมูลและการอ้างอิงไฟล์ ใช้ย้อนข้อมูลใน Browser เดิม ส่วน Backup JSON ที่ดาวน์โหลดคือชุดสำหรับย้ายเครื่องพร้อมเนื้อไฟล์แนบ
-
-## ความหมายของยอดขาย
-
-สำหรับงานใหม่ที่เชื่อม SO: ใบสั่งผลิตเป็นงานระหว่างดำเนินการ และ Invoice เป็นยอดขายเมื่อส่งสินค้า ใบเสร็จ/การรับเงินเป็นการชำระหนี้ ไม่เพิ่มยอดขายอีกครั้ง
-
-ข้อมูลเก่าที่บันทึกยอดขายผ่านใบสั่งผลิตยังคงใช้เป็นยอดขายย้อนหลังได้ Invoice ที่มี `sourceProductionId` / `sourceProductionNo` เชื่อมกับรายการเก่าจะไม่ถูกบวกซ้ำ ข้อมูลเก่าที่ไม่มีรหัสอ้างอิงเชื่อมกันต้องตรวจและจับคู่เองก่อนสรุปรายงาน
-
-กราฟที่เลือกดู “ใบสั่งผลิต” โดยตรง และรายงานเป้าหมายงานผลิต ยังคงแสดงงานผลิตตามวัตถุประสงค์ของรายงานนั้น จึงอาจต่างจากยอดขายที่ส่งแล้ว
-
-## ทดสอบและ build
-
-```sh
+```bash
+npm ci
 npm test
 npm run build
+npm run test:deployment
 ```
 
-ชุดทดสอบใช้ Node, DOM จำลองและ IndexedDB จำลอง ไม่ได้ยืนยันการแสดงผล PDF/การพิมพ์ใน Browser จริง
+> ใน environment ที่สร้างแพ็กเกจ 4.2 นี้ Core Gate ผ่าน แต่ `npm ci` ไม่สามารถติดตั้ง `jsdom/fake-indexeddb` จนครบเพราะ network/install timeout ดังนั้น Full DOM/E2E ต้องรันซ้ำบนเครื่องนักพัฒนาก่อน Production/Release จริง
 
-## ขอบเขตของรุ่นนี้
+## เปิด Local Demo
 
-ข้อมูลเก็บใน Browser ของเครื่องนี้ ระบบยังไม่ได้เปิด Firebase, ระบบสมาชิกจริง หรือการทำงานหลายผู้ใช้พร้อมกัน Local permissions และ Audit Log เป็นส่วนสาธิต ไม่ใช่ขอบเขตความปลอดภัยฝั่งเซิร์ฟเวอร์
+```bash
+npm ci
+npm run dev
+```
 
-การพร้อมส่งของงานผลิต/งานบริการต้องตรวจยืนยันหน้างานก่อนระบุจำนวนพร้อมส่ง รุ่นนี้ยังไม่ได้ติดตามทุกขั้นตอนการผลิตจริงหรือรองรับการคืนสินค้า/ลดหนี้ครบวงจร
+เปิด URL ที่ Vite แสดง เช่น `http://localhost:5173`
 
-PDF และ Excel บางส่วนยังโหลดไลบรารีจาก CDN ตามระบบเดิม จึงต้องใช้อินเทอร์เน็ตเมื่อใช้งานครั้งแรก เอกสาร Cloud เดิมถูกย้ายไป `docs/cloud-reference/` เพื่อใช้วางแผนพัฒนาต่อ ไม่ใช่ขั้นตอนเปิด Cloud ของแพ็กเกจนี้
+ไม่แนะนำดับเบิลคลิก `index.html` เพราะระบบใช้ ES Modules และ browser storage ที่ผูกกับ origin
+
+## GitHub Pages
+
+สำหรับการสาธิตแบบ Static ให้ใช้ ZIP Pages 4.2 ที่จัดไฟล์ Runtime ชุดเดียวกันทั้งหมด และเปิด `deployment-check.html` หลังอัปโหลดเพื่อตรวจ HTTP + SHA-256 ของ runtime files
+
+ดู `GITHUB_PAGES_DEPLOY_4_2_TH.md`
+
+## ข้อจำกัดที่ต้องเข้าใจก่อน Production
+
+- Role ใน Demo เป็น UX role ไม่ใช่ server authorization
+- Customer Portal เป็น Preview ไม่ใช่ secure customer login
+- LocalStorage/IndexedDB ไม่ใช่ central transaction database
+- ยังไม่มี server-side tenant isolation / atomic document number / DB transaction / server audit
+- ยังไม่ใช่ General Ledger/Payroll/Bank Reconciliation เต็มรูปแบบ
+- เอกสารบางส่วนใช้ CDN สำหรับ html2canvas/jsPDF
+- `app.js` และ `style.css` ยังเป็น technical debt ขนาดใหญ่ ต้อง refactor ทีละ domain พร้อม regression/visual tests
+
+## เอกสารปัจจุบัน
+
+- `ERP_DEMO_4_2_CHANGES_TH.md`
+- `DEEP_CODE_AUDIT_4_2_TH.md`
+- `RELEASE_VALIDATION_4_2_TH.md`
+- `GITHUB_PAGES_DEPLOY_4_2_TH.md`
+- `SECURITY_AGENT_GUIDE_TH.md`
+- `specs/constitution/ERP_CONSTITUTION.md`
+- `specs/FEATURE_CHANGE_TEMPLATE.md`
+
+รายงานรุ่นเก่าเก็บใน `docs/history/` เพื่อไม่ปะปนกับสถานะปัจจุบัน

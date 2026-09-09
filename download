@@ -1,0 +1,26 @@
+node_modules/
+dist/
+dist-flat/
+.DS_Store
+Thumbs.db
+
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials*.json
+service-account*.json
+
+# AI agent machine-local settings must never be committed accidentally
+.claude/settings.local.json
+.cursor/*.local.json
+
+# Local logs / temporary files
+*.log
+.tmp/
+tmp/

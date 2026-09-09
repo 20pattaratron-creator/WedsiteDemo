@@ -1,6 +1,6 @@
 // ============================================================================
 // erp-workflow-graph-core.js — deterministic workflow graph runner
-// DEMO 4.2.0
+// DEMO 4.3.0
 // ============================================================================
 import { cloneData } from './erp-shared-core.js';
 export const WORKFLOW_GRAPH_CORE_VERSION = '1.0.0';

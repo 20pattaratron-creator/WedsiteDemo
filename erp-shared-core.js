@@ -1,6 +1,6 @@
 // ============================================================================
 // erp-shared-core.js — deterministic shared primitives for ERP runtime
-// DEMO 4.2.0
+// DEMO 4.3.0
 // ============================================================================
 
 export const SHARED_CORE_VERSION = '1.0.0';

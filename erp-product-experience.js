@@ -1,12 +1,12 @@
 // =====================================================================
 // erp-product-experience.js — simpler daily UX + workflow + approvals
-// DEMO 4.2.0 · local UX layer, not authorization/security
+// DEMO 4.3.0 · local UX layer, not authorization/security
 // =====================================================================
 import {PRODUCT_EXPERIENCE_VERSION,ROLE_CONFIG,normalizeRole,buildWorkQueue,buildStockAvailability,approvalRows} from './erp-product-experience-core.js';
 import { localDateISO, parseBusinessDate } from './erp-shared-core.js';
 import { ORDER_TO_CASH_STEPS, workflowStageForNavigation } from './erp-workflow-definitions.js';
 
-const VERSION='4.2.0';
+const VERSION='4.3.0';
 const STORAGE_ROLE='erp_product_experience_role_v1';
 const STORAGE_MODE='erp_product_experience_mode_v1';
 const BRANCH_LABEL={ubon:'สำนักงานใหญ่',khonkaen:'สาขาที่ 00001'};

@@ -1,6 +1,6 @@
 // ============================================================================
 // erp-workflow-definitions.js — explicit workflow definitions for ERP UX/rules
-// DEMO 4.2.0
+// DEMO 4.3.0
 // ============================================================================
 import { defineWorkflow } from './erp-workflow-graph-core.js';
 export const WORKFLOW_DEFINITIONS_VERSION = '1.0.0';

@@ -1,5 +1,7 @@
 import { roundMoneyValue, calculateVatSummary, localDateISO, DEFAULT_VAT_RATE, DEFAULT_VAT_DIVISOR } from './erp-shared-core.js';
 import { CONTACT_MASTER_KEY, PRODUCT_MASTER_KEY, BUSINESS_RULES_KEY, ORDER_FLOW_PREFERENCES_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY } from './erp-storage-contracts.js';
+import { safeAttachmentUrl, safeAttachmentKind } from './erp-detail-security.js';
+import { withDemoWriteLease } from './erp-demo-concurrency.js';
 
 
 // ============================================================
@@ -219,7 +221,7 @@ function productMasterRows(){
     const base=map.get(key)||{};const flowType=row.flowType||base.flowType||defaultProductFlowType(row);
     map.set(key,{...base,...row,flowType,fulfillmentType:row.fulfillmentType||base.fulfillmentType||defaultProductFulfillment({...row,flowType}),unit:row.unit||base.unit||'ชิ้น',openingStockUbon:safeNum(row.openingStockUbon??row.openingStock??base.openingStockUbon??base.openingStock),openingStockKhonkaen:safeNum(row.openingStockKhonkaen??base.openingStockKhonkaen),openingStock:safeNum(row.openingStockUbon??row.openingStock??base.openingStockUbon??base.openingStock)+safeNum(row.openingStockKhonkaen??base.openingStockKhonkaen),reorderPoint:safeNum(row.reorderPoint??base.reorderPoint),standardCost:safeNum(row.standardCost??base.standardCost),isSeed:false});
   });
-  return[...map.values()].sort((a,b)=>String(a.code||a.name).localeCompare(String(b.code||b.name),'th'));
+  return[...map.values()].filter(r=>r.active!==false).sort((a,b)=>String(a.code||a.name).localeCompare(String(b.code||b.name),'th'));
 }
 function productMasterMeta(name='',code='',category=''){
   const key=normalizeProductKey(name),codeKey=String(code||'').trim().toLowerCase();
@@ -253,7 +255,7 @@ function populateAnalyticsProductFilter(observed=[]){
   el.innerHTML='<option value="">สินค้าทั้งหมด</option>'+names.map(name=>{const m=productMasterMeta(name);return `<option value="${escapeHtml(name)}">${escapeHtml(name)}${m.productCode?' · '+escapeHtml(m.productCode):''}</option>`;}).join('');
   if(names.includes(cur))el.value=cur;else if(cur)el.value='';
 }
-function contactMasterRows(){return readLocalMaster(CONTACT_MASTER_KEY,[]).filter(Boolean).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'th'));}
+function contactMasterRows(options={}){const rows=readLocalMaster(CONTACT_MASTER_KEY,[]).filter(Boolean);const visible=options.includeArchived?rows:rows.filter(r=>r.active!==false);return visible.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'th'));}
 function contactHasRole(row,role){return row?.role===role||row?.role==='both';}
 function findContactMaster(name,role='customer'){
   const key=normalizeProductKey(name);if(!key)return null;
@@ -355,13 +357,13 @@ function renderMasterData(){
   const sc=document.getElementById('master-supplier-count');if(sc)sc.textContent=`${suppliers.length} ราย`;
   const pc=document.getElementById('master-product-count');if(pc)pc.textContent=`${products.length} รายการ`;
   const ct=document.getElementById('master-customer-table');if(ct)ct.innerHTML=masterTableHtml([
-    {label:'ลูกค้า',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เลขผู้เสียภาษี',html:r=>escapeHtml(r.taxId||'-')},{label:'โทร / อีเมล',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',html:r=>`<button class="btn btn-view btn-sm" onclick="editContactMaster('${r.id}','customer')">แก้ไข</button> <button class="btn btn-danger btn-sm" onclick="deleteContactMaster('${r.id}')">ลบ</button>`}
+    {label:'ลูกค้า',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เลขผู้เสียภาษี',html:r=>escapeHtml(r.taxId||'-')},{label:'โทร / อีเมล',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',html:r=>`<button class="btn btn-view btn-sm" onclick="editContactMaster('${r.id}','customer')">แก้ไข</button> <button class="btn btn-danger btn-sm" onclick="archiveContactMaster('${r.id}','customer')">ปิดใช้งาน</button>`}
   ],customers);
   const st=document.getElementById('master-supplier-table');if(st)st.innerHTML=masterTableHtml([
-    {label:'ผู้จำหน่าย / ผู้ผลิต',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เครดิต',html:r=>escapeHtml(r.supplierCreditTerm||'-')},{label:'ระยะส่ง',html:r=>(r.supplierLeadDays||[]).length?escapeHtml(r.supplierLeadDays.join(', ')+' วัน'):'-'},{label:'ติดต่อ',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',html:r=>`<button class="btn btn-view btn-sm" onclick="editContactMaster('${r.id}','supplier')">แก้ไข</button> <button class="btn btn-danger btn-sm" onclick="deleteContactMaster('${r.id}')">ลบ</button>`}
+    {label:'ผู้จำหน่าย / ผู้ผลิต',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เครดิต',html:r=>escapeHtml(r.supplierCreditTerm||'-')},{label:'ระยะส่ง',html:r=>(r.supplierLeadDays||[]).length?escapeHtml(r.supplierLeadDays.join(', ')+' วัน'):'-'},{label:'ติดต่อ',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',html:r=>`<button class="btn btn-view btn-sm" onclick="editContactMaster('${r.id}','supplier')">แก้ไข</button> <button class="btn btn-danger btn-sm" onclick="archiveContactMaster('${r.id}','supplier')">ปิดใช้งาน</button>`}
   ],suppliers);
   const pt=document.getElementById('master-product-table');if(pt)pt.innerHTML=masterTableHtml([
-    {label:'SKU / สินค้า',html:r=>`<b>${escapeHtml(r.code||'-')}</b><br>${escapeHtml(r.name||'-')}<small>${escapeHtml(r.category||'')}</small>`},{label:'ประเภท',html:r=>productFlowTypeBadge(r.flowType)},{label:'รูปแบบงาน',html:r=>productFulfillmentBadge(r.fulfillmentType)},{label:'Opening HQ',html:r=>fmt(r.openingStockUbon||0),cls:'tn'},{label:'Opening 00001',html:r=>fmt(r.openingStockKhonkaen||0),cls:'tn'},{label:'ขายออก',html:r=>fmt(productSoldQty(r)),cls:'tn'},{label:'คงเหลือ',html:r=>{const q=productEstimatedStock(r);const cls=q<=safeNum(r.reorderPoint)?'neg':'pos';return r.fulfillmentType==='stock'?`<b class="${cls}">${fmt(q)}</b>`:'—';},cls:'tn'},{label:'ต้นทุนมาตรฐาน',html:r=>r.standardCost?`฿${fmt(r.standardCost)}`:'-',cls:'tn'},{label:'ผู้จำหน่ายหลัก',html:r=>escapeHtml(r.defaultSupplier||'-')},{label:'จัดการ',html:r=>{const key=encodeURIComponent(r.code||r.name||'');return `<button class="btn btn-view btn-sm" onclick="editProductMasterLocal(decodeURIComponent('${key}'))">แก้ไข</button> ${r.isSeed?'':`<button class="btn btn-danger btn-sm" onclick="deleteProductMasterLocal(decodeURIComponent('${key}'))">ลบ</button>`}`;}}
+    {label:'SKU / สินค้า',html:r=>`<b>${escapeHtml(r.code||'-')}</b><br>${escapeHtml(r.name||'-')}<small>${escapeHtml(r.category||'')}</small>`},{label:'ประเภท',html:r=>productFlowTypeBadge(r.flowType)},{label:'รูปแบบงาน',html:r=>productFulfillmentBadge(r.fulfillmentType)},{label:'Opening HQ',html:r=>fmt(r.openingStockUbon||0),cls:'tn'},{label:'Opening 00001',html:r=>fmt(r.openingStockKhonkaen||0),cls:'tn'},{label:'ขายออก',html:r=>fmt(productSoldQty(r)),cls:'tn'},{label:'คงเหลือ',html:r=>{const q=productEstimatedStock(r);const cls=q<=safeNum(r.reorderPoint)?'neg':'pos';return r.fulfillmentType==='stock'?`<b class="${cls}">${fmt(q)}</b>`:'—';},cls:'tn'},{label:'ต้นทุนมาตรฐาน',html:r=>r.standardCost?`฿${fmt(r.standardCost)}`:'-',cls:'tn'},{label:'ผู้จำหน่ายหลัก',html:r=>escapeHtml(r.defaultSupplier||'-')},{label:'จัดการ',html:r=>{const key=encodeURIComponent(r.code||r.name||'');return `<button class="btn btn-view btn-sm" onclick="editProductMasterLocal(decodeURIComponent('${key}'))">แก้ไข</button> ${r.isSeed?'':`<button class="btn btn-danger btn-sm" onclick="archiveProductMasterLocal(decodeURIComponent('${key}'))">ปิดใช้งาน</button>`}`;}}
   ],products);
 }
 function productFlowTypeLabel(v){return{inventory:'Inventory · นับสต็อก',non_inventory:'Non-Inventory · ไม่นับสต็อก',service:'Service · บริการ'}[v]||v||'-';}
@@ -392,9 +394,11 @@ function saveCustomerMaster(){const v=id=>document.getElementById(id)?.value?.tr
 function saveSupplierMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-s-name');if(!name)return notify('กรุณากรอกชื่อผู้จำหน่าย / ผู้ผลิต');const lead=v('md-s-lead').split(',').map(x=>Number(x.trim())).filter(x=>x>0);upsertContactMaster({id:masterEditState.supplier||'',name,role:document.getElementById('md-s-role')?.value||'supplier',entityType:document.getElementById('md-s-entity')?.value||'company',taxId:v('md-s-tax'),address:v('md-s-address'),contactPerson:v('md-s-contact'),phone:v('md-s-phone'),email:v('md-s-email'),supplierCreditTerm:document.getElementById('md-s-credit')?.value||'cash',supplierLeadDays:lead,note:v('md-s-note')});resetSupplierMasterForm();notify('บันทึกผู้จำหน่าย / ผู้ผลิตแล้วใน Browser เครื่องนี้ (Local Demo)','success');}
 function saveProductMasterLocal(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const code=v('md-p-code'),name=v('md-p-name');if(!code||!name)return notify('กรุณากรอกรหัสสินค้าและชื่อสินค้า');const rows=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]);const key=normalizeProductKey(masterEditState.product||code);const idx=rows.findIndex(r=>normalizeProductKey(r.code||r.name)===key);const openingStockUbon=safeNum(v('md-p-opening-ub')||v('md-p-opening')),openingStockKhonkaen=safeNum(v('md-p-opening-kk'));const row={id:idx>=0?rows[idx].id:`product-${Date.now()}`,code,name,category:v('md-p-category')||'อื่น ๆ',unit:document.getElementById('md-p-unit')?.value||'ชิ้น',flowType:document.getElementById('md-p-flow-type')?.value||'inventory',fulfillmentType:document.getElementById('md-p-fulfillment')?.value||'stock',openingStockUbon,openingStockKhonkaen,openingStock:openingStockUbon+openingStockKhonkaen,reorderPoint:safeNum(v('md-p-reorder')),standardCost:safeNum(v('md-p-standard-cost')),defaultSupplier:v('md-p-supplier'),updatedAt:new Date().toISOString()};if(idx>=0)rows[idx]={...rows[idx],...row};else rows.push(row);writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);window.ERPProductionCore?.audit?.(idx>=0?'update':'create','product',code,`${idx>=0?'แก้ไข':'บันทึก'} Product Master: ${name}`);resetProductMasterForm();initProductMasterDatalist();renderMasterData();notify('บันทึก Product Master แล้วใน Browser เครื่องนี้ (Local Demo)','success');}
 function editContactMaster(id,mode){const row=contactMasterRows().find(r=>String(r.id)===String(id));if(!row)return;if(mode==='customer'){masterEditState.customer=row.id;setInputValue('md-c-name',row.name);setInputValue('md-c-entity',row.entityType||'company');setInputValue('md-c-role',row.role==='both'?'both':'customer');setInputValue('md-c-tax',row.taxId);setInputValue('md-c-branch-name',row.branchName);setInputValue('md-c-branch-code',row.branchCode);setInputValue('md-c-address',row.address);setInputValue('md-c-postal',row.postalCode);setInputValue('md-c-contact',row.contactPerson);setInputValue('md-c-phone',row.phone);setInputValue('md-c-email',row.email);setInputValue('md-c-credit',row.creditDays);setInputValue('md-c-note',row.note);}else{masterEditState.supplier=row.id;setInputValue('md-s-name',row.name);setInputValue('md-s-entity',row.entityType||'company');setInputValue('md-s-role',row.role==='both'?'both':'supplier');setInputValue('md-s-tax',row.taxId);setInputValue('md-s-address',row.address);setInputValue('md-s-contact',row.contactPerson);setInputValue('md-s-phone',row.phone);setInputValue('md-s-email',row.email);setInputValue('md-s-credit',row.supplierCreditTerm||'cash');setInputValue('md-s-lead',(row.supplierLeadDays||[]).join(','));setInputValue('md-s-note',row.note);}}
-function deleteContactMaster(id){if(!confirm('ลบข้อมูลผู้ติดต่อนี้ใช่หรือไม่?'))return;const rows=contactMasterRows(),target=rows.find(r=>String(r.id)===String(id));writeLocalMaster(CONTACT_MASTER_KEY,rows.filter(r=>String(r.id)!==String(id)));if(target&&window.FirebaseService?.deleteMasterRecord)window.FirebaseService.deleteMasterRecord('contact',target).catch(err=>console.warn('ลบ Contact Master บน Firebase ไม่สำเร็จ',err));refreshContactMasterDatalists();renderMasterData();}
+function archiveContactMaster(id,role){if(!confirm('ปิดใช้งานข้อมูลนี้หรือไม่? เอกสารย้อนหลังจะยังคงอ้างอิงข้อมูลเดิมได้'))return;const rows=contactMasterRows({includeArchived:true}),idx=rows.findIndex(r=>String(r.id)===String(id));if(idx<0)return;const row={...rows[idx]};if(row.role==='both'){row.role=role==='customer'?'supplier':'customer';}else{row.active=false;row.archivedAt=new Date().toISOString();}row.updatedAt=new Date().toISOString();rows[idx]=row;writeLocalMaster(CONTACT_MASTER_KEY,rows);refreshContactMasterDatalists();renderMasterData();notify('ปิดใช้งานข้อมูลแล้ว · ประวัติเอกสารยังคงอยู่','success');}
+function deleteContactMaster(id){return archiveContactMaster(id,'customer');}
 function editProductMasterLocal(code){const row=productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));if(!row)return;masterEditState.product=row.code||row.name;setInputValue('md-p-code',row.code);setInputValue('md-p-name',row.name);setInputValue('md-p-category',row.category);setInputValue('md-p-unit',row.unit||'ชิ้น');setInputValue('md-p-flow-type',row.flowType);setInputValue('md-p-fulfillment',row.fulfillmentType);setInputValue('md-p-opening-ub',row.openingStockUbon??row.openingStock);setInputValue('md-p-opening-kk',row.openingStockKhonkaen||0);setInputValue('md-p-standard-cost',row.standardCost||0);setInputValue('md-p-reorder',row.reorderPoint);setInputValue('md-p-supplier',row.defaultSupplier);}
-function deleteProductMasterLocal(code){if(!confirm('ลบ Product Master นี้ใช่หรือไม่?'))return;const all=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),target=all.find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));const rows=all.filter(r=>normalizeProductKey(r.code||r.name)!==normalizeProductKey(code));writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,rows);if(target&&window.FirebaseService?.deleteMasterRecord)window.FirebaseService.deleteMasterRecord('product',target).catch(err=>console.warn('ลบ Product Master บน Firebase ไม่สำเร็จ',err));initProductMasterDatalist();renderMasterData();}
+function archiveProductMasterLocal(code){if(!confirm('ปิดใช้งาน Product Master นี้หรือไม่? เอกสารและประวัติเดิมจะไม่ถูกลบ'))return;const all=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),key=normalizeProductKey(code);let idx=all.findIndex(r=>normalizeProductKey(r.code||r.name)===key);let row=idx>=0?{...all[idx]}:productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===key);if(!row)return;row={...row,isSeed:undefined,active:false,archivedAt:new Date().toISOString(),updatedAt:new Date().toISOString()};if(idx>=0)all[idx]=row;else all.push(row);writeLocalMaster(PRODUCT_MASTER_LOCAL_KEY,all);initProductMasterDatalist();renderMasterData();notify('ปิดใช้งานสินค้าแล้ว · ประวัติเดิมยังคงอยู่','success');}
+function deleteProductMasterLocal(code){return archiveProductMasterLocal(code);}
 function initMasterData(){
   const unit=document.getElementById('md-p-unit');if(unit)unit.innerHTML=UNITS.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
   // Seed supplier names from the production presets without inventing addresses.
@@ -5569,7 +5573,11 @@ function documentNumberExists(type,no,excludeId=''){
   return false;
 }
 
-async function saveQuote(){
+async function saveQuote(){try{return await withDemoWriteLease('quote',saveQuoteUnlocked);}catch(err){console.warn('[ERP DEMO] quote write lease',err);notify(err?.message||'ยังบันทึกไม่ได้ กรุณาลองใหม่');}}
+async function saveInvoice(){try{return await withDemoWriteLease('invoice',saveInvoiceUnlocked);}catch(err){console.warn('[ERP DEMO] invoice write lease',err);notify(err?.message||'ยังบันทึกไม่ได้ กรุณาลองใหม่');}}
+async function saveReceipt(){try{return await withDemoWriteLease('receipt',saveReceiptUnlocked);}catch(err){console.warn('[ERP DEMO] receipt write lease',err);notify(err?.message||'ยังบันทึกไม่ได้ กรุณาลองใหม่');}}
+
+async function saveQuoteUnlocked(){
   const b=getBr('q');if(!b)return;
   const state=editState.quote;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
   let no=document.getElementById('q-no').value.trim();const date=document.getElementById('q-date').value,cust=document.getElementById('q-cust').value.trim();
@@ -5607,7 +5615,7 @@ async function linkProductionToInvoice(source,invoiceRecord){
   }
   return true;
 }
-async function saveInvoice(){
+async function saveInvoiceUnlocked(){
   const b=getBr('i');if(!b)return;
   const state=editState.invoice;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
   if(state){try{window.ERPIntegrity.assertEditable('invoice',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
@@ -5682,7 +5690,7 @@ async function markInvoicePaidByReceipt(branch,invNo,selectedRef,receiptRecord){
   renderIList();populateInvRefs();window.renderIssuedInvoiceList?.();
   return {found:true,cloudOk:true,collection:found.collection,fullyPaid:summary.status==='paid',outstanding:summary.outstanding};
 }
-async function saveReceipt(){
+async function saveReceiptUnlocked(){
   const b=getBr('r');if(!b)return;
   const state=editState.receipt;if(state?.original?.paymentId){notify('ใบเสร็จนี้สร้างจากรายการรับเงิน กรุณายกเลิกรายการรับเงินแล้วบันทึกใหม่ที่หน้าใบวางบิล');return;}if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
   if(state){try{window.ERPIntegrity.assertEditable('receipt',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
@@ -6432,7 +6440,7 @@ function renderIssuedInvoiceList(){
     <td>${escapeHtml(row.customer||'-')}</td><td>${escapeHtml(row.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(invoiceNetSales(row))}</td><td class="tn">฿${fmt(row.total??0)}</td>
     <td>${escapeHtml(row.sourceProductionNo||'-')}</td>
-    <td style="display:flex;gap:4px"><button class="btn btn-view btn-sm" onclick="showIssuedDocumentDetail('issuedInvoices','${row.branch}',${row._y},${row._m},'${row.id}')">ดู</button><button class="btn btn-danger btn-sm" onclick="delDoc('${row.branch}',${row._y},${row._m},'issuedInvoices',${row.id})">ลบ</button></td>
+    <td style="display:flex;gap:4px"><button class="btn btn-view btn-sm" onclick="showIssuedDocumentDetail('issuedInvoices','${row.branch}',${row._y},${row._m},'${row.id}')">ดู</button><span class="badge b-green">ออกแล้ว · ล็อก</span></td>
   </tr>`).join('');
 }
 
@@ -6447,7 +6455,7 @@ function renderIssuedReceiptList(){
     <td>${bbr(row.branch)}</td><td>${escapeHtml(formatThaiDate(row.date))}</td>
     <td>${escapeHtml(row.invNo||'-')}</td><td>${escapeHtml(row.customer||'-')}</td><td>${escapeHtml(row.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(row.total??row.saleTotal??0)}</td>
-    <td style="display:flex;gap:4px"><button class="btn btn-view btn-sm" onclick="showIssuedDocumentDetail('issuedReceipts','${row.branch}',${row._y},${row._m},'${row.id}')">ดู</button><button class="btn btn-danger btn-sm" onclick="delDoc('${row.branch}',${row._y},${row._m},'issuedReceipts',${row.id})">ลบ</button></td>
+    <td style="display:flex;gap:4px"><button class="btn btn-view btn-sm" onclick="showIssuedDocumentDetail('issuedReceipts','${row.branch}',${row._y},${row._m},'${row.id}')">ดู</button><span class="badge b-blue">ออกแล้ว · ล็อก</span></td>
   </tr>`).join('');
 }
 
@@ -6462,7 +6470,7 @@ function showIssuedDocumentDetail(type,branch,year,month,id){
     ['ยอดก่อน VAT','฿'+fmt(invoiceNetSales(row))],['VAT 7%','฿'+fmt(row.vatAmt||0)],['ยอดรวม','฿'+fmt(row.total||0)],['หมายเหตุ',row.note||'-']
   ];
   document.getElementById('modal-body').innerHTML=details.map(([label,value])=>`<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value??'-')}</strong></div>`).join('');
-  document.getElementById('detail-modal').classList.add('show');
+  document.getElementById('detail-modal').classList.add('open');
 }
 
 function renderEList(){
@@ -6493,6 +6501,7 @@ function renderEList(){
   }).join('');
 }
 async function delDoc(br,y,m,type,id){
+  if(type==='issuedInvoices'||type==='issuedReceipts'){notify('เอกสารที่ออกแล้วถูกล็อกใน Demo 4.3 และไม่อนุญาตให้ลบแบบทำลายข้อมูล');return;}
   if(!confirm('ลบรายการนี้หรือไม่? ระบบจะเก็บสำเนาไว้ใน Recycle Bin เพื่อกู้คืนภายหลัง'))return;
   const d=loadFor(br,y,m);
   const found=(d[type]||[]).find(x=>String(x.id)===String(id));
@@ -6605,80 +6614,47 @@ function showDetail(type,doc){
         <th style="padding:6px 8px;border:1px solid var(--g4);font-size:11px;color:var(--g2)">รวม</th>
       </tr></thead><tbody>
       ${doc.items.map(it=>`<tr>
-        <td style="padding:6px 8px;border:1px solid var(--g4)">${it.product}</td>
-        <td style="padding:6px 8px;border:1px solid var(--g4);text-align:center">${it.qty}</td>
-        <td style="padding:6px 8px;border:1px solid var(--g4)">${it.unit||''}</td>
+        <td style="padding:6px 8px;border:1px solid var(--g4)">${escapeHtml(it.product||'')}</td>
+        <td style="padding:6px 8px;border:1px solid var(--g4);text-align:center">${escapeHtml(it.qty??'')}</td>
+        <td style="padding:6px 8px;border:1px solid var(--g4)">${escapeHtml(it.unit||'')}</td>
         ${['invoice','production'].includes(type)?`<td style="padding:6px 8px;border:1px solid var(--g4)">${it.costMode==='lump'?'ราคาเหมา':'ราคาต้นทุนต่อหน่วย'}</td><td style="padding:6px 8px;border:1px solid var(--g4);text-align:right">฿${fmt(it.costMode==='lump'?(it.costLump??it.costValue??it.costTotal):(it.costValue??it.costUnit))}</td>`:''}<td style="padding:6px 8px;border:1px solid var(--g4);text-align:right">฿${fmt(getPSaleUnitValue(it))}</td>
         <td style="padding:6px 8px;border:1px solid var(--g4);text-align:right">฿${fmt(it.total||it.saleTotal)}</td>
       </tr>`).join('')}
       </tbody></table></div>`;
   }
 
-  // Attachments
+  // Attachments — user/imported URLs are allow-listed before becoming clickable.
   const atts=doc.attachments||[];
   if(atts.length){
-    body+=`<div style="margin-top:1rem;font-size:12px;font-weight:700;color:var(--g3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">หลักฐานแนบ (${atts.length} ไฟล์)</div>
-    <div class="attach-grid">`;
+    body+=`<div style="margin-top:1rem;font-size:12px;font-weight:700;color:var(--g3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">หลักฐานแนบ (${atts.length} ไฟล์)</div><div class="attach-grid">`;
     atts.forEach(f=>{
-      const fileName=f.name||'ไฟล์แนบ';
-      const fileType=f.type||'';
-
-      // 0) ไฟล์ที่อัปโหลดเข้า Google Drive แล้ว
-      if(f.provider==='google-drive'&&f.webViewLink){
-        const link=escapeHtml(f.webViewLink);
-        const icon=(fileType||f.mimeType||'').startsWith('image/')?'🖼️':'📎';
-        body+=`<a class="attach-item" href="${link}" target="_blank" rel="noopener" title="เปิดหลักฐานใน Google Drive">
-          <div class="pdf-box">${icon} DRIVE</div>
-          <div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:110px;word-break:break-all">${escapeHtml(f.originalName||fileName)}</div>
-          <div style="font-size:9px;color:var(--blue);text-align:center;margin-top:2px">เปิดใน Google Drive</div>
-        </a>`;
-        return;
-      }
-
-      // 1) ไฟล์ที่อยู่ในเครื่องเดิมแบบ data URL
-      if(f.data){
-        if(fileType.startsWith('image/')){
-          body+=`<div class="attach-item" onclick="openFile('${f.data}','image')" title="คลิกเพื่อดูรูป"><img src="${f.data}" alt="${fileName}"><div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px">${fileName}</div></div>`;
-        } else {
-          body+=`<div class="attach-item" onclick="openFile('${f.data}','pdf')" title="คลิกเปิด PDF"><div class="pdf-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>PDF</div><div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:90px;word-break:break-all">${fileName}</div></div>`;
-        }
-        return;
-      }
-
-      // 2) ไฟล์ local-only ที่เก็บไว้ใน IndexedDB ของเครื่องที่อัปโหลด
+      const fileName=escapeHtml(f.originalName||f.name||'ไฟล์แนบ');
+      const kind=safeAttachmentKind(f.type||f.mimeType||'');
       if(f.provider==='local'&&f.localId){
-        const kind=fileType.startsWith('image/')?'image':'pdf';
-        body+=`<div class="attach-item" onclick="openLocalAttachment('${f.localId}','${kind}')" title="ไฟล์นี้เปิดได้เฉพาะเครื่องที่อัปโหลด">
-          <div class="pdf-box">📁 LOCAL</div>
-          <div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:110px;word-break:break-all">${fileName}</div>
-          <div style="font-size:9px;color:var(--red);text-align:center;margin-top:2px">เฉพาะเครื่องนี้</div>
-        </div>`;
-        return;
+        body+=`<button type="button" class="attach-item" data-local-attachment-id="${escapeHtml(encodeURIComponent(String(f.localId)))}" data-attachment-kind="${kind}"><div class="pdf-box">📁 LOCAL</div><div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:110px;word-break:break-all">${fileName}</div></button>`;return;
       }
-
-      // 3) เผื่ออนาคตใช้ Cloudinary / Firebase Storage แล้วมี URL
-      if(f.url||f.secure_url){
-        const url=f.secure_url||f.url;
-        if(fileType.startsWith('image/')){
-          body+=`<div class="attach-item" onclick="openFile('${url}','image')" title="คลิกเพื่อดูรูป"><img src="${url}" alt="${fileName}"><div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px">${fileName}</div></div>`;
-        } else {
-          body+=`<div class="attach-item" onclick="openFile('${url}','pdf')" title="คลิกเปิดไฟล์"><div class="pdf-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>FILE</div><div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:90px;word-break:break-all">${fileName}</div></div>`;
-        }
-        return;
-      }
-
-      body+=`<div class="attach-item" title="ไม่พบไฟล์ในเครื่องนี้"><div class="pdf-box">⚠️</div><div style="font-size:10px;color:var(--red);text-align:center;margin-top:3px;max-width:110px;word-break:break-all">${fileName}<br>เปิดไม่ได้ในเครื่องนี้</div></div>`;
+      const raw=f.data||f.secure_url||f.url||f.webViewLink||'';
+      const safe=safeAttachmentUrl(raw,kind);
+      if(!safe){body+=`<div class="attach-item"><div class="pdf-box">⚠️</div><div style="font-size:10px;color:var(--red);text-align:center">${fileName}<br>URL/ชนิดไฟล์ถูกบล็อก</div></div>`;return;}
+      const token=escapeHtml(encodeURIComponent(safe));
+      body+=`<button type="button" class="attach-item" data-attachment-url="${token}" data-attachment-kind="${kind}">${kind==='image'?`<img src="${escapeHtml(safe)}" alt="${fileName}">`:`<div class="pdf-box">📎 FILE</div>`}<div style="font-size:10px;color:var(--g3);text-align:center;margin-top:3px;max-width:110px;word-break:break-all">${fileName}</div></button>`;
     });
     body+='</div>';
   }
-  document.getElementById('modal-title').innerHTML=title;
+  document.getElementById('modal-title').textContent=String(title||'').replace(/<[^>]*>/g,'');
   document.getElementById('modal-body').innerHTML=body;
 }
 
 function openFile(data,type){
-  const w=window.open();
-  if(type==='pdf')w.document.write(`<iframe src="${data}" style="width:100%;height:100vh;border:none"></iframe>`);
-  else w.document.write(`<img src="${data}" style="max-width:100%;display:block;margin:auto">`);
+  const kind=type==='image'?'image':'pdf';
+  const safe=safeAttachmentUrl(data,kind);
+  if(!safe){notify('บล็อกไฟล์แนบที่มี URL หรือชนิดไฟล์ไม่ปลอดภัย');return;}
+  const w=window.open('','_blank','noopener,noreferrer');
+  if(!w){notify('Browser บล็อกหน้าต่างไฟล์ กรุณาอนุญาต Pop-up');return;}
+  w.document.title='ERP Demo Attachment';
+  w.document.body.style.margin='0';
+  if(kind==='pdf'){const frame=w.document.createElement('iframe');frame.src=safe;frame.style.cssText='width:100%;height:100vh;border:0';frame.setAttribute('sandbox','allow-same-origin allow-downloads');w.document.body.appendChild(frame);}
+  else{const img=w.document.createElement('img');img.src=safe;img.alt='ไฟล์แนบ';img.style.cssText='max-width:100%;display:block;margin:auto';w.document.body.appendChild(img);}
 }
 async function openLocalAttachment(localId,type){
   if(!window.LocalFileStore?.getLocalAttachmentUrl){
@@ -6692,6 +6668,12 @@ async function openLocalAttachment(localId,type){
   }
   openFile(url,type);
 }
+document.addEventListener('click',event=>{
+  const button=event.target.closest?.('[data-attachment-url],[data-local-attachment-id]');
+  if(!button)return;
+  if(button.dataset.attachmentUrl){let url='';try{url=decodeURIComponent(button.dataset.attachmentUrl)}catch{}openFile(url,button.dataset.attachmentKind||'pdf');}
+  else if(button.dataset.localAttachmentId){let id='';try{id=decodeURIComponent(button.dataset.localAttachmentId)}catch{}openLocalAttachment(id,button.dataset.attachmentKind||'pdf');}
+});
 function closeModal(){document.getElementById('detail-modal').classList.remove('open');}
 
 // ============================================================
