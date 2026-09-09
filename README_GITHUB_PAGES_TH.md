@@ -1,20 +1,28 @@
-# เผยแพร่ ERP DEMO 3.6.0 บน GitHub Pages
+# เผยแพร่ ERP DEMO 4.0.0 บน GitHub Pages
 
-> **DEMO 3.6.0:** แพ็กเกจ Source รอบนี้เอา `dist/` และ `dist-flat/` รุ่นเก่าออกเพื่อไม่ให้ปนกับ Council รุ่นใหม่ หากยังไม่ build ให้ใช้เนื้อหาใน ใช้ ZIP Static/Pages 3.6.0 ที่แยกให้ หรือรัน `npm ci && npm run build` เพื่อสร้าง `dist/` ใหม่บนเครื่องพัฒนา
+แนะนำให้ใช้ ZIP **Pages/Static 4.0.0** ที่จัดแยกจาก Full Source เพื่อไม่ให้ tests, security tools, history และ source-only files ปะปนกับเว็บที่ลูกค้าเปิดดู
 
-ZIP สำหรับ Pages เป็นชุด build พร้อมใช้ ส่วน ZIP ซอร์สใช้แก้โค้ดหรือ build ใหม่
+## วิธีอัปโหลด
+1. สำรอง branch เว็บไซต์ปัจจุบันก่อน
+2. แตก ZIP Pages 4.0.0 แล้วอัปโหลดไฟล์ทั้งหมดที่รากของ branch สำหรับ GitHub Pages
+3. อย่าผสม `index.html` ของ 4.0 กับ JavaScript/CSS รุ่นเก่า
+4. เปิด `deployment-check.html` หลัง deploy แล้วกดตรวจ SHA-256
+5. รีเฟรชแบบ Hard Refresh (`Ctrl+Shift+R`) หลังอัปเดต
 
-1. แตก ZIP ชุด Pages จะเห็น index.html, assets/, deployment-check.html และ .nojekyll ที่ระดับเดียวกัน
-2. อัปโหลดทั้งหมดนี้ที่รากของ branch สำหรับเผยแพร่ ถ้ามีซอร์สเดิมแนะนำแยก branch สำหรับเผยแพร่ อย่าอัปโหลด ZIP หรือครอบด้วยโฟลเดอร์เพิ่ม
-3. ไป Settings → Pages → Deploy from a branch เลือก branch ที่อัปโหลดและ /(root) แล้ว Save ถ้าใช้งาน workflow build เดิมอยู่ให้ตรวจ workflow ก่อนเปลี่ยนการตั้งค่า
-4. รอ Actions เผยแพร่สำเร็จ เปิด URL เว็บไซต์แล้วรีเฟรช Ctrl+Shift+R
-5. เปิด deployment-check.html ที่อยู่โฟลเดอร์เดียวกับ index.html เช่น URL หน้า ERP ลงท้าย /ชื่อ-repo/ ให้ต่อท้าย deployment-check.html แล้วกดตรวจอีกครั้ง
-6. ถ้าพบไฟล์ขาด ชนิดไฟล์ผิด หรือไฟล์ไม่ตรงรุ่น ให้ส่งภาพตารางและ URL เว็บไซต์ให้ผู้ดูแล
+## ไฟล์สำคัญของ 4.0
+- `index.html`
+- `erp-product-experience.js`
+- `erp-product-experience-core.js`
+- `erp-product-experience.css`
+- Runtime ERP/document modules ที่ `deployment-check.html` ระบุ
+- `.nojekyll`
 
-ไฟล์ .nojekyll อาจไม่ปรากฏในตัวเลือกไฟล์ของเครื่อง หากจำเป็นให้สร้างไฟล์ชื่อนี้ที่ราก branch ผ่าน Add file → Create new file
+## สิ่งที่ควรเห็นเมื่อเปิดเว็บ
+- หน้าแรก `งานของฉัน`
+- ตัวเลือกมุมมอง ผู้บริหาร / ฝ่ายขาย / จัดซื้อ / คลัง / บัญชี / Admin
+- ปุ่ม `โหมดง่าย` / `โหมดขั้นสูง`
+- เมนู `ศูนย์อนุมัติ`
+- เมนู `พอร์ทัลลูกค้า (Preview)`
+- หน้า Stock มี On Hand / Reserved / Available / Incoming PO
 
-หากอัปโหลดเฉพาะ index.html หน้าเว็บจะยังผิดรูปแบบได้ ต้องมีโฟลเดอร์ assets ที่เป็นชุดเดียวกัน ไม่ควรปนไฟล์จาก source หรือ dist รุ่นก่อน
-
-ดูรายละเอียดการตรวจและสิ่งที่แก้ใน DEMO_V3_3_CHANGES_TH.md เลขรุ่นระบบใน meta และหน้า diagnostic คือ 3.6.0 ชื่อ ZIP อาจคงชื่อเดิมเพื่อรักษาประวัติไฟล์
-
-อ้างอิง: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
+> Role และ Portal ใน DEMO 4.0 เป็น UX Preview เท่านั้น ไม่ใช่ระบบสิทธิ์/Portal ฝั่ง Server สำหรับข้อมูลจริง

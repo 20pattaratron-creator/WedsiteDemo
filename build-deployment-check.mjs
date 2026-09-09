@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {releaseMeta} from './release-meta.mjs';
 
 function attr(tag,name){const m=new RegExp(`\\b${name}=["']([^"']+)["']`,'i').exec(tag);return m?.[1]||'';}
 function isLocal(ref){return ref&&!/^(?:https?:|data:|#|mailto:|tel:)/i.test(ref);}
@@ -28,12 +29,14 @@ function expandModuleRefs(root,files){
   }
 }
 
+const PROJECT_ROOT=path.resolve('.');
+const META=releaseMeta(PROJECT_ROOT);
 const folders=process.argv.slice(2);
 for (const folder of (folders.length?folders:['.', 'dist'])) {
   const root=path.resolve(folder);
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  const flat=html.includes('3.8.0-flat');
-  const release=flat?'3.8.0 FLAT':'3.8.0';
+  const flat=html.includes(`${META.release}-flat`);
+  const release=flat?`${META.release} FLAT`:META.release;
   const files=collectHtmlRefs(html); expandModuleRefs(root,files);
   if(folder!=='.'){
     if(fs.existsSync(path.join(root,'assets')))for(const file of fs.readdirSync(path.join(root,'assets')))files.add('assets/'+file);

@@ -1,0 +1,454 @@
+TAP version 13
+# Subtest: current ERP repo has no HIGH agent-repo findings
+ok 1 - current ERP repo has no HIGH agent-repo findings
+  ---
+  duration_ms: 308.18555
+  type: 'test'
+  ...
+# Subtest: blocks Claude permission bypass configuration
+ok 2 - blocks Claude permission bypass configuration
+  ---
+  duration_ms: 211.704949
+  type: 'test'
+  ...
+# Subtest: blocks Claude hooks in project settings
+ok 3 - blocks Claude hooks in project settings
+  ---
+  duration_ms: 148.81159
+  type: 'test'
+  ...
+# Subtest: blocks VS Code folder-open task
+ok 4 - blocks VS Code folder-open task
+  ---
+  duration_ms: 212.945356
+  type: 'test'
+  ...
+# Subtest: blocks npm postinstall lifecycle
+ok 5 - blocks npm postinstall lifecycle
+  ---
+  duration_ms: 178.901
+  type: 'test'
+  ...
+# Subtest: detects potential secret files
+ok 6 - detects potential secret files
+  ---
+  duration_ms: 208.503355
+  type: 'test'
+  ...
+# Subtest: blocks Cursor CLI command-bearing project config
+ok 7 - blocks Cursor CLI command-bearing project config
+  ---
+  duration_ms: 166.353886
+  type: 'test'
+  ...
+# Subtest: blocks command-bearing MCP configuration
+ok 8 - blocks command-bearing MCP configuration
+  ---
+  duration_ms: 199.219757
+  type: 'test'
+  ...
+# Subtest: blocks git commondir that resolves outside repo
+ok 9 - blocks git commondir that resolves outside repo
+  ---
+  duration_ms: 185.254291
+  type: 'test'
+  ...
+# Subtest: codebase audit passes
+ok 10 - codebase audit passes
+  ---
+  duration_ms: 4154.134776
+  type: 'test'
+  ...
+# Subtest: quote date has no duplicate/unexposed inline auto-number handler
+ok 11 - quote date has no duplicate/unexposed inline auto-number handler
+  ---
+  duration_ms: 3.952679
+  type: 'test'
+  ...
+# Subtest: navigation integrations use erp:navigation instead of replacing window.go
+ok 12 - navigation integrations use erp:navigation instead of replacing window.go
+  ---
+  duration_ms: 4.980627
+  type: 'test'
+  ...
+# Subtest: runtime error capture has one owner
+ok 13 - runtime error capture has one owner
+  ---
+  duration_ms: 24.26609
+  type: 'test'
+  ...
+# Subtest: workflow handoff state is namespaced
+ok 14 - workflow handoff state is namespaced
+  ---
+  duration_ms: 33.154655
+  type: 'test'
+  ...
+# Subtest: shared storage contracts stay aligned across modules
+ok 15 - shared storage contracts stay aligned across modules
+  ---
+  duration_ms: 2.586057
+  type: 'test'
+  ...
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 16 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 77.954671
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 17 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 5.809578
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 18 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 6.614512
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 19 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 3.257464
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 20 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 16.665052
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 21 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 4.242238
+  type: 'test'
+  ...
+# Subtest: executive comparison section has all required chart hosts exactly once
+ok 22 - executive comparison section has all required chart hosts exactly once
+  ---
+  duration_ms: 10.44648
+  type: 'test'
+  ...
+# Subtest: 12-month sales and delivery target planner is present and routed through shared dashboard render
+ok 23 - 12-month sales and delivery target planner is present and routed through shared dashboard render
+  ---
+  duration_ms: 8.38498
+  type: 'test'
+  ...
+# Subtest: monthly targets support period-specific overrides while keeping legacy fallbacks
+ok 24 - monthly targets support period-specific overrides while keeping legacy fallbacks
+  ---
+  duration_ms: 0.462322
+  type: 'test'
+  ...
+# Subtest: interactive chart marks expose click/tap detail registry and keyboard access
+ok 25 - interactive chart marks expose click/tap detail registry and keyboard access
+  ---
+  duration_ms: 0.774179
+  type: 'test'
+  ...
+# Subtest: product monthly details include quantity, total, average price and percentage share
+ok 26 - product monthly details include quantity, total, average price and percentage share
+  ---
+  duration_ms: 0.934705
+  type: 'test'
+  ...
+# Subtest: target chart details include actual, target, achievement and gap
+ok 27 - target chart details include actual, target, achievement and gap
+  ---
+  duration_ms: 0.501504
+  type: 'test'
+  ...
+# Subtest: new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+ok 28 - new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+  ---
+  duration_ms: 0.703503
+  type: 'test'
+  ...
+# Subtest: executive chart stylesheet is balanced and loaded once
+ok 29 - executive chart stylesheet is balanced and loaded once
+  ---
+  duration_ms: 0.4305
+  type: 'test'
+  ...
+# Subtest: partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+ok 30 - partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+  ---
+  duration_ms: 17.291958
+  type: 'test'
+  ...
+# Subtest: full payment settles invoice; reversal reopens balance
+ok 31 - full payment settles invoice; reversal reopens balance
+  ---
+  duration_ms: 6.125308
+  type: 'test'
+  ...
+# Subtest: branch references do not mix identical invoice numbers
+ok 32 - branch references do not mix identical invoice numbers
+  ---
+  duration_ms: 4.909457
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+ok 33 - receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+  ---
+  duration_ms: 5.750011
+  type: 'test'
+  ...
+# Subtest: SO remains partial after payment for first 3 of 10 units
+ok 34 - SO remains partial after payment for first 3 of 10 units
+  ---
+  duration_ms: 9.589023
+  type: 'test'
+  ...
+# Subtest: SO completes only when all units delivered and paid
+ok 35 - SO completes only when all units delivered and paid
+  ---
+  duration_ms: 4.568013
+  type: 'test'
+  ...
+# Subtest: duplicate line requests aggregate and cannot exceed SO remaining
+ok 36 - duplicate line requests aggregate and cannot exceed SO remaining
+  ---
+  duration_ms: 2.556982
+  type: 'test'
+  ...
+# Subtest: delivery edit excludes original quantity but still respects ready quantity
+ok 37 - delivery edit excludes original quantity but still respects ready quantity
+  ---
+  duration_ms: 3.939677
+  type: 'test'
+  ...
+# Subtest: stock guard aggregates duplicate SKU rows and deducts other SO reservations
+ok 38 - stock guard aggregates duplicate SKU rows and deducts other SO reservations
+  ---
+  duration_ms: 49.648067
+  type: 'test'
+  ...
+# Subtest: product code takes precedence over display name; PO product fields supported
+ok 39 - product code takes precedence over display name; PO product fields supported
+  ---
+  duration_ms: 3.916365
+  type: 'test'
+  ...
+# Subtest: merge preserves old rows and newer updates; replace removes absent rows
+ok 40 - merge preserves old rows and newer updates; replace removes absent rows
+  ---
+  duration_ms: 5.566318
+  type: 'test'
+  ...
+# Subtest: flow import merges instead of overwriting existing sales orders
+ok 41 - flow import merges instead of overwriting existing sales orders
+  ---
+  duration_ms: 3.886095
+  type: 'test'
+  ...
+# Subtest: backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+ok 42 - backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+  ---
+  duration_ms: 2.146677
+  type: 'test'
+  ...
+# Subtest: failed local multi-key write rolls back earlier writes
+ok 43 - failed local multi-key write rolls back earlier writes
+  ---
+  duration_ms: 3.737045
+  type: 'test'
+  ...
+# Subtest: backup snapshot restores masters and flow in current tenant only
+ok 44 - backup snapshot restores masters and flow in current tenant only
+  ---
+  duration_ms: 2.584057
+  type: 'test'
+  ...
+# Subtest: generated payment receipts retain correct tax split and never double cash
+ok 45 - generated payment receipts retain correct tax split and never double cash
+  ---
+  duration_ms: 4.412771
+  type: 'test'
+  ...
+# Subtest: VAT modes add, extract and none are consistent
+ok 46 - VAT modes add, extract and none are consistent
+  ---
+  duration_ms: 3.421474
+  type: 'test'
+  ...
+# Subtest: target margin 95% and markup over 95% calculate correctly
+ok 47 - target margin 95% and markup over 95% calculate correctly
+  ---
+  duration_ms: 8.316435
+  type: 'test'
+  ...
+# Subtest: direct inventory invoices count as sales; SO production is not counted twice
+ok 48 - direct inventory invoices count as sales; SO production is not counted twice
+  ---
+  duration_ms: 14.708103
+  type: 'test'
+  ...
+# Subtest: invalid quantities and nonfinite prices are rejected
+ok 49 - invalid quantities and nonfinite prices are rejected
+  ---
+  duration_ms: 2.828181
+  type: 'test'
+  ...
+# Subtest: portable backup permits Thai attachment filenames
+ok 50 - portable backup permits Thai attachment filenames
+  ---
+  duration_ms: 1.613288
+  type: 'test'
+  ...
+# Subtest: delivery and payment references reject customer, SKU and invoice-number mismatches
+ok 51 - delivery and payment references reject customer, SKU and invoice-number mismatches
+  ---
+  duration_ms: 2.137971
+  type: 'test'
+  ...
+# Subtest: billing excludes receipts already applied before it was created
+ok 52 - billing excludes receipts already applied before it was created
+  ---
+  duration_ms: 4.534448
+  type: 'test'
+  ...
+# Subtest: billing direct receipts allocate FIFO and reverse without double payment
+ok 53 - billing direct receipts allocate FIFO and reverse without double payment
+  ---
+  duration_ms: 14.470732
+  type: 'test'
+  ...
+# Subtest: production costs are allocated over partial deliveries with final cent retained
+ok 54 - production costs are allocated over partial deliveries with final cent retained
+  ---
+  duration_ms: 7.643929
+  type: 'test'
+  ...
+# Subtest: legacy billing migrates its already-paid creation balance once
+ok 55 - legacy billing migrates its already-paid creation balance once
+  ---
+  duration_ms: 5.015492
+  type: 'test'
+  ...
+# Subtest: a production record without cost evidence cannot label zero cost as actual
+ok 56 - a production record without cost evidence cannot label zero cost as actual
+  ---
+  duration_ms: 2.241257
+  type: 'test'
+  ...
+# Subtest: role normalization is safe
+ok 57 - role normalization is safe
+  ---
+  duration_ms: 30.983487
+  type: 'test'
+  ...
+# Subtest: work queue prioritizes operational risks by role
+ok 58 - work queue prioritizes operational risks by role
+  ---
+  duration_ms: 70.95456
+  type: 'test'
+  ...
+# Subtest: stock availability calculates on hand reserved available and incoming
+ok 59 - stock availability calculates on hand reserved available and incoming
+  ---
+  duration_ms: 1.301393
+  type: 'test'
+  ...
+# Subtest: approval inbox includes pending quotes and draft POs only
+ok 60 - approval inbox includes pending quotes and draft POs only
+  ---
+  duration_ms: 0.594836
+  type: 'test'
+  ...
+# Subtest: release wires product UX assets and avoids competitor wording in user UI
+ok 61 - release wires product UX assets and avoids competitor wording in user UI
+  ---
+  duration_ms: 4.435557
+  type: 'test'
+  ...
+# Subtest: product UX clearly labels role as UX and portal as preview
+ok 62 - product UX clearly labels role as UX and portal as preview
+  ---
+  duration_ms: 1.561936
+  type: 'test'
+  ...
+# Subtest: local business date does not depend on UTC ISO slicing
+ok 63 - local business date does not depend on UTC ISO slicing
+  ---
+  duration_ms: 29.779273
+  type: 'test'
+  ...
+# Subtest: VAT calculation has one deterministic source of truth
+ok 64 - VAT calculation has one deterministic source of truth
+  ---
+  duration_ms: 33.818793
+  type: 'test'
+  ...
+# Subtest: storage contracts are imported instead of copied
+ok 65 - storage contracts are imported instead of copied
+  ---
+  duration_ms: 336.774617
+  type: 'test'
+  ...
+# Subtest: workflow graph fails closed on missing guards and unmatched routes
+ok 66 - workflow graph fails closed on missing guards and unmatched routes
+  ---
+  duration_ms: 28.996862
+  type: 'test'
+  ...
+# Subtest: workflow graph enforces max step budget
+ok 67 - workflow graph enforces max step budget
+  ---
+  duration_ms: 5.026213
+  type: 'test'
+  ...
+# Subtest: workflow ribbon stage respects order-flow subview
+ok 68 - workflow ribbon stage respects order-flow subview
+  ---
+  duration_ms: 2.805083
+  type: 'test'
+  ...
+# Subtest: SO to invoice preparation uses business dueDate helper without stale variable
+ok 69 - SO to invoice preparation uses business dueDate helper without stale variable
+  ---
+  duration_ms: 1.904819
+  type: 'test'
+  ...
+# Subtest: deep static audit passes
+ok 70 - deep static audit passes
+  ---
+  duration_ms: 991.281626
+  type: 'test'
+  ...
+# Subtest: fulfillment graph supports stock production and purchase in one plan
+ok 71 - fulfillment graph supports stock production and purchase in one plan
+  ---
+  duration_ms: 8.74095
+  type: 'test'
+  ...
+# Subtest: spec audit passes and all requirements are traceable
+ok 72 - spec audit passes and all requirements are traceable
+  ---
+  duration_ms: 301.416343
+  type: 'test'
+  ...
+# Subtest: release metadata is centralized
+ok 73 - release metadata is centralized
+  ---
+  duration_ms: 1.84429
+  type: 'test'
+  ...
+# Subtest: development context points to current sources of truth
+ok 74 - development context points to current sources of truth
+  ---
+  duration_ms: 7.226717
+  type: 'test'
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 74
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4449.08436

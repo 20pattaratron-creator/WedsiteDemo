@@ -1,0 +1,14 @@
+{
+  "release": "4.2.0",
+  "packageVersion": "2.2.0",
+  "executedAt": "2026-09-08T08:51:44.748Z",
+  "command": "node --test tests/integrity.test.cjs tests/decision-council.test.cjs tests/executive-charts.test.cjs tests/product-experience.test.cjs tests/refactor-4-1.test.cjs tests/codebase-audit.test.cjs tests/agent-security.test.cjs tests/spec-governance.test.cjs",
+  "exitCode": 0,
+  "tests": 74,
+  "pass": 74,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "classification": "pass",
+  "log": "evidence/CORE_TESTS_4_2.tap"
+}

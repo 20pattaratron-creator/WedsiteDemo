@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {releaseMeta} from './release-meta.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const META = releaseMeta(ROOT);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-flat']);
 const text = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const exists = file => fs.existsSync(path.join(ROOT, file));
@@ -111,9 +113,9 @@ for(const file of files.filter(f=>!f.includes('/')&&f.endsWith('.css'))){
 const crossCss=[...selectorFiles].filter(([,set])=>set.size>1).map(([selector,set])=>({selector,files:[...set]}));
 notes.push({code:'CSS_CROSS_FILE_OVERLAP',count:crossCss.length,detail:crossCss.slice(0,40)});
 
-const result={version:'3.8.0',packageVersion:'1.8.0',checkedAt:new Date().toISOString(),runtimeRootFiles:runtimeRoot.length,jsFiles:jsFiles.length,inlineHandlerFunctions:inlineCalls.size,issues,notes,status:issues.some(x=>x.severity==='error')?'FAIL':'PASS'};
+const result={version:META.release,packageVersion:META.packageVersion,checkedAt:new Date().toISOString(),runtimeRootFiles:runtimeRoot.length,jsFiles:jsFiles.length,inlineHandlerFunctions:inlineCalls.size,issues,notes,status:issues.some(x=>x.severity==='error')?'FAIL':'PASS'};
 fs.writeFileSync(path.join(ROOT,'CODEBASE_AUDIT_RESULTS.json'),JSON.stringify(result,null,2));
-console.log(`ERP Codebase Audit 3.8.0: ${result.status}`);
+console.log(`ERP Codebase Audit ${META.release}: ${result.status}`);
 console.log(`Files=${files.length} JS=${jsFiles.length} inlineFunctions=${inlineCalls.size}`);
 if(issues.length){for(const i of issues)console.log(`[${i.severity.toUpperCase()}] ${i.code}: ${i.message}${i.detail?.length?' :: '+i.detail.join(' | '):''}`);}else console.log('No blocking duplication/reference/global-collision issues found.');
 console.log(`CSS cross-file selector overlaps (review-only): ${crossCss.length}`);

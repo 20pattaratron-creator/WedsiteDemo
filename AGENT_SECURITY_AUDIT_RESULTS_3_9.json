@@ -1,0 +1,30 @@
+{
+  "tool": "ERP Agent Repo Safety Audit",
+  "version": "1.0.0",
+  "target": ".",
+  "generatedAt": "2026-09-07T13:05:36.061Z",
+  "counts": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 2,
+    "INFO": 0
+  },
+  "findingDigestSha256": "70cafe38e8f0cfd12b06e7ea5976d9ee7240809c8ebdc7248f9abf55a5952575",
+  "verdict": "PASS",
+  "findings": [
+    {
+      "severity": "LOW",
+      "code": "TRANSITIVE_INSTALL_SCRIPTS",
+      "file": "package-lock.json",
+      "message": "1 locked package(s) declare install scripts. Review before installing an untrusted lockfile.",
+      "detail": "node_modules/fsevents"
+    },
+    {
+      "severity": "LOW",
+      "code": "SCRIPT_FILE",
+      "file": "SAFE_AGENT_PREFLIGHT_WINDOWS.bat",
+      "message": "Executable/script file should be reviewed before running.",
+      "detail": ""
+    }
+  ]
+}
