@@ -1,0 +1,24 @@
+ERP DEMO 3.6.0 — Full Suite Environment Status
+
+Attempted:
+  npm ci --no-audit --no-fund
+Result:
+  environment transport timeout before dependency installation completed.
+
+Attempted:
+  npm test after partial installation
+Result:
+  38 tests passed; 7 failed to start because jsdom/fake-indexeddb were not installed (MODULE_NOT_FOUND).
+  No failing business assertion was observed in that partial run.
+
+Verified separately without external dev dependencies:
+  Core Integrity + Decision Council + Codebase tests: 39/39 PASS
+  JS/MJS/CJS syntax: PASS
+  Codebase de-dup/reference/global audit: PASS
+  CSS brace structural check: PASS
+
+Required on developer workstation before final browser release:
+  npm ci
+  npm test
+  npm run build
+  npm run test:deployment

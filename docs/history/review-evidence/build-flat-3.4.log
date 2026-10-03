@@ -1,0 +1,24 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> example-company-erp-local-demo-integrated-v3@1.4.0 build:flat
+> node scripts/build-flat-pages.mjs
+
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 31 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-flat/index.html                          176.27 kB │ gzip:  28.82 kB
+dist-flat/logo-FgPzZbhG.png                   322.01 kB
+dist-flat/quotation-document-D1nx9Y5M.css      11.98 kB │ gzip:   3.55 kB
+dist-flat/delivery-tax-document-CjcpZHAi.css   57.04 kB │ gzip:  11.54 kB
+dist-flat/receipt-document-C_3LyvKh.css        66.50 kB │ gzip:  13.21 kB
+dist-flat/main-CyS5_VIT.css                   273.32 kB │ gzip:  49.29 kB
+dist-flat/main-CC8A8GWP.js                    788.80 kB │ gzip: 201.40 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 581ms
+Generated deployment diagnostics for dist-flat

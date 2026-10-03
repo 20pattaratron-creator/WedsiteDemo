@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 1 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 25.23435
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 2 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 2.630341
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 3 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 2.964374
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 4 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 3.239901
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 5 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 3.532202
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 6 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 4.758012
+  type: 'test'
+  ...
+# Subtest: partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+ok 7 - partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+  ---
+  duration_ms: 4.898434
+  type: 'test'
+  ...
+# Subtest: full payment settles invoice; reversal reopens balance
+ok 8 - full payment settles invoice; reversal reopens balance
+  ---
+  duration_ms: 1.222045
+  type: 'test'
+  ...
+# Subtest: branch references do not mix identical invoice numbers
+ok 9 - branch references do not mix identical invoice numbers
+  ---
+  duration_ms: 4.934269
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+ok 10 - receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+  ---
+  duration_ms: 1.714488
+  type: 'test'
+  ...
+# Subtest: SO remains partial after payment for first 3 of 10 units
+ok 11 - SO remains partial after payment for first 3 of 10 units
+  ---
+  duration_ms: 2.530029
+  type: 'test'
+  ...
+# Subtest: SO completes only when all units delivered and paid
+ok 12 - SO completes only when all units delivered and paid
+  ---
+  duration_ms: 1.337719
+  type: 'test'
+  ...
+# Subtest: duplicate line requests aggregate and cannot exceed SO remaining
+ok 13 - duplicate line requests aggregate and cannot exceed SO remaining
+  ---
+  duration_ms: 0.965848
+  type: 'test'
+  ...
+# Subtest: delivery edit excludes original quantity but still respects ready quantity
+ok 14 - delivery edit excludes original quantity but still respects ready quantity
+  ---
+  duration_ms: 0.865466
+  type: 'test'
+  ...
+# Subtest: stock guard aggregates duplicate SKU rows and deducts other SO reservations
+ok 15 - stock guard aggregates duplicate SKU rows and deducts other SO reservations
+  ---
+  duration_ms: 16.123738
+  type: 'test'
+  ...
+# Subtest: product code takes precedence over display name; PO product fields supported
+ok 16 - product code takes precedence over display name; PO product fields supported
+  ---
+  duration_ms: 1.197317
+  type: 'test'
+  ...
+# Subtest: merge preserves old rows and newer updates; replace removes absent rows
+ok 17 - merge preserves old rows and newer updates; replace removes absent rows
+  ---
+  duration_ms: 1.125469
+  type: 'test'
+  ...
+# Subtest: flow import merges instead of overwriting existing sales orders
+ok 18 - flow import merges instead of overwriting existing sales orders
+  ---
+  duration_ms: 1.239861
+  type: 'test'
+  ...
+# Subtest: backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+ok 19 - backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+  ---
+  duration_ms: 1.065468
+  type: 'test'
+  ...
+# Subtest: failed local multi-key write rolls back earlier writes
+ok 20 - failed local multi-key write rolls back earlier writes
+  ---
+  duration_ms: 0.758215
+  type: 'test'
+  ...
+# Subtest: backup snapshot restores masters and flow in current tenant only
+ok 21 - backup snapshot restores masters and flow in current tenant only
+  ---
+  duration_ms: 0.787699
+  type: 'test'
+  ...
+# Subtest: generated payment receipts retain correct tax split and never double cash
+ok 22 - generated payment receipts retain correct tax split and never double cash
+  ---
+  duration_ms: 1.473274
+  type: 'test'
+  ...
+# Subtest: VAT modes add, extract and none are consistent
+ok 23 - VAT modes add, extract and none are consistent
+  ---
+  duration_ms: 3.226791
+  type: 'test'
+  ...
+# Subtest: target margin 95% and markup over 95% calculate correctly
+ok 24 - target margin 95% and markup over 95% calculate correctly
+  ---
+  duration_ms: 1.611452
+  type: 'test'
+  ...
+# Subtest: direct inventory invoices count as sales; SO production is not counted twice
+ok 25 - direct inventory invoices count as sales; SO production is not counted twice
+  ---
+  duration_ms: 3.910722
+  type: 'test'
+  ...
+# Subtest: invalid quantities and nonfinite prices are rejected
+ok 26 - invalid quantities and nonfinite prices are rejected
+  ---
+  duration_ms: 0.705155
+  type: 'test'
+  ...
+# Subtest: portable backup permits Thai attachment filenames
+ok 27 - portable backup permits Thai attachment filenames
+  ---
+  duration_ms: 0.64241
+  type: 'test'
+  ...
+# Subtest: delivery and payment references reject customer, SKU and invoice-number mismatches
+ok 28 - delivery and payment references reject customer, SKU and invoice-number mismatches
+  ---
+  duration_ms: 0.998307
+  type: 'test'
+  ...
+# Subtest: billing excludes receipts already applied before it was created
+ok 29 - billing excludes receipts already applied before it was created
+  ---
+  duration_ms: 1.044547
+  type: 'test'
+  ...
+# Subtest: billing direct receipts allocate FIFO and reverse without double payment
+ok 30 - billing direct receipts allocate FIFO and reverse without double payment
+  ---
+  duration_ms: 1.711894
+  type: 'test'
+  ...
+# Subtest: production costs are allocated over partial deliveries with final cent retained
+ok 31 - production costs are allocated over partial deliveries with final cent retained
+  ---
+  duration_ms: 1.316938
+  type: 'test'
+  ...
+# Subtest: legacy billing migrates its already-paid creation balance once
+ok 32 - legacy billing migrates its already-paid creation balance once
+  ---
+  duration_ms: 0.850855
+  type: 'test'
+  ...
+# Subtest: a production record without cost evidence cannot label zero cost as actual
+ok 33 - a production record without cost evidence cannot label zero cost as actual
+  ---
+  duration_ms: 0.745165
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 114.12202

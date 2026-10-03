@@ -1,0 +1,53 @@
+﻿ไฟล์ใน Trial,ขนาดไบต์,SHA256 Trial,เทียบ Integrated เดิม,การจัดการ
+.env.example,1452,898880c8ca671cb53115e16badb9efa98f6727e4611fd049c8bf37a3b750b6c8,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+.github/workflows/deploy.yml,1766,ca4dced32938b6280103eb8da6e085718cbacc00d49a3ace8ab35c1f9e32e50e,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+BUSINESS_RULES_TRIAL_GUIDE.md,4500,bd34a251140d5065c0ffca3b9f5a1c74401c1257997de0113cdf79bf1cbdd9ba,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+MULTITENANT_SETUP.md,11872,cd5ea4ce0c403180fa664eb5e9c9f050c75ea6c6608e094c8f7f011f5db4a137,มีอยู่แล้วและเหมือนกัน,ย้ายเอกสารเดิมไป docs/cloud-reference/
+README.md,35916,7cbe4f3be64a0bba4174213f80cd7af6bf793abf1e66c5bea7738f033979fc24,ชื่อเดียวกันแต่ต่างกัน,เขียนคู่มือรุ่นนี้ใหม่; เก็บคู่มือฐานใน docs/README_PREVIOUS.md
+SECURITY_TEST_CHECKLIST.md,3238,600c55108d9762c80bb465d467ad44084fe8b403a0850f779d31e13fbf909924,มีอยู่แล้วและเหมือนกัน,ย้ายเอกสารเดิมไป docs/cloud-reference/
+TRIAL_SETUP.md,3865,2e4809141bd33ed8df46cb5c7733b7bb69a5619f235142ac0b6bb1629e28225b,มีอยู่แล้วและเหมือนกัน,ย้ายเอกสารเดิมไป docs/cloud-reference/
+__prodcore_test.html,3876,daaeee87b4aee5fe1e18626025332e2dec54103081c18adc449bd9c3769921f2,มีอยู่แล้วและเหมือนกัน,แทนด้วยชุด tests/ ที่มี assertion
+api/admin/create-trial.js,2905,4a396e8528cad77fc15b8f73fb94ce0fc434c69db618421ba6b4afc86e494524,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+api/admin/update-subscription.js,2213,c3c09346d46e2636970a371b2f8c1f10527aed5af2135f5568e2e1e4590a1511,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+api/create-branch.js,2464,8656bc9307ae2283ff677e83ecf3fa37e0184214ab30ff40165a0d4e1cf23c27,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+api/tenant-summary.js,1478,6a49c88b89e726d32a93452ba4873f903ac0ea004106d71eac34185fbd726b54,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+api/trial-status.js,3152,351fea9248948f93a2b1782a8ed8314d29e9d0c810de2d2483b0b35f50e03857,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+app.js,606790,ab6ab3ac4ec0aebaf2de25e0839c5dff0bac6bbefffa2c3432ae47b7c2e8a363,ชื่อเดียวกันแต่ต่างกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+boot-status.js,3436,ba164995610b315c25c63d04c8d0991aad4b24a5f901158cff1a05fdb100ecc4,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+business-rules.css,6811,7f8ea0202cec6a945f6ab9a3ed94478d328aa7d600d7b984b2bbc93e0f57852f,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+business-rules.js,32464,78d436e98131fd74c15ce10c31a1a7e0d2e910738d9f817b4c3adaefb2ed054e,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+click-fallback.js,3631,b0fa7ea585201b58c14c9238b9346842f59915cff61c9062729f1565ad903b9d,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+csv-templates/customer-master-template.csv,816,8ebee4485a9803c1927156fed6c8b2f5bba854ae91ab85d9d4a9b2e42dd05d19,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+csv-templates/product-master-template.csv,1056,0080ec28282f8185ed081f9b6616106e5c5e0852042791cd6d886d9b7efaa94b,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+csv-templates/supplier-master-template.csv,596,fe6a9fb4a4e1f90e3813820fddcaf7c94e6cf52b53ab8fb8c2a1a64147c6a150,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+delivery-tax-document.css,57049,adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+delivery-tax-document.js,73792,bcedd1990386f9d6d586f4de997665efcebe6169740debe2fa8e25a35e9a0e98,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+erp-production-core.js,51917,1b240fb7d654ae6d23d814f426b01b9ed799bd29cabaa599a38288494c9cc8cd,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+firebase-auth.js,17252,5ddbfc0c80511fe07801409843f4a650c93f0d88857b3652670608243f6d0468,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+firebase-bridge.js,36739,a1cebdb16a487be63d4c1d15c33a77d80aad1134760060642660e0c77f4d64db,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+firebase-dashboard.js,8520,d3e4e09f88b63c78f403dac5e195864b692fb7c238e2e6679e46ce17e964622c,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+firebase.config.js,1874,a9334c6ac302b4c68f2cecc428cb126e3121c7a4064480666efe790a0ea3e163,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+firebase.json,105,d224b75385b451433e5c59bdbf0cc147697fbe88e773c11dab44f3b71e3e8a74,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+firestore.rules,8573,de616a2b7ab0cf3567616b4de18b576c3ef65fd0a49ff4aa71519e55f1143c04,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+google-drive.js,9764,da1dc64b64d681ea3fc70a56e101c59c0ee182f2d010deed287374c2e0ebffef,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+index.html,171208,df0c9b04be0c2a93feafa43214d99a8e58741748e02b7d57ab9cdd20f471a77d,ชื่อเดียวกันแต่ต่างกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+local-file-store.js,5224,b8cb50131346ae51761feeb95034ae4eb07700e72d8aaa5f1bd44c9623a00284,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+logo.png,322019,d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+package.json,700,74e8fce3d3da89d4bb2ac880d1f9796b10c0bba76b4a6f12041e6ff247c4ca7b,ชื่อเดียวกันแต่ต่างกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+quotation-document.css,11983,7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+quotation-document.js,26250,7e4a05a1412052fda779d7ad7182b4302b31f78f7ad736554f125b7b7d40ddaa,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+receipt-document.css,66508,ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+receipt-document.js,79663,25a1353e880c4d4976b9ab2761523d726b8c499a62f2b1f31ec0df0f891c2158,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+saas-client.js,7798,b13398d667a49f7f67bbd33a786c834073c99343cc7cefe5fb93b5af79ab1891,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+scripts/bootstrap-tenant.mjs,3013,6b1335c25a9fc9032f6b85bbc2aa855d4782b6d46a4d3911238e50ede7483328,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+scripts/create-trial-tenant.mjs,3107,b0c847f733082942a1b0bd627c9ece4283a28be747a47ec3084dedf18c6eb734,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+scripts/migrate-legacy-to-tenant.mjs,1998,78354326bbf2b74d7410701037f918ab5a801e7193e98102a15990dbdeaee9b8,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+scripts/set-superadmin.mjs,1251,061b16f60e717f278a1d28f6a10f65affb119e5b88e7e709e23d1e853aa8f784,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+server/firebase-admin.js,3346,3c09300ee7b73effea7e1b550afb30d722ca660802d8d9e8006dc390c6ccd3c2,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+storage.rules,1600,e2e900c410151c97bab364ccb7ccda2815ec70e5078430b6bf5f49c83c53a4da,มีเฉพาะชุด Trial,เก็บเป็นข้อเสนอสำหรับ Cloud; ไม่โหลดใน Local Demo
+style.css,160895,ef32e30e16122beeb650a3cbbe7de39046027855a594500c6a70b978c9bbf3d6,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+tenant-context.js,1976,f05776ad93e695b20a3ebe9a78db52f76d1c9ddbf5bc76094135b047854816f2,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+trial-mode.css,3964,cfda6be7a29774a3b72590e2f89c9d66fa51fa55c3d259a87110a69b43734045,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+trial-mode.js,10498,eeeffe9d70eb7469fee4906304d1fef5b5ca39cd551d640a42824a552fa95477,ชื่อเดียวกันแต่ต่างกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+vercel.json,200,3bcc5d27c320e8ca0248d82064e05f8da4a247f384be5245e03ae4ce9ad18ec2,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี
+vite.config.js,579,8595d30809bf3219e98b3c9680aeb2257ffc42e6c43168c9e9fabe58b0b0eab4,มีอยู่แล้วและเหมือนกัน,คงไฟล์ฐาน Integrated; ใช้การแก้ไขรุ่นใหม่เมื่อมี

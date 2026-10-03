@@ -1,0 +1,244 @@
+TAP version 13
+# Subtest: codebase audit passes
+ok 1 - codebase audit passes
+  ---
+  duration_ms: 543.292289
+  type: 'test'
+  ...
+# Subtest: quote date has no duplicate/unexposed inline auto-number handler
+ok 2 - quote date has no duplicate/unexposed inline auto-number handler
+  ---
+  duration_ms: 1.120731
+  type: 'test'
+  ...
+# Subtest: navigation integrations use erp:navigation instead of replacing window.go
+ok 3 - navigation integrations use erp:navigation instead of replacing window.go
+  ---
+  duration_ms: 1.584711
+  type: 'test'
+  ...
+# Subtest: runtime error capture has one owner
+ok 4 - runtime error capture has one owner
+  ---
+  duration_ms: 6.300657
+  type: 'test'
+  ...
+# Subtest: workflow handoff state is namespaced
+ok 5 - workflow handoff state is namespaced
+  ---
+  duration_ms: 5.088799
+  type: 'test'
+  ...
+# Subtest: shared storage contracts stay aligned across modules
+ok 6 - shared storage contracts stay aligned across modules
+  ---
+  duration_ms: 2.804682
+  type: 'test'
+  ...
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 7 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 29.38457
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 8 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 3.785903
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 9 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 8.592025
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 10 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 4.086216
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 11 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 2.31975
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 12 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 4.390134
+  type: 'test'
+  ...
+# Subtest: partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+ok 13 - partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+  ---
+  duration_ms: 4.921246
+  type: 'test'
+  ...
+# Subtest: full payment settles invoice; reversal reopens balance
+ok 14 - full payment settles invoice; reversal reopens balance
+  ---
+  duration_ms: 1.140131
+  type: 'test'
+  ...
+# Subtest: branch references do not mix identical invoice numbers
+ok 15 - branch references do not mix identical invoice numbers
+  ---
+  duration_ms: 1.539213
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+ok 16 - receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+  ---
+  duration_ms: 1.402356
+  type: 'test'
+  ...
+# Subtest: SO remains partial after payment for first 3 of 10 units
+ok 17 - SO remains partial after payment for first 3 of 10 units
+  ---
+  duration_ms: 2.642687
+  type: 'test'
+  ...
+# Subtest: SO completes only when all units delivered and paid
+ok 18 - SO completes only when all units delivered and paid
+  ---
+  duration_ms: 1.271208
+  type: 'test'
+  ...
+# Subtest: duplicate line requests aggregate and cannot exceed SO remaining
+ok 19 - duplicate line requests aggregate and cannot exceed SO remaining
+  ---
+  duration_ms: 1.212219
+  type: 'test'
+  ...
+# Subtest: delivery edit excludes original quantity but still respects ready quantity
+ok 20 - delivery edit excludes original quantity but still respects ready quantity
+  ---
+  duration_ms: 0.998446
+  type: 'test'
+  ...
+# Subtest: stock guard aggregates duplicate SKU rows and deducts other SO reservations
+ok 21 - stock guard aggregates duplicate SKU rows and deducts other SO reservations
+  ---
+  duration_ms: 13.832232
+  type: 'test'
+  ...
+# Subtest: product code takes precedence over display name; PO product fields supported
+ok 22 - product code takes precedence over display name; PO product fields supported
+  ---
+  duration_ms: 0.911625
+  type: 'test'
+  ...
+# Subtest: merge preserves old rows and newer updates; replace removes absent rows
+ok 23 - merge preserves old rows and newer updates; replace removes absent rows
+  ---
+  duration_ms: 0.78888
+  type: 'test'
+  ...
+# Subtest: flow import merges instead of overwriting existing sales orders
+ok 24 - flow import merges instead of overwriting existing sales orders
+  ---
+  duration_ms: 1.187322
+  type: 'test'
+  ...
+# Subtest: backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+ok 25 - backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+  ---
+  duration_ms: 1.174121
+  type: 'test'
+  ...
+# Subtest: failed local multi-key write rolls back earlier writes
+ok 26 - failed local multi-key write rolls back earlier writes
+  ---
+  duration_ms: 0.716211
+  type: 'test'
+  ...
+# Subtest: backup snapshot restores masters and flow in current tenant only
+ok 27 - backup snapshot restores masters and flow in current tenant only
+  ---
+  duration_ms: 1.093991
+  type: 'test'
+  ...
+# Subtest: generated payment receipts retain correct tax split and never double cash
+ok 28 - generated payment receipts retain correct tax split and never double cash
+  ---
+  duration_ms: 1.476619
+  type: 'test'
+  ...
+# Subtest: VAT modes add, extract and none are consistent
+ok 29 - VAT modes add, extract and none are consistent
+  ---
+  duration_ms: 3.245087
+  type: 'test'
+  ...
+# Subtest: target margin 95% and markup over 95% calculate correctly
+ok 30 - target margin 95% and markup over 95% calculate correctly
+  ---
+  duration_ms: 1.601917
+  type: 'test'
+  ...
+# Subtest: direct inventory invoices count as sales; SO production is not counted twice
+ok 31 - direct inventory invoices count as sales; SO production is not counted twice
+  ---
+  duration_ms: 3.541975
+  type: 'test'
+  ...
+# Subtest: invalid quantities and nonfinite prices are rejected
+ok 32 - invalid quantities and nonfinite prices are rejected
+  ---
+  duration_ms: 0.705535
+  type: 'test'
+  ...
+# Subtest: portable backup permits Thai attachment filenames
+ok 33 - portable backup permits Thai attachment filenames
+  ---
+  duration_ms: 0.645954
+  type: 'test'
+  ...
+# Subtest: delivery and payment references reject customer, SKU and invoice-number mismatches
+ok 34 - delivery and payment references reject customer, SKU and invoice-number mismatches
+  ---
+  duration_ms: 1.066789
+  type: 'test'
+  ...
+# Subtest: billing excludes receipts already applied before it was created
+ok 35 - billing excludes receipts already applied before it was created
+  ---
+  duration_ms: 1.046899
+  type: 'test'
+  ...
+# Subtest: billing direct receipts allocate FIFO and reverse without double payment
+ok 36 - billing direct receipts allocate FIFO and reverse without double payment
+  ---
+  duration_ms: 1.720766
+  type: 'test'
+  ...
+# Subtest: production costs are allocated over partial deliveries with final cent retained
+ok 37 - production costs are allocated over partial deliveries with final cent retained
+  ---
+  duration_ms: 1.419181
+  type: 'test'
+  ...
+# Subtest: legacy billing migrates its already-paid creation balance once
+ok 38 - legacy billing migrates its already-paid creation balance once
+  ---
+  duration_ms: 0.863333
+  type: 'test'
+  ...
+# Subtest: a production record without cost evidence cannot label zero cost as actual
+ok 39 - a production record without cost evidence cannot label zero cost as actual
+  ---
+  duration_ms: 0.740668
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 609.183202
