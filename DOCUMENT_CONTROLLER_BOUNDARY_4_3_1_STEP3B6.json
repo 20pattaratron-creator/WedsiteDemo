@@ -1,0 +1,54 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-6 Printable Items + Pagination Extraction",
+  "status": "shared_pagination_primitives_extracted",
+  "baselineFrom": "Step 3B-5 Page Partition Regression Harness",
+  "metrics": {
+    "controllerLines": {
+      "quotation-document.js": 478,
+      "delivery-tax-document.js": 1315,
+      "receipt-document.js": 1462
+    },
+    "totalControllerLines": 3255,
+    "topLevelFunctions": {
+      "quotation-document.js": 27,
+      "delivery-tax-document.js": 52,
+      "receipt-document.js": 56
+    },
+    "sameNameFunctionPairs": 46,
+    "exactSameNameFunctionPairs": 6,
+    "normalizedDuplicate10LineGroups": 164,
+    "crossControllerImports": 0
+  },
+  "duplicationBudget": {
+    "exactSameNameFunctionPairs": 6,
+    "normalizedDuplicate10LineGroups": 164,
+    "crossControllerImports": 0
+  },
+  "sharedCore": {
+    "version": "1.5.0",
+    "newExports": [
+      "selectPrintableDocumentItems",
+      "paginateDocumentItems"
+    ]
+  },
+  "regressionGuard": {
+    "testFile": "tests/page-partition-regression.test.cjs",
+    "tests": 11,
+    "pageBudgetUnits": 8
+  },
+  "explicitlyUnchanged": [
+    "documentPagesHtml ownership",
+    "documentPageHtml ownership",
+    "PDF/DOM lifecycle",
+    "document layout/CSS",
+    "save workflow",
+    "VAT formulas"
+  ],
+  "nextTarget": {
+    "step": "3B-7",
+    "scope": [
+      "assess documentPagesHtml orchestration and PDF-stage helper boundaries without merging document-specific page HTML"
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-4 Totals Boundary Extraction & Pagination Assessment",
+  "sharedCoreVersion": "1.4.0",
+  "extracted": [
+    {
+      "localName": "totals",
+      "sharedExport": "calculateDocumentTotals",
+      "classification": "safe_parameterized_financial_pure",
+      "decision": "extract",
+      "inputs": [
+        "items[]",
+        "vatNone",
+        "vatEnabled"
+      ],
+      "sourceOfTruth": "calculateVatSummary",
+      "reason": "Deterministic arithmetic only. The shared helper receives item rows and VAT flags explicitly and delegates VAT calculation to the existing shared calculateVatSummary source of truth."
+    }
+  ],
+  "deferred": [
+    {
+      "name": "printableItems",
+      "classification": "page_input_selection",
+      "decision": "defer",
+      "reason": "Can be parameterized, but its empty-item fallback feeds pagination and therefore should move only with page-partition regression coverage."
+    },
+    {
+      "name": "paginateItems",
+      "classification": "pagination_context",
+      "decision": "defer",
+      "reason": "Depends on ITEM_UNITS_PER_PAGE, row-unit estimation and empty-page fallback; changes can alter PDF page breaks."
+    },
+    {
+      "name": "documentPagesHtml",
+      "classification": "render_context",
+      "decision": "keep_local",
+      "reason": "Delegates to document-specific documentPageHtml and owns layout composition."
+    },
+    {
+      "name": "waitForPdfStageAssets",
+      "classification": "dom_pdf_lifecycle",
+      "decision": "defer",
+      "reason": "Uses document.fonts, image decode and requestAnimationFrame; requires browser/visual regression."
+    },
+    {
+      "name": "branchCompany",
+      "classification": "profile_context",
+      "decision": "keep_local",
+      "reason": "Reads window.CurrentUser and merges controller-local branch defaults."
+    },
+    {
+      "name": "getLockedBranch",
+      "classification": "auth_context",
+      "decision": "keep_local",
+      "reason": "Reads browser auth/profile globals."
+    },
+    {
+      "name": "addItem",
+      "classification": "mutable_ui_state",
+      "decision": "keep_local",
+      "reason": "Mutates controller state and triggers render lifecycle."
+    },
+    {
+      "name": "removeItem",
+      "classification": "mutable_ui_state",
+      "decision": "keep_local",
+      "reason": "Mutates controller state and triggers render lifecycle."
+    }
+  ],
+  "metrics": {
+    "controllerLines": {
+      "quotation-document.js": 478,
+      "delivery-tax-document.js": 1338,
+      "receipt-document.js": 1485
+    },
+    "totalControllerLines": 3301,
+    "topLevelFunctions": {
+      "quotation-document.js": 27,
+      "delivery-tax-document.js": 54,
+      "receipt-document.js": 58
+    },
+    "sameNameFunctionPairs": 48,
+    "exactSameNameFunctionPairs": 8,
+    "normalizedDuplicate10LineGroups": 187,
+    "crossControllerImports": 0
+  },
+  "guard": "Do not extract printableItems/paginateItems solely because bodies match. Add page-partition regression tests first, including empty rows, long wrapped rows and multi-page boundaries."
+}

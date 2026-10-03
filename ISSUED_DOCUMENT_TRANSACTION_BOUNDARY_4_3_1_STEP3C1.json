@@ -1,0 +1,48 @@
+{
+  "release": "4.3.1",
+  "step": "3C-1",
+  "name": "Issued Document Transaction & Sync Boundary",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "scope": {
+    "included": [
+      "strict issued Delivery/Tax save",
+      "strict issued Receipt save",
+      "central runDocumentAction routing",
+      "rollback-capable multi-key local commit",
+      "canonical source fidelity guard",
+      "sync_error committed-warning semantics",
+      "legacy source-number idempotent replay matching",
+      "receipt print-layer settlement isolation",
+      "delivery print-layer production-workflow isolation",
+      "deep static architecture guards"
+    ],
+    "excluded": [
+      "server transactions",
+      "server-side RBAC and tenant isolation",
+      "atomic cross-device numbering",
+      "persistent cloud outbox",
+      "accounting period locks",
+      "immutable user audit trail",
+      "PDF/DOM lifecycle extraction"
+    ]
+  },
+  "tests": {
+    "core": {"pass": 214, "tests": 214},
+    "full": {"pass": 214, "tests": 221, "classification": "environment_dependency"},
+    "financeDocumentTests": {"pass": 52, "tests": 52}
+  },
+  "quality": {
+    "runtimeJsFiles": 31,
+    "runtimeLines": 16830,
+    "appJsAuditLines": 8241,
+    "controllerLines": 3183,
+    "documentDuplicateWindows": 146,
+    "documentExactDuplicatePairs": 6,
+    "codebaseAudit": "PASS",
+    "deepAudit": "PASS",
+    "specAudit": "PASS",
+    "complexityAudit": "PASS",
+    "documentControllerAudit": "PASS",
+    "security": {"verdict": "PASS", "high": 0, "medium": 0, "low": 2}
+  }
+}

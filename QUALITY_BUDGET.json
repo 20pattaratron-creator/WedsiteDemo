@@ -1,0 +1,17 @@
+{
+  "release": "4.3.1",
+  "purpose": "Guard against silent over-engineering. Exceeding a hard limit requires deliberate refactor or ADR, not automatic suppression.",
+  "limits": {
+    "runtimeJsFilesMax": 44,
+    "runtimeLinesMax": 24500,
+    "rootJsFilesMax": 45,
+    "appJsLinesMax": 8350,
+    "devDependenciesMax": 3,
+    "windowAssignmentsMax": 75,
+    "inlineHandlerFunctionsMax": 110
+  },
+  "baselineFile": "QUALITY_BASELINE.json",
+  "deltaLimits": {
+    "appJsLinesMaxDelta": 0
+  }
+}

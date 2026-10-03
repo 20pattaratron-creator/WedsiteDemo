@@ -1,0 +1,59 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-4 Totals Boundary Extraction & Pagination Assessment",
+  "status": "totals_boundary_extracted_pagination_deferred",
+  "before": {
+    "totalControllerLines": 3329,
+    "sameNameFunctionPairs": 49,
+    "exactSameNameFunctionPairs": 9,
+    "normalizedDuplicate10LineGroups": 193
+  },
+  "after": {
+    "totalControllerLines": 3301,
+    "sameNameFunctionPairs": 48,
+    "exactSameNameFunctionPairs": 8,
+    "normalizedDuplicate10LineGroups": 187,
+    "crossControllerImports": 0
+  },
+  "sharedCore": "erp-shared-core.js",
+  "sharedCoreVersion": "1.4.0",
+  "extractedHelpers": [
+    "calculateDocumentTotals"
+  ],
+  "explicitInputs": {
+    "calculateDocumentTotals": [
+      "items",
+      "vatNone",
+      "vatEnabled"
+    ]
+  },
+  "sourceOfTruth": [
+    "calculateVatSummary"
+  ],
+  "explicitlyDeferred": [
+    "printableItems",
+    "paginateItems",
+    "documentPagesHtml",
+    "waitForPdfStageAssets",
+    "branchCompany",
+    "getLockedBranch",
+    "addItem",
+    "removeItem"
+  ],
+  "explicitlyUnchanged": [
+    "document-specific layout",
+    "DOM/render lifecycle",
+    "PDF stage/print lifecycle",
+    "validateBeforeSave",
+    "saveDocumentToSystem",
+    "source-link logic",
+    "document CSS"
+  ],
+  "nextTarget": {
+    "step": "3B-5",
+    "scope": [
+      "page-input selection and pagination regression harness before any extraction"
+    ],
+    "guard": "require deterministic page partition tests before moving printableItems or paginateItems"
+  }
+}

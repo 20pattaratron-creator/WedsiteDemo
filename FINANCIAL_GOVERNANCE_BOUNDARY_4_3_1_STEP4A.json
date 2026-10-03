@@ -1,0 +1,78 @@
+{
+  "release": "4.3.1",
+  "step": "4A",
+  "name": "Financial Governance & Reliability Foundation",
+  "status": "customer-trial-release-candidate",
+  "runtimeModules": [
+    "erp-governance-core.js",
+    "erp-governance.js"
+  ],
+  "implemented": {
+    "periodLock": {
+      "mode": "tenant-scoped local demo",
+      "scopes": ["sales", "purchase", "all"],
+      "eventModel": "append-only lock/unlock events with active-lock-preserving compaction",
+      "enforcedOn": ["invoice", "receipt", "expense", "billing payment", "payment receipt creation", "supplier payment status"]
+    },
+    "auditTrail": {
+      "mode": "append-only local evidence with retention",
+      "atomicWithControls": ["period lock/unlock", "approval decision", "sync queued/succeeded/failed/uncertain"],
+      "productionClaim": false
+    },
+    "syncOutbox": {
+      "persistent": true,
+      "deterministicOperationFingerprint": true,
+      "sameBrowserInflightDeduplication": true,
+      "syncedReplaySuppression": true,
+      "deadLetter": true,
+      "interruptedOutcome": "uncertain; never auto-retried without reconciliation"
+    },
+    "aging": ["AR current/1-30/31-60/61-90/90+", "AP current/1-30/31-60/61-90/90+"],
+    "periodCloseChecklist": {
+      "reviewOnly": ["open AR", "open AP", "missing expense tax attachment"],
+      "blockingRisk": ["unlinked receipt", "invalid payment allocation", "dead-letter sync", "uncertain sync"]
+    },
+    "approval": {
+      "mode": "local demo policy/history",
+      "entities": ["quotation", "purchase order", "expense", "production"],
+      "serverAuthorization": false
+    },
+    "backupRestore": {
+      "schema": 4,
+      "sha256BeforeMutation": true,
+      "dryRun": true,
+      "legacyImport": "allowed but explicitly unverified"
+    },
+    "taxReadiness": {
+      "eTaxEReceipt": "readiness only; no XML/signature/submission",
+      "wht": "arithmetic/data readiness only; no e-Withholding submission"
+    },
+    "renderGolden": {
+      "type": "source-level hash guard",
+      "documents": ["quotation", "delivery-tax", "receipt"],
+      "pixelRegression": false
+    }
+  },
+  "productionGaps": [
+    "server-side RBAC",
+    "backend tenant/company/branch isolation",
+    "atomic cross-device document numbering",
+    "database/server transactions",
+    "tamper-resistant server audit trail",
+    "backend idempotency/reconciliation for ambiguous network outcomes",
+    "e-Tax/e-Receipt XML/signature/submission",
+    "e-Withholding Tax submission",
+    "browser/PDF pixel visual regression"
+  ],
+  "doNotRegress": [
+    "financial write paths fail closed on corrupt persisted data",
+    "period locks validate before persistence",
+    "active period locks survive history compaction",
+    "governance state and required audit evidence commit together",
+    "synced outbox operations are not executed again",
+    "stale syncing operations become uncertain rather than auto-retried",
+    "ordinary open AR/AP is review evidence, not a mandatory zero-balance close condition",
+    "backup schema v4 checksum is verified before restore mutation",
+    "customer-trial closure runs financial controls and render-golden audits"
+  ]
+}

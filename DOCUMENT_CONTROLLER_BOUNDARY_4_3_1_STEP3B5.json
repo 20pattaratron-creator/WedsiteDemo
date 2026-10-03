@@ -1,0 +1,73 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-5 Page Partition Regression Harness",
+  "status": "page_partition_behavior_locked_runtime_unchanged",
+  "runtimeChanged": false,
+  "baselineFrom": "Step 3B-4 Totals Boundary Extraction & Pagination Assessment",
+  "metrics": {
+    "controllerLines": {
+      "quotation-document.js": 478,
+      "delivery-tax-document.js": 1338,
+      "receipt-document.js": 1485
+    },
+    "totalControllerLines": 3301,
+    "topLevelFunctions": {
+      "quotation-document.js": 27,
+      "delivery-tax-document.js": 54,
+      "receipt-document.js": 58
+    },
+    "sameNameFunctionPairs": 48,
+    "exactSameNameFunctionPairs": 8,
+    "normalizedDuplicate10LineGroups": 187,
+    "crossControllerImports": 0
+  },
+  "duplicationBudget": {
+    "exactSameNameFunctionPairs": 8,
+    "normalizedDuplicate10LineGroups": 187,
+    "crossControllerImports": 0
+  },
+  "harness": {
+    "testFile": "tests/page-partition-regression.test.cjs",
+    "sourceExecutedFunctions": [
+      "printableItems",
+      "paginateItems",
+      "documentPagesHtml"
+    ],
+    "controllers": [
+      "delivery-tax-document.js",
+      "receipt-document.js"
+    ],
+    "pageBudgetUnits": 8,
+    "cases": [
+      "empty fallback",
+      "exact eight-unit page",
+      "ninth-unit overflow",
+      "multiline/long row units",
+      "multi-page budget",
+      "final-page metadata",
+      "cross-controller partition equivalence"
+    ]
+  },
+  "explicitlyUnchanged": [
+    "erp-shared-core.js runtime API",
+    "delivery-tax-document.js runtime code",
+    "receipt-document.js runtime code",
+    "quotation-document.js runtime code",
+    "pagination ownership",
+    "PDF/DOM lifecycle",
+    "document layout/CSS",
+    "save workflow"
+  ],
+  "decision": {
+    "extractPaginationInThisStep": false,
+    "reason": "Separate proof-of-behavior from runtime-owner changes. Step 3B-5 creates a reliable regression harness; a later checkpoint may extract printable/pagination helpers with this harness unchanged."
+  },
+  "nextTarget": {
+    "step": "3B-6",
+    "scope": [
+      "extract printable item selection behind explicit items input",
+      "extract page partition behind explicit items/pageBudget/row-unit estimator inputs"
+    ],
+    "guard": "all Step 3B-5 page-partition tests must remain unchanged and pass"
+  }
+}

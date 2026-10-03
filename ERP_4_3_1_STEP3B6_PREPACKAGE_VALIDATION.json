@@ -1,0 +1,168 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "phase": "Customer Trial Stable closure",
+  "executedAt": "2026-09-14T09:24:31.118Z",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "syntax": {
+    "checked": 75,
+    "failures": [],
+    "pass": true
+  },
+  "commands": [
+    {
+      "label": "codebase_audit",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/audit-codebase.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "deep_audit",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/audit-deep.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "spec_audit",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/audit-specs.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "complexity_audit",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/audit-complexity.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "document_controller_audit",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/audit-document-controllers.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "security_preflight",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/security/agent-repo-audit.mjs .",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "security_baseline",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/security/verify-security-baseline.mjs .",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "core_evidence",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/run-core-evidence.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "full_evidence",
+      "command": "/opt/nvm/versions/node/v22.16.0/bin/node scripts/run-full-evidence.mjs",
+      "exitCode": 0,
+      "pass": true
+    }
+  ],
+  "core": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-14T09:24:23.874Z",
+    "scope": "core-portable",
+    "files": [
+      "tests/integrity.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/agent-security.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/page-partition-regression.test.cjs"
+    ],
+    "command": "node --test tests/integrity.test.cjs tests/decision-council.test.cjs tests/executive-charts.test.cjs tests/product-experience.test.cjs tests/refactor-4-1.test.cjs tests/codebase-audit.test.cjs tests/agent-security.test.cjs tests/spec-governance.test.cjs tests/trial-hardening-4-3.test.cjs tests/release-closure.test.cjs tests/date-core.test.cjs tests/master-data-core.test.cjs tests/master-data-store.test.cjs tests/document-finance-core.test.cjs tests/document-controller-duplication.test.cjs tests/document-shared-core.test.cjs tests/page-partition-regression.test.cjs",
+    "exitCode": 0,
+    "tests": 210,
+    "pass": 210,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "pass",
+    "log": "evidence/CORE_TESTS_4_3_1.tap"
+  },
+  "full": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-14T09:24:30.775Z",
+    "scope": "full-node-suite",
+    "files": [
+      "tests/agent-security.test.cjs",
+      "tests/attachments.test.cjs",
+      "tests/audit-fixes.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/forecast-governance.test.cjs",
+      "tests/forms.test.cjs",
+      "tests/integrity.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/page-partition-regression.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/ux-review.test.cjs"
+    ],
+    "exitCode": 1,
+    "tests": 217,
+    "pass": 210,
+    "fail": 7,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "environment_dependency",
+    "log": "evidence/FULL_TESTS_4_3_1.tap"
+  },
+  "deployment": {
+    "pagesDir": "/mnt/data/erp_step3b6_pages",
+    "manifest": {
+      "runtimeFiles": 46,
+      "hashMismatch": 0,
+      "missingHtmlRefs": [],
+      "pass": true
+    },
+    "http": {
+      "checked": 47,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "zips": {
+    "source": {
+      "provided": false,
+      "pass": true
+    },
+    "pages": {
+      "provided": false,
+      "pass": true
+    }
+  },
+  "limitations": [
+    "Full Node/DOM suite is not certified in this environment because jsdom/fake-indexeddb are unavailable.",
+    "Static HTTP/hash/syntax/core/security checks passed only if status is CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED."
+  ]
+}

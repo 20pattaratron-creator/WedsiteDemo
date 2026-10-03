@@ -1,0 +1,126 @@
+{
+  "version": "4.3.1",
+  "packageVersion": "2.3.1",
+  "checkedAt": "2026-10-01T06:49:21.376Z",
+  "runtimeRootFiles": 114,
+  "jsFiles": 45,
+  "inlineHandlerFunctions": 101,
+  "issues": [],
+  "notes": [
+    {
+      "code": "CSS_CROSS_FILE_OVERLAP",
+      "count": 15,
+      "detail": [
+        {
+          "selector": ":root",
+          "files": [
+            "delivery-tax-document.css",
+            "erp-ui.css",
+            "quotation-document.css",
+            "receipt-document.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".erp-global-search-btn .erp-icon",
+          "files": [
+            "erp-customer-experience.css",
+            "erp-ui.css"
+          ]
+        },
+        {
+          "selector": ".erp-dashboard-views button",
+          "files": [
+            "erp-customer-experience.css",
+            "erp-ui.css"
+          ]
+        },
+        {
+          "selector": ".btn",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".btn:hover",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".branch-dot",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".branch-dot.ub",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".branch-dot.kk",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".sidebar .nav-item",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".comform-topbar",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".dtab",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".dtab.active",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".dtab.kk.active",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".dtab.ub.active",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": "body",
+          "files": [
+            "quotation-document.css",
+            "style.css"
+          ]
+        }
+      ]
+    }
+  ],
+  "status": "PASS"
+}

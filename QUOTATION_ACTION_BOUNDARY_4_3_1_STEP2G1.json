@@ -1,0 +1,47 @@
+{
+  "release": "4.3.1",
+  "step": "2G-1",
+  "name": "Quotation Action Boundary",
+  "scope": [
+    "quotation"
+  ],
+  "pattern": [
+    "validate",
+    "plan",
+    "commit",
+    "after_commit"
+  ],
+  "newCoreApis": [
+    "quoteCommercialFingerprint",
+    "planQuoteDocumentAction"
+  ],
+  "strictWriteApis": [
+    "documentNumberExistsForWrite",
+    "findLocalRecordForDocumentWrite",
+    "loadForFinancialDocumentWrite",
+    "createFinancialDocumentWriteSession"
+  ],
+  "invariants": [
+    "duplicate quotation number fails before commit",
+    "approved quotation cannot change commercial fingerprint",
+    "downstream-linked quotation cannot change commercial fingerprint",
+    "safe metadata edits preserve approval and workflow lineage",
+    "corrupt document storage fails closed on quotation write paths"
+  ],
+  "tests": {
+    "baselineCore": 172,
+    "stepCore": 177,
+    "added": 5,
+    "pass": 177,
+    "fullTests": 184,
+    "fullPass": 177,
+    "environmentBlocked": 7
+  },
+  "notInScope": [
+    "production action boundary",
+    "expense action boundary",
+    "CSS cleanup",
+    "document controller deduplication",
+    "production backend"
+  ]
+}

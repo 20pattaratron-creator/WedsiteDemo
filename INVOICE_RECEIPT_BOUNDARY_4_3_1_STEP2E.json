@@ -1,0 +1,20 @@
+{
+  "release": "4.3.1",
+  "step": "2E",
+  "name": "Invoice / Receipt Action Boundary",
+  "runtimeModule": "erp-document-finance-core.js",
+  "newCoreApis": [
+    "parseFinancialDocumentPackForWrite",
+    "invoiceFinancialFingerprint",
+    "planInvoiceDocumentAction",
+    "planReceiptDocumentAction"
+  ],
+  "errorCodes": ["validation_error", "conflict_error", "dependency_error", "permission_error", "storage_error"],
+  "invariants": [
+    "corrupt financial storage never becomes an empty writable pack",
+    "paid invoice financial fingerprint is immutable until settlement is resolved",
+    "receipt amount never exceeds current invoice outstanding",
+    "receipt reference cannot change during edit",
+    "settlement multi-key persistence rolls back on write failure"
+  ]
+}

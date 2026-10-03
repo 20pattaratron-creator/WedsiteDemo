@@ -1,0 +1,284 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-5 Page Partition Regression Harness",
+  "runtimeFiles": 46,
+  "mismatch": 0,
+  "rows": [
+    {
+      "file": "app.js",
+      "currentSha256": "4054cefe5694d0a576845c69f772b37f2120cfe3dfe270fb65c63ee09f8e7dd5",
+      "step3b4ManifestSha256": "4054cefe5694d0a576845c69f772b37f2120cfe3dfe270fb65c63ee09f8e7dd5",
+      "match": true
+    },
+    {
+      "file": "boot-status.js",
+      "currentSha256": "671bf7af8d18bd7815c3dce21e586b114c4485ec43452987ec960e00c6630fc2",
+      "step3b4ManifestSha256": "671bf7af8d18bd7815c3dce21e586b114c4485ec43452987ec960e00c6630fc2",
+      "match": true
+    },
+    {
+      "file": "business-rules.css",
+      "currentSha256": "7f8ea0202cec6a945f6ab9a3ed94478d328aa7d600d7b984b2bbc93e0f57852f",
+      "step3b4ManifestSha256": "7f8ea0202cec6a945f6ab9a3ed94478d328aa7d600d7b984b2bbc93e0f57852f",
+      "match": true
+    },
+    {
+      "file": "business-rules.js",
+      "currentSha256": "a620ba1eba2b16b34d4f7d38e1ea2efef0381f3d27e84ed5b9b9888aff358ac9",
+      "step3b4ManifestSha256": "a620ba1eba2b16b34d4f7d38e1ea2efef0381f3d27e84ed5b9b9888aff358ac9",
+      "match": true
+    },
+    {
+      "file": "click-fallback.js",
+      "currentSha256": "7fb49626820874795cf8c536f0e8e844a7e70487abd359da494c7ff2c5ab6c9c",
+      "step3b4ManifestSha256": "7fb49626820874795cf8c536f0e8e844a7e70487abd359da494c7ff2c5ab6c9c",
+      "match": true
+    },
+    {
+      "file": "delivery-tax-document.css",
+      "currentSha256": "adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5",
+      "step3b4ManifestSha256": "adf6c643f38d29299b5c4a2c0e015beedabca697b8b3c9a42e426cd7f77ad9e5",
+      "match": true
+    },
+    {
+      "file": "delivery-tax-document.js",
+      "currentSha256": "28b02cec3ab79d03ac9e72fd7fe6f316adb46cef83d900b5b37cb805ed52dffe",
+      "step3b4ManifestSha256": "28b02cec3ab79d03ac9e72fd7fe6f316adb46cef83d900b5b37cb805ed52dffe",
+      "match": true
+    },
+    {
+      "file": "erp-backup.js",
+      "currentSha256": "48bd83f7e30297af21cdd611a2fdb3643edc849f8ca28b152462fb5953a98d39",
+      "step3b4ManifestSha256": "48bd83f7e30297af21cdd611a2fdb3643edc849f8ca28b152462fb5953a98d39",
+      "match": true
+    },
+    {
+      "file": "erp-customer-experience.css",
+      "currentSha256": "49c06a2d17ae291e70ff9eec2ca12503e6afecf32927f54ae5a4801f3dde78f0",
+      "step3b4ManifestSha256": "49c06a2d17ae291e70ff9eec2ca12503e6afecf32927f54ae5a4801f3dde78f0",
+      "match": true
+    },
+    {
+      "file": "erp-customer-experience.js",
+      "currentSha256": "56214101858e7c479fdd93656402a0647c2a69aa93cd9a4d131a1e6a38f1c312",
+      "step3b4ManifestSha256": "56214101858e7c479fdd93656402a0647c2a69aa93cd9a4d131a1e6a38f1c312",
+      "match": true
+    },
+    {
+      "file": "erp-date-core.js",
+      "currentSha256": "3bf6ecbb3b0cf9db5c7b0b55ed1c2c17f95784065909dbc0f305e3893a35180b",
+      "step3b4ManifestSha256": "3bf6ecbb3b0cf9db5c7b0b55ed1c2c17f95784065909dbc0f305e3893a35180b",
+      "match": true
+    },
+    {
+      "file": "erp-decision-council-core.js",
+      "currentSha256": "d5eb4b9c57259d5fd7daff724a81fe5a550eff1b9b0d83a0706b0c69534ca757",
+      "step3b4ManifestSha256": "d5eb4b9c57259d5fd7daff724a81fe5a550eff1b9b0d83a0706b0c69534ca757",
+      "match": true
+    },
+    {
+      "file": "erp-decision-council.css",
+      "currentSha256": "2e2a3a9b9252fb6898672fe15de980fc7080b967eb0f933fa94d6929e99773aa",
+      "step3b4ManifestSha256": "2e2a3a9b9252fb6898672fe15de980fc7080b967eb0f933fa94d6929e99773aa",
+      "match": true
+    },
+    {
+      "file": "erp-decision-council.js",
+      "currentSha256": "30ea762d76ae2d81de6e66cf4acdab773b6db0bf6648364e72a6b43b102a6c2f",
+      "step3b4ManifestSha256": "30ea762d76ae2d81de6e66cf4acdab773b6db0bf6648364e72a6b43b102a6c2f",
+      "match": true
+    },
+    {
+      "file": "erp-demo-concurrency.js",
+      "currentSha256": "1ba9e515a8eb774d8766e8a6d846770ed327bedd530f65dbe5f33cb7f4b255a3",
+      "step3b4ManifestSha256": "1ba9e515a8eb774d8766e8a6d846770ed327bedd530f65dbe5f33cb7f4b255a3",
+      "match": true
+    },
+    {
+      "file": "erp-detail-security.js",
+      "currentSha256": "c464938e843396f2130606da0376537e035ebedd4968ca5eb2c1ec578f4679dc",
+      "step3b4ManifestSha256": "c464938e843396f2130606da0376537e035ebedd4968ca5eb2c1ec578f4679dc",
+      "match": true
+    },
+    {
+      "file": "erp-document-finance-core.js",
+      "currentSha256": "d771d48261a26791eb41410c4fb04e96f0979e396dfbdbcea3030ba78a242713",
+      "step3b4ManifestSha256": "d771d48261a26791eb41410c4fb04e96f0979e396dfbdbcea3030ba78a242713",
+      "match": true
+    },
+    {
+      "file": "erp-integrity.js",
+      "currentSha256": "51884380e73dc3570cd5abdc99366bdcd1c03d3ed4cfecf41ef6b3b9d1afada3",
+      "step3b4ManifestSha256": "51884380e73dc3570cd5abdc99366bdcd1c03d3ed4cfecf41ef6b3b9d1afada3",
+      "match": true
+    },
+    {
+      "file": "erp-master-data-core.js",
+      "currentSha256": "04e0177997c6059ccdacdf723856885977757a895d4077f3836140b8733c9272",
+      "step3b4ManifestSha256": "04e0177997c6059ccdacdf723856885977757a895d4077f3836140b8733c9272",
+      "match": true
+    },
+    {
+      "file": "erp-master-data-store.js",
+      "currentSha256": "185cb574356ddbbd96aa004d1e19b19f0077abc12c39b4c9a008ba2dd3ee2200",
+      "step3b4ManifestSha256": "185cb574356ddbbd96aa004d1e19b19f0077abc12c39b4c9a008ba2dd3ee2200",
+      "match": true
+    },
+    {
+      "file": "erp-order-flow.css",
+      "currentSha256": "203edc696c07a2c7034508f226973cb92320b7c737c77209ddfd3008680955fc",
+      "step3b4ManifestSha256": "203edc696c07a2c7034508f226973cb92320b7c737c77209ddfd3008680955fc",
+      "match": true
+    },
+    {
+      "file": "erp-order-flow.js",
+      "currentSha256": "1bd3b20bd902094f79e00e052dc2af9de265ba0a1b9fc70c67f52acd97edcae9",
+      "step3b4ManifestSha256": "1bd3b20bd902094f79e00e052dc2af9de265ba0a1b9fc70c67f52acd97edcae9",
+      "match": true
+    },
+    {
+      "file": "erp-product-experience-core.js",
+      "currentSha256": "9e5857f2fb01d6218f25442cb29c5d909ec77b41a3e98c6a1f8d6dcd833d2bce",
+      "step3b4ManifestSha256": "9e5857f2fb01d6218f25442cb29c5d909ec77b41a3e98c6a1f8d6dcd833d2bce",
+      "match": true
+    },
+    {
+      "file": "erp-product-experience.css",
+      "currentSha256": "67e83864f9907898a028bb10c4ca5241234a586368d70f5a3ff59f7da61f4712",
+      "step3b4ManifestSha256": "67e83864f9907898a028bb10c4ca5241234a586368d70f5a3ff59f7da61f4712",
+      "match": true
+    },
+    {
+      "file": "erp-product-experience.js",
+      "currentSha256": "2872b926856094947343bc9861f0b22ab5b2c9352a154b6d9e789febf7ceda3c",
+      "step3b4ManifestSha256": "2872b926856094947343bc9861f0b22ab5b2c9352a154b6d9e789febf7ceda3c",
+      "match": true
+    },
+    {
+      "file": "erp-production-core.js",
+      "currentSha256": "5fa8daf0781fee4536c5c5323fd79e915e3a155b1295ba6d23903c016e05379d",
+      "step3b4ManifestSha256": "5fa8daf0781fee4536c5c5323fd79e915e3a155b1295ba6d23903c016e05379d",
+      "match": true
+    },
+    {
+      "file": "erp-shared-core.js",
+      "currentSha256": "3b4c2177557ee6ee454052517c175c0466911b0392be1163f8f39dd38fb90f02",
+      "step3b4ManifestSha256": "3b4c2177557ee6ee454052517c175c0466911b0392be1163f8f39dd38fb90f02",
+      "match": true
+    },
+    {
+      "file": "erp-storage-contracts.js",
+      "currentSha256": "ba537b6eb367b5aca2bc5ddbabc3a87977bec57f927beb6f8bfa12473fbd79cd",
+      "step3b4ManifestSha256": "ba537b6eb367b5aca2bc5ddbabc3a87977bec57f927beb6f8bfa12473fbd79cd",
+      "match": true
+    },
+    {
+      "file": "erp-workflow-definitions.js",
+      "currentSha256": "3c726900997d685915aae9944ac90716b510942122d6c362da2089114ccc751c",
+      "step3b4ManifestSha256": "3c726900997d685915aae9944ac90716b510942122d6c362da2089114ccc751c",
+      "match": true
+    },
+    {
+      "file": "erp-workflow-graph-core.js",
+      "currentSha256": "aa38cdf30e7156593be68760f9d2685066f3b786a4da8907ee2ecdddaf4f1ed5",
+      "step3b4ManifestSha256": "aa38cdf30e7156593be68760f9d2685066f3b786a4da8907ee2ecdddaf4f1ed5",
+      "match": true
+    },
+    {
+      "file": "executive-charts.css",
+      "currentSha256": "00585f89f69a79950292c07424defb74d46765341e2333bfeb6a8aad7c08474a",
+      "step3b4ManifestSha256": "00585f89f69a79950292c07424defb74d46765341e2333bfeb6a8aad7c08474a",
+      "match": true
+    },
+    {
+      "file": "index.html",
+      "currentSha256": "fb37d8f5c9973a824a6509b91103b59470560474b9a78d421f1ade306b7aecdc",
+      "step3b4ManifestSha256": "fb37d8f5c9973a824a6509b91103b59470560474b9a78d421f1ade306b7aecdc",
+      "match": true
+    },
+    {
+      "file": "local-demo-health.css",
+      "currentSha256": "bec97add4749a1bc83ae58e3faa64776bbf7cfb752545619b35014505d528440",
+      "step3b4ManifestSha256": "bec97add4749a1bc83ae58e3faa64776bbf7cfb752545619b35014505d528440",
+      "match": true
+    },
+    {
+      "file": "local-demo-health.js",
+      "currentSha256": "b584ae72db086a267e556debcbece97a645f1b9de00a9e826d8f3300b683087f",
+      "step3b4ManifestSha256": "b584ae72db086a267e556debcbece97a645f1b9de00a9e826d8f3300b683087f",
+      "match": true
+    },
+    {
+      "file": "local-demo-mode.css",
+      "currentSha256": "b1bf1561e6d08f70f5d1e1b455a37c4a6ee09ddf0d6693908a56a908577eacc0",
+      "step3b4ManifestSha256": "b1bf1561e6d08f70f5d1e1b455a37c4a6ee09ddf0d6693908a56a908577eacc0",
+      "match": true
+    },
+    {
+      "file": "local-demo-mode.js",
+      "currentSha256": "d965790d50686163d6de91f72b8c7eac5e3d1ab5b5358610d45a2d82eff0be40",
+      "step3b4ManifestSha256": "d965790d50686163d6de91f72b8c7eac5e3d1ab5b5358610d45a2d82eff0be40",
+      "match": true
+    },
+    {
+      "file": "local-file-store.js",
+      "currentSha256": "c5d09a2e45ff698e17b71546c7898dd148d030ca209502b5225be512a5aab124",
+      "step3b4ManifestSha256": "c5d09a2e45ff698e17b71546c7898dd148d030ca209502b5225be512a5aab124",
+      "match": true
+    },
+    {
+      "file": "logo.png",
+      "currentSha256": "d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07",
+      "step3b4ManifestSha256": "d0bc5ad0b6baed3a02113a69bb09ab5e91eb0a2e0387b6cb3192be4182cfec07",
+      "match": true
+    },
+    {
+      "file": "quotation-document.css",
+      "currentSha256": "7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94",
+      "step3b4ManifestSha256": "7c84ed556d639f43a56b48d276fec6a05fa499c8c0ee14eac35a052d92df3c94",
+      "match": true
+    },
+    {
+      "file": "quotation-document.js",
+      "currentSha256": "6574ac5b05bf1a3f74d58c7e0e977484d7025696209519fa043b6f8f22f9c2f7",
+      "step3b4ManifestSha256": "6574ac5b05bf1a3f74d58c7e0e977484d7025696209519fa043b6f8f22f9c2f7",
+      "match": true
+    },
+    {
+      "file": "receipt-document.css",
+      "currentSha256": "ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24",
+      "step3b4ManifestSha256": "ba9a4f0c2aa2d94049caf046d87405b920f42308dca384657b05c33b66759b24",
+      "match": true
+    },
+    {
+      "file": "receipt-document.js",
+      "currentSha256": "3abbe54d8a7c9e26cc731d4fdf37b54c57f50e73cf2f405eb3531ea0134dd9d4",
+      "step3b4ManifestSha256": "3abbe54d8a7c9e26cc731d4fdf37b54c57f50e73cf2f405eb3531ea0134dd9d4",
+      "match": true
+    },
+    {
+      "file": "style.css",
+      "currentSha256": "8368bca30d81373f31ced1e7534035901d6e7dbcec0d452bb4bb1729bd5a02b9",
+      "step3b4ManifestSha256": "8368bca30d81373f31ced1e7534035901d6e7dbcec0d452bb4bb1729bd5a02b9",
+      "match": true
+    },
+    {
+      "file": "tenant-context.js",
+      "currentSha256": "439de2ed41eb7c9434777dfa882ec149ac262ee7f30e95c071a8113abb511c36",
+      "step3b4ManifestSha256": "439de2ed41eb7c9434777dfa882ec149ac262ee7f30e95c071a8113abb511c36",
+      "match": true
+    },
+    {
+      "file": "trial-mode.css",
+      "currentSha256": "6b023c5856dff0140b13483547cd9ad9c5e3e98ccd52cad0e2660b4f7089b8de",
+      "step3b4ManifestSha256": "6b023c5856dff0140b13483547cd9ad9c5e3e98ccd52cad0e2660b4f7089b8de",
+      "match": true
+    },
+    {
+      "file": "trial-mode.js",
+      "currentSha256": "d36e4c5840a4ce77556f8dcd12537cf08e3ce83c63fddcec0007b4335c3c250b",
+      "step3b4ManifestSha256": "d36e4c5840a4ce77556f8dcd12537cf08e3ce83c63fddcec0007b4335c3c250b",
+      "match": true
+    }
+  ]
+}

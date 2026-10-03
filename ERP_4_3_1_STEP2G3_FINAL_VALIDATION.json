@@ -1,0 +1,20 @@
+{
+  "release": "4.3.1",
+  "step": "2G-3",
+  "name": "Expense Action Boundary",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "syntax": {"checked": 71, "failed": 0},
+  "core": {"pass": 189, "tests": 189, "classification": "pass"},
+  "full": {"pass": 189, "tests": 196, "fail": 7, "classification": "environment_dependency"},
+  "audit": {
+    "codebase": "PASS",
+    "deep": "PASS",
+    "spec": "PASS",
+    "complexity": "PASS",
+    "security": "PASS"
+  },
+  "securityFindings": {"high": 0, "medium": 0, "low": 2},
+  "runtime": {"files": 46, "sourcePagesHashMismatch": 0, "httpSmokePass": 47, "httpSmokeChecked": 47},
+  "quality": {"runtimeJsFiles": 31, "runtimeLines": 16986, "appJsAuditLines": 8240},
+  "zipChecksumPolicy": "ZIP SHA-256 is stored outside the archive to avoid self-referential checksum evidence"
+}

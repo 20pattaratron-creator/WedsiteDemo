@@ -1,0 +1,81 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3A Document Controller Duplication Audit & Shared Boundary Design",
+  "status": "architecture_guard_ready",
+  "baseline": {
+    "controllerLines": {
+      "quotation-document.js": 523,
+      "delivery-tax-document.js": 1455,
+      "receipt-document.js": 1602
+    },
+    "totalControllerLines": 3580,
+    "topLevelFunctions": {
+      "quotation-document.js": 31,
+      "delivery-tax-document.js": 67,
+      "receipt-document.js": 71
+    },
+    "sameNameFunctionPairs": 69,
+    "exactSameNameFunctionPairs": 27,
+    "normalizedDuplicate10LineGroups": 275,
+    "crossControllerImports": 0
+  },
+  "ceilings": {
+    "maxNormalizedDuplicate10LineGroups": 275,
+    "maxExactSameNameFunctionPairs": 27
+  },
+  "extractionOrder": [
+    {
+      "step": "3B-1",
+      "scope": "pure formatting/value helpers",
+      "candidates": [
+        "escapeHtml",
+        "parseMoney",
+        "fmt",
+        "formatDate",
+        "thaiIntegerText",
+        "bahtText",
+        "safeFilename"
+      ],
+      "rule": "extract only if behavior is byte-for-byte compatible under regression tests"
+    },
+    {
+      "step": "3B-2",
+      "scope": "generic object/date helpers",
+      "candidates": [
+        "getNestedValue",
+        "setNestedValue",
+        "resolveStoragePeriod"
+      ],
+      "rule": "extract only after edge-case tests for nested mutation and storage-period conversion"
+    },
+    {
+      "step": "3B-3",
+      "scope": "contextual print/pagination helpers",
+      "candidates": [
+        "waitForPdfStageAssets",
+        "paginateItems",
+        "itemRowUnits"
+      ],
+      "rule": "parameterize dependencies first; do not capture document state in shared module"
+    }
+  ],
+  "explicitlyKeepSeparate": [
+    "documentPageHtml",
+    "renderAppShell",
+    "validateBeforeSave",
+    "saveDocumentToSystem",
+    "sourceEvidenceHtml",
+    "loadProductionOptions / invoice-link loading",
+    "document-specific print CSS and copy labels"
+  ],
+  "forbiddenRefactorPatterns": [
+    "one mega document controller containing quotation, delivery-tax and receipt state",
+    "shared helper that reads or mutates controller-global state implicitly",
+    "moving document-specific VAT/payment/stock rules out of their existing source-of-truth cores",
+    "regex-based deletion of duplicate CSS or JavaScript without visual/regression evidence"
+  ],
+  "nextTarget": {
+    "step": "3B-1",
+    "goal": "extract only pure formatting/value helpers and reduce exact duplicate function pairs while runtime behavior remains unchanged"
+  }
+}

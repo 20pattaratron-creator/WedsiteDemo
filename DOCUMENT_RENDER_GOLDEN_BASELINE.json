@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "purpose": "Source-level golden guard for printable document rendering. A hash change requires explicit visual/PDF review and deliberate baseline regeneration.",
+  "generatedAt": "2026-09-25T14:51:25.882Z",
+  "documents": {
+    "quotation": {
+      "js": "quotation-document.js",
+      "css": "quotation-document.css",
+      "cssSha256": "e3fdff95e84ec9aa956acab1e5483a22c17c05cd13ae2f06297fb085b7c5e0d4",
+      "functions": {
+        "pageHtml": "146a11418095c608bb854957da6c573cd79d16b3eb2be7dd8c2542898c042eed",
+        "documentPagesHtml": "f4e6bd29c98dd0172d74e62c2b16c7fb4ba9e7a7c1f62db823d6d6af97df8583"
+      }
+    },
+    "deliveryTax": {
+      "js": "delivery-tax-document.js",
+      "css": "delivery-tax-document.css",
+      "cssSha256": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10",
+      "functions": {
+        "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
+        "documentPageHtml": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8"
+      }
+    },
+    "receipt": {
+      "js": "receipt-document.js",
+      "css": "receipt-document.css",
+      "cssSha256": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078",
+      "functions": {
+        "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
+        "documentPageHtml": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2"
+      }
+    }
+  },
+  "changes": [
+    {
+      "at": "2026-09-26",
+      "document": "receipt:css",
+      "reason": "ADR-013: WHT receipts (หัก ณ ที่จ่าย) clipped the WHT / net-cash rows, WHT note and amount in words in Chromium print/PDF; CSS rules scoped to .rcp-doc-totals-wht compact only WHT receipts. Reviewed as PDF (html2canvas + jsPDF, Chromium): WHT receipts show all 5 total rows; receipts without WHT are pixel-identical. Render functions unchanged."
+    }
+  ]
+}

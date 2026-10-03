@@ -1,0 +1,41 @@
+{
+  "release": "4.3.1",
+  "step": "2G-2",
+  "name": "Production Action Boundary",
+  "scope": ["production"],
+  "pattern": ["validate", "plan", "commit", "after_commit"],
+  "newCoreApis": ["productionCommercialFingerprint", "planProductionDocumentAction"],
+  "strictWriteApis": [
+    "productionNumberExistsForWrite",
+    "findLocalRecordForDocumentWrite",
+    "loadForFinancialDocumentWrite",
+    "createFinancialDocumentWriteSession",
+    "ERPOrderFlow.getStoreForFinancialWrite"
+  ],
+  "invariants": [
+    "duplicate production number fails before commit",
+    "invoice-linked production cannot change commercial fingerprint",
+    "supplier-settled production cannot change commercial fingerprint",
+    "production edit preserves supplier settlement ownership",
+    "production edit preserves quote sales-order and invoice lineage",
+    "source quote and source sales order must be verifiable on write path",
+    "local-demo production and source-quote linkage commit through one rollback-capable write session",
+    "production same-browser write is protected by the demo write lease"
+  ],
+  "tests": {
+    "baselineCore": 177,
+    "stepCore": 183,
+    "added": 6,
+    "pass": 183,
+    "fullTests": 190,
+    "fullPass": 183,
+    "environmentBlocked": 7
+  },
+  "notInScope": [
+    "expense action boundary",
+    "CSS cleanup",
+    "document controller deduplication",
+    "server-side transaction",
+    "atomic cross-device numbering"
+  ]
+}

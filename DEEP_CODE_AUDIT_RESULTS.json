@@ -1,0 +1,293 @@
+{
+  "version": "4.3.1",
+  "packageVersion": "2.3.1",
+  "checkedAt": "2026-10-01T06:50:31.885Z",
+  "runtimeJsFiles": 44,
+  "runtimeLines": 24466,
+  "issues": [],
+  "notes": [
+    {
+      "code": "NORMALIZED_DUPLICATE_10_LINE_WINDOWS",
+      "count": 152,
+      "examples": [
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 24
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 20
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 23
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 25
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 21
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 24
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 26
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 22
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 25
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 27
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 23
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 26
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 28
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 24
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 27
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 29
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 25
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 28
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 30
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 26
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 29
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 31
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 27
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 30
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 32
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 28
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 31
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 33
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 29
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 32
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 34
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 30
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 33
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 51
+          },
+          {
+            "file": "quotation-document.js",
+            "line": 65
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 52
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 44
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 47
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 53
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 45
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 48
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 54
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 46
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 49
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 55
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 47
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 50
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 56
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 48
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 51
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 57
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 49
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 52
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 58
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 50
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 53
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 212
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 151
+          }
+        ]
+      ]
+    },
+    {
+      "code": "MAINTENANCE_MARKERS",
+      "count": 0
+    }
+  ],
+  "status": "PASS"
+}
