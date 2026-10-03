@@ -1,0 +1,13 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 2A - app.js low-risk extraction",
+  "scope": "Thai business date / Buddhist calendar helpers",
+  "appJsLogicalLinesBefore": 8239,
+  "appJsLogicalLinesAfter": 8161,
+  "extractedModule": "erp-date-core.js",
+  "newRegressionTests": 7,
+  "coreTests": {"pass": 97, "total": 97, "classification": "pass"},
+  "fullNodeDom": {"pass": 97, "total": 104, "classification": "environment_dependency", "blockedBy": ["jsdom", "fake-indexeddb"]},
+  "audits": {"codebase": "pass", "deep": "pass", "spec": "pass", "complexity": "pass", "securityPreflight": "pass", "securityBaseline": "pass"},
+  "behavioralIntent": "no user-facing behavior change; preserve function names and call signatures"
+}

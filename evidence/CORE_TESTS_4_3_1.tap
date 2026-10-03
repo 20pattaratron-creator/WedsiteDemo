@@ -1,0 +1,1378 @@
+TAP version 13
+# Subtest: current ERP repo has no HIGH agent-repo findings
+ok 1 - current ERP repo has no HIGH agent-repo findings
+  ---
+  duration_ms: 95.091569
+  type: 'test'
+  ...
+# Subtest: blocks Claude permission bypass configuration
+ok 2 - blocks Claude permission bypass configuration
+  ---
+  duration_ms: 48.060126
+  type: 'test'
+  ...
+# Subtest: blocks Claude hooks in project settings
+ok 3 - blocks Claude hooks in project settings
+  ---
+  duration_ms: 47.426388
+  type: 'test'
+  ...
+# Subtest: blocks VS Code folder-open task
+ok 4 - blocks VS Code folder-open task
+  ---
+  duration_ms: 47.982129
+  type: 'test'
+  ...
+# Subtest: blocks npm postinstall lifecycle
+ok 5 - blocks npm postinstall lifecycle
+  ---
+  duration_ms: 50.36212
+  type: 'test'
+  ...
+# Subtest: detects potential secret files
+ok 6 - detects potential secret files
+  ---
+  duration_ms: 64.768798
+  type: 'test'
+  ...
+# Subtest: blocks Cursor CLI command-bearing project config
+ok 7 - blocks Cursor CLI command-bearing project config
+  ---
+  duration_ms: 53.963636
+  type: 'test'
+  ...
+# Subtest: blocks command-bearing MCP configuration
+ok 8 - blocks command-bearing MCP configuration
+  ---
+  duration_ms: 59.817634
+  type: 'test'
+  ...
+# Subtest: blocks git commondir that resolves outside repo
+ok 9 - blocks git commondir that resolves outside repo
+  ---
+  duration_ms: 51.183438
+  type: 'test'
+  ...
+# Subtest: codebase audit passes
+ok 10 - codebase audit passes
+  ---
+  duration_ms: 916.275194
+  type: 'test'
+  ...
+# Subtest: quote date has no duplicate/unexposed inline auto-number handler
+ok 11 - quote date has no duplicate/unexposed inline auto-number handler
+  ---
+  duration_ms: 1.556499
+  type: 'test'
+  ...
+# Subtest: navigation integrations use erp:navigation instead of replacing window.go
+ok 12 - navigation integrations use erp:navigation instead of replacing window.go
+  ---
+  duration_ms: 1.006505
+  type: 'test'
+  ...
+# Subtest: runtime error capture has one owner
+ok 13 - runtime error capture has one owner
+  ---
+  duration_ms: 9.049713
+  type: 'test'
+  ...
+# Subtest: workflow handoff state is namespaced
+ok 14 - workflow handoff state is namespaced
+  ---
+  duration_ms: 7.490111
+  type: 'test'
+  ...
+# Subtest: shared storage contracts stay aligned across modules
+ok 15 - shared storage contracts stay aligned across modules
+  ---
+  duration_ms: 1.137215
+  type: 'test'
+  ...
+# Subtest: Thai/CE year conversion remains deterministic
+ok 16 - Thai/CE year conversion remains deterministic
+  ---
+  duration_ms: 4.766262
+  type: 'test'
+  ...
+# Subtest: business date parser accepts CE and BE ISO-like inputs
+ok 17 - business date parser accepts CE and BE ISO-like inputs
+  ---
+  duration_ms: 0.405286
+  type: 'test'
+  ...
+# Subtest: business date parser accepts Thai/Excel DD/MM/YYYY inputs
+ok 18 - business date parser accepts Thai/Excel DD/MM/YYYY inputs
+  ---
+  duration_ms: 0.244144
+  type: 'test'
+  ...
+# Subtest: business date parser retains Firestore timestamp compatibility
+ok 19 - business date parser retains Firestore timestamp compatibility
+  ---
+  duration_ms: 0.14406
+  type: 'test'
+  ...
+# Subtest: ISO and Thai display formatting keep CE storage and BE display separate
+ok 20 - ISO and Thai display formatting keep CE storage and BE display separate
+  ---
+  duration_ms: 0.2639
+  type: 'test'
+  ...
+# Subtest: calendar metadata preserves record fields and normalizes year/month
+ok 21 - calendar metadata preserves record fields and normalizes year/month
+  ---
+  duration_ms: 0.303646
+  type: 'test'
+  ...
+# Subtest: invalid/fallback values preserve previous trial behavior
+ok 22 - invalid/fallback values preserve previous trial behavior
+  ---
+  duration_ms: 0.193074
+  type: 'test'
+  ...
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 23 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 21.252614
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 24 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 1.620432
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 25 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 1.759497
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 26 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 1.750014
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 27 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 2.533645
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 28 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 1.676798
+  type: 'test'
+  ...
+# Subtest: document-controller duplication audit passes the frozen Step 3C-1 ceiling
+ok 29 - document-controller duplication audit passes the frozen Step 3C-1 ceiling
+  ---
+  duration_ms: 93.792223
+  type: 'test'
+  ...
+# Subtest: Step 3C-1 retains shared pagination while hardening issued-document persistence
+ok 30 - Step 3C-1 retains shared pagination while hardening issued-document persistence
+  ---
+  duration_ms: 1.268922
+  type: 'test'
+  ...
+# Subtest: trial release gate includes the document-controller duplication audit
+ok 31 - trial release gate includes the document-controller duplication audit
+  ---
+  duration_ms: 0.350996
+  type: 'test'
+  ...
+# Subtest: finance core is pure and does not reference DOM/storage/cloud globals
+ok 32 - finance core is pure and does not reference DOM/storage/cloud globals
+  ---
+  duration_ms: 2.373768
+  type: 'test'
+  ...
+# Subtest: billing action creates collection document only and never creates sales/VAT/stock mutation fields
+ok 33 - billing action creates collection document only and never creates sales/VAT/stock mutation fields
+  ---
+  duration_ms: 1.566108
+  type: 'test'
+  ...
+# Subtest: billing rejects cross-branch or cross-customer invoices
+ok 34 - billing rejects cross-branch or cross-customer invoices
+  ---
+  duration_ms: 0.488866
+  type: 'test'
+  ...
+# Subtest: billing rejects duplicate invoice and duplicate billing number
+ok 35 - billing rejects duplicate invoice and duplicate billing number
+  ---
+  duration_ms: 0.275143
+  type: 'test'
+  ...
+# Subtest: billing refuses amount above invoice outstanding
+ok 36 - billing refuses amount above invoice outstanding
+  ---
+  duration_ms: 0.201254
+  type: 'test'
+  ...
+# Subtest: billing refuses invoice already in an active billing note
+ok 37 - billing refuses invoice already in an active billing note
+  ---
+  duration_ms: 0.239599
+  type: 'test'
+  ...
+# Subtest: payment allocation is FIFO and never mutates invoice monetary totals
+ok 38 - payment allocation is FIFO and never mutates invoice monetary totals
+  ---
+  duration_ms: 0.572451
+  type: 'test'
+  ...
+# Subtest: payment refuses over-collection and duplicate payment number
+ok 39 - payment refuses over-collection and duplicate payment number
+  ---
+  duration_ms: 0.444254
+  type: 'test'
+  ...
+# Subtest: payment status patch follows outstanding without rewriting billing total
+ok 40 - payment status patch follows outstanding without rewriting billing total
+  ---
+  duration_ms: 0.602033
+  type: 'test'
+  ...
+# Subtest: receipt drafts preserve proportional VAT split for partial payment
+ok 41 - receipt drafts preserve proportional VAT split for partial payment
+  ---
+  duration_ms: 0.566959
+  type: 'test'
+  ...
+# Subtest: receipt draft builder rejects mixed branches
+ok 42 - receipt draft builder rejects mixed branches
+  ---
+  duration_ms: 0.21098
+  type: 'test'
+  ...
+# Subtest: payment receipt replay is idempotent when evidence matches exactly
+ok 43 - payment receipt replay is idempotent when evidence matches exactly
+  ---
+  duration_ms: 0.224144
+  type: 'test'
+  ...
+# Subtest: partial or mismatched prior payment receipts fail closed
+ok 44 - partial or mismatched prior payment receipts fail closed
+  ---
+  duration_ms: 0.178643
+  type: 'test'
+  ...
+# Subtest: order-flow routes billing and payment writes through the finance action core
+ok 45 - order-flow routes billing and payment writes through the finance action core
+  ---
+  duration_ms: 0.6381
+  type: 'test'
+  ...
+# Subtest: receipt persistence delegates draft creation and replay protection to finance core
+ok 46 - receipt persistence delegates draft creation and replay protection to finance core
+  ---
+  duration_ms: 0.398318
+  type: 'test'
+  ...
+# Subtest: financial pack parser is strict for write paths and never turns corrupt JSON into empty data
+ok 47 - financial pack parser is strict for write paths and never turns corrupt JSON into empty data
+  ---
+  duration_ms: 0.297493
+  type: 'test'
+  ...
+# Subtest: new invoice action starts with pending settlement state and does not trust form paid flags
+ok 48 - new invoice action starts with pending settlement state and does not trust form paid flags
+  ---
+  duration_ms: 0.196109
+  type: 'test'
+  ...
+# Subtest: invoice duplicate number is a conflict before persistence
+ok 49 - invoice duplicate number is a conflict before persistence
+  ---
+  duration_ms: 0.098609
+  type: 'test'
+  ...
+# Subtest: paid invoice blocks financial edits but allows metadata-only edits and preserves settlement
+ok 50 - paid invoice blocks financial edits but allows metadata-only edits and preserves settlement
+  ---
+  duration_ms: 0.403587
+  type: 'test'
+  ...
+# Subtest: unpaid invoice edit can change financial values while preserving lineage
+ok 51 - unpaid invoice edit can change financial values while preserving lineage
+  ---
+  duration_ms: 0.115868
+  type: 'test'
+  ...
+# Subtest: new quotation action validates duplicate number and returns a clean create plan
+ok 52 - new quotation action validates duplicate number and returns a clean create plan
+  ---
+  duration_ms: 0.989546
+  type: 'test'
+  ...
+# Subtest: approved quotation blocks commercial edits but allows safe metadata changes
+ok 53 - approved quotation blocks commercial edits but allows safe metadata changes
+  ---
+  duration_ms: 0.488557
+  type: 'test'
+  ...
+# Subtest: linked quotation blocks commercial edits and preserves downstream lineage
+ok 54 - linked quotation blocks commercial edits and preserves downstream lineage
+  ---
+  duration_ms: 0.238146
+  type: 'test'
+  ...
+# Subtest: quotation commercial fingerprint treats legal customer and line changes as material
+ok 55 - quotation commercial fingerprint treats legal customer and line changes as material
+  ---
+  duration_ms: 0.244064
+  type: 'test'
+  ...
+# Subtest: app routes quotation writes through strict storage and central action runner
+ok 56 - app routes quotation writes through strict storage and central action runner
+  ---
+  duration_ms: 4.483236
+  type: 'test'
+  ...
+# Subtest: new production action rejects duplicate number before persistence
+ok 57 - new production action rejects duplicate number before persistence
+  ---
+  duration_ms: 0.374636
+  type: 'test'
+  ...
+# Subtest: invoice-linked production blocks commercial edits but allows safe metadata and preserves lineage
+ok 58 - invoice-linked production blocks commercial edits but allows safe metadata and preserves lineage
+  ---
+  duration_ms: 0.417683
+  type: 'test'
+  ...
+# Subtest: supplier-settled production is commercially immutable even before invoice
+ok 59 - supplier-settled production is commercially immutable even before invoice
+  ---
+  duration_ms: 0.290529
+  type: 'test'
+  ...
+# Subtest: unlinked unpaid production may change commercial values but preserves source lineage and settlement ownership
+ok 60 - unlinked unpaid production may change commercial values but preserves source lineage and settlement ownership
+  ---
+  duration_ms: 0.123108
+  type: 'test'
+  ...
+# Subtest: production commercial fingerprint detects item cost and supplier term changes but ignores notes
+ok 61 - production commercial fingerprint detects item cost and supplier term changes but ignores notes
+  ---
+  duration_ms: 0.251359
+  type: 'test'
+  ...
+# Subtest: app routes production create/edit through strict document storage, action runner and rollback-capable write session
+ok 62 - app routes production create/edit through strict document storage, action runner and rollback-capable write session
+  ---
+  duration_ms: 5.540454
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and reference mismatch fail before persistence
+ok 63 - receipt overpayment and reference mismatch fail before persistence
+  ---
+  duration_ms: 0.45833
+  type: 'test'
+  ...
+# Subtest: receipt with an explicit missing invoice fails closed with dependency_error
+ok 64 - receipt with an explicit missing invoice fails closed with dependency_error
+  ---
+  duration_ms: 0.10085
+  type: 'test'
+  ...
+# Subtest: receipt edit cannot switch invoice reference and payment-generated receipt is immutable here
+ok 65 - receipt edit cannot switch invoice reference and payment-generated receipt is immutable here
+  ---
+  duration_ms: 0.183177
+  type: 'test'
+  ...
+# Subtest: receipt edit keeps original reference fields even when metadata changes
+ok 66 - receipt edit keeps original reference fields even when metadata changes
+  ---
+  duration_ms: 0.253664
+  type: 'test'
+  ...
+# Subtest: app routes invoice and receipt writes through strict financial boundary and central action runner
+ok 67 - app routes invoice and receipt writes through strict financial boundary and central action runner
+  ---
+  duration_ms: 4.871801
+  type: 'test'
+  ...
+# Subtest: payment reconciliation persists all settlement mutations through rollback-capable transaction
+ok 68 - payment reconciliation persists all settlement mutations through rollback-capable transaction
+  ---
+  duration_ms: 0.420649
+  type: 'test'
+  ...
+# Subtest: document action runner returns typed validation failure without committing
+ok 69 - document action runner returns typed validation failure without committing
+  ---
+  duration_ms: 0.336244
+  type: 'test'
+  ...
+# Subtest: document action runner distinguishes commit failure from after-commit failure
+ok 70 - document action runner distinguishes commit failure from after-commit failure
+  ---
+  duration_ms: 0.225592
+  type: 'test'
+  ...
+# Subtest: document action error normalizer recognizes quota failures as storage_error
+ok 71 - document action error normalizer recognizes quota failures as storage_error
+  ---
+  duration_ms: 0.094113
+  type: 'test'
+  ...
+# Subtest: document action feedback is actionable and warns instead of claiming a committed write failed
+ok 72 - document action feedback is actionable and warns instead of claiming a committed write failed
+  ---
+  duration_ms: 0.179077
+  type: 'test'
+  ...
+# Subtest: document action runner propagates values through validate-plan-commit-afterCommit in order
+ok 73 - document action runner propagates values through validate-plan-commit-afterCommit in order
+  ---
+  duration_ms: 0.210916
+  type: 'test'
+  ...
+# Subtest: expense action accepts valid evidence metadata and returns an immutable planning copy
+ok 74 - expense action accepts valid evidence metadata and returns an immutable planning copy
+  ---
+  duration_ms: 0.205548
+  type: 'test'
+  ...
+# Subtest: expense action validates amount, document taxonomy and received tax-document consistency
+ok 75 - expense action validates amount, document taxonomy and received tax-document consistency
+  ---
+  duration_ms: 0.229283
+  type: 'test'
+  ...
+# Subtest: expense action blocks duplicate vendor document reference before persistence
+ok 76 - expense action blocks duplicate vendor document reference before persistence
+  ---
+  duration_ms: 0.069923
+  type: 'test'
+  ...
+# Subtest: expense received tax document may save without an attachment but returns an evidence warning
+ok 77 - expense received tax document may save without an attachment but returns an evidence warning
+  ---
+  duration_ms: 0.072467
+  type: 'test'
+  ...
+# Subtest: app routes expense create through strict storage, action runner, write lease and strict duplicate scan
+ok 78 - app routes expense create through strict storage, action runner, write lease and strict duplicate scan
+  ---
+  duration_ms: 5.003067
+  type: 'test'
+  ...
+# Subtest: attachment fallback never rewrites financial storage through tolerant loadFor and cloud failure retries local evidence persistence
+ok 79 - attachment fallback never rewrites financial storage through tolerant loadFor and cloud failure retries local evidence persistence
+  ---
+  duration_ms: 3.019358
+  type: 'test'
+  ...
+# Subtest: issued document canonical guard rejects missing, cancelled, mismatched and accepts faithful snapshots
+ok 80 - issued document canonical guard rejects missing, cancelled, mismatched and accepts faithful snapshots
+  ---
+  duration_ms: 0.645903
+  type: 'test'
+  ...
+# Subtest: issued receipt canonical guard keeps source invoice identity stable
+ok 81 - issued receipt canonical guard keeps source invoice identity stable
+  ---
+  duration_ms: 0.198393
+  type: 'test'
+  ...
+# Subtest: sync errors have a dedicated actionable classification and preserve committed-warning semantics
+ok 82 - sync errors have a dedicated actionable classification and preserve committed-warning semantics
+  ---
+  duration_ms: 0.178336
+  type: 'test'
+  ...
+# Subtest: issued Delivery/Tax and Receipt saves use strict transactional document boundary and never re-settle payment
+ok 83 - issued Delivery/Tax and Receipt saves use strict transactional document boundary and never re-settle payment
+  ---
+  duration_ms: 3.591344
+  type: 'test'
+  ...
+# Subtest: Step 3B-1 shared document primitives preserve formatting behavior
+ok 84 - Step 3B-1 shared document primitives preserve formatting behavior
+  ---
+  duration_ms: 17.208087
+  type: 'test'
+  ...
+# Subtest: Step 3B-1 controllers import shared helpers instead of defining local copies
+ok 85 - Step 3B-1 controllers import shared helpers instead of defining local copies
+  ---
+  duration_ms: 3.552065
+  type: 'test'
+  ...
+# Subtest: Step 3B-2 generic object and storage-period helpers preserve controller behavior
+ok 86 - Step 3B-2 generic object and storage-period helpers preserve controller behavior
+  ---
+  duration_ms: 2.45993
+  type: 'test'
+  ...
+# Subtest: Step 3B-3 line-item primitives preserve delivery/receipt behavior without controller state
+ok 87 - Step 3B-3 line-item primitives preserve delivery/receipt behavior without controller state
+  ---
+  duration_ms: 3.024932
+  type: 'test'
+  ...
+# Subtest: Step 3B-4 shared totals preserve VAT behavior while removing controller-owned arithmetic
+ok 88 - Step 3B-4 shared totals preserve VAT behavior while removing controller-owned arithmetic
+  ---
+  duration_ms: 2.035139
+  type: 'test'
+  ...
+# Subtest: Step 3B-6 shared printable-item and pagination helpers preserve the locked page-partition contract
+ok 89 - Step 3B-6 shared printable-item and pagination helpers preserve the locked page-partition contract
+  ---
+  duration_ms: 2.102931
+  type: 'test'
+  ...
+# Subtest: Step 3C-1 persistence hardening preserves the material controller-duplication reduction
+ok 90 - Step 3C-1 persistence hardening preserves the material controller-duplication reduction
+  ---
+  duration_ms: 0.504603
+  type: 'test'
+  ...
+# Subtest: executive comparison section has all required chart hosts exactly once
+ok 91 - executive comparison section has all required chart hosts exactly once
+  ---
+  duration_ms: 1.542873
+  type: 'test'
+  ...
+# Subtest: 12-month sales and delivery target planner is present and routed through shared dashboard render
+ok 92 - 12-month sales and delivery target planner is present and routed through shared dashboard render
+  ---
+  duration_ms: 1.607501
+  type: 'test'
+  ...
+# Subtest: monthly targets support period-specific overrides while keeping legacy fallbacks
+ok 93 - monthly targets support period-specific overrides while keeping legacy fallbacks
+  ---
+  duration_ms: 0.229815
+  type: 'test'
+  ...
+# Subtest: interactive chart marks expose click/tap detail registry and keyboard access
+ok 94 - interactive chart marks expose click/tap detail registry and keyboard access
+  ---
+  duration_ms: 0.501248
+  type: 'test'
+  ...
+# Subtest: product monthly details include quantity, total, average price and percentage share
+ok 95 - product monthly details include quantity, total, average price and percentage share
+  ---
+  duration_ms: 0.573459
+  type: 'test'
+  ...
+# Subtest: target chart details include actual, target, achievement and gap
+ok 96 - target chart details include actual, target, achievement and gap
+  ---
+  duration_ms: 0.358117
+  type: 'test'
+  ...
+# Subtest: new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+ok 97 - new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+  ---
+  duration_ms: 0.30846
+  type: 'test'
+  ...
+# Subtest: executive chart stylesheet is balanced and loaded once
+ok 98 - executive chart stylesheet is balanced and loaded once
+  ---
+  duration_ms: 0.19783
+  type: 'test'
+  ...
+# Subtest: period locks are append-only events and block matching scopes through the lock date
+ok 99 - period locks are append-only events and block matching scopes through the lock date
+  ---
+  duration_ms: 7.953629
+  type: 'test'
+  ...
+# Subtest: AR and AP aging bucket current 1-30 31-60 61-90 and 90+ deterministically
+ok 100 - AR and AP aging bucket current 1-30 31-60 61-90 and 90+ deterministically
+  ---
+  duration_ms: 0.604061
+  type: 'test'
+  ...
+# Subtest: approval policy is informative and does not pretend to be server authorization
+ok 101 - approval policy is informative and does not pretend to be server authorization
+  ---
+  duration_ms: 0.293131
+  type: 'test'
+  ...
+# Subtest: period close checklist exposes unresolved financial and sync evidence
+ok 102 - period close checklist exposes unresolved financial and sync evidence
+  ---
+  duration_ms: 6.728725
+  type: 'test'
+  ...
+# Subtest: sync operation fingerprint is stable across object key order and changes when payload changes
+ok 103 - sync operation fingerprint is stable across object key order and changes when payload changes
+  ---
+  duration_ms: 0.584505
+  type: 'test'
+  ...
+# Subtest: outbox normalization and dead-letter threshold are deterministic
+ok 104 - outbox normalization and dead-letter threshold are deterministic
+  ---
+  duration_ms: 0.317067
+  type: 'test'
+  ...
+# Subtest: e-Tax and WHT helpers are readiness checks, not submission claims
+ok 105 - e-Tax and WHT helpers are readiness checks, not submission claims
+  ---
+  duration_ms: 1.021358
+  type: 'test'
+  ...
+# Subtest: runtime wiring protects strict financial writes, outbox, backup dry-run and governance deployment
+ok 106 - runtime wiring protects strict financial writes, outbox, backup dry-run and governance deployment
+  ---
+  duration_ms: 8.019621
+  type: 'test'
+  ...
+# Subtest: period lock compaction never drops an active lock even beyond the retention window
+ok 107 - period lock compaction never drops an active lock even beyond the retention window
+  ---
+  duration_ms: 13.948117
+  type: 'test'
+  ...
+# Subtest: open AR and AP are review items, not automatic period-close blockers
+ok 108 - open AR and AP are review items, not automatic period-close blockers
+  ---
+  duration_ms: 0.582991
+  type: 'test'
+  ...
+# Subtest: uncertain sync is a high-severity close blocker until reconciled
+ok 109 - uncertain sync is a high-severity close blocker until reconciled
+  ---
+  duration_ms: 0.21994
+  type: 'test'
+  ...
+# Subtest: period lock validates before persistence and writes lock + audit atomically
+ok 110 - period lock validates before persistence and writes lock + audit atomically
+  ---
+  duration_ms: 11.707638
+  type: 'test'
+  ...
+# Subtest: approval decision and audit evidence share one transaction
+ok 111 - approval decision and audit evidence share one transaction
+  ---
+  duration_ms: 2.465254
+  type: 'test'
+  ...
+# Subtest: interrupted syncing becomes uncertain and is never auto-retried
+ok 112 - interrupted syncing becomes uncertain and is never auto-retried
+  ---
+  duration_ms: 3.507168
+  type: 'test'
+  ...
+# Subtest: partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+ok 113 - partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+  ---
+  duration_ms: 8.858208
+  type: 'test'
+  ...
+# Subtest: full payment settles invoice; reversal reopens balance
+ok 114 - full payment settles invoice; reversal reopens balance
+  ---
+  duration_ms: 2.768946
+  type: 'test'
+  ...
+# Subtest: branch references do not mix identical invoice numbers
+ok 115 - branch references do not mix identical invoice numbers
+  ---
+  duration_ms: 2.201998
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+ok 116 - receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+  ---
+  duration_ms: 2.693292
+  type: 'test'
+  ...
+# Subtest: SO remains partial after payment for first 3 of 10 units
+ok 117 - SO remains partial after payment for first 3 of 10 units
+  ---
+  duration_ms: 4.72079
+  type: 'test'
+  ...
+# Subtest: SO completes only when all units delivered and paid
+ok 118 - SO completes only when all units delivered and paid
+  ---
+  duration_ms: 2.797917
+  type: 'test'
+  ...
+# Subtest: duplicate line requests aggregate and cannot exceed SO remaining
+ok 119 - duplicate line requests aggregate and cannot exceed SO remaining
+  ---
+  duration_ms: 2.601034
+  type: 'test'
+  ...
+# Subtest: delivery edit excludes original quantity but still respects ready quantity
+ok 120 - delivery edit excludes original quantity but still respects ready quantity
+  ---
+  duration_ms: 1.81509
+  type: 'test'
+  ...
+# Subtest: stock guard aggregates duplicate SKU rows and deducts other SO reservations
+ok 121 - stock guard aggregates duplicate SKU rows and deducts other SO reservations
+  ---
+  duration_ms: 16.190945
+  type: 'test'
+  ...
+# Subtest: product code takes precedence over display name; PO product fields supported
+ok 122 - product code takes precedence over display name; PO product fields supported
+  ---
+  duration_ms: 2.475512
+  type: 'test'
+  ...
+# Subtest: merge preserves old rows and newer updates; replace removes absent rows
+ok 123 - merge preserves old rows and newer updates; replace removes absent rows
+  ---
+  duration_ms: 1.797273
+  type: 'test'
+  ...
+# Subtest: flow import merges instead of overwriting existing sales orders
+ok 124 - flow import merges instead of overwriting existing sales orders
+  ---
+  duration_ms: 2.351367
+  type: 'test'
+  ...
+# Subtest: backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+ok 125 - backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+  ---
+  duration_ms: 2.49504
+  type: 'test'
+  ...
+# Subtest: failed local multi-key write rolls back earlier writes
+ok 126 - failed local multi-key write rolls back earlier writes
+  ---
+  duration_ms: 1.609535
+  type: 'test'
+  ...
+# Subtest: backup snapshot restores masters and flow in current tenant only
+ok 127 - backup snapshot restores masters and flow in current tenant only
+  ---
+  duration_ms: 1.728352
+  type: 'test'
+  ...
+# Subtest: generated payment receipts retain correct tax split and never double cash
+ok 128 - generated payment receipts retain correct tax split and never double cash
+  ---
+  duration_ms: 3.179694
+  type: 'test'
+  ...
+# Subtest: VAT modes add, extract and none are consistent
+ok 129 - VAT modes add, extract and none are consistent
+  ---
+  duration_ms: 1.640331
+  type: 'test'
+  ...
+# Subtest: target margin 95% and markup over 95% calculate correctly
+ok 130 - target margin 95% and markup over 95% calculate correctly
+  ---
+  duration_ms: 4.203
+  type: 'test'
+  ...
+# Subtest: direct inventory invoices count as sales; SO production is not counted twice
+ok 131 - direct inventory invoices count as sales; SO production is not counted twice
+  ---
+  duration_ms: 5.481209
+  type: 'test'
+  ...
+# Subtest: invalid quantities and nonfinite prices are rejected
+ok 132 - invalid quantities and nonfinite prices are rejected
+  ---
+  duration_ms: 1.757279
+  type: 'test'
+  ...
+# Subtest: portable backup permits Thai attachment filenames
+ok 133 - portable backup permits Thai attachment filenames
+  ---
+  duration_ms: 2.012267
+  type: 'test'
+  ...
+# Subtest: delivery and payment references reject customer, SKU and invoice-number mismatches
+ok 134 - delivery and payment references reject customer, SKU and invoice-number mismatches
+  ---
+  duration_ms: 2.147115
+  type: 'test'
+  ...
+# Subtest: billing excludes receipts already applied before it was created
+ok 135 - billing excludes receipts already applied before it was created
+  ---
+  duration_ms: 2.306382
+  type: 'test'
+  ...
+# Subtest: billing direct receipts allocate FIFO and reverse without double payment
+ok 136 - billing direct receipts allocate FIFO and reverse without double payment
+  ---
+  duration_ms: 3.10422
+  type: 'test'
+  ...
+# Subtest: production costs are allocated over partial deliveries with final cent retained
+ok 137 - production costs are allocated over partial deliveries with final cent retained
+  ---
+  duration_ms: 2.277491
+  type: 'test'
+  ...
+# Subtest: legacy billing migrates its already-paid creation balance once
+ok 138 - legacy billing migrates its already-paid creation balance once
+  ---
+  duration_ms: 1.912717
+  type: 'test'
+  ...
+# Subtest: a production record without cost evidence cannot label zero cost as actual
+ok 139 - a production record without cost evidence cannot label zero cost as actual
+  ---
+  duration_ms: 1.888235
+  type: 'test'
+  ...
+# Subtest: payment receipt creation is idempotent on replay and does not duplicate receipt evidence
+ok 140 - payment receipt creation is idempotent on replay and does not duplicate receipt evidence
+  ---
+  duration_ms: 2.284978
+  type: 'test'
+  ...
+# Subtest: payment reconciliation changes settlement fields but never rewrites invoice sale VAT or total
+ok 141 - payment reconciliation changes settlement fields but never rewrites invoice sale VAT or total
+  ---
+  duration_ms: 2.48286
+  type: 'test'
+  ...
+# Subtest: financial write path fails closed when order-flow JSON is corrupt
+ok 142 - financial write path fails closed when order-flow JSON is corrupt
+  ---
+  duration_ms: 2.312932
+  type: 'test'
+  ...
+# Subtest: reservation reduces available-to-promise but does not mutate physical on-hand source
+ok 143 - reservation reduces available-to-promise but does not mutate physical on-hand source
+  ---
+  duration_ms: 1.619203
+  type: 'test'
+  ...
+# Subtest: failed settlement reconciliation rolls back earlier invoice mutation across keys
+ok 144 - failed settlement reconciliation rolls back earlier invoice mutation across keys
+  ---
+  duration_ms: 2.079919
+  type: 'test'
+  ...
+# Subtest: master-data core stays independent from DOM storage and cloud services
+ok 145 - master-data core stays independent from DOM storage and cloud services
+  ---
+  duration_ms: 1.983713
+  type: 'test'
+  ...
+# Subtest: master key normalization is stable across case and whitespace
+ok 146 - master key normalization is stable across case and whitespace
+  ---
+  duration_ms: 5.412812
+  type: 'test'
+  ...
+# Subtest: contact selectors hide archived rows but retain them when explicitly requested
+ok 147 - contact selectors hide archived rows but retain them when explicitly requested
+  ---
+  duration_ms: 8.543881
+  type: 'test'
+  ...
+# Subtest: upsert keeps unrelated archived contacts instead of silently deleting them
+ok 148 - upsert keeps unrelated archived contacts instead of silently deleting them
+  ---
+  duration_ms: 0.448345
+  type: 'test'
+  ...
+# Subtest: saving a previously archived contact reactivates the same entity id
+ok 149 - saving a previously archived contact reactivates the same entity id
+  ---
+  duration_ms: 0.289352
+  type: 'test'
+  ...
+# Subtest: contact role merge preserves customer and supplier identity as both
+ok 150 - contact role merge preserves customer and supplier identity as both
+  ---
+  duration_ms: 0.158812
+  type: 'test'
+  ...
+# Subtest: archiving one role from a both-role contact keeps the remaining role active
+ok 151 - archiving one role from a both-role contact keeps the remaining role active
+  ---
+  duration_ms: 0.289741
+  type: 'test'
+  ...
+# Subtest: archiving a single-role contact is non-destructive and timestamped
+ok 152 - archiving a single-role contact is non-destructive and timestamped
+  ---
+  duration_ms: 0.122331
+  type: 'test'
+  ...
+# Subtest: master merge selects newest record and keeps inactive state when it is newer
+ok 153 - master merge selects newest record and keeps inactive state when it is newer
+  ---
+  duration_ms: 0.449081
+  type: 'test'
+  ...
+# Subtest: product master combines seed and local override without mutating seed history
+ok 154 - product master combines seed and local override without mutating seed history
+  ---
+  duration_ms: 0.750746
+  type: 'test'
+  ...
+# Subtest: archived local product suppresses matching seed product from active master
+ok 155 - archived local product suppresses matching seed product from active master
+  ---
+  duration_ms: 0.213905
+  type: 'test'
+  ...
+# Subtest: product metadata and defaults preserve stock/service semantics
+ok 156 - product metadata and defaults preserve stock/service semantics
+  ---
+  duration_ms: 0.350592
+  type: 'test'
+  ...
+# Subtest: lead-day and customer-credit normalizers share deterministic business rules
+ok 157 - lead-day and customer-credit normalizers share deterministic business rules
+  ---
+  duration_ms: 0.261041
+  type: 'test'
+  ...
+# Subtest: master validation rejects malformed records without throwing
+ok 158 - master validation rejects malformed records without throwing
+  ---
+  duration_ms: 0.247279
+  type: 'test'
+  ...
+# Subtest: supplier seed does not resurrect or discard archived suppliers
+ok 159 - supplier seed does not resurrect or discard archived suppliers
+  ---
+  duration_ms: 0.187762
+  type: 'test'
+  ...
+# Subtest: supplier seed initializes a truly empty supplier master only once
+ok 160 - supplier seed initializes a truly empty supplier master only once
+  ---
+  duration_ms: 0.222179
+  type: 'test'
+  ...
+# Subtest: CSV contact merge preserves unrelated archived history
+ok 161 - CSV contact merge preserves unrelated archived history
+  ---
+  duration_ms: 0.2302
+  type: 'test'
+  ...
+# Subtest: CSV replace replaces active target role but keeps archived audit history and other roles
+ok 162 - CSV replace replaces active target role but keeps archived audit history and other roles
+  ---
+  duration_ms: 0.224813
+  type: 'test'
+  ...
+# Subtest: app master-data orchestration uses archive-safe paths for backup restore seed and CSV
+ok 163 - app master-data orchestration uses archive-safe paths for backup restore seed and CSV
+  ---
+  duration_ms: 4.420985
+  type: 'test'
+  ...
+# Subtest: product upsert reactivates archived product with the same id and clears stale archive timestamp
+ok 164 - product upsert reactivates archived product with the same id and clears stale archive timestamp
+  ---
+  duration_ms: 0.289001
+  type: 'test'
+  ...
+# Subtest: archiving a seed-only product creates a local inactive tombstone without deleting history
+ok 165 - archiving a seed-only product creates a local inactive tombstone without deleting history
+  ---
+  duration_ms: 0.143946
+  type: 'test'
+  ...
+# Subtest: CSV product replace keeps archived product tombstones and replaces only active product set
+ok 166 - CSV product replace keeps archived product tombstones and replaces only active product set
+  ---
+  duration_ms: 0.329268
+  type: 'test'
+  ...
+# Subtest: CSV product import can intentionally reactivate an archived matching SKU
+ok 167 - CSV product import can intentionally reactivate an archived matching SKU
+  ---
+  duration_ms: 0.159196
+  type: 'test'
+  ...
+# Subtest: product upsert follows explicit id when SKU code is edited and does not duplicate the row
+ok 168 - product upsert follows explicit id when SKU code is edited and does not duplicate the row
+  ---
+  duration_ms: 0.123397
+  type: 'test'
+  ...
+# Subtest: master-data store module stays independent from DOM and UI notification code
+ok 169 - master-data store module stays independent from DOM and UI notification code
+  ---
+  duration_ms: 0.97872
+  type: 'test'
+  ...
+# Subtest: missing Master key may return explicit fallback but malformed JSON fails closed
+ok 170 - missing Master key may return explicit fallback but malformed JSON fails closed
+  ---
+  duration_ms: 8.135156
+  type: 'test'
+  ...
+# Subtest: non-array Master payload and blocked storage reads never degrade to empty arrays
+ok 171 - non-array Master payload and blocked storage reads never degrade to empty arrays
+  ---
+  duration_ms: 0.304608
+  type: 'test'
+  ...
+# Subtest: tenant key resolver isolates Master rows between companies sharing one browser
+ok 172 - tenant key resolver isolates Master rows between companies sharing one browser
+  ---
+  duration_ms: 0.33455
+  type: 'test'
+  ...
+# Subtest: failed single-key write reports storage_error and preserves previous data
+ok 173 - failed single-key write reports storage_error and preserves previous data
+  ---
+  duration_ms: 0.215124
+  type: 'test'
+  ...
+# Subtest: snapshot write rolls back first key if second key write fails
+ok 174 - snapshot write rolls back first key if second key write fails
+  ---
+  duration_ms: 0.468046
+  type: 'test'
+  ...
+# Subtest: partial snapshot is rejected instead of silently clearing the missing Master collection
+ok 175 - partial snapshot is rejected instead of silently clearing the missing Master collection
+  ---
+  duration_ms: 0.250143
+  type: 'test'
+  ...
+# Subtest: snapshot keeps archived records exactly as persisted
+ok 176 - snapshot keeps archived records exactly as persisted
+  ---
+  duration_ms: 0.193912
+  type: 'test'
+  ...
+# Subtest: cloud hydration preserves newer local archive against older cloud active record
+ok 177 - cloud hydration preserves newer local archive against older cloud active record
+  ---
+  duration_ms: 0.988547
+  type: 'test'
+  ...
+# Subtest: corrupted local Master blocks cloud hydration before cloud load/write/sync
+ok 178 - corrupted local Master blocks cloud hydration before cloud load/write/sync
+  ---
+  duration_ms: 0.485483
+  type: 'test'
+  ...
+# Subtest: malformed cloud snapshot is rejected without mutating local Master
+ok 179 - malformed cloud snapshot is rejected without mutating local Master
+  ---
+  duration_ms: 0.338784
+  type: 'test'
+  ...
+# Subtest: cloud save is scheduled only after successful hydrate and sends a full local snapshot
+ok 180 - cloud save is scheduled only after successful hydrate and sends a full local snapshot
+  ---
+  duration_ms: 0.491307
+  type: 'test'
+  ...
+# Subtest: cloud load failure keeps sync bridge closed so later local writes cannot overwrite unknown cloud state
+ok 181 - cloud load failure keeps sync bridge closed so later local writes cannot overwrite unknown cloud state
+  ---
+  duration_ms: 0.266706
+  type: 'test'
+  ...
+# Subtest: app routes Master persistence through Step 2C store and cloud bridge
+ok 182 - app routes Master persistence through Step 2C store and cloud bridge
+  ---
+  duration_ms: 3.757424
+  type: 'test'
+  ...
+# Subtest: business rule preset uses Master store and cannot bypass cloud handshake with direct Firebase snapshot save
+ok 183 - business rule preset uses Master store and cannot bypass cloud handshake with direct Firebase snapshot save
+  ---
+  duration_ms: 0.285584
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: empty rows preserve one printable fallback row and one page
+ok 184 - delivery-tax-document.js: empty rows preserve one printable fallback row and one page
+  ---
+  duration_ms: 8.108996
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+ok 185 - delivery-tax-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+  ---
+  duration_ms: 3.834494
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+ok 186 - delivery-tax-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+  ---
+  duration_ms: 1.679932
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: multi-page partitioning never exceeds the eight-unit budget
+ok 187 - delivery-tax-document.js: multi-page partitioning never exceeds the eight-unit budget
+  ---
+  duration_ms: 1.637261
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: documentPagesHtml marks only the final partition as final page
+ok 188 - delivery-tax-document.js: documentPagesHtml marks only the final partition as final page
+  ---
+  duration_ms: 2.102822
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: empty rows preserve one printable fallback row and one page
+ok 189 - receipt-document.js: empty rows preserve one printable fallback row and one page
+  ---
+  duration_ms: 1.55172
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+ok 190 - receipt-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+  ---
+  duration_ms: 3.147195
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+ok 191 - receipt-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+  ---
+  duration_ms: 1.490546
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: multi-page partitioning never exceeds the eight-unit budget
+ok 192 - receipt-document.js: multi-page partitioning never exceeds the eight-unit budget
+  ---
+  duration_ms: 1.554197
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: documentPagesHtml marks only the final partition as final page
+ok 193 - receipt-document.js: documentPagesHtml marks only the final partition as final page
+  ---
+  duration_ms: 1.653363
+  type: 'test'
+  ...
+# Subtest: Delivery/Tax and Receipt partition signatures remain behaviorally identical for the same rows
+ok 194 - Delivery/Tax and Receipt partition signatures remain behaviorally identical for the same rows
+  ---
+  duration_ms: 2.586867
+  type: 'test'
+  ...
+# Subtest: role normalization is safe
+ok 195 - role normalization is safe
+  ---
+  duration_ms: 1.627373
+  type: 'test'
+  ...
+# Subtest: work queue prioritizes operational risks by role
+ok 196 - work queue prioritizes operational risks by role
+  ---
+  duration_ms: 13.868272
+  type: 'test'
+  ...
+# Subtest: stock availability calculates on hand reserved available and incoming
+ok 197 - stock availability calculates on hand reserved available and incoming
+  ---
+  duration_ms: 0.537179
+  type: 'test'
+  ...
+# Subtest: approval inbox includes pending quotes and draft POs only
+ok 198 - approval inbox includes pending quotes and draft POs only
+  ---
+  duration_ms: 0.301741
+  type: 'test'
+  ...
+# Subtest: release wires product UX assets and avoids competitor wording in user UI
+ok 199 - release wires product UX assets and avoids competitor wording in user UI
+  ---
+  duration_ms: 1.306097
+  type: 'test'
+  ...
+# Subtest: product UX clearly labels role as UX and portal as preview
+ok 200 - product UX clearly labels role as UX and portal as preview
+  ---
+  duration_ms: 0.399517
+  type: 'test'
+  ...
+# Subtest: local business date does not depend on UTC ISO slicing
+ok 201 - local business date does not depend on UTC ISO slicing
+  ---
+  duration_ms: 5.399318
+  type: 'test'
+  ...
+# Subtest: VAT calculation has one deterministic source of truth
+ok 202 - VAT calculation has one deterministic source of truth
+  ---
+  duration_ms: 11.419616
+  type: 'test'
+  ...
+# Subtest: storage contracts are imported instead of copied
+ok 203 - storage contracts are imported instead of copied
+  ---
+  duration_ms: 126.459502
+  type: 'test'
+  ...
+# Subtest: workflow graph fails closed on missing guards and unmatched routes
+ok 204 - workflow graph fails closed on missing guards and unmatched routes
+  ---
+  duration_ms: 3.656179
+  type: 'test'
+  ...
+# Subtest: workflow graph enforces max step budget
+ok 205 - workflow graph enforces max step budget
+  ---
+  duration_ms: 1.350722
+  type: 'test'
+  ...
+# Subtest: workflow ribbon stage respects order-flow subview
+ok 206 - workflow ribbon stage respects order-flow subview
+  ---
+  duration_ms: 0.992382
+  type: 'test'
+  ...
+# Subtest: SO to invoice preparation uses business dueDate helper without stale variable
+ok 207 - SO to invoice preparation uses business dueDate helper without stale variable
+  ---
+  duration_ms: 0.512663
+  type: 'test'
+  ...
+# Subtest: deep static audit passes
+ok 208 - deep static audit passes
+  ---
+  duration_ms: 307.78275
+  type: 'test'
+  ...
+# Subtest: fulfillment graph supports stock production and purchase in one plan
+ok 209 - fulfillment graph supports stock production and purchase in one plan
+  ---
+  duration_ms: 2.975402
+  type: 'test'
+  ...
+# Subtest: deployment test reads current ERP release instead of stale hard-coded release
+ok 210 - deployment test reads current ERP release instead of stale hard-coded release
+  ---
+  duration_ms: 0.907092
+  type: 'test'
+  ...
+# Subtest: customer-trial closure validates syntax audits security hashes http and zip integrity
+ok 211 - customer-trial closure validates syntax audits security hashes http and zip integrity
+  ---
+  duration_ms: 0.22045
+  type: 'test'
+  ...
+# Subtest: trial validation script is exposed through npm scripts
+ok 212 - trial validation script is exposed through npm scripts
+  ---
+  duration_ms: 0.21684
+  type: 'test'
+  ...
+# Subtest: spec audit passes and all requirements are traceable
+ok 213 - spec audit passes and all requirements are traceable
+  ---
+  duration_ms: 48.874403
+  type: 'test'
+  ...
+# Subtest: release metadata is centralized
+ok 214 - release metadata is centralized
+  ---
+  duration_ms: 0.528043
+  type: 'test'
+  ...
+# Subtest: development context points to current sources of truth
+ok 215 - development context points to current sources of truth
+  ---
+  duration_ms: 0.451915
+  type: 'test'
+  ...
+# Subtest: 4.3.1 release metadata and lockfile are aligned
+ok 216 - 4.3.1 release metadata and lockfile are aligned
+  ---
+  duration_ms: 3.406839
+  type: 'test'
+  ...
+# Subtest: issued documents are locked against destructive delete
+ok 217 - issued documents are locked against destructive delete
+  ---
+  duration_ms: 4.222328
+  type: 'test'
+  ...
+# Subtest: issued document detail uses open modal lifecycle
+ok 218 - issued document detail uses open modal lifecycle
+  ---
+  duration_ms: 4.382677
+  type: 'test'
+  ...
+# Subtest: attachment URL guard blocks javascript and html data URLs
+ok 219 - attachment URL guard blocks javascript and html data URLs
+  ---
+  duration_ms: 0.296277
+  type: 'test'
+  ...
+# Subtest: data-driven order and production ids are not interpolated into known risky inline onclick paths
+ok 220 - data-driven order and production ids are not interpolated into known risky inline onclick paths
+  ---
+  duration_ms: 1.256894
+  type: 'test'
+  ...
+# Subtest: master actions archive rather than hard-delete
+ok 221 - master actions archive rather than hard-delete
+  ---
+  duration_ms: 4.065859
+  type: 'test'
+  ...
+# Subtest: same-browser document save lease wraps quote invoice receipt and production
+ok 222 - same-browser document save lease wraps quote invoice receipt and production
+  ---
+  duration_ms: 4.194947
+  type: 'test'
+  ...
+# Subtest: trial banner states multi-user production limitation
+ok 223 - trial banner states multi-user production limitation
+  ---
+  duration_ms: 1.03192
+  type: 'test'
+  ...
+# Subtest: quote preview VAT uses shared deterministic calculator instead of raw VAT arithmetic
+ok 224 - quote preview VAT uses shared deterministic calculator instead of raw VAT arithmetic
+  ---
+  duration_ms: 3.757906
+  type: 'test'
+  ...
+# Subtest: critical receipt duplicate verification fails closed when history cannot be parsed
+ok 225 - critical receipt duplicate verification fails closed when history cannot be parsed
+  ---
+  duration_ms: 0.703424
+  type: 'test'
+  ...
+# Subtest: master seed aborts instead of replacing corrupted master data with an empty list
+ok 226 - master seed aborts instead of replacing corrupted master data with an empty list
+  ---
+  duration_ms: 0.401083
+  type: 'test'
+  ...
+# Subtest: core test runner and evidence runner share one canonical test-file list
+ok 227 - core test runner and evidence runner share one canonical test-file list
+  ---
+  duration_ms: 0.162827
+  type: 'test'
+  ...
+# Subtest: deep auditor covers shorthand VAT, dead branches and empty catches
+ok 228 - deep auditor covers shorthand VAT, dead branches and empty catches
+  ---
+  duration_ms: 0.104922
+  type: 'test'
+  ...
+1..228
+# tests 228
+# suites 0
+# pass 228
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3663.402108

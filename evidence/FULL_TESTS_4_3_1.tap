@@ -1,0 +1,2339 @@
+TAP version 13
+# Subtest: current ERP repo has no HIGH agent-repo findings
+ok 1 - current ERP repo has no HIGH agent-repo findings
+  ---
+  duration_ms: 98.247033
+  type: 'test'
+  ...
+# Subtest: blocks Claude permission bypass configuration
+ok 2 - blocks Claude permission bypass configuration
+  ---
+  duration_ms: 48.503596
+  type: 'test'
+  ...
+# Subtest: blocks Claude hooks in project settings
+ok 3 - blocks Claude hooks in project settings
+  ---
+  duration_ms: 45.941895
+  type: 'test'
+  ...
+# Subtest: blocks VS Code folder-open task
+ok 4 - blocks VS Code folder-open task
+  ---
+  duration_ms: 43.185315
+  type: 'test'
+  ...
+# Subtest: blocks npm postinstall lifecycle
+ok 5 - blocks npm postinstall lifecycle
+  ---
+  duration_ms: 47.370434
+  type: 'test'
+  ...
+# Subtest: detects potential secret files
+ok 6 - detects potential secret files
+  ---
+  duration_ms: 51.593537
+  type: 'test'
+  ...
+# Subtest: blocks Cursor CLI command-bearing project config
+ok 7 - blocks Cursor CLI command-bearing project config
+  ---
+  duration_ms: 45.804413
+  type: 'test'
+  ...
+# Subtest: blocks command-bearing MCP configuration
+ok 8 - blocks command-bearing MCP configuration
+  ---
+  duration_ms: 47.436809
+  type: 'test'
+  ...
+# Subtest: blocks git commondir that resolves outside repo
+ok 9 - blocks git commondir that resolves outside repo
+  ---
+  duration_ms: 47.726497
+  type: 'test'
+  ...
+# Subtest: attachment portable export/import restores exact bytes with checksum
+ok 10 - attachment portable export/import restores exact bytes with checksum
+  ---
+  duration_ms: 73.032187
+  type: 'test'
+  ...
+# Subtest: corrupt or conflicting backup attachments are rejected without partial imports
+ok 11 - corrupt or conflicting backup attachments are rejected without partial imports
+  ---
+  duration_ms: 5.222132
+  type: 'test'
+  ...
+# ปฏิเสธการเปิดไฟล์ Local ของบริษัทอื่น
+# Subtest: local attachment access stays tenant scoped
+ok 12 - local attachment access stays tenant scoped
+  ---
+  duration_ms: 6.202066
+  type: 'test'
+  ...
+# Subtest: restore_invoice_bypasses_stock
+not ok 13 - restore_invoice_bypasses_stock
+  ---
+  duration_ms: 263.981582
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: valid invoice and receipt restoration succeeds and removes trash entry
+not ok 14 - valid invoice and receipt restoration succeeds and removes trash entry
+  ---
+  duration_ms: 158.117309
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:49:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:49:103)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: GR rolls back and can retry after failure at comform_goods_receipts_v1
+not ok 15 - GR rolls back and can retry after failure at comform_goods_receipts_v1
+  ---
+  duration_ms: 132.581222
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:106'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:193)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: GR rolls back and can retry after failure at comform_purchase_orders_v1
+not ok 16 - GR rolls back and can retry after failure at comform_purchase_orders_v1
+  ---
+  duration_ms: 98.762002
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:106'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:193)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: GR rolls back and can retry after failure at comform_audit_log_v1
+not ok 17 - GR rolls back and can retry after failure at comform_audit_log_v1
+  ---
+  duration_ms: 81.520053
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:106'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:50:193)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: printed receipt locks its base against edits as well
+not ok 18 - printed receipt locks its base against edits as well
+  ---
+  duration_ms: 88.530252
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:56:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:56:85)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: unknown SO costs are visibly marked as preliminary
+not ok 19 - unknown SO costs are visibly marked as preliminary
+  ---
+  duration_ms: 74.702921
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:57:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:57:83)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: restore_receipt_bypasses_overpayment
+not ok 20 - restore_receipt_bypasses_overpayment
+  ---
+  duration_ms: 79.956794
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: invoice_edit_leaves_issued_snapshot_stale
+not ok 21 - invoice_edit_leaves_issued_snapshot_stale
+  ---
+  duration_ms: 95.103164
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: billing_does_not_close_after_standalone_receipt
+not ok 22 - billing_does_not_close_after_standalone_receipt
+  ---
+  duration_ms: 80.608721
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: sales_order_delivery_ignores_actual_production_cost
+not ok 23 - sales_order_delivery_ignores_actual_production_cost
+  ---
+  duration_ms: 80.00205
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: goods_receipt_write_failure_leaves_partial_commit
+not ok 24 - goods_receipt_write_failure_leaves_partial_commit
+  ---
+  duration_ms: 88.284368
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:34'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/audit-fixes.test.cjs:4:68)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: codebase audit passes
+ok 25 - codebase audit passes
+  ---
+  duration_ms: 843.81664
+  type: 'test'
+  ...
+# Subtest: quote date has no duplicate/unexposed inline auto-number handler
+ok 26 - quote date has no duplicate/unexposed inline auto-number handler
+  ---
+  duration_ms: 1.391042
+  type: 'test'
+  ...
+# Subtest: navigation integrations use erp:navigation instead of replacing window.go
+ok 27 - navigation integrations use erp:navigation instead of replacing window.go
+  ---
+  duration_ms: 0.823381
+  type: 'test'
+  ...
+# Subtest: runtime error capture has one owner
+ok 28 - runtime error capture has one owner
+  ---
+  duration_ms: 8.283136
+  type: 'test'
+  ...
+# Subtest: workflow handoff state is namespaced
+ok 29 - workflow handoff state is namespaced
+  ---
+  duration_ms: 6.131474
+  type: 'test'
+  ...
+# Subtest: shared storage contracts stay aligned across modules
+ok 30 - shared storage contracts stay aligned across modules
+  ---
+  duration_ms: 1.096736
+  type: 'test'
+  ...
+# Subtest: Thai/CE year conversion remains deterministic
+ok 31 - Thai/CE year conversion remains deterministic
+  ---
+  duration_ms: 4.680211
+  type: 'test'
+  ...
+# Subtest: business date parser accepts CE and BE ISO-like inputs
+ok 32 - business date parser accepts CE and BE ISO-like inputs
+  ---
+  duration_ms: 0.351404
+  type: 'test'
+  ...
+# Subtest: business date parser accepts Thai/Excel DD/MM/YYYY inputs
+ok 33 - business date parser accepts Thai/Excel DD/MM/YYYY inputs
+  ---
+  duration_ms: 0.2282
+  type: 'test'
+  ...
+# Subtest: business date parser retains Firestore timestamp compatibility
+ok 34 - business date parser retains Firestore timestamp compatibility
+  ---
+  duration_ms: 0.187389
+  type: 'test'
+  ...
+# Subtest: ISO and Thai display formatting keep CE storage and BE display separate
+ok 35 - ISO and Thai display formatting keep CE storage and BE display separate
+  ---
+  duration_ms: 0.253498
+  type: 'test'
+  ...
+# Subtest: calendar metadata preserves record fields and normalizes year/month
+ok 36 - calendar metadata preserves record fields and normalizes year/month
+  ---
+  duration_ms: 0.284172
+  type: 'test'
+  ...
+# Subtest: invalid/fallback values preserve previous trial behavior
+ok 37 - invalid/fallback values preserve previous trial behavior
+  ---
+  duration_ms: 0.225571
+  type: 'test'
+  ...
+# Subtest: council keeps reviewers independent and chairman prioritizes critical evidence
+ok 38 - council keeps reviewers independent and chairman prioritizes critical evidence
+  ---
+  duration_ms: 22.096293
+  type: 'test'
+  ...
+# Subtest: overpayment becomes critical and is never hidden by outstanding floor
+ok 39 - overpayment becomes critical and is never hidden by outstanding floor
+  ---
+  duration_ms: 1.626954
+  type: 'test'
+  ...
+# Subtest: healthy snapshot does not invent medium or critical actions
+ok 40 - healthy snapshot does not invent medium or critical actions
+  ---
+  duration_ms: 1.926871
+  type: 'test'
+  ...
+# Subtest: demo and low evidence are explicit contrarian caveats rather than fake confidence
+ok 41 - demo and low evidence are explicit contrarian caveats rather than fake confidence
+  ---
+  duration_ms: 2.291363
+  type: 'test'
+  ...
+# Subtest: rule registry exposes evidence source and formula for every finding
+ok 42 - rule registry exposes evidence source and formula for every finding
+  ---
+  duration_ms: 2.123739
+  type: 'test'
+  ...
+# Subtest: cash invoices are not incorrectly flagged as missing a billing note
+ok 43 - cash invoices are not incorrectly flagged as missing a billing note
+  ---
+  duration_ms: 1.699239
+  type: 'test'
+  ...
+# Subtest: document-controller duplication audit passes the frozen Step 3C-1 ceiling
+ok 44 - document-controller duplication audit passes the frozen Step 3C-1 ceiling
+  ---
+  duration_ms: 97.385192
+  type: 'test'
+  ...
+# Subtest: Step 3C-1 retains shared pagination while hardening issued-document persistence
+ok 45 - Step 3C-1 retains shared pagination while hardening issued-document persistence
+  ---
+  duration_ms: 1.372843
+  type: 'test'
+  ...
+# Subtest: trial release gate includes the document-controller duplication audit
+ok 46 - trial release gate includes the document-controller duplication audit
+  ---
+  duration_ms: 0.368532
+  type: 'test'
+  ...
+# Subtest: finance core is pure and does not reference DOM/storage/cloud globals
+ok 47 - finance core is pure and does not reference DOM/storage/cloud globals
+  ---
+  duration_ms: 2.41933
+  type: 'test'
+  ...
+# Subtest: billing action creates collection document only and never creates sales/VAT/stock mutation fields
+ok 48 - billing action creates collection document only and never creates sales/VAT/stock mutation fields
+  ---
+  duration_ms: 1.831027
+  type: 'test'
+  ...
+# Subtest: billing rejects cross-branch or cross-customer invoices
+ok 49 - billing rejects cross-branch or cross-customer invoices
+  ---
+  duration_ms: 0.480349
+  type: 'test'
+  ...
+# Subtest: billing rejects duplicate invoice and duplicate billing number
+ok 50 - billing rejects duplicate invoice and duplicate billing number
+  ---
+  duration_ms: 0.344114
+  type: 'test'
+  ...
+# Subtest: billing refuses amount above invoice outstanding
+ok 51 - billing refuses amount above invoice outstanding
+  ---
+  duration_ms: 0.235226
+  type: 'test'
+  ...
+# Subtest: billing refuses invoice already in an active billing note
+ok 52 - billing refuses invoice already in an active billing note
+  ---
+  duration_ms: 0.205902
+  type: 'test'
+  ...
+# Subtest: payment allocation is FIFO and never mutates invoice monetary totals
+ok 53 - payment allocation is FIFO and never mutates invoice monetary totals
+  ---
+  duration_ms: 0.764214
+  type: 'test'
+  ...
+# Subtest: payment refuses over-collection and duplicate payment number
+ok 54 - payment refuses over-collection and duplicate payment number
+  ---
+  duration_ms: 0.447729
+  type: 'test'
+  ...
+# Subtest: payment status patch follows outstanding without rewriting billing total
+ok 55 - payment status patch follows outstanding without rewriting billing total
+  ---
+  duration_ms: 0.632646
+  type: 'test'
+  ...
+# Subtest: receipt drafts preserve proportional VAT split for partial payment
+ok 56 - receipt drafts preserve proportional VAT split for partial payment
+  ---
+  duration_ms: 0.609672
+  type: 'test'
+  ...
+# Subtest: receipt draft builder rejects mixed branches
+ok 57 - receipt draft builder rejects mixed branches
+  ---
+  duration_ms: 0.23413
+  type: 'test'
+  ...
+# Subtest: payment receipt replay is idempotent when evidence matches exactly
+ok 58 - payment receipt replay is idempotent when evidence matches exactly
+  ---
+  duration_ms: 0.21788
+  type: 'test'
+  ...
+# Subtest: partial or mismatched prior payment receipts fail closed
+ok 59 - partial or mismatched prior payment receipts fail closed
+  ---
+  duration_ms: 0.199581
+  type: 'test'
+  ...
+# Subtest: order-flow routes billing and payment writes through the finance action core
+ok 60 - order-flow routes billing and payment writes through the finance action core
+  ---
+  duration_ms: 0.777307
+  type: 'test'
+  ...
+# Subtest: receipt persistence delegates draft creation and replay protection to finance core
+ok 61 - receipt persistence delegates draft creation and replay protection to finance core
+  ---
+  duration_ms: 0.434002
+  type: 'test'
+  ...
+# Subtest: financial pack parser is strict for write paths and never turns corrupt JSON into empty data
+ok 62 - financial pack parser is strict for write paths and never turns corrupt JSON into empty data
+  ---
+  duration_ms: 0.370704
+  type: 'test'
+  ...
+# Subtest: new invoice action starts with pending settlement state and does not trust form paid flags
+ok 63 - new invoice action starts with pending settlement state and does not trust form paid flags
+  ---
+  duration_ms: 0.227093
+  type: 'test'
+  ...
+# Subtest: invoice duplicate number is a conflict before persistence
+ok 64 - invoice duplicate number is a conflict before persistence
+  ---
+  duration_ms: 0.108444
+  type: 'test'
+  ...
+# Subtest: paid invoice blocks financial edits but allows metadata-only edits and preserves settlement
+ok 65 - paid invoice blocks financial edits but allows metadata-only edits and preserves settlement
+  ---
+  duration_ms: 0.362182
+  type: 'test'
+  ...
+# Subtest: unpaid invoice edit can change financial values while preserving lineage
+ok 66 - unpaid invoice edit can change financial values while preserving lineage
+  ---
+  duration_ms: 0.834974
+  type: 'test'
+  ...
+# Subtest: new quotation action validates duplicate number and returns a clean create plan
+ok 67 - new quotation action validates duplicate number and returns a clean create plan
+  ---
+  duration_ms: 0.336852
+  type: 'test'
+  ...
+# Subtest: approved quotation blocks commercial edits but allows safe metadata changes
+ok 68 - approved quotation blocks commercial edits but allows safe metadata changes
+  ---
+  duration_ms: 0.402808
+  type: 'test'
+  ...
+# Subtest: linked quotation blocks commercial edits and preserves downstream lineage
+ok 69 - linked quotation blocks commercial edits and preserves downstream lineage
+  ---
+  duration_ms: 0.265091
+  type: 'test'
+  ...
+# Subtest: quotation commercial fingerprint treats legal customer and line changes as material
+ok 70 - quotation commercial fingerprint treats legal customer and line changes as material
+  ---
+  duration_ms: 0.298856
+  type: 'test'
+  ...
+# Subtest: app routes quotation writes through strict storage and central action runner
+ok 71 - app routes quotation writes through strict storage and central action runner
+  ---
+  duration_ms: 4.169099
+  type: 'test'
+  ...
+# Subtest: new production action rejects duplicate number before persistence
+ok 72 - new production action rejects duplicate number before persistence
+  ---
+  duration_ms: 0.404695
+  type: 'test'
+  ...
+# Subtest: invoice-linked production blocks commercial edits but allows safe metadata and preserves lineage
+ok 73 - invoice-linked production blocks commercial edits but allows safe metadata and preserves lineage
+  ---
+  duration_ms: 0.433455
+  type: 'test'
+  ...
+# Subtest: supplier-settled production is commercially immutable even before invoice
+ok 74 - supplier-settled production is commercially immutable even before invoice
+  ---
+  duration_ms: 0.211064
+  type: 'test'
+  ...
+# Subtest: unlinked unpaid production may change commercial values but preserves source lineage and settlement ownership
+ok 75 - unlinked unpaid production may change commercial values but preserves source lineage and settlement ownership
+  ---
+  duration_ms: 0.108064
+  type: 'test'
+  ...
+# Subtest: production commercial fingerprint detects item cost and supplier term changes but ignores notes
+ok 76 - production commercial fingerprint detects item cost and supplier term changes but ignores notes
+  ---
+  duration_ms: 0.232476
+  type: 'test'
+  ...
+# Subtest: app routes production create/edit through strict document storage, action runner and rollback-capable write session
+ok 77 - app routes production create/edit through strict document storage, action runner and rollback-capable write session
+  ---
+  duration_ms: 5.138222
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and reference mismatch fail before persistence
+ok 78 - receipt overpayment and reference mismatch fail before persistence
+  ---
+  duration_ms: 0.454701
+  type: 'test'
+  ...
+# Subtest: receipt with an explicit missing invoice fails closed with dependency_error
+ok 79 - receipt with an explicit missing invoice fails closed with dependency_error
+  ---
+  duration_ms: 0.096123
+  type: 'test'
+  ...
+# Subtest: receipt edit cannot switch invoice reference and payment-generated receipt is immutable here
+ok 80 - receipt edit cannot switch invoice reference and payment-generated receipt is immutable here
+  ---
+  duration_ms: 0.158704
+  type: 'test'
+  ...
+# Subtest: receipt edit keeps original reference fields even when metadata changes
+ok 81 - receipt edit keeps original reference fields even when metadata changes
+  ---
+  duration_ms: 0.182552
+  type: 'test'
+  ...
+# Subtest: app routes invoice and receipt writes through strict financial boundary and central action runner
+ok 82 - app routes invoice and receipt writes through strict financial boundary and central action runner
+  ---
+  duration_ms: 4.421134
+  type: 'test'
+  ...
+# Subtest: payment reconciliation persists all settlement mutations through rollback-capable transaction
+ok 83 - payment reconciliation persists all settlement mutations through rollback-capable transaction
+  ---
+  duration_ms: 0.465783
+  type: 'test'
+  ...
+# Subtest: document action runner returns typed validation failure without committing
+ok 84 - document action runner returns typed validation failure without committing
+  ---
+  duration_ms: 0.330514
+  type: 'test'
+  ...
+# Subtest: document action runner distinguishes commit failure from after-commit failure
+ok 85 - document action runner distinguishes commit failure from after-commit failure
+  ---
+  duration_ms: 0.195089
+  type: 'test'
+  ...
+# Subtest: document action error normalizer recognizes quota failures as storage_error
+ok 86 - document action error normalizer recognizes quota failures as storage_error
+  ---
+  duration_ms: 0.08214
+  type: 'test'
+  ...
+# Subtest: document action feedback is actionable and warns instead of claiming a committed write failed
+ok 87 - document action feedback is actionable and warns instead of claiming a committed write failed
+  ---
+  duration_ms: 0.173052
+  type: 'test'
+  ...
+# Subtest: document action runner propagates values through validate-plan-commit-afterCommit in order
+ok 88 - document action runner propagates values through validate-plan-commit-afterCommit in order
+  ---
+  duration_ms: 0.20578
+  type: 'test'
+  ...
+# Subtest: expense action accepts valid evidence metadata and returns an immutable planning copy
+ok 89 - expense action accepts valid evidence metadata and returns an immutable planning copy
+  ---
+  duration_ms: 0.249329
+  type: 'test'
+  ...
+# Subtest: expense action validates amount, document taxonomy and received tax-document consistency
+ok 90 - expense action validates amount, document taxonomy and received tax-document consistency
+  ---
+  duration_ms: 0.198002
+  type: 'test'
+  ...
+# Subtest: expense action blocks duplicate vendor document reference before persistence
+ok 91 - expense action blocks duplicate vendor document reference before persistence
+  ---
+  duration_ms: 0.072756
+  type: 'test'
+  ...
+# Subtest: expense received tax document may save without an attachment but returns an evidence warning
+ok 92 - expense received tax document may save without an attachment but returns an evidence warning
+  ---
+  duration_ms: 0.072967
+  type: 'test'
+  ...
+# Subtest: app routes expense create through strict storage, action runner, write lease and strict duplicate scan
+ok 93 - app routes expense create through strict storage, action runner, write lease and strict duplicate scan
+  ---
+  duration_ms: 4.654071
+  type: 'test'
+  ...
+# Subtest: attachment fallback never rewrites financial storage through tolerant loadFor and cloud failure retries local evidence persistence
+ok 94 - attachment fallback never rewrites financial storage through tolerant loadFor and cloud failure retries local evidence persistence
+  ---
+  duration_ms: 3.044846
+  type: 'test'
+  ...
+# Subtest: issued document canonical guard rejects missing, cancelled, mismatched and accepts faithful snapshots
+ok 95 - issued document canonical guard rejects missing, cancelled, mismatched and accepts faithful snapshots
+  ---
+  duration_ms: 0.562171
+  type: 'test'
+  ...
+# Subtest: issued receipt canonical guard keeps source invoice identity stable
+ok 96 - issued receipt canonical guard keeps source invoice identity stable
+  ---
+  duration_ms: 0.217321
+  type: 'test'
+  ...
+# Subtest: sync errors have a dedicated actionable classification and preserve committed-warning semantics
+ok 97 - sync errors have a dedicated actionable classification and preserve committed-warning semantics
+  ---
+  duration_ms: 0.178803
+  type: 'test'
+  ...
+# Subtest: issued Delivery/Tax and Receipt saves use strict transactional document boundary and never re-settle payment
+ok 98 - issued Delivery/Tax and Receipt saves use strict transactional document boundary and never re-settle payment
+  ---
+  duration_ms: 4.250449
+  type: 'test'
+  ...
+# Subtest: Step 3B-1 shared document primitives preserve formatting behavior
+ok 99 - Step 3B-1 shared document primitives preserve formatting behavior
+  ---
+  duration_ms: 16.460908
+  type: 'test'
+  ...
+# Subtest: Step 3B-1 controllers import shared helpers instead of defining local copies
+ok 100 - Step 3B-1 controllers import shared helpers instead of defining local copies
+  ---
+  duration_ms: 3.554343
+  type: 'test'
+  ...
+# Subtest: Step 3B-2 generic object and storage-period helpers preserve controller behavior
+ok 101 - Step 3B-2 generic object and storage-period helpers preserve controller behavior
+  ---
+  duration_ms: 2.58723
+  type: 'test'
+  ...
+# Subtest: Step 3B-3 line-item primitives preserve delivery/receipt behavior without controller state
+ok 102 - Step 3B-3 line-item primitives preserve delivery/receipt behavior without controller state
+  ---
+  duration_ms: 2.568965
+  type: 'test'
+  ...
+# Subtest: Step 3B-4 shared totals preserve VAT behavior while removing controller-owned arithmetic
+ok 103 - Step 3B-4 shared totals preserve VAT behavior while removing controller-owned arithmetic
+  ---
+  duration_ms: 2.052966
+  type: 'test'
+  ...
+# Subtest: Step 3B-6 shared printable-item and pagination helpers preserve the locked page-partition contract
+ok 104 - Step 3B-6 shared printable-item and pagination helpers preserve the locked page-partition contract
+  ---
+  duration_ms: 2.100542
+  type: 'test'
+  ...
+# Subtest: Step 3C-1 persistence hardening preserves the material controller-duplication reduction
+ok 105 - Step 3C-1 persistence hardening preserves the material controller-duplication reduction
+  ---
+  duration_ms: 0.451904
+  type: 'test'
+  ...
+# Subtest: executive comparison section has all required chart hosts exactly once
+ok 106 - executive comparison section has all required chart hosts exactly once
+  ---
+  duration_ms: 1.406548
+  type: 'test'
+  ...
+# Subtest: 12-month sales and delivery target planner is present and routed through shared dashboard render
+ok 107 - 12-month sales and delivery target planner is present and routed through shared dashboard render
+  ---
+  duration_ms: 1.444368
+  type: 'test'
+  ...
+# Subtest: monthly targets support period-specific overrides while keeping legacy fallbacks
+ok 108 - monthly targets support period-specific overrides while keeping legacy fallbacks
+  ---
+  duration_ms: 0.245606
+  type: 'test'
+  ...
+# Subtest: interactive chart marks expose click/tap detail registry and keyboard access
+ok 109 - interactive chart marks expose click/tap detail registry and keyboard access
+  ---
+  duration_ms: 0.515576
+  type: 'test'
+  ...
+# Subtest: product monthly details include quantity, total, average price and percentage share
+ok 110 - product monthly details include quantity, total, average price and percentage share
+  ---
+  duration_ms: 0.524173
+  type: 'test'
+  ...
+# Subtest: target chart details include actual, target, achievement and gap
+ok 111 - target chart details include actual, target, achievement and gap
+  ---
+  duration_ms: 0.421812
+  type: 'test'
+  ...
+# Subtest: new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+ok 112 - new charts reuse existing dashboard sources instead of maintaining duplicate business totals
+  ---
+  duration_ms: 0.367118
+  type: 'test'
+  ...
+# Subtest: executive chart stylesheet is balanced and loaded once
+ok 113 - executive chart stylesheet is balanced and loaded once
+  ---
+  duration_ms: 0.229421
+  type: 'test'
+  ...
+# Subtest: forecast preserves zero months at both boundaries and in the middle
+not ok 114 - forecast preserves zero months at both boundaries and in the middle
+  ---
+  duration_ms: 0.730951
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:8:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: missing, negative and nonfinite observations invalidate rather than compress a series
+not ok 115 - missing, negative and nonfinite observations invalidate rather than compress a series
+  ---
+  duration_ms: 0.058365
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:12:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: missing monthly storage differs from a stored empty month and corrupt data
+not ok 116 - missing monthly storage differs from a stored empty month and corrupt data
+  ---
+  duration_ms: 0.037901
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:16:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: all eligible models including Naive share identical rolling-origin test months
+not ok 117 - all eligible models including Naive share identical rolling-origin test months
+  ---
+  duration_ms: 0.0398
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:30:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: MASE uses training data at each fold, excluding the new actual
+not ok 118 - MASE uses training data at each fold, excluding the new actual
+  ---
+  duration_ms: 0.054589
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:39:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: zero denominators produce unavailable WAPE/MASE rather than perfect accuracy
+not ok 119 - zero denominators produce unavailable WAPE/MASE rather than perfect accuracy
+  ---
+  duration_ms: 0.033817
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:44:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: few observations have no accuracy percentage or invented zero-width intervals
+not ok 120 - few observations have no accuracy percentage or invented zero-width intervals
+  ---
+  duration_ms: 0.080533
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:51:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: residual scenarios require eight errors and are not extrapolated to longer horizons
+not ok 121 - residual scenarios require eight errors and are not extrapolated to longer horizons
+  ---
+  duration_ms: 0.036685
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:56:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: forecast table renders unavailable ranges as a dash and does not call base P50
+not ok 122 - forecast table renders unavailable ranges as a dash and does not call base P50
+  ---
+  duration_ms: 0.238422
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:62:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: analytics uses the latest zero month for actual and forecast date
+not ok 123 - analytics uses the latest zero month for actual and forecast date
+  ---
+  duration_ms: 0.130753
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:66:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: Quant includes zero-revenue contractions, drawdowns and low outliers
+not ok 124 - Quant includes zero-revenue contractions, drawdowns and low outliers
+  ---
+  duration_ms: 0.034853
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:72:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: Monte Carlo does not simulate when error scale is unavailable
+not ok 125 - Monte Carlo does not simulate when error scale is unavailable
+  ---
+  duration_ms: 0.030059
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:78:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: empty dashboard has unavailable forecast and renders without boot errors
+not ok 126 - empty dashboard has unavailable forecast and renders without boot errors
+  ---
+  duration_ms: 0.029901
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:87:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: January automatic history ends in previous December
+not ok 127 - January automatic history ends in previous December
+  ---
+  duration_ms: 0.023514
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:95:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: complete stored zero-sales months remain usable history in the dashboard
+not ok 128 - complete stored zero-sales months remain usable history in the dashboard
+  ---
+  duration_ms: 0.0243
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:104:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forecast-governance.test.cjs:5:1)
+  ...
+# Subtest: all local modules boot with real HTML in simulated DOM
+not ok 129 - all local modules boot with real HTML in simulated DOM
+  ---
+  duration_ms: 268.193103
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:2:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:2:87)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: quote → SO → two deliveries → receipt + billing payment → reversal
+not ok 130 - quote → SO → two deliveries → receipt + billing payment → reversal
+  ---
+  duration_ms: 142.110116
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:3:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:4:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: JSON merge preserves prior master/order and backup captured before import
+not ok 131 - JSON merge preserves prior master/order and backup captured before import
+  ---
+  duration_ms: 86.896009
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:24:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:24:106)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: invoice form stock guard rejects duplicate rows above on-hand quantity
+not ok 132 - invoice form stock guard rejects duplicate rows above on-hand quantity
+  ---
+  duration_ms: 89.035398
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:25:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:25:103)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: pricing policy imports into a fresh store and merge keeps a newer policy
+not ok 133 - pricing policy imports into a fresh store and merge keeps a newer policy
+  ---
+  duration_ms: 132.647409
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:26:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:26:105)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: failed JSON import rolls back an earlier master update
+not ok 134 - failed JSON import rolls back an earlier master update
+  ---
+  duration_ms: 91.530543
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:27:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:27:87)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: sales KPI and customer/product/agency charts use the same nonduplicated basis
+not ok 135 - sales KPI and customer/product/agency charts use the same nonduplicated basis
+  ---
+  duration_ms: 87.137465
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:28:1'
+  failureType: 'testCodeFailure'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/forms.test.cjs:28:110)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: period locks are append-only events and block matching scopes through the lock date
+ok 136 - period locks are append-only events and block matching scopes through the lock date
+  ---
+  duration_ms: 7.85154
+  type: 'test'
+  ...
+# Subtest: AR and AP aging bucket current 1-30 31-60 61-90 and 90+ deterministically
+ok 137 - AR and AP aging bucket current 1-30 31-60 61-90 and 90+ deterministically
+  ---
+  duration_ms: 0.509479
+  type: 'test'
+  ...
+# Subtest: approval policy is informative and does not pretend to be server authorization
+ok 138 - approval policy is informative and does not pretend to be server authorization
+  ---
+  duration_ms: 0.280072
+  type: 'test'
+  ...
+# Subtest: period close checklist exposes unresolved financial and sync evidence
+ok 139 - period close checklist exposes unresolved financial and sync evidence
+  ---
+  duration_ms: 8.932646
+  type: 'test'
+  ...
+# Subtest: sync operation fingerprint is stable across object key order and changes when payload changes
+ok 140 - sync operation fingerprint is stable across object key order and changes when payload changes
+  ---
+  duration_ms: 0.662531
+  type: 'test'
+  ...
+# Subtest: outbox normalization and dead-letter threshold are deterministic
+ok 141 - outbox normalization and dead-letter threshold are deterministic
+  ---
+  duration_ms: 0.296631
+  type: 'test'
+  ...
+# Subtest: e-Tax and WHT helpers are readiness checks, not submission claims
+ok 142 - e-Tax and WHT helpers are readiness checks, not submission claims
+  ---
+  duration_ms: 0.929062
+  type: 'test'
+  ...
+# Subtest: runtime wiring protects strict financial writes, outbox, backup dry-run and governance deployment
+ok 143 - runtime wiring protects strict financial writes, outbox, backup dry-run and governance deployment
+  ---
+  duration_ms: 9.36806
+  type: 'test'
+  ...
+# Subtest: period lock compaction never drops an active lock even beyond the retention window
+ok 144 - period lock compaction never drops an active lock even beyond the retention window
+  ---
+  duration_ms: 18.159509
+  type: 'test'
+  ...
+# Subtest: open AR and AP are review items, not automatic period-close blockers
+ok 145 - open AR and AP are review items, not automatic period-close blockers
+  ---
+  duration_ms: 0.592455
+  type: 'test'
+  ...
+# Subtest: uncertain sync is a high-severity close blocker until reconciled
+ok 146 - uncertain sync is a high-severity close blocker until reconciled
+  ---
+  duration_ms: 0.220539
+  type: 'test'
+  ...
+# Subtest: period lock validates before persistence and writes lock + audit atomically
+ok 147 - period lock validates before persistence and writes lock + audit atomically
+  ---
+  duration_ms: 10.839771
+  type: 'test'
+  ...
+# Subtest: approval decision and audit evidence share one transaction
+ok 148 - approval decision and audit evidence share one transaction
+  ---
+  duration_ms: 2.446242
+  type: 'test'
+  ...
+# Subtest: interrupted syncing becomes uncertain and is never auto-retried
+ok 149 - interrupted syncing becomes uncertain and is never auto-retried
+  ---
+  duration_ms: 3.486185
+  type: 'test'
+  ...
+# Subtest: partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+ok 150 - partial receipt keeps invoice outstanding; printed copy is not duplicate cash
+  ---
+  duration_ms: 7.869015
+  type: 'test'
+  ...
+# Subtest: full payment settles invoice; reversal reopens balance
+ok 151 - full payment settles invoice; reversal reopens balance
+  ---
+  duration_ms: 2.851833
+  type: 'test'
+  ...
+# Subtest: branch references do not mix identical invoice numbers
+ok 152 - branch references do not mix identical invoice numbers
+  ---
+  duration_ms: 2.412229
+  type: 'test'
+  ...
+# Subtest: receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+ok 153 - receipt overpayment and customer mismatch blocked; edit excludes its old receipt
+  ---
+  duration_ms: 2.718601
+  type: 'test'
+  ...
+# Subtest: SO remains partial after payment for first 3 of 10 units
+ok 154 - SO remains partial after payment for first 3 of 10 units
+  ---
+  duration_ms: 4.351137
+  type: 'test'
+  ...
+# Subtest: SO completes only when all units delivered and paid
+ok 155 - SO completes only when all units delivered and paid
+  ---
+  duration_ms: 2.622816
+  type: 'test'
+  ...
+# Subtest: duplicate line requests aggregate and cannot exceed SO remaining
+ok 156 - duplicate line requests aggregate and cannot exceed SO remaining
+  ---
+  duration_ms: 2.576502
+  type: 'test'
+  ...
+# Subtest: delivery edit excludes original quantity but still respects ready quantity
+ok 157 - delivery edit excludes original quantity but still respects ready quantity
+  ---
+  duration_ms: 1.812503
+  type: 'test'
+  ...
+# Subtest: stock guard aggregates duplicate SKU rows and deducts other SO reservations
+ok 158 - stock guard aggregates duplicate SKU rows and deducts other SO reservations
+  ---
+  duration_ms: 15.952718
+  type: 'test'
+  ...
+# Subtest: product code takes precedence over display name; PO product fields supported
+ok 159 - product code takes precedence over display name; PO product fields supported
+  ---
+  duration_ms: 2.099259
+  type: 'test'
+  ...
+# Subtest: merge preserves old rows and newer updates; replace removes absent rows
+ok 160 - merge preserves old rows and newer updates; replace removes absent rows
+  ---
+  duration_ms: 1.756697
+  type: 'test'
+  ...
+# Subtest: flow import merges instead of overwriting existing sales orders
+ok 161 - flow import merges instead of overwriting existing sales orders
+  ---
+  duration_ms: 2.336777
+  type: 'test'
+  ...
+# Subtest: backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+ok 162 - backup rejects invalid arrays, unsafe keys and nonnumeric amounts
+  ---
+  duration_ms: 2.520097
+  type: 'test'
+  ...
+# Subtest: failed local multi-key write rolls back earlier writes
+ok 163 - failed local multi-key write rolls back earlier writes
+  ---
+  duration_ms: 1.64606
+  type: 'test'
+  ...
+# Subtest: backup snapshot restores masters and flow in current tenant only
+ok 164 - backup snapshot restores masters and flow in current tenant only
+  ---
+  duration_ms: 1.761424
+  type: 'test'
+  ...
+# Subtest: generated payment receipts retain correct tax split and never double cash
+ok 165 - generated payment receipts retain correct tax split and never double cash
+  ---
+  duration_ms: 3.157044
+  type: 'test'
+  ...
+# Subtest: VAT modes add, extract and none are consistent
+ok 166 - VAT modes add, extract and none are consistent
+  ---
+  duration_ms: 1.694893
+  type: 'test'
+  ...
+# Subtest: target margin 95% and markup over 95% calculate correctly
+ok 167 - target margin 95% and markup over 95% calculate correctly
+  ---
+  duration_ms: 4.161664
+  type: 'test'
+  ...
+# Subtest: direct inventory invoices count as sales; SO production is not counted twice
+ok 168 - direct inventory invoices count as sales; SO production is not counted twice
+  ---
+  duration_ms: 5.644443
+  type: 'test'
+  ...
+# Subtest: invalid quantities and nonfinite prices are rejected
+ok 169 - invalid quantities and nonfinite prices are rejected
+  ---
+  duration_ms: 1.74704
+  type: 'test'
+  ...
+# Subtest: portable backup permits Thai attachment filenames
+ok 170 - portable backup permits Thai attachment filenames
+  ---
+  duration_ms: 1.59293
+  type: 'test'
+  ...
+# Subtest: delivery and payment references reject customer, SKU and invoice-number mismatches
+ok 171 - delivery and payment references reject customer, SKU and invoice-number mismatches
+  ---
+  duration_ms: 2.188612
+  type: 'test'
+  ...
+# Subtest: billing excludes receipts already applied before it was created
+ok 172 - billing excludes receipts already applied before it was created
+  ---
+  duration_ms: 2.514123
+  type: 'test'
+  ...
+# Subtest: billing direct receipts allocate FIFO and reverse without double payment
+ok 173 - billing direct receipts allocate FIFO and reverse without double payment
+  ---
+  duration_ms: 3.404406
+  type: 'test'
+  ...
+# Subtest: production costs are allocated over partial deliveries with final cent retained
+ok 174 - production costs are allocated over partial deliveries with final cent retained
+  ---
+  duration_ms: 2.586162
+  type: 'test'
+  ...
+# Subtest: legacy billing migrates its already-paid creation balance once
+ok 175 - legacy billing migrates its already-paid creation balance once
+  ---
+  duration_ms: 1.832446
+  type: 'test'
+  ...
+# Subtest: a production record without cost evidence cannot label zero cost as actual
+ok 176 - a production record without cost evidence cannot label zero cost as actual
+  ---
+  duration_ms: 1.90098
+  type: 'test'
+  ...
+# Subtest: payment receipt creation is idempotent on replay and does not duplicate receipt evidence
+ok 177 - payment receipt creation is idempotent on replay and does not duplicate receipt evidence
+  ---
+  duration_ms: 2.187872
+  type: 'test'
+  ...
+# Subtest: payment reconciliation changes settlement fields but never rewrites invoice sale VAT or total
+ok 178 - payment reconciliation changes settlement fields but never rewrites invoice sale VAT or total
+  ---
+  duration_ms: 2.479211
+  type: 'test'
+  ...
+# Subtest: financial write path fails closed when order-flow JSON is corrupt
+ok 179 - financial write path fails closed when order-flow JSON is corrupt
+  ---
+  duration_ms: 2.370839
+  type: 'test'
+  ...
+# Subtest: reservation reduces available-to-promise but does not mutate physical on-hand source
+ok 180 - reservation reduces available-to-promise but does not mutate physical on-hand source
+  ---
+  duration_ms: 1.620899
+  type: 'test'
+  ...
+# Subtest: failed settlement reconciliation rolls back earlier invoice mutation across keys
+ok 181 - failed settlement reconciliation rolls back earlier invoice mutation across keys
+  ---
+  duration_ms: 2.015813
+  type: 'test'
+  ...
+# Subtest: master-data core stays independent from DOM storage and cloud services
+ok 182 - master-data core stays independent from DOM storage and cloud services
+  ---
+  duration_ms: 2.012856
+  type: 'test'
+  ...
+# Subtest: master key normalization is stable across case and whitespace
+ok 183 - master key normalization is stable across case and whitespace
+  ---
+  duration_ms: 4.691779
+  type: 'test'
+  ...
+# Subtest: contact selectors hide archived rows but retain them when explicitly requested
+ok 184 - contact selectors hide archived rows but retain them when explicitly requested
+  ---
+  duration_ms: 7.717661
+  type: 'test'
+  ...
+# Subtest: upsert keeps unrelated archived contacts instead of silently deleting them
+ok 185 - upsert keeps unrelated archived contacts instead of silently deleting them
+  ---
+  duration_ms: 0.367127
+  type: 'test'
+  ...
+# Subtest: saving a previously archived contact reactivates the same entity id
+ok 186 - saving a previously archived contact reactivates the same entity id
+  ---
+  duration_ms: 0.333353
+  type: 'test'
+  ...
+# Subtest: contact role merge preserves customer and supplier identity as both
+ok 187 - contact role merge preserves customer and supplier identity as both
+  ---
+  duration_ms: 0.187289
+  type: 'test'
+  ...
+# Subtest: archiving one role from a both-role contact keeps the remaining role active
+ok 188 - archiving one role from a both-role contact keeps the remaining role active
+  ---
+  duration_ms: 0.224763
+  type: 'test'
+  ...
+# Subtest: archiving a single-role contact is non-destructive and timestamped
+ok 189 - archiving a single-role contact is non-destructive and timestamped
+  ---
+  duration_ms: 0.109075
+  type: 'test'
+  ...
+# Subtest: master merge selects newest record and keeps inactive state when it is newer
+ok 190 - master merge selects newest record and keeps inactive state when it is newer
+  ---
+  duration_ms: 0.462528
+  type: 'test'
+  ...
+# Subtest: product master combines seed and local override without mutating seed history
+ok 191 - product master combines seed and local override without mutating seed history
+  ---
+  duration_ms: 0.545091
+  type: 'test'
+  ...
+# Subtest: archived local product suppresses matching seed product from active master
+ok 192 - archived local product suppresses matching seed product from active master
+  ---
+  duration_ms: 0.229601
+  type: 'test'
+  ...
+# Subtest: product metadata and defaults preserve stock/service semantics
+ok 193 - product metadata and defaults preserve stock/service semantics
+  ---
+  duration_ms: 0.28465
+  type: 'test'
+  ...
+# Subtest: lead-day and customer-credit normalizers share deterministic business rules
+ok 194 - lead-day and customer-credit normalizers share deterministic business rules
+  ---
+  duration_ms: 0.292361
+  type: 'test'
+  ...
+# Subtest: master validation rejects malformed records without throwing
+ok 195 - master validation rejects malformed records without throwing
+  ---
+  duration_ms: 0.155648
+  type: 'test'
+  ...
+# Subtest: supplier seed does not resurrect or discard archived suppliers
+ok 196 - supplier seed does not resurrect or discard archived suppliers
+  ---
+  duration_ms: 0.928335
+  type: 'test'
+  ...
+# Subtest: supplier seed initializes a truly empty supplier master only once
+ok 197 - supplier seed initializes a truly empty supplier master only once
+  ---
+  duration_ms: 0.236569
+  type: 'test'
+  ...
+# Subtest: CSV contact merge preserves unrelated archived history
+ok 198 - CSV contact merge preserves unrelated archived history
+  ---
+  duration_ms: 0.256275
+  type: 'test'
+  ...
+# Subtest: CSV replace replaces active target role but keeps archived audit history and other roles
+ok 199 - CSV replace replaces active target role but keeps archived audit history and other roles
+  ---
+  duration_ms: 0.229126
+  type: 'test'
+  ...
+# Subtest: app master-data orchestration uses archive-safe paths for backup restore seed and CSV
+ok 200 - app master-data orchestration uses archive-safe paths for backup restore seed and CSV
+  ---
+  duration_ms: 4.026339
+  type: 'test'
+  ...
+# Subtest: product upsert reactivates archived product with the same id and clears stale archive timestamp
+ok 201 - product upsert reactivates archived product with the same id and clears stale archive timestamp
+  ---
+  duration_ms: 0.348056
+  type: 'test'
+  ...
+# Subtest: archiving a seed-only product creates a local inactive tombstone without deleting history
+ok 202 - archiving a seed-only product creates a local inactive tombstone without deleting history
+  ---
+  duration_ms: 0.171203
+  type: 'test'
+  ...
+# Subtest: CSV product replace keeps archived product tombstones and replaces only active product set
+ok 203 - CSV product replace keeps archived product tombstones and replaces only active product set
+  ---
+  duration_ms: 0.279129
+  type: 'test'
+  ...
+# Subtest: CSV product import can intentionally reactivate an archived matching SKU
+ok 204 - CSV product import can intentionally reactivate an archived matching SKU
+  ---
+  duration_ms: 0.11578
+  type: 'test'
+  ...
+# Subtest: product upsert follows explicit id when SKU code is edited and does not duplicate the row
+ok 205 - product upsert follows explicit id when SKU code is edited and does not duplicate the row
+  ---
+  duration_ms: 0.099809
+  type: 'test'
+  ...
+# Subtest: master-data store module stays independent from DOM and UI notification code
+ok 206 - master-data store module stays independent from DOM and UI notification code
+  ---
+  duration_ms: 0.935069
+  type: 'test'
+  ...
+# Subtest: missing Master key may return explicit fallback but malformed JSON fails closed
+ok 207 - missing Master key may return explicit fallback but malformed JSON fails closed
+  ---
+  duration_ms: 7.980746
+  type: 'test'
+  ...
+# Subtest: non-array Master payload and blocked storage reads never degrade to empty arrays
+ok 208 - non-array Master payload and blocked storage reads never degrade to empty arrays
+  ---
+  duration_ms: 0.285929
+  type: 'test'
+  ...
+# Subtest: tenant key resolver isolates Master rows between companies sharing one browser
+ok 209 - tenant key resolver isolates Master rows between companies sharing one browser
+  ---
+  duration_ms: 0.317506
+  type: 'test'
+  ...
+# Subtest: failed single-key write reports storage_error and preserves previous data
+ok 210 - failed single-key write reports storage_error and preserves previous data
+  ---
+  duration_ms: 0.276928
+  type: 'test'
+  ...
+# Subtest: snapshot write rolls back first key if second key write fails
+ok 211 - snapshot write rolls back first key if second key write fails
+  ---
+  duration_ms: 0.476139
+  type: 'test'
+  ...
+# Subtest: partial snapshot is rejected instead of silently clearing the missing Master collection
+ok 212 - partial snapshot is rejected instead of silently clearing the missing Master collection
+  ---
+  duration_ms: 0.248524
+  type: 'test'
+  ...
+# Subtest: snapshot keeps archived records exactly as persisted
+ok 213 - snapshot keeps archived records exactly as persisted
+  ---
+  duration_ms: 0.154112
+  type: 'test'
+  ...
+# Subtest: cloud hydration preserves newer local archive against older cloud active record
+ok 214 - cloud hydration preserves newer local archive against older cloud active record
+  ---
+  duration_ms: 0.959921
+  type: 'test'
+  ...
+# Subtest: corrupted local Master blocks cloud hydration before cloud load/write/sync
+ok 215 - corrupted local Master blocks cloud hydration before cloud load/write/sync
+  ---
+  duration_ms: 0.510986
+  type: 'test'
+  ...
+# Subtest: malformed cloud snapshot is rejected without mutating local Master
+ok 216 - malformed cloud snapshot is rejected without mutating local Master
+  ---
+  duration_ms: 0.324971
+  type: 'test'
+  ...
+# Subtest: cloud save is scheduled only after successful hydrate and sends a full local snapshot
+ok 217 - cloud save is scheduled only after successful hydrate and sends a full local snapshot
+  ---
+  duration_ms: 0.515531
+  type: 'test'
+  ...
+# Subtest: cloud load failure keeps sync bridge closed so later local writes cannot overwrite unknown cloud state
+ok 218 - cloud load failure keeps sync bridge closed so later local writes cannot overwrite unknown cloud state
+  ---
+  duration_ms: 1.017804
+  type: 'test'
+  ...
+# Subtest: app routes Master persistence through Step 2C store and cloud bridge
+ok 219 - app routes Master persistence through Step 2C store and cloud bridge
+  ---
+  duration_ms: 3.72946
+  type: 'test'
+  ...
+# Subtest: business rule preset uses Master store and cannot bypass cloud handshake with direct Firebase snapshot save
+ok 220 - business rule preset uses Master store and cannot bypass cloud handshake with direct Firebase snapshot save
+  ---
+  duration_ms: 0.314501
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: empty rows preserve one printable fallback row and one page
+ok 221 - delivery-tax-document.js: empty rows preserve one printable fallback row and one page
+  ---
+  duration_ms: 7.877315
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+ok 222 - delivery-tax-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+  ---
+  duration_ms: 4.442086
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+ok 223 - delivery-tax-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+  ---
+  duration_ms: 1.707728
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: multi-page partitioning never exceeds the eight-unit budget
+ok 224 - delivery-tax-document.js: multi-page partitioning never exceeds the eight-unit budget
+  ---
+  duration_ms: 3.418182
+  type: 'test'
+  ...
+# Subtest: delivery-tax-document.js: documentPagesHtml marks only the final partition as final page
+ok 225 - delivery-tax-document.js: documentPagesHtml marks only the final partition as final page
+  ---
+  duration_ms: 2.61276
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: empty rows preserve one printable fallback row and one page
+ok 226 - receipt-document.js: empty rows preserve one printable fallback row and one page
+  ---
+  duration_ms: 1.572596
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+ok 227 - receipt-document.js: exactly eight row-units stay on one page and the ninth moves to page two
+  ---
+  duration_ms: 3.246261
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+ok 228 - receipt-document.js: multiline and long descriptions use the shared row-unit estimator before partitioning
+  ---
+  duration_ms: 1.486034
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: multi-page partitioning never exceeds the eight-unit budget
+ok 229 - receipt-document.js: multi-page partitioning never exceeds the eight-unit budget
+  ---
+  duration_ms: 1.567611
+  type: 'test'
+  ...
+# Subtest: receipt-document.js: documentPagesHtml marks only the final partition as final page
+ok 230 - receipt-document.js: documentPagesHtml marks only the final partition as final page
+  ---
+  duration_ms: 1.649409
+  type: 'test'
+  ...
+# Subtest: Delivery/Tax and Receipt partition signatures remain behaviorally identical for the same rows
+ok 231 - Delivery/Tax and Receipt partition signatures remain behaviorally identical for the same rows
+  ---
+  duration_ms: 2.78308
+  type: 'test'
+  ...
+# Subtest: role normalization is safe
+ok 232 - role normalization is safe
+  ---
+  duration_ms: 1.557701
+  type: 'test'
+  ...
+# Subtest: work queue prioritizes operational risks by role
+ok 233 - work queue prioritizes operational risks by role
+  ---
+  duration_ms: 12.850593
+  type: 'test'
+  ...
+# Subtest: stock availability calculates on hand reserved available and incoming
+ok 234 - stock availability calculates on hand reserved available and incoming
+  ---
+  duration_ms: 0.428417
+  type: 'test'
+  ...
+# Subtest: approval inbox includes pending quotes and draft POs only
+ok 235 - approval inbox includes pending quotes and draft POs only
+  ---
+  duration_ms: 0.282494
+  type: 'test'
+  ...
+# Subtest: release wires product UX assets and avoids competitor wording in user UI
+ok 236 - release wires product UX assets and avoids competitor wording in user UI
+  ---
+  duration_ms: 1.29328
+  type: 'test'
+  ...
+# Subtest: product UX clearly labels role as UX and portal as preview
+ok 237 - product UX clearly labels role as UX and portal as preview
+  ---
+  duration_ms: 0.346363
+  type: 'test'
+  ...
+# Subtest: local business date does not depend on UTC ISO slicing
+ok 238 - local business date does not depend on UTC ISO slicing
+  ---
+  duration_ms: 6.053584
+  type: 'test'
+  ...
+# Subtest: VAT calculation has one deterministic source of truth
+ok 239 - VAT calculation has one deterministic source of truth
+  ---
+  duration_ms: 10.295193
+  type: 'test'
+  ...
+# Subtest: storage contracts are imported instead of copied
+ok 240 - storage contracts are imported instead of copied
+  ---
+  duration_ms: 119.837433
+  type: 'test'
+  ...
+# Subtest: workflow graph fails closed on missing guards and unmatched routes
+ok 241 - workflow graph fails closed on missing guards and unmatched routes
+  ---
+  duration_ms: 3.274143
+  type: 'test'
+  ...
+# Subtest: workflow graph enforces max step budget
+ok 242 - workflow graph enforces max step budget
+  ---
+  duration_ms: 1.183641
+  type: 'test'
+  ...
+# Subtest: workflow ribbon stage respects order-flow subview
+ok 243 - workflow ribbon stage respects order-flow subview
+  ---
+  duration_ms: 0.904944
+  type: 'test'
+  ...
+# Subtest: SO to invoice preparation uses business dueDate helper without stale variable
+ok 244 - SO to invoice preparation uses business dueDate helper without stale variable
+  ---
+  duration_ms: 0.488374
+  type: 'test'
+  ...
+# Subtest: deep static audit passes
+ok 245 - deep static audit passes
+  ---
+  duration_ms: 285.545164
+  type: 'test'
+  ...
+# Subtest: fulfillment graph supports stock production and purchase in one plan
+ok 246 - fulfillment graph supports stock production and purchase in one plan
+  ---
+  duration_ms: 2.68953
+  type: 'test'
+  ...
+# Subtest: deployment test reads current ERP release instead of stale hard-coded release
+ok 247 - deployment test reads current ERP release instead of stale hard-coded release
+  ---
+  duration_ms: 0.835787
+  type: 'test'
+  ...
+# Subtest: customer-trial closure validates syntax audits security hashes http and zip integrity
+ok 248 - customer-trial closure validates syntax audits security hashes http and zip integrity
+  ---
+  duration_ms: 0.271076
+  type: 'test'
+  ...
+# Subtest: trial validation script is exposed through npm scripts
+ok 249 - trial validation script is exposed through npm scripts
+  ---
+  duration_ms: 0.211139
+  type: 'test'
+  ...
+# Subtest: spec audit passes and all requirements are traceable
+ok 250 - spec audit passes and all requirements are traceable
+  ---
+  duration_ms: 44.828176
+  type: 'test'
+  ...
+# Subtest: release metadata is centralized
+ok 251 - release metadata is centralized
+  ---
+  duration_ms: 0.532176
+  type: 'test'
+  ...
+# Subtest: development context points to current sources of truth
+ok 252 - development context points to current sources of truth
+  ---
+  duration_ms: 0.471745
+  type: 'test'
+  ...
+# Subtest: 4.3.1 release metadata and lockfile are aligned
+ok 253 - 4.3.1 release metadata and lockfile are aligned
+  ---
+  duration_ms: 2.571572
+  type: 'test'
+  ...
+# Subtest: issued documents are locked against destructive delete
+ok 254 - issued documents are locked against destructive delete
+  ---
+  duration_ms: 3.721069
+  type: 'test'
+  ...
+# Subtest: issued document detail uses open modal lifecycle
+ok 255 - issued document detail uses open modal lifecycle
+  ---
+  duration_ms: 3.955951
+  type: 'test'
+  ...
+# Subtest: attachment URL guard blocks javascript and html data URLs
+ok 256 - attachment URL guard blocks javascript and html data URLs
+  ---
+  duration_ms: 0.207469
+  type: 'test'
+  ...
+# Subtest: data-driven order and production ids are not interpolated into known risky inline onclick paths
+ok 257 - data-driven order and production ids are not interpolated into known risky inline onclick paths
+  ---
+  duration_ms: 1.189586
+  type: 'test'
+  ...
+# Subtest: master actions archive rather than hard-delete
+ok 258 - master actions archive rather than hard-delete
+  ---
+  duration_ms: 3.483557
+  type: 'test'
+  ...
+# Subtest: same-browser document save lease wraps quote invoice receipt and production
+ok 259 - same-browser document save lease wraps quote invoice receipt and production
+  ---
+  duration_ms: 3.89685
+  type: 'test'
+  ...
+# Subtest: trial banner states multi-user production limitation
+ok 260 - trial banner states multi-user production limitation
+  ---
+  duration_ms: 1.02623
+  type: 'test'
+  ...
+# Subtest: quote preview VAT uses shared deterministic calculator instead of raw VAT arithmetic
+ok 261 - quote preview VAT uses shared deterministic calculator instead of raw VAT arithmetic
+  ---
+  duration_ms: 3.012757
+  type: 'test'
+  ...
+# Subtest: critical receipt duplicate verification fails closed when history cannot be parsed
+ok 262 - critical receipt duplicate verification fails closed when history cannot be parsed
+  ---
+  duration_ms: 0.781497
+  type: 'test'
+  ...
+# Subtest: master seed aborts instead of replacing corrupted master data with an empty list
+ok 263 - master seed aborts instead of replacing corrupted master data with an empty list
+  ---
+  duration_ms: 0.295805
+  type: 'test'
+  ...
+# Subtest: core test runner and evidence runner share one canonical test-file list
+ok 264 - core test runner and evidence runner share one canonical test-file list
+  ---
+  duration_ms: 0.14375
+  type: 'test'
+  ...
+# Subtest: deep auditor covers shorthand VAT, dead branches and empty catches
+ok 265 - deep auditor covers shorthand VAT, dead branches and empty catches
+  ---
+  duration_ms: 0.097548
+  type: 'test'
+  ...
+# Subtest: header search starts empty, keyboard cycles results, Escape returns focus
+not ok 266 - header search starts empty, keyboard cycles results, Escape returns focus
+  ---
+  duration_ms: 0.660895
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:9:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: guide is initially collapsed and company is not pre-completed; header opens it
+not ok 267 - guide is initially collapsed and company is not pre-completed; header opens it
+  ---
+  duration_ms: 0.107532
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:19:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: create and list navigation labels differ; keyboard and quick action update route
+not ok 268 - create and list navigation labels differ; keyboard and quick action update route
+  ---
+  duration_ms: 0.039781
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:25:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: dashboard hides advanced sections by default and preserves chosen view after refresh
+not ok 269 - dashboard hides advanced sections by default and preserves chosen view after refresh
+  ---
+  duration_ms: 0.10118
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:31:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: document fit scales A4 into a narrow preview, zooms and fits again
+not ok 270 - document fit scales A4 into a narrow preview, zooms and fits again
+  ---
+  duration_ms: 0.089577
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:39:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: monthly sales and profit agree with branch summary and exclude SO work in progress
+not ok 271 - monthly sales and profit agree with branch summary and exclude SO work in progress
+  ---
+  duration_ms: 0.040924
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:47:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: January historical production does not become delivery without invoice evidence
+not ok 272 - January historical production does not become delivery without invoice evidence
+  ---
+  duration_ms: 0.034696
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:54:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: loss values remain visible in chart and are marked red
+not ok 273 - loss values remain visible in chart and are marked red
+  ---
+  duration_ms: 0.060207
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:58:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+# Subtest: empty data is unassessed rather than a perfect quality score
+not ok 274 - empty data is unassessed rather than a perfect quality score
+  ---
+  duration_ms: 0.21999
+  type: 'test'
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:63:1'
+  failureType: 'hookFailed'
+  error: 'Cannot use import statement outside a module'
+  code: 'ERR_TEST_FAILURE'
+  name: 'SyntaxError'
+  stack: |-
+    eval (<anonymous>)
+    boot (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/dom-helper.cjs:11:5)
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:26)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.createHook (node:internal/test_runner/test:872:33)
+    node:internal/test_runner/harness:335:12
+    Object.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:5:1)
+  ...
+not ok 275 - /home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs
+  ---
+  duration_ms: 0.121517
+  location: '/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:6:1'
+  failureType: 'hookFailed'
+  error: "Cannot read properties of undefined (reading 'errors')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/tests/ux-review.test.cjs:6:31)
+    TestHook.runInAsyncScope (node:async_hooks:214:14)
+    TestHook.run (node:internal/test_runner/test:1047:25)
+    TestHook.run (node:internal/test_runner/test:1354:18)
+    TestHook.run (node:internal/util:569:20)
+    Test.runHook (node:internal/test_runner/test:965:20)
+    after (node:internal/test_runner/test:1005:20)
+    Test.run (node:internal/test_runner/test:1070:13)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+  ...
+1..275
+# tests 275
+# suites 0
+# pass 231
+# fail 44
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 33687.84555

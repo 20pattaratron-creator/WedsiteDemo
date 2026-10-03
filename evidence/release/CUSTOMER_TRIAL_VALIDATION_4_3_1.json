@@ -1,0 +1,181 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "phase": "Customer Trial Stable closure",
+  "executedAt": "2026-09-21T05:59:03.940Z",
+  "status": "FAIL",
+  "syntax": {
+    "checked": 82,
+    "failures": [],
+    "pass": true
+  },
+  "commands": [
+    {
+      "label": "codebase_audit",
+      "command": "/opt/node22/bin/node scripts/audit-codebase.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "deep_audit",
+      "command": "/opt/node22/bin/node scripts/audit-deep.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "spec_audit",
+      "command": "/opt/node22/bin/node scripts/audit-specs.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "complexity_audit",
+      "command": "/opt/node22/bin/node scripts/audit-complexity.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "document_controller_audit",
+      "command": "/opt/node22/bin/node scripts/audit-document-controllers.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "financial_controls_audit",
+      "command": "/opt/node22/bin/node scripts/audit-financial-controls.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "render_golden_audit",
+      "command": "/opt/node22/bin/node scripts/audit-document-render-golden.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "security_preflight",
+      "command": "/opt/node22/bin/node scripts/security/agent-repo-audit.mjs .",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "security_baseline",
+      "command": "/opt/node22/bin/node scripts/security/verify-security-baseline.mjs .",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "core_evidence",
+      "command": "/opt/node22/bin/node scripts/run-core-evidence.mjs",
+      "exitCode": 0,
+      "pass": true
+    },
+    {
+      "label": "full_evidence",
+      "command": "/opt/node22/bin/node scripts/run-full-evidence.mjs",
+      "exitCode": 0,
+      "pass": true
+    }
+  ],
+  "core": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-21T05:58:30.125Z",
+    "scope": "core-portable",
+    "files": [
+      "tests/integrity.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/agent-security.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/governance-core.test.cjs",
+      "tests/governance-runtime.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/page-partition-regression.test.cjs"
+    ],
+    "command": "node --test tests/integrity.test.cjs tests/decision-council.test.cjs tests/executive-charts.test.cjs tests/product-experience.test.cjs tests/refactor-4-1.test.cjs tests/codebase-audit.test.cjs tests/agent-security.test.cjs tests/spec-governance.test.cjs tests/trial-hardening-4-3.test.cjs tests/release-closure.test.cjs tests/date-core.test.cjs tests/master-data-core.test.cjs tests/master-data-store.test.cjs tests/document-finance-core.test.cjs tests/governance-core.test.cjs tests/governance-runtime.test.cjs tests/document-controller-duplication.test.cjs tests/document-shared-core.test.cjs tests/page-partition-regression.test.cjs",
+    "exitCode": 0,
+    "tests": 228,
+    "pass": 228,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "pass",
+    "log": "evidence/CORE_TESTS_4_3_1.tap"
+  },
+  "full": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-21T05:59:03.908Z",
+    "scope": "full-node-suite",
+    "files": [
+      "tests/agent-security.test.cjs",
+      "tests/attachments.test.cjs",
+      "tests/audit-fixes.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/forecast-governance.test.cjs",
+      "tests/forms.test.cjs",
+      "tests/governance-core.test.cjs",
+      "tests/governance-runtime.test.cjs",
+      "tests/integrity.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/page-partition-regression.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/ux-review.test.cjs"
+    ],
+    "exitCode": 1,
+    "tests": 275,
+    "pass": 231,
+    "fail": 44,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "test_harness_module_failure",
+    "log": "evidence/FULL_TESTS_4_3_1.tap"
+  },
+  "deployment": {
+    "pagesDir": "/home/claude/work/erp-4.3.1-review/step4a/example-company-erp-demo-4.3.1/dist-flat",
+    "manifest": {
+      "runtimeFiles": 0,
+      "hashMismatch": null,
+      "missingHtmlRefs": [],
+      "pass": false
+    },
+    "http": {
+      "checked": 1,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "zips": {
+    "source": {
+      "provided": false,
+      "pass": true
+    },
+    "pages": {
+      "provided": false,
+      "pass": true
+    }
+  },
+  "limitations": []
+}
