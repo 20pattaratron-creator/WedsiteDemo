@@ -1,0 +1,47 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {releaseMeta} from './release-meta.mjs';
+import {writeFileAtomic} from './write-file-atomic.mjs';
+
+const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const META=releaseMeta(ROOT);
+const read=f=>fs.readFileSync(path.join(ROOT,f),'utf8');
+const checks=[];
+const add=(id,ok,severity,message,evidence='')=>checks.push({id,ok,severity,message,evidence});
+const app=read('app.js'),flow=read('erp-order-flow.js'),integrity=read('erp-integrity.js'),production=read('erp-production-core.js'),index=read('index.html'),backup=read('erp-backup.js');
+
+add('FIN-001',/documentNumberExistsForWrite\('invoice'/.test(app),'high','Invoice duplicate guard must use strict write scanner');
+add('FIN-002',/documentNumberExistsForWrite\('receipt'/.test(app),'high','Receipt duplicate guard must use strict write scanner');
+add('FIN-003',/saveInvoiceUnlocked\([\s\S]*?ERPGovernance\?\.assertPeriodOpen/.test(app),'high','Invoice write must enforce accounting period lock');
+add('FIN-004',/saveReceiptUnlocked\([\s\S]*?ERPGovernance\?\.assertPeriodOpen/.test(app),'high','Receipt write must enforce accounting period lock');
+add('FIN-005',/saveExpenseUnlocked\([\s\S]*?scope:'purchase'/.test(app),'high','Expense write must enforce purchase/tax period lock');
+add('FIN-006',/createPaymentReceipts\([\s\S]*?parseFinancialDocumentPackForWrite/.test(integrity),'high','Payment receipt creation must strict-parse business pack');
+add('FIN-007',/createPaymentReceipts\([\s\S]*?assertPeriodOpen/.test(integrity),'high','Payment receipt creation must enforce period lock');
+const paymentBlock=/function saveBillingPayment\([\s\S]*?\n  }\n\n  function/.exec(flow)?.[0]||'';
+add('FIN-008',/loadStoreForFinancialWrite/.test(paymentBlock)&&/createPaymentReceipts/.test(paymentBlock),'high','Billing payment must use strict flow read and transactional receipt creation');
+add('FIN-009',!/createPaymentReceipts[\s\S]*?reconcilePayments\(\);saveStore\(store\)/.test(paymentBlock),'high','Billing payment must not perform redundant non-transactional save after receipt transaction');
+add('FIN-010',/function saveStoreFinancial\([\s\S]*?ERPIntegrity\.transaction/.test(flow),'high','Financial flow store writes must use rollback-capable transaction helper');
+add('FIN-011',/governance\?\.runSync/.test(app)&&/Sync Outbox/.test(app),'medium','Business document cloud sync should route through persistent outbox when available');
+add('FIN-012',/governance\?\.runSync/.test(production),'medium','Operational cloud sync should route through persistent outbox when available');
+add('FIN-013',/erp-governance\.js/.test(index),'high','Governance runtime must be wired in deployment HTML');
+add('FIN-014',/function dryRun\(/.test(backup)&&/contentSha256/.test(backup)&&/function verifyPortable\(/.test(backup)&&/await window\.ERPBackup\.verifyPortable\(raw\)/.test(app),'high','Backup import must verify portable checksum before write and expose dry-run metadata');
+add('FIN-015',/GOVERNANCE_PERIOD_LOCKS_KEY/.test(read('erp-storage-contracts.js')),'high','Governance persisted keys must be centralized in storage contracts');
+const governance=read('erp-governance.js');
+add('FIN-016',!/transaction\?\.\([^\n]*\)\|\|localStorage\.setItem/.test(governance)&&!/transaction\([^\n]*\)\|\|localStorage\.setItem/.test(governance),'high','Governance transaction writes must not fall through to a second non-transactional localStorage write');
+add('FIN-017',/function requireTransaction\(writes\)\{[\s\S]*?ERPIntegrity\?\.transaction/.test(governance)&&/function writeArray\(base,rows\)\{requireTransaction/.test(governance),'high','Governance storage writes must fail closed through the transaction boundary instead of falling back to a second direct write');
+add('FIN-018',/status==='synced'\)return clone\(row\.result/.test(governance),'high','Synced Outbox operations must not be executed again');
+add('FIN-019',/syncInflight\.has\(row\.operationId\)/.test(governance),'medium','Concurrent same-browser Sync calls must share one in-flight operation');
+add('FIN-020',!/operationId\?\.\('bizsync'[^\n]*Date\.now/.test(app)&&!/operationId\?\.\('opssync'[^\n]*Date\.now/.test(production)&&!/operationId:window\.ERPGovernance\.operationId\([^\n]*Date\.now/.test(read('delivery-tax-document.js'))&&!/operationId:window\.ERPGovernance\.operationId\([^\n]*Date\.now/.test(read('receipt-document.js')),'high','Outbox idempotency keys must not contain Date.now entropy for the same payload');
+add('FIN-021',/normalizePeriodLockEvent/.test(governance)&&/function lockPeriod\([\s\S]*?normalizePeriodLockEvent/.test(governance),'high','Period Lock must validate through the pure governance core before persistence');
+add('FIN-022',/commitWithAudit\(\[\[GOVERNANCE_PERIOD_LOCKS_KEY/.test(governance)&&/commitWithAudit\(\[\[GOVERNANCE_APPROVALS_KEY/.test(governance),'high','Period Lock and Approval state must commit atomically with governance audit evidence');
+add('FIN-023',/status:'uncertain'/.test(governance)&&/sync_uncertain/.test(governance)&&/recoverInterruptedSyncs/.test(governance),'high','Interrupted sync must become uncertain instead of being auto-retried as if outcome were known');
+add('FIN-024',/\['pending','failed','syncing','uncertain','dead_letter'\]/.test(read('erp-governance-core.js')),'medium','Period close checklist must surface uncertain sync state');
+
+const issues=checks.filter(c=>!c.ok);
+const status=issues.some(x=>x.severity==='high')?'FAIL':issues.length?'WARN':'PASS';
+const result={release:META.release,packageVersion:META.packageVersion,checkedAt:new Date().toISOString(),status,checks,issues};
+writeFileAtomic(path.join(ROOT,'FINANCIAL_CONTROLS_AUDIT_RESULTS.json'),JSON.stringify(result,null,2));
+console.log(`ERP Financial Controls Audit ${META.release}: ${status}`);
+for(const c of issues)console.log(`[${c.severity.toUpperCase()}] ${c.id} ${c.message}`);
+process.exitCode=status==='FAIL'?1:0;

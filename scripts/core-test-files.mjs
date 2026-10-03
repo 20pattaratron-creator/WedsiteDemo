@@ -1,0 +1,21 @@
+export const CORE_TEST_FILES = Object.freeze([
+  'tests/integrity.test.cjs',
+  'tests/decision-council.test.cjs',
+  'tests/executive-charts.test.cjs',
+  'tests/product-experience.test.cjs',
+  'tests/refactor-4-1.test.cjs',
+  'tests/codebase-audit.test.cjs',
+  'tests/agent-security.test.cjs',
+  'tests/spec-governance.test.cjs',
+  'tests/trial-hardening-4-3.test.cjs',
+  'tests/release-closure.test.cjs',
+  'tests/date-core.test.cjs',
+  'tests/master-data-core.test.cjs',
+  'tests/master-data-store.test.cjs',
+  'tests/document-finance-core.test.cjs',
+  'tests/governance-core.test.cjs',
+  'tests/governance-runtime.test.cjs',
+  'tests/document-controller-duplication.test.cjs',
+  'tests/document-shared-core.test.cjs',
+  'tests/page-partition-regression.test.cjs'
+]);

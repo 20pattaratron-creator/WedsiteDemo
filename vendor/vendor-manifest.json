@@ -1,0 +1,30 @@
+{
+  "purpose": "Third-party browser libraries shipped with the app so PDF export works offline (ADR-013). Loaded as classic <script> tags from index.html; they keep their own UMD globals. Not project code: excluded from the complexity / deep-code audits, copied unchanged into dist and dist-flat by vite.config.js.",
+  "source": "npm registry tarballs (npm pack), identical to the files the former CDN URLs served",
+  "libraries": [
+    {
+      "name": "html2canvas",
+      "version": "1.4.1",
+      "license": "MIT",
+      "npmIntegrity": "sha512-fPU6BHNpsyIhr8yyMpTLLxAbkaK8ArIBcmZIRiBLiDhjeqvXolaEmDGmELFuX9I4xDcaKKcJl+TKZLqruBbmWA==",
+      "packageFile": "dist/html2canvas.min.js",
+      "file": "html2canvas-1.4.1.min.js",
+      "sha256": "e87e550794322e574a1fda0c1549a3c70dae5a93d9113417a429016838eab8cb",
+      "licenseFile": "html2canvas-1.4.1.LICENSE.txt",
+      "global": "html2canvas",
+      "formerUrl": "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+    },
+    {
+      "name": "jspdf",
+      "version": "2.5.1",
+      "license": "MIT",
+      "npmIntegrity": "sha512-hXObxz7ZqoyhxET78+XR34Xu2qFGrJJ2I2bE5w4SM8eFaFEkW2xcGRVUss360fYelwRSid/jT078kbNvmoW0QA==",
+      "packageFile": "dist/jspdf.umd.min.js",
+      "file": "jspdf-2.5.1.umd.min.js",
+      "sha256": "98ccf17aa10c20bb1301762618fcc9b6ab3a4e7f26b6071d64d0b41154df3875",
+      "licenseFile": "jspdf-2.5.1.LICENSE.txt",
+      "global": "jspdf",
+      "formerUrl": "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+    }
+  ]
+}
