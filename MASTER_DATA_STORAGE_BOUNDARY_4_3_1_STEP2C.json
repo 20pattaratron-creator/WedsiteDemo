@@ -1,0 +1,21 @@
+{
+  "release": "4.3.1",
+  "step": "2C",
+  "name": "Master Data Storage Boundary",
+  "storageContracts": {
+    "contacts": "comform_contact_master_v1",
+    "products": "comform_product_master_v1",
+    "migrationRequired": false
+  },
+  "module": "erp-master-data-store.js",
+  "invariants": [
+    "storage read/parse failure never degrades to empty array",
+    "partial snapshot is rejected",
+    "multi-key snapshot attempts rollback on partial write failure",
+    "tenant key resolution is mandatory at the boundary",
+    "archived rows remain persisted",
+    "cloud write is gated by successful hydration",
+    "cloud failure never authorizes blind local overwrite"
+  ],
+  "nextRecommendedStep": "2D Document/Finance Action Boundary"
+}

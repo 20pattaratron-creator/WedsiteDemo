@@ -1,0 +1,95 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-3 Contextual Helper Assessment & Safe Extraction",
+  "sharedCoreVersion": "1.3.0",
+  "extracted": [
+    {
+      "localName": "createItem",
+      "sharedExport": "createDocumentLineItem",
+      "classification": "safe_context_free",
+      "decision": "extract",
+      "reason": "Factory returns a fresh deterministic line-item object and has no controller state, DOM, storage, VAT or page-budget dependency."
+    },
+    {
+      "localName": "itemRowUnits",
+      "sharedExport": "estimateDocumentItemRowUnits",
+      "classification": "safe_parameterized",
+      "decision": "extract",
+      "reason": "Deterministic text-to-row-unit calculation; legacy defaults are preserved while wrap width and cap are explicit parameters."
+    }
+  ],
+  "deferred": [
+    {
+      "name": "branchCompany",
+      "classification": "profile_context",
+      "decision": "keep_local",
+      "reason": "Reads window.CurrentUser and merges controller-local BRANCH_DEFAULTS."
+    },
+    {
+      "name": "totals",
+      "classification": "financial_state_context",
+      "decision": "defer",
+      "reason": "Reads controller state and VAT mode; extraction should first define an explicit items/VAT input boundary and compare document behavior."
+    },
+    {
+      "name": "getLockedBranch",
+      "classification": "auth_context",
+      "decision": "keep_local",
+      "reason": "Reads ComformAuth/CurrentUser browser globals."
+    },
+    {
+      "name": "addItem",
+      "classification": "mutable_ui_state",
+      "decision": "keep_local",
+      "reason": "Mutates controller state and triggers render/update lifecycle."
+    },
+    {
+      "name": "removeItem",
+      "classification": "mutable_ui_state",
+      "decision": "keep_local",
+      "reason": "Mutates controller state and triggers render/update lifecycle."
+    },
+    {
+      "name": "printableItems",
+      "classification": "controller_state",
+      "decision": "defer",
+      "reason": "Reads state.items and depends on item factory fallback."
+    },
+    {
+      "name": "paginateItems",
+      "classification": "pagination_context",
+      "decision": "defer",
+      "reason": "Depends on ITEM_UNITS_PER_PAGE and empty-page fallback; requires page-level regression before sharing."
+    },
+    {
+      "name": "documentPagesHtml",
+      "classification": "render_context",
+      "decision": "keep_local",
+      "reason": "Delegates to document-specific documentPageHtml and therefore owns layout composition."
+    },
+    {
+      "name": "waitForPdfStageAssets",
+      "classification": "dom_pdf_lifecycle",
+      "decision": "defer",
+      "reason": "Uses document.fonts, image decode, requestAnimationFrame and PDF-stage DOM; requires browser/visual regression."
+    }
+  ],
+  "metrics": {
+    "controllerLines": {
+      "quotation-document.js": 478,
+      "delivery-tax-document.js": 1352,
+      "receipt-document.js": 1499
+    },
+    "totalControllerLines": 3329,
+    "topLevelFunctions": {
+      "quotation-document.js": 27,
+      "delivery-tax-document.js": 55,
+      "receipt-document.js": 59
+    },
+    "sameNameFunctionPairs": 49,
+    "exactSameNameFunctionPairs": 9,
+    "normalizedDuplicate10LineGroups": 193,
+    "crossControllerImports": 0
+  },
+  "guard": "Do not extract a deferred helper solely because source bodies match. Require explicit parameter boundaries plus behavior/visual regression appropriate to its side effects."
+}

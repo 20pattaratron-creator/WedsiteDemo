@@ -1,0 +1,63 @@
+{
+  "release": "4.3.1",
+  "step": "2G-1",
+  "name": "Quotation Action Boundary",
+  "executedAt": "2026-09-14T05:58:58.138Z",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "syntax": {
+    "checked": 71,
+    "failures": [],
+    "pass": true
+  },
+  "core": {
+    "tests": 177,
+    "pass": 177,
+    "classification": "pass"
+  },
+  "full": {
+    "tests": 184,
+    "pass": 177,
+    "fail": 7,
+    "classification": "environment_dependency"
+  },
+  "deployment": {
+    "pagesDir": "/mnt/data/erp_step2g1_pages",
+    "manifest": {
+      "runtimeFiles": 46,
+      "hashMismatch": 0,
+      "missingHtmlRefs": [],
+      "pass": true
+    },
+    "http": {
+      "checked": 47,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "security": {
+    "high": 0,
+    "medium": 0,
+    "low": 2,
+    "baseline": "PASS"
+  },
+  "complexity": {
+    "runtimeJsFiles": 31,
+    "runtimeLines": 16877,
+    "rootJsFiles": 32,
+    "appJsLines": 8257,
+    "devDependencies": 3,
+    "windowAssignments": 54,
+    "inlineHandlerFunctions": 102
+  },
+  "changes": [
+    "planQuoteDocumentAction",
+    "quoteCommercialFingerprint",
+    "strict quote duplicate scan",
+    "strict quote edit source read",
+    "runDocumentAction quotation lifecycle"
+  ],
+  "limitations": [
+    "Full Node/DOM suite is not certified in this environment because jsdom/fake-indexeddb are unavailable.",
+    "Static HTTP/hash/syntax/core/security checks passed only if status is CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED."
+  ]
+}

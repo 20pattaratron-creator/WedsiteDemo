@@ -1,0 +1,156 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "phase": "Step 3B-5 Page Partition Regression Harness",
+  "executedAt": "2026-09-14T09:13:21.537445+00:00",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "runtimeChanged": false,
+  "syntax": {
+    "checked": 75,
+    "failures": 0,
+    "pass": true
+  },
+  "core": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-14T09:11:54.737Z",
+    "scope": "core-portable",
+    "files": [
+      "tests/integrity.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/agent-security.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/page-partition-regression.test.cjs"
+    ],
+    "command": "node --test tests/integrity.test.cjs tests/decision-council.test.cjs tests/executive-charts.test.cjs tests/product-experience.test.cjs tests/refactor-4-1.test.cjs tests/codebase-audit.test.cjs tests/agent-security.test.cjs tests/spec-governance.test.cjs tests/trial-hardening-4-3.test.cjs tests/release-closure.test.cjs tests/date-core.test.cjs tests/master-data-core.test.cjs tests/master-data-store.test.cjs tests/document-finance-core.test.cjs tests/document-controller-duplication.test.cjs tests/document-shared-core.test.cjs tests/page-partition-regression.test.cjs",
+    "exitCode": 0,
+    "tests": 209,
+    "pass": 209,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "pass",
+    "log": "evidence/CORE_TESTS_4_3_1.tap"
+  },
+  "full": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "executedAt": "2026-09-14T09:12:19.224Z",
+    "scope": "full-node-suite",
+    "files": [
+      "tests/agent-security.test.cjs",
+      "tests/attachments.test.cjs",
+      "tests/audit-fixes.test.cjs",
+      "tests/codebase-audit.test.cjs",
+      "tests/date-core.test.cjs",
+      "tests/decision-council.test.cjs",
+      "tests/document-controller-duplication.test.cjs",
+      "tests/document-finance-core.test.cjs",
+      "tests/document-shared-core.test.cjs",
+      "tests/executive-charts.test.cjs",
+      "tests/forecast-governance.test.cjs",
+      "tests/forms.test.cjs",
+      "tests/integrity.test.cjs",
+      "tests/master-data-core.test.cjs",
+      "tests/master-data-store.test.cjs",
+      "tests/page-partition-regression.test.cjs",
+      "tests/product-experience.test.cjs",
+      "tests/refactor-4-1.test.cjs",
+      "tests/release-closure.test.cjs",
+      "tests/spec-governance.test.cjs",
+      "tests/trial-hardening-4-3.test.cjs",
+      "tests/ux-review.test.cjs"
+    ],
+    "exitCode": 1,
+    "tests": 216,
+    "pass": 209,
+    "fail": 7,
+    "cancelled": 0,
+    "skipped": 0,
+    "classification": "environment_dependency",
+    "log": "evidence/FULL_TESTS_4_3_1.tap"
+  },
+  "audits": {
+    "codebase": "PASS",
+    "deep": "PASS",
+    "spec": "PASS",
+    "complexity": "PASS",
+    "documentController": "PASS",
+    "securityPreflight": "PASS",
+    "securityBaseline": "PASS"
+  },
+  "security": {
+    "high": 0,
+    "medium": 0,
+    "low": 2
+  },
+  "complexity": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "checkedAt": "2026-09-14T09:11:45.728Z",
+    "metrics": {
+      "runtimeJsFiles": 31,
+      "runtimeLines": 16846,
+      "rootJsFiles": 32,
+      "appJsLines": 8240,
+      "devDependencies": 3,
+      "windowAssignments": 54,
+      "inlineHandlerFunctions": 102
+    },
+    "limits": {
+      "runtimeJsFilesMax": 31,
+      "runtimeLinesMax": 17000,
+      "rootJsFilesMax": 32,
+      "appJsLinesMax": 8350,
+      "devDependenciesMax": 3,
+      "windowAssignmentsMax": 75,
+      "inlineHandlerFunctionsMax": 110
+    },
+    "baseline": {
+      "file": "QUALITY_BASELINE.json",
+      "release": "4.2.0"
+    },
+    "deltaLimits": {
+      "appJsLinesMaxDelta": 0
+    },
+    "issues": [],
+    "status": "PASS"
+  },
+  "documentController": {
+    "controllerLines": 3301,
+    "exactSameNameFunctionPairs": 8,
+    "normalizedDuplicate10LineGroups": 187,
+    "crossControllerImports": 0
+  },
+  "pagePartitionHarness": {
+    "testFile": "tests/page-partition-regression.test.cjs",
+    "tests": 11,
+    "pass": 11,
+    "runtimeOwnershipChanged": false
+  },
+  "deploymentPrepackage": {
+    "runtimeFiles": 46,
+    "sourcePagesHashMismatch": 0,
+    "httpSmoke": {
+      "checked": 47,
+      "failures": 0
+    }
+  },
+  "runtimeUnchangedVsStep3B4": true,
+  "limitations": [
+    "Full Node/DOM certification remains blocked because jsdom/fake-indexeddb are unavailable in this environment.",
+    "Step 3B-5 intentionally does not change printable/pagination runtime ownership; it adds regression proof before a later extraction checkpoint."
+  ]
+}

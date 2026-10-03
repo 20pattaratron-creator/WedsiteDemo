@@ -1,0 +1,74 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-1 Pure Document Helper Extraction",
+  "status": "pure_helpers_extracted",
+  "before": {
+    "totalControllerLines": 3580,
+    "sameNameFunctionPairs": 69,
+    "exactSameNameFunctionPairs": 27,
+    "normalizedDuplicate10LineGroups": 275
+  },
+  "after": {
+    "totalControllerLines": 3413,
+    "sameNameFunctionPairs": 54,
+    "exactSameNameFunctionPairs": 14,
+    "normalizedDuplicate10LineGroups": 221,
+    "crossControllerImports": 0
+  },
+  "sharedCore": "erp-shared-core.js",
+  "extractedHelpers": [
+    "escapeHtml",
+    "parseMoney",
+    "fmt",
+    "formatDate",
+    "thaiIntegerText",
+    "bahtText",
+    "safeFilename"
+  ],
+  "controllerImports": {
+    "quotation-document.js": [
+      "escapeHtml",
+      "fmt",
+      "thaiIntegerText",
+      "bahtText"
+    ],
+    "delivery-tax-document.js": [
+      "escapeHtml",
+      "parseMoney",
+      "fmt",
+      "formatDate",
+      "thaiIntegerText",
+      "bahtText",
+      "safeFilename"
+    ],
+    "receipt-document.js": [
+      "escapeHtml",
+      "parseMoney",
+      "fmt",
+      "formatDate",
+      "thaiIntegerText",
+      "bahtText",
+      "safeFilename"
+    ]
+  },
+  "runtimeBehaviorRule": "Formatting output and document workflow must remain behavior-compatible; only helper ownership changes.",
+  "explicitlyUnchanged": [
+    "documentPageHtml",
+    "renderAppShell",
+    "validateBeforeSave",
+    "saveDocumentToSystem",
+    "pagination/stateful helpers",
+    "PDF lifecycle",
+    "source-link logic",
+    "document CSS"
+  ],
+  "nextTarget": {
+    "step": "3B-2",
+    "scope": [
+      "getNestedValue",
+      "setNestedValue",
+      "resolveStoragePeriod"
+    ],
+    "guard": "add nested-object and storage-period edge-case tests before extraction"
+  }
+}

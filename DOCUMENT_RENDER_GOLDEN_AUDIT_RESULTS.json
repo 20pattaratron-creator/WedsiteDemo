@@ -1,0 +1,65 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "checkedAt": "2026-10-01T06:52:36.271Z",
+  "status": "PASS",
+  "baseline": "DOCUMENT_RENDER_GOLDEN_BASELINE.json",
+  "checks": [
+    {
+      "id": "quotation:css",
+      "ok": true,
+      "expected": "e3fdff95e84ec9aa956acab1e5483a22c17c05cd13ae2f06297fb085b7c5e0d4",
+      "actual": "e3fdff95e84ec9aa956acab1e5483a22c17c05cd13ae2f06297fb085b7c5e0d4"
+    },
+    {
+      "id": "quotation:pageHtml",
+      "ok": true,
+      "expected": "146a11418095c608bb854957da6c573cd79d16b3eb2be7dd8c2542898c042eed",
+      "actual": "146a11418095c608bb854957da6c573cd79d16b3eb2be7dd8c2542898c042eed"
+    },
+    {
+      "id": "quotation:documentPagesHtml",
+      "ok": true,
+      "expected": "f4e6bd29c98dd0172d74e62c2b16c7fb4ba9e7a7c1f62db823d6d6af97df8583",
+      "actual": "f4e6bd29c98dd0172d74e62c2b16c7fb4ba9e7a7c1f62db823d6d6af97df8583"
+    },
+    {
+      "id": "deliveryTax:css",
+      "ok": true,
+      "expected": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10",
+      "actual": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10"
+    },
+    {
+      "id": "deliveryTax:documentPagesHtml",
+      "ok": true,
+      "expected": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
+      "actual": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05"
+    },
+    {
+      "id": "deliveryTax:documentPageHtml",
+      "ok": true,
+      "expected": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8",
+      "actual": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8"
+    },
+    {
+      "id": "receipt:css",
+      "ok": true,
+      "expected": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078",
+      "actual": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078"
+    },
+    {
+      "id": "receipt:documentPagesHtml",
+      "ok": true,
+      "expected": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
+      "actual": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05"
+    },
+    {
+      "id": "receipt:documentPageHtml",
+      "ok": true,
+      "expected": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2",
+      "actual": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2"
+    }
+  ],
+  "issues": [],
+  "note": "This is a source-level render golden guard, not a pixel/screenshot browser test. Any change requires explicit document/PDF review before baseline regeneration."
+}

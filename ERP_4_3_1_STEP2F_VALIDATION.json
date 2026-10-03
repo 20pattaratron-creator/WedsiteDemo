@@ -1,0 +1,17 @@
+{
+  "release": "4.3.1",
+  "step": "2F",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "core": {"tests": 172, "pass": 172, "fail": 0},
+  "full": {"tests": 179, "pass": 172, "fail": 7, "classification": "environment_dependency"},
+  "audits": {
+    "codebase": "PASS",
+    "deep": "PASS",
+    "specification": "PASS",
+    "complexity": "PASS",
+    "securityPreflight": "PASS",
+    "securityBaseline": "PASS"
+  },
+  "security": {"high": 0, "medium": 0, "low": 2},
+  "complexity": {"runtimeJsFiles": 31, "runtimeLines": 16805, "appJsLines": 8236}
+}

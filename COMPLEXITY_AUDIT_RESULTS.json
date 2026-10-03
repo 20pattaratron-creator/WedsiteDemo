@@ -1,0 +1,40 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "checkedAt": "2026-10-01T06:48:04.523Z",
+  "metrics": {
+    "runtimeJsFiles": 44,
+    "runtimeLines": 24466,
+    "rootJsFiles": 45,
+    "appJsLines": 8268,
+    "devDependencies": 3,
+    "windowAssignments": 66,
+    "inlineHandlerFunctions": 102
+  },
+  "limits": {
+    "runtimeJsFilesMax": 44,
+    "runtimeLinesMax": 24500,
+    "rootJsFilesMax": 45,
+    "appJsLinesMax": 8350,
+    "devDependenciesMax": 3,
+    "windowAssignmentsMax": 75,
+    "inlineHandlerFunctionsMax": 110
+  },
+  "baseline": {
+    "file": "QUALITY_BASELINE.json",
+    "release": "4.2.0"
+  },
+  "deltaLimits": {
+    "appJsLinesMaxDelta": 0
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "metric": "appJsLinesDelta",
+      "value": 7,
+      "limit": 0,
+      "message": "appJsLinesDelta=7 exceeds 0"
+    }
+  ],
+  "status": "FAIL"
+}

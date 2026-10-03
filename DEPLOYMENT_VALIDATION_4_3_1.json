@@ -1,0 +1,22 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "phase": "Step 2B Master Data Service Boundary",
+  "validatedAt": "2026-09-14",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "syntax": {"checked": 67, "fail": 0},
+  "core": {"tests": 121, "pass": 121, "fail": 0, "classification": "pass"},
+  "full": {"tests": 128, "pass": 121, "fail": 7, "classification": "environment_dependency"},
+  "requirements": {"count": 32, "traceability": 32, "status": "PASS"},
+  "audits": {"codebase": "PASS", "deep": "PASS", "specification": "PASS", "complexity": "PASS"},
+  "security": {"preflight": "PASS", "baseline": "PASS", "high": 0, "medium": 0, "low": 2},
+  "runtime": {"manifestFiles": 44, "sourcePagesHashMismatch": 0, "missingHtmlRefs": 0, "httpSmokeChecked": 45, "httpSmokeFailures": 0},
+  "step2b": {
+    "masterDataCore": "erp-master-data-core.js",
+    "exports": 22,
+    "appJsAuditLines": 8141,
+    "masterDataRegressionTests": 24,
+    "archiveIntegrityPolicy": "Archived master rows survive save, seed, backup/restore, CSV merge/replace unless explicitly reactivated or status-changed."
+  },
+  "note": "Final distributable ZIP SHA-256 values are intentionally kept in ERP_4_3_1_STEP2B_BUNDLE_MANIFEST.json / ERP_4_3_1_STEP2B_SHA256.txt outside the source archive to avoid self-referential package hashes."
+}

@@ -1,0 +1,177 @@
+{
+  "release": "4.3.1",
+  "packageVersion": "2.3.1",
+  "checkedAt": "2026-10-01T06:48:53.450Z",
+  "status": "PASS",
+  "checks": [
+    {
+      "id": "FIN-001",
+      "ok": true,
+      "severity": "high",
+      "message": "Invoice duplicate guard must use strict write scanner",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-002",
+      "ok": true,
+      "severity": "high",
+      "message": "Receipt duplicate guard must use strict write scanner",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-003",
+      "ok": true,
+      "severity": "high",
+      "message": "Invoice write must enforce accounting period lock",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-004",
+      "ok": true,
+      "severity": "high",
+      "message": "Receipt write must enforce accounting period lock",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-005",
+      "ok": true,
+      "severity": "high",
+      "message": "Expense write must enforce purchase/tax period lock",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-006",
+      "ok": true,
+      "severity": "high",
+      "message": "Payment receipt creation must strict-parse business pack",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-007",
+      "ok": true,
+      "severity": "high",
+      "message": "Payment receipt creation must enforce period lock",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-008",
+      "ok": true,
+      "severity": "high",
+      "message": "Billing payment must use strict flow read and transactional receipt creation",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-009",
+      "ok": true,
+      "severity": "high",
+      "message": "Billing payment must not perform redundant non-transactional save after receipt transaction",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-010",
+      "ok": true,
+      "severity": "high",
+      "message": "Financial flow store writes must use rollback-capable transaction helper",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-011",
+      "ok": true,
+      "severity": "medium",
+      "message": "Business document cloud sync should route through persistent outbox when available",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-012",
+      "ok": true,
+      "severity": "medium",
+      "message": "Operational cloud sync should route through persistent outbox when available",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-013",
+      "ok": true,
+      "severity": "high",
+      "message": "Governance runtime must be wired in deployment HTML",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-014",
+      "ok": true,
+      "severity": "high",
+      "message": "Backup import must verify portable checksum before write and expose dry-run metadata",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-015",
+      "ok": true,
+      "severity": "high",
+      "message": "Governance persisted keys must be centralized in storage contracts",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-016",
+      "ok": true,
+      "severity": "high",
+      "message": "Governance transaction writes must not fall through to a second non-transactional localStorage write",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-017",
+      "ok": true,
+      "severity": "high",
+      "message": "Governance storage writes must fail closed through the transaction boundary instead of falling back to a second direct write",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-018",
+      "ok": true,
+      "severity": "high",
+      "message": "Synced Outbox operations must not be executed again",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-019",
+      "ok": true,
+      "severity": "medium",
+      "message": "Concurrent same-browser Sync calls must share one in-flight operation",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-020",
+      "ok": true,
+      "severity": "high",
+      "message": "Outbox idempotency keys must not contain Date.now entropy for the same payload",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-021",
+      "ok": true,
+      "severity": "high",
+      "message": "Period Lock must validate through the pure governance core before persistence",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-022",
+      "ok": true,
+      "severity": "high",
+      "message": "Period Lock and Approval state must commit atomically with governance audit evidence",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-023",
+      "ok": true,
+      "severity": "high",
+      "message": "Interrupted sync must become uncertain instead of being auto-retried as if outcome were known",
+      "evidence": ""
+    },
+    {
+      "id": "FIN-024",
+      "ok": true,
+      "severity": "medium",
+      "message": "Period close checklist must surface uncertain sync state",
+      "evidence": ""
+    }
+  ],
+  "issues": []
+}

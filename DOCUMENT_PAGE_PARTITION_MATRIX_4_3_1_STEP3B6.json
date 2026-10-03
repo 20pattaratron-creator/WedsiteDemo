@@ -1,0 +1,45 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-6 Printable Items + Pagination Extraction",
+  "runtimeChanged": true,
+  "pageBudgetUnits": 8,
+  "controllers": [
+    "delivery-tax-document.js",
+    "receipt-document.js"
+  ],
+  "sharedCoreExports": [
+    "selectPrintableDocumentItems",
+    "paginateDocumentItems"
+  ],
+  "lockedBy": "tests/page-partition-regression.test.cjs",
+  "invariants": [
+    "empty rows produce one blank printable row and one page",
+    "rows totaling exactly 8 units remain on one page",
+    "overflow row starts next page",
+    "row units use estimateDocumentItemRowUnits",
+    "all pages stay within the 8-unit budget",
+    "row ordering is preserved",
+    "isFinalPage is true only on the final page",
+    "Delivery/Tax and Receipt partition signatures remain equivalent for identical inputs"
+  ],
+  "explicitInputs": {
+    "selectPrintableDocumentItems": [
+      "items"
+    ],
+    "paginateDocumentItems": [
+      "items",
+      "unitsPerPage",
+      "optional rowUnits",
+      "optional createEmptyItem"
+    ]
+  },
+  "keptControllerOwned": [
+    "documentPagesHtml",
+    "documentPageHtml",
+    "renderPreview",
+    "waitForPdfStageAssets",
+    "PDF/DOM lifecycle",
+    "document-specific layout/CSS"
+  ],
+  "decision": "extract_printable_and_partition_only"
+}

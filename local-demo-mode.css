@@ -1,0 +1,22 @@
+/* Local Demo (local-demo-mode.js). Since ADR-015 the former green banner is gone: its five buttons are
+   items of the header "Demo" menu (menu styles: erp-ui.css) and the "data stays in this browser" text is
+   the one slim notice #erp-trial-safety-banner (index.html). */
+.local-demo-only-note{padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;color:#166534;font-size:12.5px;line-height:1.55}
+.cloud-disabled-control{opacity:.58;pointer-events:none}
+
+/* "⚙ Demo" button: last item of the dark header, same look as the โหมดง่าย/ขั้นสูง toggle. */
+.erp-demo-menu-btn{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:10px;padding:7px 10px;border:1px solid rgba(255,255,255,.32);border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:13px;font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap}
+.erp-demo-menu-btn svg{width:16px;height:16px;flex:0 0 16px}
+.erp-demo-menu-btn .erp-demo-menu-caret{width:14px;height:14px;flex-basis:14px;transition:transform .15s ease}
+.erp-demo-menu-btn.is-open .erp-demo-menu-caret{transform:rotate(180deg)}
+.erp-demo-menu-btn:hover,.erp-demo-menu-btn.is-open{background:rgba(255,255,255,.22)}
+.erp-demo-menu-btn:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+@media(max-width:560px){.erp-demo-menu-btn{margin-left:6px;padding:7px 8px}.erp-demo-menu-btn .erp-demo-menu-caret{display:none}}
+
+/* The floating "DEMO · Local data" pill (boot-status.js) repeated the notice and covered buttons at the
+   bottom right; the slim notice and the Demo button say the same. Error banners are not affected. */
+.erp-local-demo #runtime-mode-badge{display:none!important}
+
+/* One-click demo sample data (erp-demo-seed.js, ADR-013): hint in the empty dashboard. */
+.demo-seed-empty-hint{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed #bfdbfe;font-size:13px}
+.demo-seed-empty-hint span{flex:1 1 320px}

@@ -1,0 +1,31 @@
+{
+  "release": "4.3.1",
+  "step": "2D",
+  "boundary": "document_finance_action",
+  "newRuntimeModule": "erp-document-finance-core.js",
+  "orchestration": "erp-order-flow.js",
+  "reconciliation": "erp-integrity.js",
+  "pureActions": [
+    "buildBillingAction",
+    "planBillingPaymentAction",
+    "buildPaymentReceiptDrafts",
+    "assertIdempotentPaymentReceipts"
+  ],
+  "writeBoundary": "loadStoreForFinancialWrite",
+  "errorCodes": [
+    "validation_error",
+    "conflict_error",
+    "dependency_error",
+    "storage_error"
+  ],
+  "invariants": [
+    "billing_does_not_create_sales_vat_stock",
+    "payment_does_not_rewrite_invoice_totals",
+    "payment_cannot_exceed_current_outstanding",
+    "payment_receipt_replay_is_idempotent",
+    "mismatched_replay_evidence_fails_closed",
+    "reservation_does_not_mutate_physical_on_hand",
+    "corrupt_order_flow_store_blocks_financial_write"
+  ],
+  "adr": "docs/decisions/ADR-006-finance-action-core-runtime-module.md"
+}

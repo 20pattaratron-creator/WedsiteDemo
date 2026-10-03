@@ -1,0 +1,125 @@
+/* ==========================================================================
+   Credit Note (ใบลดหนี้) — form helpers + printable A4 document
+   All selectors are namespaced with .cn- to avoid cross-file collisions.
+   ========================================================================== */
+
+/* ---------- entry form ---------- */
+.cn-edit-lock-hint{flex:1;font-size:12px;color:#92400e;line-height:1.45}
+.cn-legal-note{margin:-.25rem 0 1rem;padding:9px 13px;border:1px solid #e9d5ff;border-radius:10px;background:#faf5ff;color:#6b21a8;font-size:13px;line-height:1.5}
+.cn-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cn-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:999px;background:#f3e8ff;border:1px solid #d8b4fe;color:#6b21a8;font-size:13px;font-weight:700}
+.cn-chip button{border:0;background:#fff;color:#7e22ce;width:22px;height:22px;border-radius:50%;cursor:pointer;font-weight:900;line-height:1}
+.cn-chip button:hover{background:#fee2e2;color:#b91c1c}
+.cn-chip-empty{font-size:13px;color:#94a3b8}
+.cn-lines-table input{width:100%;min-width:110px}
+.cn-lines-table td{vertical-align:top}
+.cn-line-note{display:block;margin-top:4px;font-size:11px;color:#64748b;white-space:nowrap}
+.cn-empty-row{text-align:center;color:#94a3b8;padding:14px!important}
+.cn-line-missing td{background:#fef2f2;color:#b91c1c}
+.cn-return-section{margin-top:6px}
+.cn-return-section select{width:100%;min-width:220px}
+.cn-feedback-list{margin:0;padding-left:1.1rem;line-height:1.6;font-size:13px}
+
+/* ---------- list ---------- */
+.cn-list-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:.75rem}
+.cn-list-summary>div{background:#fff;border:1px solid #e2e8f0;border-left:4px solid #7c3aed;border-radius:12px;padding:10px 12px}
+.cn-list-summary small,.cn-list-summary span{display:block;color:#64748b;font-size:12px}
+.cn-list-summary b{display:block;font-size:20px;color:#4c1d95;margin:2px 0}
+.cn-mini-chip{display:inline-flex;padding:2px 7px;border-radius:6px;background:#f1f5f9;color:#334155;font-size:12px;font-weight:700;margin:1px}
+.cn-list-reason{display:block;color:#94a3b8;font-size:11px;max-width:260px;white-space:normal}
+.cn-row-voided td{color:#94a3b8;background:#fafafa}
+.cn-row-voided td .badge.b-purple{text-decoration:line-through}
+.cn-row-actions{display:flex;gap:4px;flex-wrap:wrap}
+#cnltbl td:nth-child(2),#cnltbl td:nth-child(3){white-space:nowrap}
+#cnltbl td:nth-child(4),#cnltbl td:nth-child(6){min-width:180px}
+.audit-action.void{background:#f8fafc;color:#475569;border-color:#cbd5e1}
+
+/* ---------- preview modal extras ---------- */
+.cn-doc-preview-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.doc-preview-modal-page .cn-doc-page{margin:0 auto 14px;box-shadow:0 8px 24px rgba(15,23,42,.18)}
+
+/* ---------- printable A4 page ---------- */
+.cn-doc-page{
+  --cn-ink:#3b0764;--cn-line:#c4b5fd;--cn-soft:#faf5ff;
+  width:100%;aspect-ratio:210/297;box-sizing:border-box;background:#fff;color:var(--cn-ink);
+  border:1px solid #d6cdea;padding:2.2%;font-family:Tahoma,'Noto Sans Thai',Arial,sans-serif;
+  font-size:clamp(6.4px,.74vw,11.4px);line-height:1.3;overflow:hidden;position:relative;
+  display:flex;flex-direction:column;gap:1.1%
+}
+.cn-doc-void-stamp{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);border:.35em solid rgba(185,28,28,.55);color:rgba(185,28,28,.55);font-size:3.4em;font-weight:900;padding:.2em .7em;border-radius:.3em;text-align:center;pointer-events:none;z-index:2;letter-spacing:.06em}
+.cn-doc-draft-stamp{position:absolute;top:52%;left:50%;transform:translate(-50%,-50%) rotate(-24deg);border:.3em dashed rgba(180,83,9,.55);color:rgba(180,83,9,.6);font-size:2.6em;font-weight:900;padding:.25em .8em;border-radius:.3em;white-space:nowrap;pointer-events:none;z-index:3}
+.cn-doc-void-stamp small{display:block;font-size:.3em;font-weight:700;letter-spacing:0}
+.cn-doc-header{display:flex;justify-content:space-between;gap:2%;border-bottom:2px solid var(--cn-ink);padding-bottom:1%}
+.cn-doc-company{display:flex;gap:2%;align-items:flex-start;flex:1}
+.cn-doc-company img{width:12%;min-width:42px;height:auto;object-fit:contain}
+.cn-doc-company-th{font-size:1.35em;font-weight:900}
+.cn-doc-company-en{font-weight:700;margin-bottom:.3em}
+.cn-doc-contact{color:#4c1d95}
+.cn-doc-tax{font-weight:700;margin-top:.2em}
+.cn-doc-title{text-align:right;min-width:30%}
+.cn-doc-copy-label{display:inline-block;border:1px solid var(--cn-ink);border-radius:999px;padding:.15em .8em;font-weight:800}
+.cn-doc-title h2{font-size:2.6em;margin:.15em 0 0;letter-spacing:.04em;color:var(--cn-ink)}
+.cn-doc-title-en{font-size:1.25em;font-weight:900;letter-spacing:.2em}
+.cn-doc-title small{display:block;margin-top:.3em;font-weight:700}
+.cn-doc-meta{display:grid;grid-template-columns:1.5fr 1fr;gap:2%}
+.cn-doc-party,.cn-doc-docinfo{border:1px solid var(--cn-line);border-radius:.6em;padding:1% 1.6%;background:var(--cn-soft)}
+.cn-doc-party>div{margin:.2em 0}
+.cn-doc-docinfo>div{display:flex;justify-content:space-between;gap:1em;border-bottom:1px dashed var(--cn-line);padding:.25em 0}
+.cn-doc-docinfo>div:last-child{border-bottom:0}
+.cn-doc-docinfo span{color:#6b21a8}
+.cn-doc-docinfo strong{text-align:right;word-break:break-word}
+.cn-doc-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.cn-doc-table th{line-height:1.25}
+.cn-doc-table td.num{font-variant-numeric:tabular-nums}
+.cn-doc-table th span{font-weight:400;font-size:.85em;opacity:.9}
+.cn-doc-table .cn-doc-center{text-align:center}
+.cn-doc-table tr.cn-doc-empty td{height:1.9em}
+.cn-doc-table th:first-child{width:7%}
+.cn-doc-prior{display:block;font-size:.82em;color:#7c3aed}
+.cn-doc-return-table th:first-child{width:auto}
+.cn-doc-bottom{display:grid;grid-template-columns:1.25fr 1fr;gap:2%;margin-top:auto}
+.cn-doc-reason{border:1px solid var(--cn-line);border-radius:.6em;padding:1.2% 1.6%;display:flex;flex-direction:column;gap:.35em}
+.cn-doc-vat-mode{color:#6b21a8;font-size:.92em}
+.cn-doc-next-page{font-weight:800;color:#b45309}
+.cn-doc-baht{display:flex;gap:.8em;align-items:center;margin-top:auto;border-top:1px dashed var(--cn-line);padding-top:.4em}
+.cn-doc-baht b{font-size:.9em;text-align:center}
+.cn-doc-baht b span{font-weight:400}
+.cn-doc-baht strong{font-size:1.1em}
+.cn-doc-totals{border:1px solid var(--cn-ink);border-radius:.6em;overflow:hidden}
+.cn-doc-totals>div{display:flex;justify-content:space-between;align-items:center;gap:1em;padding:.45em .8em;border-bottom:1px solid var(--cn-line)}
+.cn-doc-totals>div:last-child{border-bottom:0}
+.cn-doc-totals em{font-style:normal;font-size:.85em;color:#6b21a8}
+.cn-doc-totals strong{font-variant-numeric:tabular-nums;font-size:1.05em}
+.cn-doc-totals .cn-doc-grand{background:var(--cn-ink);color:#fff}
+.cn-doc-totals .cn-doc-grand em{color:#e9d5ff}
+.cn-doc-totals .cn-doc-grand strong{font-size:1.3em}
+.cn-doc-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:2%}
+.cn-doc-sign-box{border:1px solid var(--cn-line);border-radius:.6em;overflow:hidden;display:flex;flex-direction:column}
+.cn-doc-sign-head{display:flex;justify-content:space-between;gap:.5em;background:var(--cn-soft);padding:.35em .6em;border-bottom:1px solid var(--cn-line)}
+.cn-doc-sign-head span{color:#6b21a8;font-size:.88em}
+.cn-doc-sign-body{padding:.5em .6em;min-height:5.6em;display:flex;flex-direction:column;justify-content:flex-end;gap:.35em}
+.cn-doc-sign-body small{color:#6b21a8;margin-bottom:auto}
+.cn-doc-sign-line{border-bottom:1px dotted var(--cn-ink);height:2.2em}
+.cn-doc-sign-date{text-align:center;font-size:.9em}
+.cn-doc-footer{text-align:center;font-size:.85em;color:#6b21a8;border-top:1px solid var(--cn-line);padding-top:.4em}
+
+/* style.css themes every th/td with !important (sticky gradient headers, zebra rows).
+   The printable page must look the same on screen, in print and in the PDF, so it
+   re-asserts its own table look with higher specificity. */
+.cn-doc-page table{border-collapse:collapse!important;border-spacing:0!important;background:transparent!important}
+.cn-doc-page .cn-doc-table th{position:static!important;background:var(--cn-ink)!important;color:#fff!important;font-size:1em!important;font-weight:800!important;border:1px solid var(--cn-ink)!important;text-transform:none!important;letter-spacing:0!important;white-space:normal!important;padding:.5em .4em!important;text-align:center!important}
+.cn-doc-page .cn-doc-table td{font-size:1em!important;color:var(--cn-ink)!important;background:#fff!important;border:1px solid var(--cn-line)!important;padding:.45em .5em!important;vertical-align:top!important}
+.cn-doc-page .cn-doc-table td.num{text-align:right!important;font-weight:400!important;color:var(--cn-ink)!important}
+
+/* PDF stage (off-screen, fixed A4 pixel size like the receipt renderer) */
+.cn-doc-pdf-stage{position:fixed;left:-10000px;top:0;width:794px;z-index:-9999;background:#fff}
+.cn-doc-pdf-stage .cn-doc-page,.cn-doc-page.cn-doc-pdf-page{width:794px;height:1123px;aspect-ratio:auto;border:0;font-size:10.4px;margin:0}
+
+/* Print window */
+@media print{
+  .cn-doc-print-body .cn-doc-page{width:210mm;height:297mm;aspect-ratio:auto;border:0;font-size:10.4px}
+}
+/* The A4 page keeps its layout on small screens (it scales via font-size clamp). */
+@media(max-width:700px){
+  .cn-list-summary b{font-size:17px}
+}

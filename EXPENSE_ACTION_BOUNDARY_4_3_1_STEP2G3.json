@@ -1,0 +1,40 @@
+{
+  "release": "4.3.1",
+  "step": "2G-3",
+  "name": "Expense Action Boundary",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "scope": {
+    "included": [
+      "expense create validate-plan-commit-after_commit",
+      "strict expense storage write",
+      "vendor document duplicate guard",
+      "expense tax/document taxonomy validation",
+      "same-browser expense write lease",
+      "attachment snapshot",
+      "cloud attachment fallback to IndexedDB",
+      "strict local cache update after cloud"
+    ],
+    "excluded": [
+      "expense edit workflow",
+      "expense void/posting/approval lifecycle",
+      "input VAT calculation",
+      "CSS redesign",
+      "document controller consolidation"
+    ]
+  },
+  "tests": {
+    "core": {"pass": 189, "tests": 189},
+    "full": {"pass": 189, "tests": 196, "classification": "environment_dependency"},
+    "newExpenseBoundaryTests": 6
+  },
+  "quality": {
+    "runtimeJsFiles": 31,
+    "runtimeLines": 16986,
+    "appJsAuditLines": 8240,
+    "codebaseAudit": "PASS",
+    "deepAudit": "PASS",
+    "specAudit": "PASS",
+    "complexityAudit": "PASS",
+    "security": {"verdict": "PASS", "high": 0, "medium": 0, "low": 2}
+  }
+}

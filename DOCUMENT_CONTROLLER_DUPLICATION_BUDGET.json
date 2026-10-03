@@ -1,0 +1,21 @@
+{
+  "version": "4.3.1-step3c1",
+  "purpose": "Lock the reduced duplication ceiling after routing issued Delivery/Tax and Receipt persistence through the central finance action runner and strict multi-key document write session.",
+  "controllers": [
+    "quotation-document.js",
+    "delivery-tax-document.js",
+    "receipt-document.js"
+  ],
+  "maxNormalizedDuplicate10LineGroups": 146,
+  "maxExactSameNameFunctionPairs": 6,
+  "notes": [
+    "These limits are a ceiling, not a target. Later Step 3B work should reduce them further.",
+    "Step 3B-1 extracted deterministic presentation helpers into erp-shared-core.js.",
+    "Step 3B-2 extracted nested-object/storage-period helpers.",
+    "Step 3B-3 extracted line-item factory and row-unit estimation.",
+    "Step 3B-4 extracted calculateDocumentTotals while retaining calculateVatSummary as VAT source of truth.",
+    "Step 3B-5 locked pagination behavior with source-executed regression tests before changing runtime ownership.",
+    "Step 3B-6 extracts printable-item selection and page partitioning into erp-shared-core.js; documentPagesHtml, documentPageHtml and DOM/PDF lifecycle remain controller-owned.",
+    "Step 3C-1 hardens issued-document persistence: strict canonical-source validation, rollback-capable local source/snapshot commit, typed sync_error post-commit semantics, and no receipt-settlement mutation from the print/document layer."
+  ]
+}

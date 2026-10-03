@@ -1,0 +1,18 @@
+{
+  "release": "4.3.1",
+  "step": "2F",
+  "boundary": "Central Document Commit & Error Handling",
+  "actions": ["invoice_create", "invoice_edit", "receipt_create", "receipt_edit"],
+  "stages": ["validate", "plan", "commit", "after_commit"],
+  "errorCodes": ["validation_error", "conflict_error", "permission_error", "dependency_error", "storage_error", "unknown_error"],
+  "invariants": [
+    "commit failure never reports success",
+    "after_commit failure reports committed=true",
+    "UI refresh is outside the persistence commit path",
+    "storage failures fail closed",
+    "invoice and receipt planners remain pure",
+    "no new runtime module is added"
+  ],
+  "coreTests": {"tests": 172, "pass": 172, "fail": 0},
+  "fullNodeTests": {"tests": 179, "pass": 172, "fail": 7, "classification": "environment_dependency"}
+}

@@ -1,0 +1,51 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-5 Page Partition Regression Harness",
+  "runtimeChanged": false,
+  "pageBudgetUnits": 8,
+  "controllers": [
+    "delivery-tax-document.js",
+    "receipt-document.js"
+  ],
+  "functionsUnderHarness": [
+    "printableItems",
+    "paginateItems",
+    "documentPagesHtml"
+  ],
+  "cases": [
+    {
+      "id": "empty-fallback",
+      "expectation": "No visible item rows still produce one printable blank row and one page with usedUnits=1."
+    },
+    {
+      "id": "single-page-budget",
+      "expectation": "Rows totaling exactly 8 units remain on a single page."
+    },
+    {
+      "id": "overflow-next-page",
+      "expectation": "The first row that would make usedUnits exceed 8 starts a new page."
+    },
+    {
+      "id": "multiline-wrap",
+      "expectation": "Explicit newlines and long descriptions use estimateDocumentItemRowUnits before page partitioning."
+    },
+    {
+      "id": "multi-page-budget",
+      "expectation": "Every page remains at or below the 8-unit budget and row ordering is preserved."
+    },
+    {
+      "id": "final-page-metadata",
+      "expectation": "documentPagesHtml marks isFinalPage=false for all but the final chunk and true only for the last chunk."
+    },
+    {
+      "id": "cross-controller-equivalence",
+      "expectation": "Delivery/Tax and Receipt produce identical partition signatures for the same item rows."
+    }
+  ],
+  "decision": {
+    "extractPrintableItemsNow": false,
+    "extractPaginateItemsNow": false,
+    "reason": "Keep Step 3B-5 as a behavior-proof checkpoint. A later step can change runtime ownership while this harness detects page-partition regressions independently."
+  },
+  "nextCandidate": "Step 3B-6 Printable Items + Pagination Extraction behind explicit inputs and pageBudgetUnits, with this harness unchanged as the regression guard."
+}

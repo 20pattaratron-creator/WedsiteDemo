@@ -1,0 +1,1101 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3C-1 Issued Document Transaction & Sync Boundary",
+  "checkedAt": "2026-10-01T06:49:51.813Z",
+  "budgetFile": "DOCUMENT_CONTROLLER_DUPLICATION_BUDGET.json",
+  "status": "PASS",
+  "metrics": {
+    "controllerLines": {
+      "quotation-document.js": 479,
+      "delivery-tax-document.js": 1413,
+      "receipt-document.js": 1450
+    },
+    "totalControllerLines": 3342,
+    "topLevelFunctions": {
+      "quotation-document.js": 27,
+      "delivery-tax-document.js": 56,
+      "receipt-document.js": 56
+    },
+    "sameNameFunctionPairs": 46,
+    "exactSameNameFunctionPairs": 6,
+    "normalizedDuplicate10LineGroups": 140,
+    "crossControllerImports": 0
+  },
+  "budget": {
+    "maxNormalizedDuplicate10LineGroups": 146,
+    "maxExactSameNameFunctionPairs": 6
+  },
+  "checks": {
+    "normalizedWindowBudget": true,
+    "exactFunctionBudget": true,
+    "noCrossControllerImports": true
+  },
+  "pairReports": [
+    {
+      "left": "quotation-document.js",
+      "right": "delivery-tax-document.js",
+      "leftFunctions": 27,
+      "rightFunctions": 56,
+      "sameNameFunctions": 2,
+      "exactSameNameFunctions": 0,
+      "exactFunctions": [],
+      "sameNameDifferentBody": [
+        "documentPagesHtml",
+        "mountFeature"
+      ]
+    },
+    {
+      "left": "quotation-document.js",
+      "right": "receipt-document.js",
+      "leftFunctions": 27,
+      "rightFunctions": 56,
+      "sameNameFunctions": 2,
+      "exactSameNameFunctions": 0,
+      "exactFunctions": [],
+      "sameNameDifferentBody": [
+        "documentPagesHtml",
+        "mountFeature"
+      ]
+    },
+    {
+      "left": "delivery-tax-document.js",
+      "right": "receipt-document.js",
+      "leftFunctions": 56,
+      "rightFunctions": 56,
+      "sameNameFunctions": 42,
+      "exactSameNameFunctions": 6,
+      "exactFunctions": [
+        {
+          "name": "branchCompany",
+          "leftLine": 42,
+          "rightLine": 45,
+          "lines": 17
+        },
+        {
+          "name": "getLockedBranch",
+          "leftLine": 172,
+          "rightLine": 169,
+          "lines": 4
+        },
+        {
+          "name": "addItem",
+          "leftLine": 742,
+          "rightLine": 873,
+          "lines": 10
+        },
+        {
+          "name": "removeItem",
+          "leftLine": 753,
+          "rightLine": 884,
+          "lines": 10
+        },
+        {
+          "name": "documentPagesHtml",
+          "leftLine": 792,
+          "rightLine": 923,
+          "lines": 9
+        },
+        {
+          "name": "waitForPdfStageAssets",
+          "leftLine": 1240,
+          "rightLine": 1277,
+          "lines": 17
+        }
+      ],
+      "sameNameDifferentBody": [
+        "createDefaultState",
+        "createDefaultDocNo",
+        "ensurePdfLogoDataUrl",
+        "loadDraft",
+        "persistDraft",
+        "mountFeature",
+        "renderAppShell",
+        "sectionHeader",
+        "customerSectionHtml",
+        "documentSectionHtml",
+        "itemsSectionHtml",
+        "summarySectionHtml",
+        "sourceEvidenceHtml",
+        "templateUploadHtml",
+        "optionalDateInputHtml",
+        "inputHtml",
+        "textareaHtml",
+        "bindEvents",
+        "clearOptionalDate",
+        "setBranch",
+        "applyLockedBranch",
+        "renderAll",
+        "renderItemsEditor",
+        "updateItemAmount",
+        "renderTabs",
+        "updateComputedAndPreview",
+        "renderPreview",
+        "documentPageHtml",
+        "signatureBox",
+        "validateBeforeSave",
+        "saveDocumentToSystem",
+        "createOffscreenPages",
+        "downloadPdf",
+        "printDocuments",
+        "handleTemplateUpload",
+        "showUploadedTemplate"
+      ]
+    }
+  ],
+  "normalizedDuplicateWindowExamples": [
+    [
+      {
+        "file": "quotation-document.js",
+        "line": 372
+      },
+      {
+        "file": "delivery-tax-document.js",
+        "line": 1245
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 1282
+      }
+    ],
+    [
+      {
+        "file": "quotation-document.js",
+        "line": 373
+      },
+      {
+        "file": "delivery-tax-document.js",
+        "line": 1246
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 1283
+      }
+    ],
+    [
+      {
+        "file": "quotation-document.js",
+        "line": 374
+      },
+      {
+        "file": "delivery-tax-document.js",
+        "line": 1247
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 1284
+      }
+    ],
+    [
+      {
+        "file": "quotation-document.js",
+        "line": 375
+      },
+      {
+        "file": "delivery-tax-document.js",
+        "line": 1248
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 1285
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 19
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 22
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 20
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 23
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 21
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 24
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 22
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 25
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 23
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 26
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 24
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 27
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 25
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 28
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 26
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 29
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 27
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 30
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 28
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 31
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 29
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 32
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 30
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 33
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 31
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 34
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 32
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 35
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 33
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 36
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 34
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 37
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 35
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 38
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 36
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 39
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 37
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 40
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 38
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 41
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 39
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 42
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 40
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 43
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 41
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 44
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 42
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 45
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 43
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 46
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 44
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 47
+      }
+    ]
+  ],
+  "boundaryPlan": {
+    "extractedPureHelpers": [
+      {
+        "name": "escapeHtml",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "quotation-document.js",
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "parseMoney",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "fmt",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "quotation-document.js",
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "formatDate",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "thaiIntegerText",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "quotation-document.js",
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "bahtText",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "quotation-document.js",
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "safeFilename",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "getNestedValue",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "setNestedValue",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "resolveStoragePeriod",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "createDocumentLineItem",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "estimateDocumentItemRowUnits",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "calculateDocumentTotals",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "selectPrintableDocumentItems",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      },
+      {
+        "name": "paginateDocumentItems",
+        "sharedCoreExport": true,
+        "localDefinitions": [],
+        "importedBy": [
+          "delivery-tax-document.js",
+          "receipt-document.js"
+        ]
+      }
+    ],
+    "safePureCandidates": [],
+    "contextualCandidates": [
+      {
+        "name": "branchCompany",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 42,
+            "lines": 17,
+            "hash": "584fb124b80fbcd2b930a2c5671200122556dee2"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 45,
+            "lines": 17,
+            "hash": "584fb124b80fbcd2b930a2c5671200122556dee2"
+          }
+        ]
+      },
+      {
+        "name": "getLockedBranch",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 172,
+            "lines": 4,
+            "hash": "5ed830e599c8c576514a5b6dabcda6fc8ad550b8"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 169,
+            "lines": 4,
+            "hash": "5ed830e599c8c576514a5b6dabcda6fc8ad550b8"
+          }
+        ]
+      },
+      {
+        "name": "addItem",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 742,
+            "lines": 10,
+            "hash": "983ff953505213f54a33b0fdc34cd720d24ff75a"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 873,
+            "lines": 10,
+            "hash": "983ff953505213f54a33b0fdc34cd720d24ff75a"
+          }
+        ]
+      },
+      {
+        "name": "removeItem",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 753,
+            "lines": 10,
+            "hash": "bd606cf727df9b8aed5b2ea4c54ef56d92d94d5e"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 884,
+            "lines": 10,
+            "hash": "bd606cf727df9b8aed5b2ea4c54ef56d92d94d5e"
+          }
+        ]
+      },
+      {
+        "name": "documentPagesHtml",
+        "occurrences": [
+          {
+            "file": "quotation-document.js",
+            "line": 246,
+            "lines": 5,
+            "hash": "1d32b309e017566dd51ef7a1a79d58fe1bc717e5"
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 792,
+            "lines": 9,
+            "hash": "c2152af945c066e4ca3946168914b0096231e327"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 923,
+            "lines": 9,
+            "hash": "c2152af945c066e4ca3946168914b0096231e327"
+          }
+        ]
+      },
+      {
+        "name": "waitForPdfStageAssets",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1240,
+            "lines": 17,
+            "hash": "b2647e09df03c812ef2626e9969c396fe558c36a"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1277,
+            "lines": 17,
+            "hash": "b2647e09df03c812ef2626e9969c396fe558c36a"
+          }
+        ]
+      }
+    ],
+    "keepSeparate": [
+      {
+        "name": "createDefaultState",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 106,
+            "lines": 39,
+            "hash": "23719eeaac8c168e4af6df4b004808eab8701249"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 98,
+            "lines": 42,
+            "hash": "1fb9ee0ae670f658f41ddf095dd9bf9886cfd15a"
+          }
+        ]
+      },
+      {
+        "name": "createDefaultDocNo",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 146,
+            "lines": 6,
+            "hash": "18b8ccb4e69db15da901094fae28c46fc0fe37ce"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 141,
+            "lines": 6,
+            "hash": "931803a11a8b00b5eb01cd05227d909988b21b27"
+          }
+        ]
+      },
+      {
+        "name": "loadDraft",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 177,
+            "lines": 20,
+            "hash": "2c1a1ff7ddf73424a95340e37037676a5483c5a8"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 174,
+            "lines": 20,
+            "hash": "13770dca17fe8bb0be0d27e3cf34f648d8757812"
+          }
+        ]
+      },
+      {
+        "name": "persistDraft",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 198,
+            "lines": 7,
+            "hash": "6b91b0d80859c63724ad38a8d90a9c397a8bed25"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 195,
+            "lines": 7,
+            "hash": "95e85f22af44198d7955760420e0c8eec768a01b"
+          }
+        ]
+      },
+      {
+        "name": "mountFeature",
+        "occurrences": [
+          {
+            "file": "quotation-document.js",
+            "line": 256,
+            "lines": 44,
+            "hash": "25f17f28fc0cf3f4e7576c185cbc274a5d0e466d"
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 206,
+            "lines": 18,
+            "hash": "2c9412fb4b0869d12be3a2c783564b6adfde102a"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 203,
+            "lines": 17,
+            "hash": "66049c4786209de03b1ceeebad07072a8c008b36"
+          }
+        ]
+      },
+      {
+        "name": "renderAppShell",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 225,
+            "lines": 45,
+            "hash": "f49f4b29bed7ef6bde32e0abfac15fa9fd5bc814"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 276,
+            "lines": 46,
+            "hash": "b94a94a7bcb0b95264f3bc70cc8cf8f812dbb886"
+          }
+        ]
+      },
+      {
+        "name": "customerSectionHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 399,
+            "lines": 28,
+            "hash": "b095ad73312d427fd8c75dcdcf9b0c2f45cd8082"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 548,
+            "lines": 14,
+            "hash": "8018b422198afc001e2e8d62b565a06c5ce16bc4"
+          }
+        ]
+      },
+      {
+        "name": "documentSectionHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 428,
+            "lines": 49,
+            "hash": "5b47acd99af48a9ce3da525604799eb1e8ebfac6"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 563,
+            "lines": 49,
+            "hash": "ed53caf41a439445026cf59d6201815849e21024"
+          }
+        ]
+      },
+      {
+        "name": "itemsSectionHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 478,
+            "lines": 17,
+            "hash": "a5840460d865a13ec5e2580f572e8deb287ac2c2"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 613,
+            "lines": 17,
+            "hash": "abcbfcfb8d8243fb0dda616113523dfd8a4ebcea"
+          }
+        ]
+      },
+      {
+        "name": "summarySectionHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 496,
+            "lines": 22,
+            "hash": "efc099046d3a3fd17abb32d44c479a0ad3df1132"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 631,
+            "lines": 22,
+            "hash": "047903518d011950b619cf9768816a1a5b8d8f93"
+          }
+        ]
+      },
+      {
+        "name": "sourceEvidenceHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 519,
+            "lines": 18,
+            "hash": "3e6ded84857e85297ff5d80e2a183ef8e4881f49"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 654,
+            "lines": 18,
+            "hash": "3c03b47b0cadfa550432ee875d63b9a0ccb27008"
+          }
+        ]
+      },
+      {
+        "name": "bindEvents",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 586,
+            "lines": 78,
+            "hash": "247f84e3ddd7e43eee5d250b882a2e7c132d474b"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 721,
+            "lines": 83,
+            "hash": "0f71f396e0ee6329d91838f710b60bd6aac0746f"
+          }
+        ]
+      },
+      {
+        "name": "renderItemsEditor",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 720,
+            "lines": 16,
+            "hash": "365a1ea1cd86ce460eb81e02827dddd44585fcd2"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 851,
+            "lines": 16,
+            "hash": "4bc332c344d0426825500446e319b36d2127ef1a"
+          }
+        ]
+      },
+      {
+        "name": "renderTabs",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 764,
+            "lines": 14,
+            "hash": "70d15ec3875aace41d60d0a93b437706e714f766"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 895,
+            "lines": 14,
+            "hash": "d17af9a25e59afc799dd1f479e4a259a8cbd2326"
+          }
+        ]
+      },
+      {
+        "name": "renderPreview",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 802,
+            "lines": 6,
+            "hash": "2281221beb0eb777dc787ec887360778b3c2d26c"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 933,
+            "lines": 6,
+            "hash": "d73150a652066f9b294d367a9cca7f76be629603"
+          }
+        ]
+      },
+      {
+        "name": "documentPageHtml",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 809,
+            "lines": 146,
+            "hash": "ae60917e245d23b1d2958bb449d9dfda6e4d956f"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 940,
+            "lines": 164,
+            "hash": "9aa22240504c7b1b35526d960c8a781e693b23c5"
+          }
+        ]
+      },
+      {
+        "name": "validateBeforeSave",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1092,
+            "lines": 8,
+            "hash": "92959747c060640c65fa77b9517f09ed54b25f12"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1123,
+            "lines": 13,
+            "hash": "87ad5106c81678cd5de260ea434c42ad79a7a4bc"
+          }
+        ]
+      },
+      {
+        "name": "saveDocumentToSystem",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1101,
+            "lines": 128,
+            "hash": "22e27494dee8a80aa0c684a21fe18180b83e53a6"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1137,
+            "lines": 129,
+            "hash": "f851b9c246bc2b5a7a570847b9317957828fa6e7"
+          }
+        ]
+      },
+      {
+        "name": "downloadPdf",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1258,
+            "lines": 40,
+            "hash": "706481dacddae336fefc5ccaff05524ffa3a1bd5"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1295,
+            "lines": 40,
+            "hash": "2dbcae6a83e0f8c013d70be6c88b768080d73c30"
+          }
+        ]
+      },
+      {
+        "name": "printDocuments",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1299,
+            "lines": 19,
+            "hash": "54c9de99684badbf34d2425ad1a85cbe688e6db9"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1336,
+            "lines": 19,
+            "hash": "d6b5809b2ebb2040f9d4dfd39a89b95cb44687d2"
+          }
+        ]
+      },
+      {
+        "name": "handleTemplateUpload",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1319,
+            "lines": 13,
+            "hash": "6524c16f6a91e4f1df58998a35494dbd6ab8f893"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1356,
+            "lines": 13,
+            "hash": "4a7687244c9c117eb408044d22add8ff15cdfa67"
+          }
+        ]
+      },
+      {
+        "name": "showUploadedTemplate",
+        "occurrences": [
+          {
+            "file": "delivery-tax-document.js",
+            "line": 1333,
+            "lines": 8,
+            "hash": "70b2ecc60dd275ce82124f66b345f411e07083fd"
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 1370,
+            "lines": 8,
+            "hash": "cfbdf3b2cc68805319df9cbc79b79c3fb0ec2652"
+          }
+        ]
+      }
+    ],
+    "rule": "Step 3C-1 keeps document rendering controller-owned while issued Delivery/Tax and Receipt persistence must route through runDocumentAction plus the strict multi-key write session. Canonical source truth and accounting settlement remain outside the print/render layer."
+  },
+  "crossControllerImports": []
+}

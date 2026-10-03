@@ -1,0 +1,98 @@
+{
+  "release": "4.3.1",
+  "step": "2G-2",
+  "name": "Production Action Boundary",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "executedAt": "2026-09-14T06:22:59.491Z",
+  "core": {
+    "pass": 183,
+    "tests": 183,
+    "classification": "pass"
+  },
+  "full": {
+    "pass": 183,
+    "tests": 190,
+    "fail": 7,
+    "classification": "environment_dependency"
+  },
+  "syntax": {
+    "checked": 71,
+    "failed": 0
+  },
+  "audits": {
+    "codebase": "PASS",
+    "deep": "PASS",
+    "spec": "PASS",
+    "complexity": "PASS",
+    "securityPreflight": "PASS",
+    "securityBaseline": "PASS",
+    "securityHigh": 0,
+    "securityMedium": 0,
+    "securityLow": 2
+  },
+  "complexity": {
+    "release": "4.3.1",
+    "packageVersion": "2.3.1",
+    "checkedAt": "2026-09-14T06:22:45.047Z",
+    "metrics": {
+      "runtimeJsFiles": 31,
+      "runtimeLines": 16962,
+      "rootJsFiles": 32,
+      "appJsLines": 8248,
+      "devDependencies": 3,
+      "windowAssignments": 54,
+      "inlineHandlerFunctions": 102
+    },
+    "limits": {
+      "runtimeJsFilesMax": 31,
+      "runtimeLinesMax": 17000,
+      "rootJsFilesMax": 32,
+      "appJsLinesMax": 8350,
+      "devDependenciesMax": 3,
+      "windowAssignmentsMax": 75,
+      "inlineHandlerFunctionsMax": 110
+    },
+    "baseline": {
+      "file": "QUALITY_BASELINE.json",
+      "release": "4.2.0"
+    },
+    "deltaLimits": {
+      "appJsLinesMaxDelta": 0
+    },
+    "issues": [],
+    "status": "PASS"
+  },
+  "deployment": {
+    "pagesDir": "/mnt/data/erp_step2g2_pages",
+    "manifest": {
+      "runtimeFiles": 46,
+      "hashMismatch": 0,
+      "missingHtmlRefs": [],
+      "pass": true
+    },
+    "http": {
+      "checked": 47,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "pagesZip": {
+    "integrity": "PASS",
+    "sha256": "1104a38f54d50fe06d1bab5b6b368aa2d51a732341eb45bf47ab06fe5dff1fa8",
+    "bytes": 763269
+  },
+  "invariants": [
+    "production duplicate number fails closed before commit",
+    "invoice-linked production commercial fields are immutable",
+    "supplier-settled production commercial fields are immutable",
+    "supplier settlement state survives production edits",
+    "quote/SO/invoice lineage survives production edits",
+    "source Quote and Sales Order are verified on strict write paths",
+    "local-demo Production + Quote link commit through one rollback-capable session",
+    "Production writes use same-browser demo write lease"
+  ],
+  "limitations": [
+    "Full Node/DOM suite is not certified in this environment because jsdom/fake-indexeddb remain unavailable.",
+    "Same-browser lease and localStorage transaction are not server/database transactions or cross-device locks."
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "release": "4.3.1",
+  "step": "2B",
+  "name": "Master Data Service Boundary",
+  "date": "2026-09-14",
+  "baseline": {
+    "step": "2A",
+    "appJsAuditLines": 8161,
+    "coreTests": {"pass": 97, "tests": 97}
+  },
+  "result": {
+    "appJsAuditLines": 8141,
+    "masterDataCorePhysicalLines": 388,
+    "masterDataCoreExports": 22,
+    "coreTests": {"pass": 121, "tests": 121},
+    "fullTests": {"pass": 121, "tests": 128, "fail": 7, "classification": "environment_dependency"},
+    "audits": {
+      "codebase": "PASS",
+      "deep": "PASS",
+      "specification": "PASS 32/32",
+      "complexity": "PASS",
+      "security": "PASS HIGH=0 MEDIUM=0 LOW=2",
+      "securityBaseline": "PASS"
+    }
+  },
+  "pureCore": {
+    "file": "erp-master-data-core.js",
+    "responsibilities": [
+      "normalize and defaults",
+      "contact role selection and identity",
+      "contact/product validation",
+      "upsert and archive policy",
+      "local/cloud merge policy",
+      "supplier seed policy",
+      "CSV merge/replace policy",
+      "credit-term and lead-day normalization"
+    ]
+  },
+  "integrityFixes": [
+    "Archived contacts survive unrelated contact saves",
+    "Archived suppliers are not discarded or automatically resurrected by seed",
+    "Backup/restore includes archived contacts",
+    "CSV contact merge/replace preserves archived audit history",
+    "CSV product replace preserves archived tombstones",
+    "Archived contact/product can reactivate using the same entity id",
+    "Product upsert follows explicit id when SKU is edited to avoid duplicates"
+  ],
+  "intentionallyDeferred": [
+    "Master Data UI/DOM extraction",
+    "CSS cleanup",
+    "Storage/cloud boundary extraction",
+    "Cloud schema changes",
+    "Document/finance/analytics extraction"
+  ],
+  "next": {
+    "step": "2C",
+    "name": "Master Data Storage Boundary",
+    "candidates": [
+      "readLocalMaster",
+      "writeLocalMaster",
+      "local master snapshot",
+      "tenant-aware master keys",
+      "queueMasterCloudSync",
+      "hydrateTenantMasterFromCloud"
+    ]
+  }
+}

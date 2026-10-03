@@ -1,0 +1,46 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-2 Generic Object / Storage-Period Helper Extraction",
+  "status": "generic_helpers_extracted",
+  "before": {
+    "totalControllerLines": 3413,
+    "sameNameFunctionPairs": 54,
+    "exactSameNameFunctionPairs": 14,
+    "normalizedDuplicate10LineGroups": 221
+  },
+  "after": {
+    "totalControllerLines": 3363,
+    "sameNameFunctionPairs": 51,
+    "exactSameNameFunctionPairs": 11,
+    "normalizedDuplicate10LineGroups": 202,
+    "crossControllerImports": 0
+  },
+  "sharedCore": "erp-shared-core.js",
+  "sharedCoreVersion": "1.2.0",
+  "extractedHelpers": [
+    "getNestedValue",
+    "setNestedValue",
+    "resolveStoragePeriod"
+  ],
+  "behaviorNotes": [
+    "getNestedValue preserves falsy values and returns empty string only for nullish/missing paths.",
+    "setNestedValue preserves existing object/array containers and replaces null/primitive intermediate containers with objects.",
+    "resolveStoragePeriod preserves the legacy YYYY-MM-DD year/month semantics, including Buddhist-era year values, and falls back to the supplied/current local month for invalid input."
+  ],
+  "explicitlyUnchanged": [
+    "pagination",
+    "DOM/render lifecycle",
+    "PDF stage/print lifecycle",
+    "validateBeforeSave",
+    "saveDocumentToSystem",
+    "source-link logic",
+    "document CSS"
+  ],
+  "nextTarget": {
+    "step": "3B-3",
+    "scope": [
+      "contextual helper assessment: branchCompany/createItem/totals/pagination primitives"
+    ],
+    "guard": "do not extract DOM/stateful helpers until behavior-equivalence tests and parameter boundaries are explicit"
+  }
+}

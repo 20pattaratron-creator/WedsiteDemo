@@ -1,0 +1,76 @@
+{
+  "release": "4.3.1",
+  "phase": "Step 3B-1 Pure Document Helper Extraction",
+  "status": "CUSTOMER_TRIAL_STABLE_CORE_VALIDATED_FULL_ENV_BLOCKED",
+  "syntax": {
+    "checked": 74,
+    "failed": 0
+  },
+  "core": {
+    "pass": 195,
+    "tests": 195,
+    "classification": "pass"
+  },
+  "full": {
+    "pass": 195,
+    "tests": 202,
+    "classification": "environment_dependency"
+  },
+  "deployment": {
+    "pagesDir": "/mnt/data/erp_step3b1_pages",
+    "manifest": {
+      "runtimeFiles": 46,
+      "hashMismatch": 0,
+      "missingHtmlRefs": [],
+      "pass": true
+    },
+    "http": {
+      "checked": 47,
+      "failures": [],
+      "pass": true
+    }
+  },
+  "documentDuplication": {
+    "before": {
+      "controllerLines": 3580,
+      "sameNameFunctionPairs": 69,
+      "exactSameNameFunctionPairs": 27,
+      "normalizedDuplicate10LineGroups": 275
+    },
+    "after": {
+      "controllerLines": 3413,
+      "sameNameFunctionPairs": 54,
+      "exactSameNameFunctionPairs": 14,
+      "normalizedDuplicate10LineGroups": 221,
+      "crossControllerImports": 0
+    }
+  },
+  "quality": {
+    "runtimeJsModules": 31,
+    "runtimeLines": 16887,
+    "appJsLines": 8240,
+    "codebase": "PASS",
+    "deep": "PASS",
+    "spec": "PASS",
+    "complexity": "PASS",
+    "documentControllerAudit": "PASS",
+    "security": "PASS",
+    "securityFindings": {
+      "high": 0,
+      "medium": 0,
+      "low": 2
+    }
+  },
+  "runtimeModuleAdded": false,
+  "sharedCoreVersion": "1.1.0",
+  "extractedHelpers": [
+    "escapeHtml",
+    "parseMoney",
+    "fmt",
+    "formatDate",
+    "thaiIntegerText",
+    "bahtText",
+    "safeFilename"
+  ],
+  "environmentLimitation": "Full Node/DOM suite remains environment-blocked because jsdom/fake-indexeddb are unavailable; this is not reported as Full PASS."
+}
