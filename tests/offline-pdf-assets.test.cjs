@@ -19,18 +19,30 @@ test('index.html loads no <script src> from an external host', () => {
     assert.ok(sources.length > 20);
     const external = sources.filter(src => /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(src));
     assert.deepEqual(external, [], 'every script is served with the app');
-    for (const lib of manifest.libraries) assert.ok(sources.includes(`./vendor/${lib.file}`), lib.file);
+    // PDF libraries are eager <script> tags; SheetJS (ADR-021) is lazy: named by a <meta>, loaded on the first Excel export.
+    for (const lib of manifest.libraries.filter(lib => lib.loading !== 'lazy')) assert.ok(sources.includes(`./vendor/${lib.file}`), lib.file);
+    for (const lib of manifest.libraries.filter(lib => lib.loading === 'lazy')) {
+      assert.ok(!sources.some(src => src.includes(lib.file)), `${lib.file} is not loaded at boot`);
+      assert.equal(dom.window.document.querySelector(`meta[name="${lib.htmlMeta}"]`)?.getAttribute('content'), `./vendor/${lib.file}`);
+    }
     // Classic scripts, before the printable-document modules that read the globals.
     const order = sources.map(src => src.replace(/^\.\//, ''));
     assert.ok(order.indexOf(`vendor/${manifest.libraries[1].file}`) < order.indexOf('delivery-tax-document.js'));
   } finally { dom.window.close(); }
 });
 
-test('vendored PDF libraries are the exact npm releases, with their MIT licenses', () => {
-  assert.deepEqual(manifest.libraries.map(lib => `${lib.name}@${lib.version}`), ['html2canvas@1.4.1', 'jspdf@2.5.1']);
+test('vendored libraries are the exact npm releases, with their licenses (MIT; SheetJS Apache-2.0)', () => {
+  assert.deepEqual(manifest.libraries.map(lib => `${lib.name}@${lib.version}`), ['html2canvas@1.4.1', 'jspdf@2.5.1', 'xlsx@0.18.5']);
   for (const lib of manifest.libraries) {
     const bytes = fs.readFileSync(path.join(ROOT, 'vendor', lib.file));
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), lib.sha256, lib.file);
+    if (lib.name === 'xlsx') {
+      assert.match(bytes.subarray(0, 120).toString('utf8'), /xlsx\.js \(C\) 2013-present SheetJS/, 'SheetJS banner');
+      assert.match(bytes.toString('utf8'), /version="0\.18\.5"/, 'version');
+      assert.equal(lib.license, 'Apache-2.0');
+      assert.match(fs.readFileSync(path.join(ROOT, 'vendor', lib.licenseFile), 'utf8'), /Apache License\s+Version 2\.0, January 2004/);
+      continue;
+    }
     assert.match(bytes.subarray(0, 400).toString('utf8'), new RegExp(`${lib.name === 'jspdf' ? 'jsPDF' : 'html2canvas'}[\\s\\S]*${lib.version.replace(/\./g, '\\.')}`), 'version banner');
     assert.equal(lib.license, 'MIT');
     assert.match(fs.readFileSync(path.join(ROOT, 'vendor', lib.licenseFile), 'utf8'), /Permission is hereby granted, free of charge/);

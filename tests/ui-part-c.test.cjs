@@ -308,6 +308,9 @@ test('dashboard KPIs are the same numbers as renderDash\'s branch figures and th
 
 // ---------------------------------------------------------------- 4. leftovers
 test('delDoc: a paid or credited invoice is refused WITHOUT asking "ลบหรือไม่?" first; an eligible one still asks', async () => {
+  // ADR-021: an issued invoice is never deleted — delDoc refuses every invoice without a question, and the
+  // replacement action ("ยกเลิกใบกำกับภาษี") refuses a paid invoice before its dialog, naming what to void first,
+  // while an eligible invoice still gets its question (the reason dialog).
   const h = await bootWithSample();
   const { w } = h;
   try {
@@ -315,7 +318,7 @@ test('delDoc: a paid or credited invoice is refused WITHOUT asking "ลบหร
     const invoices = I.business().invoices.filter(inv => I.live(inv) && inv._type !== 'issuedInvoices');
     const summary = inv => I.paymentSummary({ ...inv, branch: inv._branch || inv.branch });
     const paid = invoices.find(inv => summary(inv).paid > 0);
-    const open = invoices.find(inv => summary(inv).paid === 0 && !(summary(inv).credited > 0));
+    const open = invoices.find(inv => summary(inv).paid === 0 && !(summary(inv).credited > 0) && !w.ERPDocumentCancel.blockersFor('invoices', inv._branch, inv._year, inv._month, String(inv.id)).length);
     assert.ok(paid && open, 'the sample data has a paid and an unpaid invoice');
     const asked = [];
     w.confirm = message => { asked.push(message); return false; };
@@ -325,13 +328,19 @@ test('delDoc: a paid or credited invoice is refused WITHOUT asking "ลบหร
     await w.delDoc(paid._branch, paid._year, paid._month, 'invoices', paid.id);
     assert.deepEqual(asked, [], 'no confirmation before the refusal');
     // app.js calls its own notify() (a toast), so the refusal is read from the toast.
-    const toast = text(w.document.getElementById('app-toast-container'));
-    assert.ok(/บิลนี้มีการรับเงินแล้ว|ผูกกับรายการรับเงิน/.test(toast + h.messages.join('|')), toast);
+    let toast = text(w.document.getElementById('app-toast-container'));
+    assert.match(toast, /ลบไม่ได้/);
     assert.equal(count(paid), before, 'nothing deleted');
+    assert.equal(w.ERPDocumentCancel.open('invoices', paid._branch, paid._year, paid._month, String(paid.id)), false);
+    assert.match(h.messages.join('|'), /ใบเสร็จรับเงินที่ยังใช้งาน|รายการรับชำระ/);
+    assert.equal(w.document.querySelector('.erp-cancel-overlay'), null, 'no dialog for a paid invoice');
     const beforeOpen = count(open);
     await w.delDoc(open._branch, open._year, open._month, 'invoices', open.id);
-    assert.equal(asked.length, 1, 'an eligible invoice still asks first');
-    assert.equal(count(open), beforeOpen, 'declined → kept');
+    assert.equal(asked.length, 0, 'delete never asks: it is refused');
+    assert.equal(w.ERPDocumentCancel.open('invoices', open._branch, open._year, open._month, String(open.id)), true, 'an eligible invoice gets the cancel dialog');
+    assert.ok(w.document.querySelector('.erp-cancel-overlay [role="dialog"]'));
+    w.ERPDocumentCancel.close();
+    assert.equal(count(open), beforeOpen, 'kept');
   } finally { h.close(); }
 });
 

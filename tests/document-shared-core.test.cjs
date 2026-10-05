@@ -12,7 +12,7 @@ const EXTRACTED=['escapeHtml','parseMoney','fmt','formatDate','thaiIntegerText',
 
 test('Step 3B-1 shared document primitives preserve formatting behavior',async()=>{
   const c=await imp('erp-shared-core.js');
-  assert.equal(c.SHARED_CORE_VERSION,'1.5.0');
+  assert.equal(c.SHARED_CORE_VERSION,'1.6.0'); // 1.6.0: buyer establishment + cancelled-document helpers (ADR-021)
   assert.equal(c.escapeHtml(`<a x='1'>&\"`),'&lt;a x=&#39;1&#39;&gt;&amp;&quot;');
   assert.equal(c.parseMoney('1,234.50'),1234.5);
   assert.equal(c.parseMoney('not-a-number'),0);
@@ -135,10 +135,16 @@ test('Step 3C-1 persistence hardening preserves the material controller-duplicat
   const report=JSON.parse(read('DOCUMENT_CONTROLLER_DUPLICATION_AUDIT_RESULTS.json'));
   assert.ok(report.metrics.exactSameNameFunctionPairs<27,JSON.stringify(report.metrics));
   assert.ok(report.metrics.normalizedDuplicate10LineGroups<275,JSON.stringify(report.metrics));
-  assert.equal(report.metrics.exactSameNameFunctionPairs,6);
+  // 6 → 5 (ADR-020): branchCompany() of delivery-tax-document.js and receipt-document.js now
+  // differ (each asks the saved company profile first, in its own words).
+  assert.equal(report.metrics.exactSameNameFunctionPairs,5);
   // 143 → 140 (ADR-009): delivery-tax-document.js now routes preview/print/PDF
   // through formPagesHtml(), so three 10-line windows no longer match receipt-document.js.
-  assert.equal(report.metrics.normalizedDuplicate10LineGroups,140);
+  // 140 → 131 (ADR-020): the logo / company-profile lines near the top differ between the two.
+  // 131 → 133 (ADR-021): the same two state fields (customerBranchCode, cancellation) were added to both
+  // createDefaultState() lists, which lengthens two existing shared 10-line windows; the shared logic itself
+  // (buyerBranchLabel, documentCancelStampHtml, documentCancellationOf) lives once in erp-shared-core.js.
+  assert.equal(report.metrics.normalizedDuplicate10LineGroups,133);
   const extracted=new Map(report.boundaryPlan.extractedPureHelpers.map(row=>[row.name,row]));
   for(const name of EXTRACTED){
     const row=extracted.get(name);

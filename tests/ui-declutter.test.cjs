@@ -1,5 +1,5 @@
 // ADR-015 (round 5 part A, UI declutter) in the booted app: the header "Demo" menu replaces the green
-// banner (same five actions, window.ERPDemoMenu registration), one slim notice, the grouped/collapsible
+// banner (same five actions + ADR-020 ข้อมูลบริษัทและโลโก้, window.ERPDemoMenu registration), one slim notice, the grouped/collapsible
 // sidebar with one entry per document type, form screens highlighting their document entry with a
 // "← รายการ…" link, every go() route still resolving, and the ☰ drawer on phones.
 const test = require('node:test');
@@ -13,13 +13,14 @@ const ROOT = path.resolve(__dirname, '..');
 const TENANT_PREFIX = 'erp_tenant::customer-showcase-local::';
 const COLLAPSED_KEY = `${TENANT_PREFIX}erp_nav_collapsed_sections_v1`;
 const MODE_KEY = `${TENANT_PREFIX}erp_product_experience_mode_v1`;
-const ADVANCED = ['analytics', 'business-rules', 'audit-log', 'saas-admin', 'files'];
+// saas-admin left the list in ADR-020: customers must reach ตั้งค่าบริษัท (company / logo) in โหมดง่าย.
+const ADVANCED = ['analytics', 'business-rules', 'audit-log', 'files'];
 const SECTIONS = [
   ['home', 'หน้าหลัก', ['work-home', 'dashboard', 'approval-center']],
   ['sales', 'ขายและรับเงิน', ['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'order-flow']],
   ['operations', 'ซื้อ / ผลิต / คลัง', ['production-list', 'purchase-order', 'goods-receipt', 'inventory']],
   ['expenses', 'ค่าใช้จ่าย', ['expense-list']],
-  ['data', 'ข้อมูลและรายงาน', ['master-data', 'linked-flow', 'analytics', 'customer-portal']],
+  ['data', 'ข้อมูลและรายงาน', ['master-data', 'tax-reports', 'linked-flow', 'analytics', 'customer-portal']], // + ADR-023 รายงานภาษี
   ['settings', 'ตั้งค่า', ['business-rules', 'audit-log', 'saas-admin', 'files']]
 ];
 const ALL_ENTRIES = SECTIONS.flatMap(([, , panels]) => panels);
@@ -84,7 +85,7 @@ test('one slim notice replaces the orange strip + green banner; the header has o
   } finally { h.close(); }
 });
 
-test('Demo menu: five items once each, in order, reset last in red behind a separator; keyboard open / move / Escape / Tab and outside click', async () => {
+test('Demo menu: six items once each, in order, reset last in red behind a separator; keyboard open / move / Escape / Tab and outside click', async () => {
   const h = await bootReady();
   const { w } = h;
   const d = w.document;
@@ -95,11 +96,12 @@ test('Demo menu: five items once each, in order, reset last in red behind a sepa
     const items = () => [...menu.querySelectorAll('[role="menuitem"]')];
     assert.equal(menu.getAttribute('role'), 'menu');
     assert.equal(menu.getAttribute('aria-label'), 'เมนู Demo');
-    assert.deepEqual(items().map(text), ['ตรวจสถานะ Demo', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
-    assert.deepEqual(items().map(item => item.id || `[data-demo-seed-action=${item.dataset.demoSeedAction}]`), ['local-demo-health-btn', '[data-demo-seed-action=load]', 'local-demo-guide-btn', 'local-demo-backup-btn', '[data-demo-seed-action=reset]']);
-    assert.ok(items()[4].classList.contains('is-danger'));
-    assert.ok(items().slice(0, 4).every(item => !item.classList.contains('is-danger')));
-    assert.equal(items()[4].previousElementSibling.getAttribute('role'), 'separator');
+    // ADR-020 added "ข้อมูลบริษัทและโลโก้" (order 15, erp-company-profile.js) through the same registration API.
+    assert.deepEqual(items().map(text), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
+    assert.deepEqual(items().map(item => item.id || `[data-demo-seed-action=${item.dataset.demoSeedAction}]`), ['local-demo-health-btn', 'local-demo-company-btn', '[data-demo-seed-action=load]', 'local-demo-guide-btn', 'local-demo-backup-btn', '[data-demo-seed-action=reset]']);
+    assert.ok(items()[5].classList.contains('is-danger'));
+    assert.ok(items().slice(0, 5).every(item => !item.classList.contains('is-danger')));
+    assert.equal(items()[5].previousElementSibling.getAttribute('role'), 'separator');
     assert.equal(menu.querySelectorAll('[role="separator"]').length, 1);
     assert.ok(items().every(item => item.querySelector('.erp-menu-icon svg')), 'every item has a line icon');
     // Click opens with focus on the first item; an outside click closes.
@@ -119,14 +121,14 @@ test('Demo menu: five items once each, in order, reset last in red behind a sepa
     assert.equal(d.activeElement, items()[1]);
     key(items()[1], 'ArrowUp');
     key(items()[0], 'ArrowUp');
-    assert.equal(d.activeElement, items()[4], 'wraps to the reset item');
-    key(items()[4], 'Escape');
+    assert.equal(d.activeElement, items()[5], 'wraps to the reset item');
+    key(items()[5], 'Escape');
     assert.equal(menu.hidden, true, 'Escape closes');
     assert.equal(d.activeElement, button, 'focus back on the Demo button');
     // Tab leaves the menu (closed, focus continues from the button).
     key(button, 'ArrowUp');
-    assert.equal(d.activeElement, items()[4]);
-    key(items()[4], 'Tab');
+    assert.equal(d.activeElement, items()[5]);
+    key(items()[5], 'Tab');
     assert.equal(menu.hidden, true);
     assert.equal(d.activeElement, button);
     assert.deepEqual(h.errors, []);
@@ -203,12 +205,12 @@ test('ERPDemoMenu.register: a module adds its own item by key; registering again
     w.dispatchEvent(new w.Event('erp:storage-written'));
     w.document.dispatchEvent(new w.Event('erp:dashboard-rendered'));
     await sleep(700); // local-demo-health.js retries every 300 ms
-    assert.equal(labels().length, 5);
+    assert.equal(labels().length, 6);
     // A new item by key, placed by order; the same key again replaces it.
     let picked = 0;
     assert.equal(api.register({ key: 'extra', label: 'รายการทดสอบ', order: 25, onSelect: () => { picked += 1; } }), true);
     assert.equal(api.register({ key: 'extra', label: 'รายการทดสอบ (ใหม่)', order: 25, onSelect: () => { picked += 10; } }), true);
-    assert.deepEqual(labels(), ['ตรวจสถานะ Demo', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'รายการทดสอบ (ใหม่)', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
+    assert.deepEqual(labels(), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'รายการทดสอบ (ใหม่)', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
     // Another danger item also goes after the separator (danger items among themselves by order), never
     // above an ordinary item, even with a lower order.
     api.register({ id: 'extra-danger', label: 'ลบทดสอบ', order: 1, danger: true });
@@ -228,7 +230,7 @@ test('ERPDemoMenu.register: a module adds its own item by key; registering again
     assert.equal(api.register({ key: 'no-label' }), false);
     w.console.warn = realWarn;
     assert.equal(warnings.length, 2);
-    assert.equal(labels().length, 7);
+    assert.equal(labels().length, 8); // 6 (incl. ADR-020 ข้อมูลบริษัทและโลโก้) + 2 test items
     // open / close helpers.
     api.open();
     assert.equal(d.getElementById('erp-demo-menu').hidden, false);
@@ -266,11 +268,13 @@ test('sidebar: six sections with headings, one entry per document type (no creat
     assert.ok(navItems(w).every(item => item.querySelectorAll(':scope > svg').length === 1), 'one svg per entry');
     assert.equal(d.querySelector('.sidebar .pe-nav-icon, .sidebar .erp-flow-nav-icon'), null);
     const settings = d.querySelector('.nav-group[data-nav-section="settings"]');
-    // โหมดง่าย: 16 entries; "ตั้งค่า" has only advanced screens, so its heading is hidden too.
+    // โหมดง่าย: 18 entries (ADR-020 added ตั้งค่าบริษัท, so "ตั้งค่า" now keeps its heading with that one entry;
+    // ADR-023 added รายงานภาษี, a monthly duty of every VAT-registered customer, so it is not an advanced screen).
     assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES);
-    assert.equal(visibleEntries(w).length, 16);
+    assert.equal(visibleEntries(w).length, 18);
     assert.deepEqual(navItems(w).filter(item => item.hidden).map(entryOf).sort(), [...ADVANCED].sort());
-    assert.equal(settings.hidden, true, 'empty section hidden with its heading');
+    assert.equal(settings.hidden, false, 'ตั้งค่า shows with ตั้งค่าบริษัท only (ADR-020)');
+    assert.deepEqual([...settings.querySelectorAll('.nav-item')].filter(item => !item.hidden).map(entryOf), ['saas-admin']);
     assert.equal(d.querySelector('.nav-group[data-nav-section="data"]').hidden, false, 'a section with a visible entry stays');
     // โหมดขั้นสูง shows everything; back to โหมดง่าย hides the advanced entries again.
     d.getElementById('pe-mode-toggle').click();
@@ -279,7 +283,7 @@ test('sidebar: six sections with headings, one entry per document type (no creat
     assert.deepEqual(visibleEntries(w), ALL_ENTRIES);
     d.getElementById('pe-mode-toggle').click();
     assert.deepEqual(navItems(w).filter(item => item.hidden).map(entryOf).sort(), [...ADVANCED].sort());
-    assert.equal(settings.hidden, true);
+    assert.equal(settings.hidden, false); // ADR-020: ตั้งค่าบริษัท keeps the section visible
     // An advanced screen opened in โหมดง่าย still goes back to งานของฉัน (unchanged rule).
     w.go('files');
     await sleep(60);
@@ -438,7 +442,7 @@ test('sections fold and are remembered per browser (tenant key, kept by the demo
       assert.equal(toggle('data').getAttribute('aria-expanded'), 'false');
       assert.ok(group('data').classList.contains('is-collapsed'));
       assert.deepEqual(collapsedStored(), ['data', 'operations']);
-      assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES.filter(panel => !['master-data', 'linked-flow', 'customer-portal', 'production-list', 'purchase-order', 'goods-receipt', 'inventory'].includes(panel)));
+      assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES.filter(panel => !['master-data', 'tax-reports', 'linked-flow', 'customer-portal', 'production-list', 'purchase-order', 'goods-receipt', 'inventory'].includes(panel)));
       // Opening a page of a collapsed section from elsewhere (search, quick action, link) expands it, and that is remembered.
       w.go('goods-receipt');
       assert.equal(group('operations').classList.contains('is-collapsed'), false);

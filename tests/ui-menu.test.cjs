@@ -287,9 +287,9 @@ test('sidebar sections: every entry once, forms map to their list entry, stored 
   assert.equal(new Set(panels).size, panels.length, 'no entry in two sections');
   assert.deepEqual(navCore.NAV_SECTIONS.map(section => [section.id, section.label, section.panels.length]), [
     ['home', 'หน้าหลัก', 3], ['sales', 'ขายและรับเงิน', 5], ['operations', 'ซื้อ / ผลิต / คลัง', 4],
-    ['expenses', 'ค่าใช้จ่าย', 1], ['data', 'ข้อมูลและรายงาน', 4], ['settings', 'ตั้งค่า', 4]
+    ['expenses', 'ค่าใช้จ่าย', 1], ['data', 'ข้อมูลและรายงาน', 5], ['settings', 'ตั้งค่า', 4] // data + รายงานภาษี (ADR-023)
   ]);
-  assert.equal(panels.length, 21);
+  assert.equal(panels.length, 22);
   for (const form of ['quote-form', 'invoice-form', 'receipt-form', 'credit-note-form', 'production-form', 'expense-form']) {
     assert.equal(panels.includes(form), false, `${form} has no entry of its own`);
     const entry = navCore.navEntryPanel(form);

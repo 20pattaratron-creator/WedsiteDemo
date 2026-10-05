@@ -63,6 +63,24 @@ const suspiciousCommand = /(?:\bcurl\b|\bwget\b|Invoke-WebRequest|iwr\s|Start-Bi
 
 const unicodeControl = /[\u202A-\u202E\u2066-\u2069\u200B\u200C\uFEFF]/;
 
+// Third-party libraries in vendor/ whose bytes equal the npm release recorded in vendor/vendor-manifest.json
+// (sha256, ADR-013 / ADR-021). Only the heuristic 'generic secret assignment' check is skipped for them:
+// minified SheetJS contains error strings such as `Token: "+String(…)` that the heuristic misreads.
+// Any byte change (sha256 mismatch) makes the file a normal file again for every check.
+function verifiedVendorFiles() {
+  const out = new Set();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'vendor', 'vendor-manifest.json'), 'utf8'));
+    for (const lib of manifest.libraries || []) {
+      const file = path.join(root, 'vendor', String(lib.file || ''));
+      if (!lib.file || !/^[0-9a-f]{64}$/.test(String(lib.sha256 || '')) || !fs.existsSync(file)) continue;
+      if (crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') === lib.sha256) out.add(`vendor/${lib.file}`);
+    }
+  } catch {}
+  return out;
+}
+const VERIFIED_VENDOR = verifiedVendorFiles();
+
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === 'dist-flat') continue;
@@ -176,6 +194,7 @@ for (const f of files) {
     const textForUnicode = text.startsWith('\uFEFF') ? text.slice(1) : text;
     if (unicodeControl.test(textForUnicode)) add(MEDIUM, 'UNICODE_CONTROL', f.full, 'Contains invisible/bidirectional Unicode control characters; inspect for obfuscated instructions/code.');
     for (const sig of secretContentPatterns) {
+      if (sig.name === 'generic secret assignment' && VERIFIED_VENDOR.has(f.rel.replaceAll(path.sep, '/'))) continue;
       if (sig.re.test(text)) add(HIGH, 'SECRET_CONTENT', f.full, `Potential ${sig.name} found in file content.`, 'Value intentionally not printed.');
     }
   }

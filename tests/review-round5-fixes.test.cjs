@@ -245,9 +245,10 @@ test('r5fix#6: delete / void in a closed period is refused BEFORE any question w
 
     let lock = lockAll('sales');
     let before = count(invoice, 'invoices');
-    await refusedQuietly('invoice', () => w.delDoc(invoice._branch, invoice._year, invoice._month, 'invoices', invoice.id), () => assert.equal(count(invoice, 'invoices'), before));
+    // ADR-021: issued invoices / receipts are cancelled ("⋯ › ยกเลิก…"), never deleted — the cancel action is refused first.
+    await refusedQuietly('invoice', () => w.ERPDocumentCancel.open('invoices', invoice._branch, invoice._year, invoice._month, String(invoice.id)), () => { assert.equal(count(invoice, 'invoices'), before); assert.ok(!d.querySelector('.erp-cancel-overlay'), 'no reason dialog'); });
     before = count(receipt, 'receipts');
-    await refusedQuietly('receipt', () => w.delDoc(receipt._branch, receipt._year, receipt._month, 'receipts', receipt.id), () => assert.equal(count(receipt, 'receipts'), before));
+    await refusedQuietly('receipt', () => w.ERPDocumentCancel.open('receipts', receipt._branch, receipt._year, receipt._month, String(receipt.id)), () => { assert.equal(count(receipt, 'receipts'), before); assert.ok(!d.querySelector('.erp-cancel-overlay'), 'no reason dialog'); });
     // Payment void (and the receipts it created).
     const payment = w.ERPOrderFlow.getStore().payments.find(p => !p.voided);
     assert.ok(payment, 'sample payment');
@@ -270,13 +271,14 @@ test('r5fix#6: delete / void in a closed period is refused BEFORE any question w
     before = count(expense, 'expenses');
     await refusedQuietly('expense', () => w.delDoc(expense._branch, expense._year, expense._month, 'expenses', expense.id), () => assert.equal(count(expense, 'expenses'), before));
     unlock(lock);
-    // Open period: unchanged — asks, and deletes when confirmed.
+    // Open period: the cancel action asks for its reason (dialog); delete of an issued invoice is refused outright (ADR-021).
     asked.length = 0;
     w.confirm = message => { asked.push(message); return true; };
     before = count(invoice, 'invoices');
     await w.delDoc(invoice._branch, invoice._year, invoice._month, 'invoices', invoice.id);
-    assert.equal(asked.length, 1, 'open period: asks once');
-    assert.equal(count(invoice, 'invoices'), before - 1, 'open period: deleted');
+    assert.equal(asked.length, 0, 'delete of an issued invoice: refused without a question');
+    assert.equal(count(invoice, 'invoices'), before, 'never deleted');
+    if (!w.ERPDocumentCancel.blockersFor('invoices', invoice._branch, invoice._year, invoice._month, String(invoice.id)).length) { assert.equal(w.ERPDocumentCancel.open('invoices', invoice._branch, invoice._year, invoice._month, String(invoice.id)), true); assert.ok(d.querySelector('.erp-cancel-overlay [role="dialog"]'), 'open period: the reason dialog'); w.ERPDocumentCancel.close(); }
     asked.length = 0;
     w.ERPOrderFlow.voidPayment(payment.id);
     assert.equal(asked.length, 1);
@@ -439,7 +441,7 @@ test('r5fix#9: the remembered collapsed sidebar sections survive start-up and a 
 });
 
 // ------------------------------------------------------------------ #10
-test('r5fix#10: line-item remove buttons are labelled trash icons (quotation, invoice, receipt, PO) with a ≥ 32 / ≥ 40 px target', async () => {
+test('r5fix#10: line-item remove buttons are labelled trash icons (quotation, invoice, receipt, PO) with an icon-button target (≥ 36 / ≥ 44 px, ADR-019)', async () => {
   const h = await bootWithSample();
   const { w } = h;
   const d = w.document;
@@ -457,16 +459,18 @@ test('r5fix#10: line-item remove buttons are labelled trash icons (quotation, in
       assert.match(remove.getAttribute('onclick'), /^this\.closest\('tr'\)\.remove\(\);(calcQ|calcI|calcR|pcCalcPo)\(\)$/, `${add}: still removes the row`);
     }
     const css = read('erp-ui.css').replace(/\s+/g, ' ');
-    assert.match(css, /\.erp-item-remove\{[^}]*min-width:32px;min-height:32px/);
+    // ADR-019: was a fixed 32 px; now the shared icon-button token (36 px, 44 px on ≤ 900 px — tests/ui-control-sizes.test.cjs).
+    assert.match(css, /\.erp-item-remove\{[^}]*min-width:var\(--erp-icon-btn-size\);min-height:var\(--erp-icon-btn-size\)/);
     assert.match(css, /@media\(max-width:900px\)\{\.erp-item-remove\{min-width:var\(--erp-touch-target\);min-height:var\(--erp-touch-target\)\}\}/);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });
 
 // ------------------------------------------------------------------ #11
-test('r5fix#11: on ≤ 900 px the KPI link "ดูรายงานอายุลูกหนี้" is a 40 px touch target (the phone rule comes after the desktop min-height:0)', () => {
+test('r5fix#11: on ≤ 900 px the KPI link "ดูรายงานอายุลูกหนี้" is a touch target (the phone rule comes after the desktop rule)', () => {
   const css = read('erp-ui.css');
-  const base = css.indexOf('.dash-ar-kpis .dash-ar-kpi-link{min-height:0');
+  // ADR-019: the desktop rule was min-height:0 (an 18 px inline link); it is now a small-button-high link.
+  const base = css.indexOf('.dash-ar-kpis .dash-ar-kpi-link{min-height:var(--erp-btn-height-sm)');
   assert.ok(base >= 0);
   // The last rule for the link is inside a max-width:900px block, after the desktop one.
   const last = css.lastIndexOf('.dash-ar-kpis .dash-ar-kpi-link{');

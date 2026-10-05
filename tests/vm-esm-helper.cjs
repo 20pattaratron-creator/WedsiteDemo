@@ -32,6 +32,9 @@ function loadEsmLike(file, context, loaded = new Set()) {
   if (loaded.has(abs)) return;
   loaded.add(abs);
   let source = fs.readFileSync(abs, 'utf8');
+  // Classic vm scripts cannot read import.meta; give modules their file URL as the browser would
+  // (erp-company-profile-core.js resolves the default logo with it — same as dom-helper.cjs).
+  source = source.replaceAll('import.meta.url', JSON.stringify(require('node:url').pathToFileURL(abs).href));
   source = transformModuleSource(source, abs, loadEsmLike, context, loaded);
   vm.runInContext(source, context, { filename: abs });
 }

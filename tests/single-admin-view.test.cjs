@@ -12,7 +12,8 @@ const PRODUCT_MASTER_KEY = `${TENANT_PREFIX}comform_product_master_v1`;
 // Working screens the former default role (ผู้บริหาร) and most other roles hid — by their menu entry
 // (ADR-015: one entry per document type, opening the list; the forms have no entry of their own).
 const WORKING_PANELS = ['invoice-list', 'receipt-list', 'credit-note-list', 'expense-list', 'goods-receipt', 'production-list'];
-const ADVANCED = ['analytics', 'business-rules', 'audit-log', 'saas-admin', 'files'];
+// saas-admin left the list in ADR-020: customers must reach ตั้งค่าบริษัท (company / logo) in โหมดง่าย.
+const ADVANCED = ['analytics', 'business-rules', 'audit-log', 'files'];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitFor(check, tries = 120) {
   for (let i = 0; i < tries && !check(); i++) await sleep(25);

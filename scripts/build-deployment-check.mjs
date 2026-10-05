@@ -11,6 +11,8 @@ function collectHtmlRefs(html){
   for(const tag of html.match(/<script\b[^>]*>/gi)||[]){const ref=attr(tag,'src');if(isLocal(ref))out.add(cleanRef(ref));}
   for(const tag of html.match(/<link\b[^>]*>/gi)||[]){if(!/\brel=["'][^"']*stylesheet/i.test(tag))continue;const ref=attr(tag,'href');if(isLocal(ref))out.add(cleanRef(ref));}
   for(const tag of html.match(/<img\b[^>]*>/gi)||[]){const ref=attr(tag,'src');if(isLocal(ref))out.add(cleanRef(ref));}
+  // ADR-021: libraries loaded on demand (SheetJS) are named by <meta name="erp-vendor-…" content="…">.
+  for(const tag of html.match(/<meta\b[^>]*>/gi)||[]){if(!/\bname=["']erp-vendor-/i.test(tag))continue;const ref=attr(tag,'content');if(isLocal(ref))out.add(cleanRef(ref));}
   return out;
 }
 function expandModuleRefs(root,files){

@@ -71,8 +71,9 @@ test('deployment diagnostic hashes match every emitted resource',()=>{
  const crypto=require('node:crypto');
  const diag=fs.readFileSync(path.join(dist,'deployment-check.html'),'utf8');
  const manifest=JSON.parse(diag.match(/const manifest=(\[[^\n]+\]);/)[1]);
- // index.html, main JS + CSS, 2 print CSS, logo, and (ADR-013) the two offline PDF libraries + their LICENSE files.
- assert.equal(manifest.length,11);
+ // index.html, main JS + CSS, 2 print CSS, logo, (ADR-013) the two offline PDF libraries + their LICENSE files,
+ // and (ADR-021) SheetJS for Excel export + its LICENSE file.
+ assert.equal(manifest.length,13);
  for(const item of manifest){
   assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(dist,item.file))).digest('hex'),item.sha256,item.file);
   if(process.env.ERP_DEPLOY_DIR==='dist-flat')assert.ok(!item.file.includes('/'),item.file);
@@ -91,7 +92,7 @@ test('deployment diagnostic hashes match every emitted resource',()=>{
  }
 });
 // ADR-013: PDF export must work without internet — html2canvas / jsPDF ship with the build.
-test('PDF libraries are emitted locally, byte-identical to vendor/, with their LICENSE files',()=>{
+test('PDF and Excel libraries are emitted locally, byte-identical to vendor/, with their LICENSE files',()=>{
  const crypto=require('node:crypto');
  const vendor=JSON.parse(fs.readFileSync(path.join(root,'vendor','vendor-manifest.json'),'utf8')).libraries;
  const html=fs.readFileSync(path.join(dist,'index.html'),'utf8');
@@ -101,10 +102,11 @@ test('PDF libraries are emitted locally, byte-identical to vendor/, with their L
   assert.deepEqual(scripts.filter(ref=>/^(?:https?:)?\/\//i.test(ref)),[],'no script is loaded from another host');
   const folder=process.env.ERP_DEPLOY_DIR==='dist-flat'?'':'assets/';
   for(const lib of vendor){
-   assert.ok(scripts.includes(`./${folder}${lib.file}`),lib.file);
+   if(lib.loading==='lazy')assert.equal(doc.window.document.querySelector(`meta[name="${lib.htmlMeta}"]`)?.getAttribute('content'),`./${folder}${lib.file}`,lib.file); // ADR-021: loaded on demand from this URL
+   else assert.ok(scripts.includes(`./${folder}${lib.file}`),lib.file);
    const bytes=fs.readFileSync(path.join(dist,folder+lib.file));
    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),lib.sha256,lib.file);
-   assert.match(fs.readFileSync(path.join(dist,folder+lib.licenseFile),'utf8'),/Permission is hereby granted, free of charge/,lib.licenseFile);
+   assert.match(fs.readFileSync(path.join(dist,folder+lib.licenseFile),'utf8'),lib.license==='Apache-2.0'?/Apache License/:/Permission is hereby granted, free of charge/,lib.licenseFile);
   }
  }finally{doc.window.close();}
 });

@@ -1,5 +1,9 @@
 const {boot}=require('./dom-helper.cjs');
 const test=require('node:test'),assert=require('node:assert/strict');
+// ADR-021: issued invoices / receipts can no longer be deleted (they are cancelled instead), so a Recycle Bin
+// entry is made the way earlier versions' delete made it: trash snapshot + removal from the month pack.
+// The restore rules tested here still guard those legacy entries.
+async function legacyDelete(w,br,y,m,type,id){const d=w.loadFor(br,y,m),found=(d[type]||[]).find(x=>String(x.id)===String(id));w.ERPProductionCore.trashSnapshot(type,found,br,y,m);d[type]=(d[type]||[]).filter(x=>String(x.id)!==String(id));w.saveFor(br,y,m,d);}
 const inv=(id,no,qty=10)=>({id,no,branch:'ubon',date:'2026-09-05',customer:'ลูกค้าทดสอบ',subtotal:qty*100,total:qty*107,vatAmt:qty*7,useVat:1,vatMode:'add',items:[{product:'สินค้าทดสอบ',productCode:'AUDIT-P',qty,unit:'ชิ้น',priceUnit:100,saleTotal:qty*100,costTotal:0}],paymentManaged:true});
 async function scenario(name,fn){test(name,async()=>{const h=await boot();try{const result=await fn(h);assert.deepEqual(h.errors,[]);assert.ok(!result.error,JSON.stringify(result));
  const expected={restore_invoice_bypasses_stock:{stockBefore:0,stockAfter:0,invoiceCount:1},restore_receipt_bypasses_overpayment:{},invoice_edit_leaves_issued_snapshot_stale:{baseTotal:1070,issuedTotal:1070},billing_does_not_close_after_standalone_receipt:{invoiceOutstanding:0,billingStatus:'paid'},sales_order_delivery_ignores_actual_production_cost:{productionCost:600,invoiceCost:600,invoiceProfit:400,dashboardNet:400},goods_receipt_write_failure_leaves_partial_commit:{thrown:'',goodsReceiptCount:0,movementCount:0,onHand:0}}[name];
@@ -9,14 +13,14 @@ async function scenario(name,fn){test(name,async()=>{const h=await boot();try{co
 (async()=>{
  await scenario('restore_invoice_bypasses_stock',async({w,set})=>{
   const p={id:'AUDIT-P',code:'AUDIT-P',name:'สินค้าทดสอบ',flowType:'inventory',fulfillmentType:'stock',openingStockUbon:10,unit:'ชิ้น'};w.testApp.restoreLocalMasterBackup({products:[p]});
-  let d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];w.saveFor('ubon',2026,8,d);await w.delDoc('ubon',2026,8,'invoices',111);
+  let d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];w.saveFor('ubon',2026,8,d);await legacyDelete(w,'ubon',2026,8,'invoices',111);
   const trash=w.ERPProductionCore.exportData().trash[0];
   w.selBr('i','ubon');set('i-no','INV-B');set('i-date','2026-09-05');set('i-cust','ลูกค้าทดสอบ');w.document.getElementById('i-items-body').innerHTML='';w.addIItem({product:p.name,productCode:p.code,qty:10,priceUnit:100,unit:'ชิ้น'});await w.saveInvoice();
   const stockBefore=w.productEstimatedStock(p,'ubon');await w.pcRestoreTrash(trash.id);
   return {stockBefore,stockAfter:w.productEstimatedStock(p,'ubon'),invoiceCount:w.loadFor('ubon',2026,8).invoices.length,expected:'restore rejected; stock stays 0'};
  });
  await scenario('restore_receipt_bypasses_overpayment',async({w})=>{
-  let d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];d.receipts=[{id:222,no:'R-A',branch:'ubon',date:'2026-09-05',invNo:'INV-A',customer:'ลูกค้าทดสอบ',total:1070}];w.saveFor('ubon',2026,8,d);await w.delDoc('ubon',2026,8,'receipts',222);const trash=w.ERPProductionCore.exportData().trash[0];
+  let d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];d.receipts=[{id:222,no:'R-A',branch:'ubon',date:'2026-09-05',invNo:'INV-A',customer:'ลูกค้าทดสอบ',total:1070}];w.saveFor('ubon',2026,8,d);await legacyDelete(w,'ubon',2026,8,'receipts',222);const trash=w.ERPProductionCore.exportData().trash[0];
   d=w.loadFor('ubon',2026,8);d.receipts.push({id:333,no:'R-B',branch:'ubon',date:'2026-09-05',invNo:'INV-A',customer:'ลูกค้าทดสอบ',total:1070});w.saveFor('ubon',2026,8,d);await w.pcRestoreTrash(trash.id);return {summary:w.ERPIntegrity.paymentSummary(inv(111,'INV-A')),expected:'restore rejected; paid remains 1070'};
  });
  await scenario('invoice_edit_leaves_issued_snapshot_stale',async({w})=>{
@@ -46,7 +50,7 @@ async function scenario(name,fn){test(name,async()=>{const h=await boot();try{co
  });
 
 })()
-test('valid invoice and receipt restoration succeeds and removes trash entry',async()=>{const h=await boot(),{w}=h;try{const d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];w.saveFor('ubon',2026,8,d);await w.delDoc('ubon',2026,8,'invoices',111);await w.pcRestoreTrash(w.ERPProductionCore.exportData().trash[0].id);assert.equal(w.loadFor('ubon',2026,8).invoices.length,1);assert.equal(w.ERPProductionCore.exportData().trash.length,0);const pack=w.loadFor('ubon',2026,8);pack.receipts=[{id:222,no:'R-A',invNo:'INV-A',customer:'ลูกค้าทดสอบ',total:300}];w.saveFor('ubon',2026,8,pack);await w.delDoc('ubon',2026,8,'receipts',222);await w.pcRestoreTrash(w.ERPProductionCore.exportData().trash[0].id);assert.equal(w.ERPIntegrity.paymentSummary(inv(111,'INV-A')).paid,300);assert.deepEqual(h.errors,[]);}finally{h.close();}});
+test('valid invoice and receipt restoration succeeds and removes trash entry',async()=>{const h=await boot(),{w}=h;try{const d=w.loadFor('ubon',2026,8);d.invoices=[inv(111,'INV-A')];w.saveFor('ubon',2026,8,d);await legacyDelete(w,'ubon',2026,8,'invoices',111);await w.pcRestoreTrash(w.ERPProductionCore.exportData().trash[0].id);assert.equal(w.loadFor('ubon',2026,8).invoices.length,1);assert.equal(w.ERPProductionCore.exportData().trash.length,0);const pack=w.loadFor('ubon',2026,8);pack.receipts=[{id:222,no:'R-A',invNo:'INV-A',customer:'ลูกค้าทดสอบ',total:300}];w.saveFor('ubon',2026,8,pack);await legacyDelete(w,'ubon',2026,8,'receipts',222);await w.pcRestoreTrash(w.ERPProductionCore.exportData().trash[0].id);assert.equal(w.ERPIntegrity.paymentSummary(inv(111,'INV-A')).paid,300);assert.deepEqual(h.errors,[]);}finally{h.close();}});
 for(const failedKey of ['comform_goods_receipts_v1','comform_purchase_orders_v1','comform_audit_log_v1'])test('GR rolls back and can retry after failure at '+failedKey,async()=>{const h=await boot(),{w,set}=h;try{
  const p={id:'AUDIT-P',code:'AUDIT-P',name:'สินค้าทดสอบ',flowType:'inventory',fulfillmentType:'stock',openingStockUbon:0,unit:'ชิ้น'};w.testApp.restoreLocalMasterBackup({products:[p]});w.ERPProductionCore.importData({purchaseOrders:[{id:'PO1',no:'PO1',branch:'ubon',date:'2026-09-05',supplier:'ทดสอบ',status:'ordered',items:[{productCode:p.code,product:p.name,qty:10,unitCost:20}]}]});w.pcPopulateOpenPo();set('gr-po','PO1');w.pcLoadPoForReceipt();set('gr-date','2026-09-05');set('gr-branch','ubon');set('gr-no','GR1');
  const before=JSON.stringify(w.ERPProductionCore.exportData()),proto=w.Storage.prototype,old=proto.setItem;

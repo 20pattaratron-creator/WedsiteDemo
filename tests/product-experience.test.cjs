@@ -60,7 +60,7 @@ test('demo reset removes the retired role key and keeps the simple/advanced mode
   const prefix='erp_tenant::customer-showcase-local::';
   const keys=[`${prefix}erp_product_experience_role_v1`,`${prefix}erp_product_experience_mode_v1`,`${prefix}erp_nav_collapsed_sections_v1`];
   assert.deepEqual([...seed.demoResetStorageKeys(keys,'customer-showcase-local')],[`${prefix}erp_product_experience_role_v1`]);
-  assert.deepEqual([...seed.DEMO_RESET_KEPT_BASE_KEYS],['erp_product_experience_mode_v1','erp_nav_collapsed_sections_v1']);
+  assert.deepEqual([...seed.DEMO_RESET_KEPT_BASE_KEYS],['erp_product_experience_mode_v1','erp_nav_collapsed_sections_v1','comform_company_profile_v1','comform_company_logo_v1','comform_company_branch_setting_v1','comform_sales_targets_v1','comform_delivery_targets_v2','comform_sales_target_period_overrides_v1','comform_delivery_target_period_overrides_v1']); // + ADR-020 company profile / logo, + ADR-022 branch-count setting (a setting, kept by the reset), + ADR-021 target keys (seeded entries removed separately)
 });
 
 test('stock availability calculates on hand reserved available and incoming',()=>{

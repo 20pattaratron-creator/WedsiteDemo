@@ -59,15 +59,15 @@ test('every list: menu order view → edit → create → other → destructive,
   }
 });
 
-test('invoice: outstanding → "รับชำระ" (issueReceiptFromInvoice) is the primary; settled → the document; the menu keeps the rest in order, delete last', () => {
+test('invoice: outstanding → "รับชำระ" (issueReceiptFromInvoice) is the primary; settled → the document; the menu keeps the rest in order, cancel (ADR-021, was delete) last', () => {
   const open = core.rowActions('invoice', { ...REF, settled: false });
   assert.equal(primaryOf(open).id, 'receipt');
   assert.equal(primaryOf(open).primaryLabel, 'รับชำระ');
   assert.equal(primaryOf(open).label, 'ออกใบเสร็จ');
-  assert.deepEqual(ids(menuOf(open)), ['doc', 'detail', 'edit', 'credit-note', 'delete']);
+  assert.deepEqual(ids(menuOf(open)), ['doc', 'detail', 'edit', 'credit-note', 'cancel']);
   const settled = core.rowActions('invoice', { ...REF, settled: true });
   assert.equal(primaryOf(settled).id, 'doc');
-  assert.deepEqual(ids(menuOf(settled)), ['detail', 'edit', 'receipt', 'credit-note', 'delete']);
+  assert.deepEqual(ids(menuOf(settled)), ['detail', 'edit', 'receipt', 'credit-note', 'cancel']);
   assert.equal(menuOf(settled).at(-1).kind, 'danger');
 });
 
@@ -82,7 +82,7 @@ test('voided / cancelled / locked rows: view only', () => {
   const voidedReceipt = core.rowActions('receipt', { ...REF, voided: true });
   assert.deepEqual(ids(voidedReceipt), ['doc', 'detail']);
   assert.equal(primaryOf(voidedReceipt).id, 'doc');
-  assert.deepEqual(ids(core.rowActions('receipt', { ...REF, voided: false })), ['doc', 'detail', 'edit', 'delete']);
+  assert.deepEqual(ids(core.rowActions('receipt', { ...REF, voided: false })), ['doc', 'detail', 'edit', 'cancel']); // ADR-021: cancel, never delete
   assert.deepEqual(kinds(core.rowActions('creditNote', { ...REF, live: false })), { doc: 'primary' });
   assert.deepEqual(kinds(core.rowActions('creditNote', { ...REF, live: true })), { doc: 'primary', edit: 'normal', void: 'danger' });
   assert.deepEqual(ids(core.rowActions('issuedInvoice', REF)), ['detail']);
@@ -116,7 +116,7 @@ test('same handler, same arguments as the old per-row buttons (quoted ids → St
     edit: ['editInvoice', 'ubon', 2026, 8, '123'],
     receipt: ['issueReceiptFromInvoice', 'ubon', 2026, 8, '123'],
     'credit-note': ['ERPCreditNotes.startFromInvoice', 'ubon', 2026, 8, '123'],
-    delete: ['delDoc', 'ubon', 2026, 8, 'invoices', 123]
+    cancel: ['ERPDocumentCancel.open', 'invoices', 'ubon', 2026, 8, '123'] // ADR-021 (was delDoc … 'invoices')
   });
   assert.deepEqual(calls('quote', REF), {
     doc: ['openQuoteDocument', 'ubon', 2026, 8, '123'],
@@ -129,7 +129,7 @@ test('same handler, same arguments as the old per-row buttons (quoted ids → St
     doc: ['openReceiptDocumentFromReceipt', 'ubon', 2026, 8, '123'],
     detail: ['showDetailById', 'receipt', 'ubon', 2026, 8, '123'],
     edit: ['editReceipt', 'ubon', 2026, 8, '123'],
-    delete: ['delDoc', 'ubon', 2026, 8, 'receipts', 123]
+    cancel: ['ERPDocumentCancel.open', 'receipts', 'ubon', 2026, 8, '123'] // ADR-021 (was delDoc … 'receipts')
   });
   assert.deepEqual(calls('expense', { ...REF, id: 'e-9' }), {
     detail: ['showDetailById', 'expense', 'ubon', 2026, 8, 'e-9'],
@@ -201,7 +201,7 @@ test('rowActionsHtml: exactly one primary button + one "⋯" (a real button nami
 test('rowMenuItems: the non-primary actions in menu order; call actions get onSelect, data-* actions carry their attributes', () => {
   const ran = [];
   const items = core.rowMenuItems(core.rowActions('invoice', { ...REF, settled: true }), action => ran.push(action.id));
-  assert.deepEqual(items.map(item => [item.key, item.danger]), [['detail', false], ['edit', false], ['receipt', false], ['credit-note', false], ['delete', true]]);
+  assert.deepEqual(items.map(item => [item.key, item.danger]), [['detail', false], ['edit', false], ['receipt', false], ['credit-note', false], ['cancel', true]]);
   assert.deepEqual(items.map(item => item.order), [0, 1, 2, 3, 4]);
   items[2].onSelect();
   assert.deepEqual(ran, ['receipt']);
@@ -223,7 +223,7 @@ test('resolveRowActionCall / rowActions input checks', () => {
   assert.equal(core.resolveRowActionCall('', root), null);
   assert.throws(() => core.rowActions('invoices', REF), /unknown list/);
   assert.throws(() => core.rowActions('__proto__', REF), /unknown list/);
-  assert.deepEqual(ids(core.rowActions('invoice', null)), ['doc', 'detail', 'edit', 'receipt', 'credit-note', 'delete'], 'missing facts do not crash');
+  assert.deepEqual(ids(core.rowActions('invoice', null)), ['doc', 'detail', 'edit', 'receipt', 'credit-note', 'cancel'], 'missing facts do not crash');
   assert.equal(core.rowMenuLabel('invoice', { no: '' }), 'การทำงานเพิ่มเติม');
   assert.equal(core.rowMenuLabel('contact', { name: 'บจก. เอ' }), 'การทำงานเพิ่มเติม บจก. เอ');
 });
