@@ -1,6 +1,11 @@
 # สถาปัตยกรรมระบบ ERP DEMO 4.3.1 (ฉบับภาษาไทย)
 
 > **ผู้อ่าน:** เจ้าของผลิตภัณฑ์ (อยากเข้าใจว่าระบบประกอบกันอย่างไร) และนักพัฒนาที่จะมาทำต่อ
+> **อัปเดต ADR-023 (5 ต.ค. 2569):** รายงานภาษีขาย / ภาษีซื้อ / ภาษีซื้อต้องห้าม และสรุป ภ.พ.30 (บรรทัด 1–12) แยกตามสถานประกอบการ — หน้า "รายงานภาษี" ในหมวดข้อมูล, ข้อมูลใบกำกับภาษีซื้อในค่าใช้จ่าย, สาขาผู้จำหน่าย, `vatCategory` ในบิล, collection `vatReturns` (+3 ไฟล์ runtime `erp-tax-reports-core.js`, `erp-tax-forms.js`, `erp-tax-reports.js`)
+>
+> **อัปเดต ADR-022 (4 ต.ค. 2569):** บริษัทเลือกได้ว่ามี **สำนักงานใหญ่อย่างเดียว** หรือ **สำนักงานใหญ่ + 1 สาขา** (ตั้งค่าบริษัท) — แหล่งความจริงเดียวของรายชื่อ/ชื่อสาขาบนหน้าจอคือ `erp-branches-core.js` (+1 ไฟล์ runtime); id ภายในยังเป็น `ubon`/`khonkaen` ทุกที่
+>
+> **อัปเดต ADR-021 (4 ต.ค. 2569):** สาขาผู้ซื้อบนใบกำกับภาษีเต็มรูป/ใบเสร็จ, ยกเลิกแทนการลบ (+2 ไฟล์ `erp-document-cancel*.js`), เป้าตัวอย่างจากข้อมูลตัวอย่าง, ส่งออก Excel แบบออฟไลน์ (SheetJS ใน `vendor/`)
 > **สถานะข้อมูล:** ตัวเลขทุกตัวในเอกสารนี้วัดจากโค้ดจริงเมื่อ 30 ก.ย. 2569 (2026-09-30) ด้วย `wc -l`, `grep` และสคริปต์ Node สั้น ๆ ไม่ได้คัดลอกมาจากเอกสารเก่า
 > **การนำทาง:** ระบบใช้มุมมองเดียวแบบ Admin แล้ว (ถอดมุมมองตามบทบาทออกตาม ADR-014 เมื่อ 30 ก.ย. 2569) และตั้งแต่ ADR-015 (รอบ 5 ส่วน A) ส่วนหัวเหลือแถบแจ้งเตือนบรรทัดเดียว + เมนู "⚙ Demo" และเมนูซ้ายจัดเป็นหมวดพับได้ — ตัวเลขจำนวนไฟล์/บรรทัดในหัวข้อ 2.1 เป็นค่าก่อน ADR-015 (หลัง ADR-015: 42 ไฟล์, 23,462 บรรทัด)
 
@@ -188,6 +193,14 @@ README ระบุตรง ๆ ว่า "เวอร์ชันนี้ย
 | `trial-mode.js` | 137 | Infra | H | `TrialService`: onboarding และโควตาทดลอง (ในโหมดเดโม: ใบเสนอราคา 30, ใบกำกับ 20, ใบเสร็จ 20, ลูกค้า 30, ผู้จำหน่าย 20, สินค้า 50 — ไม่นับข้อมูลตัวอย่าง) |
 | `erp-demo-seed-core.js` | 829 | Core | I | สร้างข้อมูลตัวอย่างบริษัท IT ไทย โดยอิงวันที่ปัจจุบัน (ADR-013) |
 | `erp-demo-seed.js` | 478 | UI + Storage | H | รายการ "โหลดข้อมูลตัวอย่างสำหรับสาธิต" และ "ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)" (สีแดง ล่างสุด) ในเมนู Demo |
+| `erp-company-profile-core.js` (ADR-020) | 591 | Core | I | ข้อมูลบริษัท/โลโก้ของลูกค้า: ตรวจเลขผู้เสียภาษี (check digit) รหัสสาขา ช่องบังคับ, อ่าน/เขียน 2 key แบบ all-or-nothing, รวมเข้า `CurrentUser.companyProfile`, `documentCompany()` ให้ `branchCompany()` ของเอกสาร, `companyLogoUrl()` ตัวเดียว, ย่อโลโก้ด้วย canvas, ตรวจ Backup |
+| `erp-document-cancel-core.js` (ADR-021) | 104 | Core | I | กติกายกเลิกใบกำกับภาษี/ใบเสร็จ (ไม่ลบ): รายการเหตุผล, ตรวจเหตุผล, ข้อความเอกสารที่ต้องยกเลิกก่อน, `applyDocumentCancel()` (status `cancelled` + `voided`), ปลดการเชื่อมใบเสนอราคา/ใบสั่งผลิต |
+| `erp-document-cancel.js` (ADR-021) | 214 | UI + Storage | H | `ERPDocumentCancel`: เมนู ⋯ › "ยกเลิกใบกำกับภาษี / ยกเลิกใบเสร็จ", กล่องเหตุผล, ปฏิเสธเมื่อปิดงวด/มีเอกสารอ้างอิง, บันทึกใน write session เดียว + Audit Log |
+| `erp-company-profile.js` (ADR-020, 022) | 716 | UI | H | หน้า ตั้งค่าบริษัท › "ข้อมูลบริษัทและโลโก้": ฟอร์ม + ตัวอย่างหัวเอกสาร, อัปโหลดโลโก้, บันทึก/คืนค่า/กลับไปใช้ข้อมูลตัวอย่าง, `ERPCompanyProfile` (export/restore ใน Backup JSON) และ (ADR-022) "จำนวนสถานประกอบการ" (ปฏิเสธเมื่อสาขา 2 ยังมีข้อมูล) + ตัวปรับหน้าจอสาขา (`applyBranchScreens`: ชื่อสาขาในฟอร์ม/ตัวกรอง/แท็บ, ซ่อนสาขา 2 ในโหมดสาขาเดียว, แถบเตือนเมื่อพบข้อมูลสาขา 2) |
+| `erp-tax-reports-core.js` (ADR-023) | 840 | Core | I | pure: งวดภาษี/วันครบกำหนด, ตรวจเลขผู้เสียภาษี, รหัสสถานประกอบการผู้ขาย, `planExpenseVatFields` (ม.82/3, 82/5, ซ้ำ), `buildSalesTaxReport` / `buildPurchaseTaxReport` / `buildPp30Summary`, CSV, `vatReturns` (normalize/parse/merge/ยอดยกมา) |
+| `erp-tax-forms.js` (ADR-023) | 408 | UI | H | `ERPTaxForms`: ส่วนใบกำกับภาษีซื้อในฟอร์มค่าใช้จ่าย, สาขาผู้จำหน่าย, `vatCategory` ในฟอร์มบิล, ป้าย "ข้อมูล VAT ไม่ครบ" |
+| `erp-tax-reports.js` (ADR-023) | 665 | UI + Storage | H | `ERPTaxReports`: หน้า "รายงานภาษี" 4 แท็บ, พิมพ์ A4 / Excel / CSV, บันทึกการยื่น ภ.พ.30 (`comform_vat_returns_v1`) + เสนอปิดงวด |
+| `erp-branches-core.js` (ADR-022) | 342 | Core | I | แหล่งความจริงเดียวของสาขา: การตั้งค่า 1/2 (`comform_company_branch_setting_v1`, ไม่มี = 2), ชื่อสาขาจากข้อมูลบริษัท (`branchLabelMap()` แทน `BRANCH_TH`/`BRANCH_LABEL` ของทุกโมดูล), สำรวจข้อมูลสาขา 2 (`branchDataCensus`), ข้อความปฏิเสธ/เตือน, ช่องเลือกสาขาของหน้าเอกสาร A4 — `window.ERPBranches` ติดตั้งโดย `local-demo-mode.js` สำหรับ script ธรรมดา |
 
 **ไฟล์อื่นที่หน้าเว็บใช้:** `index.html` (2,067 บรรทัด, 201 KB), CSS 15 ไฟล์ (ใหญ่สุด `style.css` 2,667 บรรทัด), `logo.png` (322 KB), `vendor/html2canvas-1.4.1.min.js`, `vendor/jspdf-2.5.1.umd.min.js` และ `deployment-check.html` (หน้าตรวจไฟล์เว็บ)
 
@@ -214,7 +227,7 @@ erp-document-finance-core.js ► (ไม่ import อะไรเลย — ต
 | `tests/` | ไฟล์ `.cjs` 38 ไฟล์: ไฟล์เทสต์ที่ `npm test` รัน 34 ไฟล์, `deployment.check.cjs` / `deployment-flat.check.cjs` และ helper `dom-helper.cjs` (boot แอปใน jsdom), `vm-esm-helper.cjs` (import ES module ใน CommonJS) |
 | `scripts/` | ตัวรันเทสต์ (`run-tests.mjs`), สคริปต์ audit 7 ตัว (`audit-*.mjs`), build flat, สร้างหน้าตรวจ deployment, สคริปต์ evidence และ `scripts/security/` (ตรวจไฟล์ควบคุม AI agent และ baseline SHA-256) |
 | `docs/` | `TESTING_TH.md`, `DEMO_SCRIPT_TH.md`, `decisions/` (ADR-001…013), `history/` (บันทึกรุ่นเก่า), `code-review/`, `cloud-reference/` (แนวทางตั้ง Firebase ในอนาคต) และเอกสารนี้ |
-| `vendor/` | ไลบรารี PDF แบบออฟไลน์ + LICENSE + `vendor-manifest.json` (ADR-013) |
+| `vendor/` | ไลบรารี PDF แบบออฟไลน์ + LICENSE + `vendor-manifest.json` (ADR-013) และ SheetJS 0.18.5 สำหรับส่งออก Excel (Apache-2.0, โหลดเมื่อกดส่งออกครั้งแรกจาก URL ใน `<meta name="erp-vendor-xlsx">`, ADR-021) |
 | `specs/` | ข้อกำหนด: `constitution/ERP_CONSTITUTION.md`, order-to-cash, money-tax, inventory, quality, security และ `TRACEABILITY.json` (32 requirement) |
 | `evidence/` | ผลเทสต์ (`.tap`/`.json`) ที่เก็บไว้เป็นหลักฐานตอนออก release |
 | `csv-templates/` | แม่แบบ CSV สำหรับนำเข้าลูกค้า / ผู้จำหน่าย / สินค้า |
@@ -274,6 +287,7 @@ root มีไฟล์ `.json` 50 ไฟล์ และ `.md` 58 ไฟล์ 
 | 25 | `erp-decision-council.js` | module |
 | 26 | `erp-product-experience.js` | module |
 | 27 | `erp-demo-seed.js` | module |
+| 28 | `erp-company-profile.js` (ADR-020; ข้อมูลที่บันทึกไว้ถูกรวมตอนบูตโดย `local-demo-mode.js` ก่อนเอกสารใด ๆ) | module |
 
 สิ่งที่ควรรู้เรื่องลำดับ:
 
@@ -298,7 +312,7 @@ root มีไฟล์ `.json` 50 ไฟล์ และ `.md` 58 ไฟล์ 
 
 **เมนูซ้าย (ADR-015):** 6 หมวดพับได้ — หน้าหลัก · ขายและรับเงิน · ซื้อ / ผลิต / คลัง · ค่าใช้จ่าย · ข้อมูลและรายงาน · ตั้งค่า — เอกสารแต่ละชนิดมีเมนูเดียวที่เปิดหน้ารายการ (ปุ่ม "+ สร้าง…" อยู่บนหน้ารายการ) หมวดที่พับเก็บใน `erp_nav_collapsed_sections_v1` และ route ของ `go()` ไม่เปลี่ยน
 
-**การนำทาง:** ระบบมี **มุมมองเดียวแบบ Admin** ทุกคนเห็นเมนูครบ มีปุ่มสลับ **โหมดง่าย / โหมดขั้นสูง** (key `erp_product_experience_mode_v1`) โหมดง่ายซ่อนเฉพาะ 5 หน้าขั้นสูง (`ADVANCED_PANELS`: วิเคราะห์ธุรกิจ, สูตรและกฎธุรกิจ, ศูนย์ควบคุม, ตั้งค่าบริษัท, สำรอง/นำเข้าข้อมูล) รวมถึงแท็บแดชบอร์ด "คาดการณ์" และ "ความเสี่ยง" — เมนู "มุมมอง" ตามบทบาท (ผู้บริหาร/ฝ่ายขาย/จัดซื้อ/คลัง/บัญชี/ผู้ดูแลระบบ) ถูกถอดออกแล้ว (ADR-014)
+**การนำทาง:** ระบบมี **มุมมองเดียวแบบ Admin** ทุกคนเห็นเมนูครบ มีปุ่มสลับ **โหมดง่าย / โหมดขั้นสูง** (key `erp_product_experience_mode_v1`) โหมดง่ายซ่อนเฉพาะ 4 หน้าขั้นสูง (`ADVANCED_PANELS`: วิเคราะห์ธุรกิจ, สูตรและกฎธุรกิจ, ศูนย์ควบคุม, สำรอง/นำเข้าข้อมูล — ตั้งค่าบริษัทออกจากรายการตาม ADR-020 และในโหมดง่ายแสดงเฉพาะการ์ด "ข้อมูลบริษัทและโลโก้") รวมถึงแท็บแดชบอร์ด "คาดการณ์" และ "ความเสี่ยง" — เมนู "มุมมอง" ตามบทบาท (ผู้บริหาร/ฝ่ายขาย/จัดซื้อ/คลัง/บัญชี/ผู้ดูแลระบบ) ถูกถอดออกแล้ว (ADR-014)
 
 ### 3.3 API กลางบน `window` ที่โมดูลใช้คุยกัน
 
@@ -347,7 +361,7 @@ trial-mode.js wrap()                 ← ตรวจโควตาทดลอ
 
 - **ทุกอย่างอยู่ใน `localStorage`** ยกเว้นไฟล์แนบ (IndexedDB) และ tenant ที่ใช้งาน (`sessionStorage` key `erp_active_tenant_v1`)
 - ทุก key ธุรกิจถูกครอบด้วย `ComformTenant.storageKey(base)` → `erp_tenant::{tenantId}::{base}` ในเดโม tenantId คือ `customer-showcase-local` จึงเป็นเช่น `erp_tenant::customer-showcase-local::biz2_ubon_2026_09`
-- ชื่อ key ถาวรกำหนดใน `erp-storage-contracts.js` (`STORAGE_CONTRACT_VERSION = '1.2.0'`, ADR-003) แต่ **ไม่ครบทุก key** (ดูตาราง 4.3)
+- ชื่อ key ถาวรกำหนดใน `erp-storage-contracts.js` (`STORAGE_CONTRACT_VERSION = '1.5.0'`, ADR-003) แต่ **ไม่ครบทุก key** (ดูตาราง 4.3)
 - ขนาด: `localStorage` ของ Browser ส่วนใหญ่ได้ราว 5 MB ต่อ origin ระบบไม่มีการจำกัดเอง แต่ `saveFor()` ใน `app.js` จับ `QuotaExceededError` แล้วแจ้ง "พื้นที่จัดเก็บของเบราว์เซอร์เต็ม" และ `local-demo-health.js` แสดงขนาดที่ใช้ (นับจาก key ของ tenant × 2 ไบต์ และ `navigator.storage.estimate()`) ไฟล์ภาพ/PDF **ไม่ถูกเก็บเป็น Base64** ใน `localStorage` (`localCacheJsonReplacer` ตัด field `data`, `file`, `blob`, `previewUrl`, `objectUrl`)
 
 ### 4.2 เอกสารขายเก็บเป็น "pack รายเดือนต่อสาขา"
@@ -362,6 +376,8 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 - `issuedInvoices` / `issuedReceipts` คือ "ฉบับพิมพ์" ที่บันทึกจากหน้าเอกสาร A4 (`documentKind: 'delivery-tax-invoice'` / `'receipt-document'`) ส่วน `invoices` / `receipts` คือเอกสารที่บันทึกจากฟอร์ม เวลารวมยอด `ERPIntegrity.dedupe()` จะเอาเอกสารจากฟอร์มก่อน แล้วเติมฉบับพิมพ์ที่ไม่ซ้ำกับใบใดเลย
 - การอ่านมี 2 แบบ: `loadFor()` **ทนต่อข้อมูลเสีย** (คืน pack ว่างแล้ว log error เพื่อให้หน้าจอไม่พัง) และ `loadForFinancialDocumentWrite()` / `loadForBackupRead()` ที่ **หยุดทันที** ถ้า pack เสีย (ใช้ `parseFinancialDocumentPackForWrite`) เพื่อไม่ให้บันทึกทับหรือสำรองข้อมูลที่หายไปโดยไม่รู้ตัว
 
+**สาขา (ADR-022):** pack ยังมี 2 ชุดเสมอ (`ubon`, `khonkaen`) และ **ทุกยอดรวม/รายงาน/เลขที่เอกสาร/Backup อ่านทั้ง 2 id เสมอ** (`tenantActiveBranchIds()` ไม่ขึ้นกับโหมด) โหมด "สำนักงานใหญ่อย่างเดียว" เปลี่ยนเฉพาะ *หน้าจอ* และจะเป็นสาขาเดียวก็ต่อเมื่อสาขา 2 ไม่มีข้อมูลเลย ถ้ามีข้อมูลสาขา 2 เข้ามา (นำเข้า Backup/CSV) หน้าจอกลับเป็น 2 สาขา + แถบเตือน
+
 ### 4.3 key อื่นทั้งหมด (ไม่รวม prefix tenant)
 
 | key | เจ้าของ | อยู่ใน contracts? | เก็บอะไร |
@@ -373,8 +389,10 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | `comform_contact_master_v1` | `erp-master-data-store.js` | ✓ | ลูกค้า + ผู้จำหน่าย |
 | `comform_product_master_v1` | `erp-master-data-store.js` | ✓ | สินค้า/บริการ |
 | `comform_business_rules_v1` | `business-rules.js` | ✓ | สูตรราคา/ค่าคอม (มีเวอร์ชัน) |
-| `comform_sales_targets_v1`, `comform_delivery_targets_v2` | `app.js` | ✓ | เป้ายอดขาย/เป้าส่งของ |
-| `comform_sales_target_period_overrides_v1`, `comform_delivery_target_period_overrides_v1` | `app.js` | ✗ | เป้ารายงวดที่ปรับเอง |
+| `comform_sales_targets_v1`, `comform_delivery_targets_v2` | `app.js` | ✓ | เป้ายอดขาย/เป้าส่งของ (ค่าเริ่มต้น 0 = "ยังไม่ได้ตั้งเป้า", ADR-021) |
+| `comform_sales_target_period_overrides_v1`, `comform_delivery_target_period_overrides_v1` | `app.js` (ชื่ออยู่ใน `erp-storage-contracts.js` ตั้งแต่ ADR-021) | ✗ | เป้ารายเดือน `{"scope:YYYY-MM": บาท}` — รีเซ็ตเดโมไม่ลบเป้าที่ผู้ใช้ตั้งเอง |
+| `comform_demo_seed_targets_v1` | `erp-demo-seed.js` (ADR-021) | ✗ | รายการเป้ารายเดือนที่ข้อมูลตัวอย่างเขียนไว้ (รีเซ็ตลบเฉพาะรายการที่ยังเป็นค่าเดิม) |
+| `comform_company_branch_setting_v1` | `erp-company-profile.js` (ADR-022) | ✓ (`masterData.companyProfile.branchSetting`) | `{schemaVersion, count: 1\|2, updatedAt}` จำนวนสถานประกอบการ ไม่มี = 2 — รีเซ็ตเดโมไม่ลบ |
 | `comform_purchase_orders_v1`, `comform_goods_receipts_v1`, `comform_inventory_movements_v1` | `erp-production-core.js` | ✗ | PO, ใบรับสินค้า, ความเคลื่อนไหวสินค้า |
 | `comform_audit_log_v1` | `erp-production-core.js` | ✗ | Audit Log เชิงปฏิบัติการ (เก็บล่าสุด 2,500 แถว) |
 | `comform_recycle_bin_v1` | `erp-production-core.js` | ✗ | สำเนาเอกสารที่ถูกลบ (ล่าสุด 300 แถว) |
@@ -386,6 +404,9 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | `comform_delivery_tax_document_draft_v1`, `comform_receipt_document_draft_v1` | document renderers | ✗ | ฉบับร่างของหน้าเอกสาร A4 |
 | `erp_product_experience_mode_v1` | `erp-product-experience.js` | ✓ | โหมดง่าย/ขั้นสูง |
 | `erp_nav_collapsed_sections_v1` | `erp-product-experience.js` | ✓ | หมวดเมนูซ้ายที่พับไว้ (ADR-015) |
+| `comform_company_profile_v1` | `erp-company-profile.js` (ADR-020) | ✓ | ข้อมูลบริษัทของลูกค้า `{schemaVersion, nameTh, nameEn, taxId, addressTh, phone, email, website, branches:{ubon,khonkaen:{code,label,addressTh}}, updatedAt}` — ไม่มี key = ใช้ข้อมูลตัวอย่างเดิม; รีเซ็ตข้อมูลสาธิต **ไม่ลบ** |
+| `comform_company_logo_v1` | `erp-company-profile.js` (ADR-020) | ✓ | โลโก้ `{schemaVersion, dataUrl (PNG/JPEG base64 ≤ 300,000 ตัวอักษร, ≤ 600 px), mime, width, height, updatedAt}` — ไม่มี/`null` = `logo.png`; **ไม่อยู่ใน** `ERPBackup.capture()` (snapshot ในเครื่อง 8 ชุด) แต่อยู่ใน Backup JSON (`masterData.companyProfile`); รีเซ็ตข้อมูลสาธิตไม่ลบ |
+| `comform_vat_returns_v1` | `erp-tax-reports.js` (ADR-023) | ✓ (`masterData.vatReturns`, ตรวจแบบ fail-closed) | `{schemaVersion, returns:[{id, schemaVersion, branchKey (ubon/khonkaen/combined), branches[], period YYYY-MM, filingMode, amendment (0 = ยื่นปกติ / n = ยื่นเพิ่มเติมครั้งที่ n), lines{1..12}, carryForwardIn, carryForwardSource, overpaidAction, channel, dueDate, filedAt, filedBy, seller, counts}]}` บันทึกการยื่นในเดโม (ไม่ได้ส่งกรมสรรพากร) — รีเซ็ตข้อมูลสาธิตลบ |
 | `erp_product_experience_role_v1` | – | ✓ (retired, ADR-014) | มุมมองตามบทบาทเดิม ถูกลบตอนเริ่มระบบ |
 | `trial::{tenantId}::…` | `trial-mode.js` | ✗ | สถานะ onboarding (**ไม่ใช้ prefix `erp_tenant::`**) |
 | `erp_demo_write_lease_v1:{scope}` | `erp-demo-concurrency.js` | ✗ | lease ชั่วคราวข้ามแท็บ (**ไม่แยก tenant**) |
@@ -496,7 +517,11 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | **ใบกำกับภาษีอย่างย่อ ม.86/6** | ต้องเป็นราคารวม VAT (`extract`) เท่านั้น ไม่บังคับชื่อผู้ซื้อ (ใช้ `GENERAL_CUSTOMER_NAME`) ถ้าใส่เลขผู้เสียภาษีผู้ซื้อจะเตือนให้ใช้เต็มรูป ข้อมูลเก่าที่ระบุอย่างย่อแต่ไม่ใช่ราคารวม VAT จะถูกถือเป็นเต็มรูป | `planInvoiceDocumentAction()`, `effectiveTaxInvoiceForm()` (`erp-shared-core.js`), UI ใน `erp-sales-form-assist.js` |
 | **ห้ามแก้บิลที่รับเงินหรือลดหนี้แล้ว** | ถ้ามีการรับเงิน (`paid > 0`) หรือมีใบลดหนี้อ้างอิง จะแก้เลขที่/วันที่/ลูกค้า/รายการ/ยอดไม่ได้ (เทียบด้วย `invoiceFinancialFingerprint`) และบิลที่มีฉบับพิมพ์แล้วแก้ต้นทางไม่ได้ | `planInvoiceDocumentAction()`; `ERPIntegrity.assertEditable()` |
 | **ใบลดหนี้ ม.86/10** | ต้องมีเลขที่ไม่ซ้ำ (รวมใบที่ยกเลิก เลข CN ไม่ออกซ้ำ), สาเหตุ 5 แบบ (สินค้าชำรุด, คิดราคาเกิน, รับคืน, ยกเลิก/ลดค่าบริการ, อื่น ๆ ต้องอธิบาย), อ้างอิงบิลของลูกค้าเดียว สาขาเดียว โหมด VAT เดียวกัน, วันที่ไม่ก่อนบิล, ยอดลดสะสมไม่เกินบิล, บิลอย่างย่อที่ไม่มีชื่อผู้ซื้อต้องใส่ชื่อผู้ซื้อและออกแยกใบ, VAT ของผลต่างคิดครั้งเดียวจากยอดรวมแล้วกระจายกลับรายบิลด้วยวิธี largest remainder, ใบลดหนี้อยู่ในงวดภาษีของวันที่ใบลดหนี้ | `validateCreditNote()`, `calculateCreditNote()`, `buildCreditNoteRecord()` ใน `erp-credit-note-core.js` |
-| **ภาษีขายสุทธิ** | ภาษีขาย = VAT ใบกำกับ − VAT ใบลดหนี้ | `summarizeOutputVat()` ใน `erp-credit-note-core.js` |
+| **ภาษีขายสุทธิ** | ภาษีขาย = VAT ใบกำกับ + VAT ใบเพิ่มหนี้ (รับ `debitNotes` ไว้แล้ว ยังไม่มีหน้าออกใบ) − VAT ใบลดหนี้; บิลที่ยกเลิกไม่นับ | `summarizeOutputVat()` ใน `erp-credit-note-core.js` |
+| **`vatCategory` ของบิล (ADR-023)** | บิลโหมด `none` เลือกได้ `exempt` (ยกเว้น → ภ.พ.30 บรรทัด 3) หรือ `zero` (อัตรา 0% → บรรทัด 2); บิลเก่าที่ไม่มีค่า = ยกเว้น + เตือนในรายงาน | `normalizeInvoiceVatCategory()` (`erp-tax-reports-core.js`), `planInvoiceDocumentAction()` |
+| **ภาษีซื้อในค่าใช้จ่าย (ADR-023)** | ยอด `amount` ยังเป็นยอดรวม; เก็บแยก ก่อน VAT/VAT, เลขผู้เสียภาษี + สาขาผู้ขาย, เลข/วันที่ใบกำกับ, เดือนที่ใช้สิทธิ; เตือน ม.82/3 เกิน 6 เดือน, เลือกเหตุต้องห้าม ม.82/5 (ไม่นับเป็นภาษีซื้อ), ห้ามซ้ำ เลขผู้เสียภาษีผู้ขาย + เลขใบกำกับ, เดือนที่ใช้สิทธิต้องยังไม่ปิดงวด; ข้อมูลเก่าที่ไม่มีแยก VAT แสดงป้าย "ข้อมูล VAT ไม่ครบ" และไม่เข้ารายงาน | `planExpenseVatFields()` (`erp-tax-reports-core.js`), `planExpenseDocumentAction()`, `erp-tax-forms.js` |
+| **รายงานภาษีขาย / ภาษีซื้อ (ADR-023)** | เรียงคอลัมน์ตามแบบกรมสรรพากร, ใบลดหนี้ติดลบในเดือนของใบลดหนี้, บิลยกเลิกแสดง 0 พร้อมเหตุ, ใบกำกับอย่างย่อรวมเป็นยอดรายวัน, ภาษีซื้อตาม "เดือนที่ใช้สิทธิ" แยกตามสาขาหรือรวม | `buildSalesTaxReport()` / `buildPurchaseTaxReport()` |
+| **ภ.พ.30 (ADR-023)** | บรรทัด 1–12 (บรรทัด 5/7 = ยอดรวมของรายงาน, 9 = ยอดยกมาจากการยื่นเดือนก่อน); 13–16 "ไม่คำนวณในเดโม"; แยกยื่น/ยื่นรวมตาม `companyProfile.vatFilingMode`; ครบกำหนด 15 (กระดาษ) / 23 (e-filing ถึง 31 ม.ค. 2570) เลื่อนเสาร์–อาทิตย์ ไม่รวมวันหยุดราชการ; ยื่นซ้ำงวดเดิม = "ยื่นเพิ่มเติมครั้งที่ n" | `buildPp30Summary()`, `pp30DueDates()`, `resolveCarryForward()` |
 | **หัก ณ ที่จ่าย (ลูกค้าหักเรา)** | ตัวเลือกอัตรา 0/1/2/3/5/10% ฐานคือ **ยอดก่อน VAT**; เงินที่ได้จริง = ยอดรวม − ภาษีที่ถูกหัก; เก็บเลขหนังสือรับรอง 50 ทวิ และสถานะได้รับแล้ว; ใบเสร็จ WHT นับเป็นชำระเต็มจำนวน | `WHT_RATE_PRESETS`, `calculateWhtSummary()` (`erp-shared-core.js`), `receiptWhtSummary()` + `saveReceiptUnlocked()` (`app.js`), `receipt-document.js` |
 | **WHT ในการรับชำระผ่านใบวางบิล** | **ไม่รองรับ** — `planBillingPaymentAction` และหน้ารับชำระของ `erp-order-flow.js` ไม่มีช่อง WHT ต้องออกใบเสร็จจากเมนู "รับชำระ / ใบเสร็จ" แทน | `erp-order-flow.js`, `erp-document-finance-core.js` |
 | **วันครบกำหนด** | ลำดับความสำคัญ: `dueDate` ที่ระบุในบิล → คำนวณจาก `creditTerm` (`cash`, `deposit50` = 0 วัน; `credit30/60/90/120/150/180`) → ถ้าไม่มีเลย ครบกำหนดวันออกบิล (ขายหน้าร้าน/ไม่ระบุเครดิต) → ถ้าวันที่บิลใช้ไม่ได้ = "ไม่ระบุวันครบกำหนด" วันที่ผิดจริง (เช่น 30 ก.พ.) ไม่ถูกเลื่อนเอง | `invoiceDueDateInfo()` / `invoiceDueDate()` ใน `erp-receivables-core.js` |
@@ -549,7 +574,7 @@ audit เก็บใน `localStorage` เดียวกับข้อมู�
 - **ข้ามแท็บ:** `withDemoWriteLease(scope, task)` จอง key `erp_demo_write_lease_v1:{scope}` (หมดอายุ 8 วินาที รอได้ 5 วินาที) ใบกำกับ ใบเสร็จ และใบลดหนี้ใช้ scope เดียวกัน `sales-ledger` เพราะแตะยอดลูกหนี้ตัวเดียวกัน
 - **ในแท็บเดียว:** `local-demo-health.js` ห่อ `saveQuote`, `saveInvoice`, `saveReceipt`, `saveProduction`, `saveExpense`, `pcSavePo`, `pcPostGoodsReceipt`, `pcPostAdjustment`, `pcPostTransfer` ให้ทำทีละครั้ง และปฏิเสธการเรียกซ้ำภายใน 250 ms หลังเสร็จ
 - **เลขซ้ำ:** ตรวจเลขเอกสารซ้ำก่อนบันทึกทุกประเภท; ใบเสร็จจาก Payment ตรวจ idempotency (`assertIdempotentPaymentReceipts`) — ถ้ามีใบเสร็จของ Payment นั้นแล้วจะไม่สร้างซ้ำ
-- **ลบ:** `delDoc` ย้ายสำเนาไป Recycle Bin ก่อน และไม่ยอมลบฉบับพิมพ์, บิลที่มีการรับเงิน, บิลที่มีใบลดหนี้, ใบเสร็จที่ผูก Payment
+- **ลบ / ยกเลิก (ADR-021):** ใบกำกับภาษีและใบเสร็จที่ออกแล้ว **ลบไม่ได้** — ใช้ ⋯ › "ยกเลิกใบกำกับภาษี / ยกเลิกใบเสร็จ" (`erp-document-cancel.js`): ต้องมีเหตุผล, ปฏิเสธเมื่อปิดงวดหรือยังมีใบเสร็จ/รับชำระ/ใบลดหนี้/ใบวางบิลอ้างอิง, เก็บเอกสารไว้ด้วย `status:'cancelled'` + `voided:true` + ผู้ยกเลิก/เวลา/เหตุผล (Audit Log) เลขที่ยังอยู่ในลำดับ, พิมพ์มีตรา "ยกเลิก / CANCELLED", `paymentSummary()` คืน `status:'cancelled'` ค้าง 0 ทุกรายงานจึงตัดออก, สต็อกคืนเอง (ขายคิดจากบิลที่ live). `delDoc` ยังลบใบเสนอราคา/ค่าใช้จ่าย/ใบสั่งผลิต (ย้ายไป Recycle Bin)
 
 ### 7.7 สิ่งที่เป็นแค่ระดับหน้าจอ (ไม่ใช่ความปลอดภัยจริง)
 
@@ -630,7 +655,7 @@ ADR ที่มี: 001 วันที่ธุรกิจ · 002 VAT แห�
 | **ความสัมพันธ์บางอย่างเป็นแค่ข้อความ** | PO อ้าง SO ผ่าน `note` เท่านั้น; `orderInvoices()` ยังมี fallback หาเลข SO จากข้อความ `note` ของบิล | trace เอกสารไม่แม่น 100% |
 | **ชื่อหลอก** | `erp-production-core.js` ชื่อ "core" แต่เป็น UI + storage + wrapper; `erp-workflow-graph-core.js` / `ORDER_TO_CASH_GRAPH` ไม่ถูกใช้ใน runtime (ใช้แค่ในเทสต์) | นักพัฒนาใหม่เข้าใจผิดง่าย |
 | **โค้ด Cloud ที่ไม่ได้ใช้** | `app.js` อ้าง `FirebaseService` 24 จุด มี `syncFromFirebaseYear`, `saveCloudRecord`, interval ซิงก์ทุก 60 วินาที ทั้งที่เดโมปิด Cloud | เพิ่มขนาดและความซับซ้อนโดยไม่มีผล |
-| **ช่องโหว่ของการควบคุม** | ลบเอกสารในงวดที่ปิดแล้วได้ (`delDoc` ไม่เรียก `assertPeriodOpen`), `voidPayment` ไม่ตรวจปิดงวด, นโยบายอนุมัติไม่บล็อกการบันทึก, audit แก้ได้, `audit:financial` ตรวจแค่ว่ามีข้อความโค้ด (regex) | ผู้ใช้/ผู้ตรวจอาจเข้าใจว่าควบคุมได้มากกว่าที่เป็นจริง |
+| **ช่องโหว่ของการควบคุม** | (ปิดแล้วใน ADR-018: ลบ/ยกเลิกในงวดที่ปิดถูกปฏิเสธ), นโยบายอนุมัติไม่บล็อกการบันทึก, audit แก้ได้, `audit:financial` ตรวจแค่ว่ามีข้อความโค้ด (regex) | ผู้ใช้/ผู้ตรวจอาจเข้าใจว่าควบคุมได้มากกว่าที่เป็นจริง |
 | **รับชำระผ่านใบวางบิลไม่รองรับ WHT** | ไม่มีช่อง WHT ใน `saveBillingPayment` | ลูกค้านิติบุคคลที่หัก 3% ต้องออกใบเสร็จแยกจากเมนูรับชำระ |
 
 ### 9.3 สิ่งที่ทำซ้ำหลายที่ (หนี้ทางเทคนิค)
@@ -644,7 +669,7 @@ ADR ที่มี: 001 วันที่ธุรกิจ · 002 VAT แห�
 | escape HTML (`esc`/`escapeHtml`) | 11 ไฟล์ |
 | จัดรูปแบบเงิน (`money`) | 9 ไฟล์ |
 | ชื่อสาขา (`BRANCH_LABEL`/`BRANCH_DEFAULTS`) | 8 ไฟล์ และข้อความไม่ตรงกัน ("สาขาสำนักงานใหญ่" ใน `erp-order-flow.js` แต่ "สำนักงานใหญ่" ใน `erp-product-experience.js`) |
-| key ถาวรนอก `erp-storage-contracts.js` | PO/GR/movements/audit/recycle bin (`erp-production-core.js`), backup และเป้ารายงวด (`app.js`), draft ของเอกสาร, trial |
+| key ถาวรนอก `erp-storage-contracts.js` | PO/GR/movements/audit/recycle bin (`erp-production-core.js`), backup (`app.js`), draft ของเอกสาร, trial |
 | Audit Log | 2 ชุด (หัวข้อ 7.5) |
 | "live" (ยังไม่ถูกยกเลิก) | นิยามแยกใน `erp-integrity.js`, `erp-governance-core.js`, `erp-product-experience-core.js`, `erp-receivables-core.js` และแต่ละที่ดู field ต่างกันเล็กน้อย (`voided`, `cancelled`, `reversed`, `deleted`, `status`) |
 
@@ -658,8 +683,8 @@ root มี 50 `.json` + 58 `.md` ส่วนใหญ่เป็นบัน�
 
 ### 10.1 ฟีเจอร์ภาษีรอบถัดไป (ตาม `docs/TAX_FEATURES_SPEC.md` หัวข้อ 8)
 
-- **รายงานภาษีขาย / ภาษีซื้อ / สรุป ภ.พ.30** แยกตามสถานประกอบการ (ต้องเพิ่ม `branchCode` ของผู้ขาย, snapshot สาขาผู้ซื้อในบิล, `vatCategory`, ข้อมูลใบกำกับภาษีซื้อในค่าใช้จ่ายและ GR) — G2–G7, G11, G14, G15
-- **ยกเลิก (void) ใบกำกับภาษีแทนการลบ** — G1 (ปัจจุบัน `delDoc` ย้ายไป Recycle Bin)
+- ~~**รายงานภาษีขาย / ภาษีซื้อ / สรุป ภ.พ.30** แยกตามสถานประกอบการ — G2–G7, G11, G14~~ ทำแล้วใน ADR-023; ยังเหลือ: ภาษีซื้อจากใบรับสินค้า (GR) — G15, ภ.พ.30 บรรทัด 13–16, วันหยุดราชการในวันครบกำหนด
+- ~~ยกเลิก (void) ใบกำกับภาษีแทนการลบ — G1~~ ทำแล้วใน ADR-021; snapshot สาขาผู้ซื้อในบิล (G3) ทำแล้วใน ADR-021 (`customerBranchCode`)
 - **ใบเพิ่มหนี้ ม.86/9** — collection `debitNotes` คู่กับใบลดหนี้ และให้ `paymentSummary` รู้จักยอดเพิ่มหนี้ — G8–G10
 - **หัก ณ ที่จ่ายฝั่งผู้จ่าย: หนังสือรับรอง 50 ทวิ, ภ.ง.ด.3 / ภ.ง.ด.53** — field WHT ในค่าใช้จ่าย และ `whtCertificates` / `whtFilings` — G12–G13
 - ควรเพิ่ม WHT ในหน้ารับชำระผ่านใบวางบิลด้วย และให้ `delDoc` / `voidPayment` ตรวจปิดงวด

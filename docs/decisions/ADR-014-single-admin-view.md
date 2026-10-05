@@ -15,7 +15,8 @@ banner/badge only to accounting/management/admin. In demos the presenter first h
 One view for everyone, equal to the former `admin` role.
 - No role selector. The top bar keeps only the **โหมดง่าย / โหมดขั้นสูง** toggle (`#pe-mode-toggle`,
   `ADVANCED_PANELS`, `PRODUCT_EXPERIENCE_MODE_KEY`), which works exactly as before: โหมดง่าย hides
-  analytics, business-rules, audit-log, saas-admin, files. (The product owner is told it exists and may ask
+  analytics, business-rules, audit-log, saas-admin, files. (ADR-020 later took saas-admin out of that list:
+  its company / logo card is for customers; the SaaS card on the page stays โหมดขั้นสูง-only.) (The product owner is told it exists and may ask
   to remove it later.) On phones (≤560 px) the toggle stays hidden, as before; the wrapper is renamed
   `.pe-view-controls` and no longer floats as a button box at the bottom right.
 - Work queue: `buildWorkQueue(snapshot, options)` — the `role` parameter and every item's `roles` metadata

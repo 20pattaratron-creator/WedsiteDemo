@@ -3,6 +3,8 @@
 ## Status
 Accepted for Local Demo (round 5, part C — last part of the UI declutter). Builds on ADR-015 (header,
 Demo menu, grouped sidebar) and ADR-016 (row "⋯" menus).
+**Sizes updated by ADR-019 (round 6):** buttons 38 → 42 px (15 px text, 18 px icons), small 32 → 36 px
+(14 px text), touch targets 40 → 44 px on ≤ 900 px; levels, colours and rules below are unchanged.
 
 ## Context
 Measured in Chromium with the sample data (1440×900): the executive dashboard was 4,470 px tall (~5

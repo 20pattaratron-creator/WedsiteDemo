@@ -42,7 +42,8 @@ document.
    (`DEMO_RESET_KEPT_BASE_KEYS`). Arriving at an entry of a collapsed section opens it (and remembers that);
    a section the user folds while on one of its pages stays folded and still shows that page's entry.
    `ADVANCED_PANELS` still hide in โหมดง่าย, and a section with no visible entry hides its heading
-   (ตั้งค่า in โหมดง่าย). 21 entries (16 in โหมดง่าย).
+   (ตั้งค่า in โหมดง่าย). 21 entries (16 in โหมดง่าย). — ADR-020: ตั้งค่าบริษัท is no longer advanced, so
+   โหมดง่าย has 17 entries and shows ตั้งค่า with that one entry; the Demo menu gained "ข้อมูลบริษัทและโลโก้" (order 15).
 4. **One entry per document.** The entry opens the list; each list header has one primary "+ สร้าง…"
    button; each form has a "← รายการ…" link back to its list (added by `erp-product-experience.js`); a form,
    and the issued-document lists, highlight their document's entry (`NAV_ENTRY_FOR_PANEL`). No `go()`
