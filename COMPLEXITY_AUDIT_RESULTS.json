@@ -1,20 +1,20 @@
 {
   "release": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-01T06:48:04.523Z",
+  "checkedAt": "2026-10-04T22:48:33.526Z",
   "metrics": {
-    "runtimeJsFiles": 44,
-    "runtimeLines": 24466,
-    "rootJsFiles": 45,
+    "runtimeJsFiles": 52,
+    "runtimeLines": 28973,
+    "rootJsFiles": 53,
     "appJsLines": 8268,
     "devDependencies": 3,
-    "windowAssignments": 66,
+    "windowAssignments": 72,
     "inlineHandlerFunctions": 102
   },
   "limits": {
-    "runtimeJsFilesMax": 44,
-    "runtimeLinesMax": 24500,
-    "rootJsFilesMax": 45,
+    "runtimeJsFilesMax": 52,
+    "runtimeLinesMax": 29400,
+    "rootJsFilesMax": 53,
     "appJsLinesMax": 8350,
     "devDependenciesMax": 3,
     "windowAssignmentsMax": 75,

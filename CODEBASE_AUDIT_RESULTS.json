@@ -1,15 +1,15 @@
 {
   "version": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-01T06:49:21.376Z",
-  "runtimeRootFiles": 114,
-  "jsFiles": 45,
+  "checkedAt": "2026-10-04T22:54:51.520Z",
+  "runtimeRootFiles": 124,
+  "jsFiles": 53,
   "inlineHandlerFunctions": 101,
   "issues": [],
   "notes": [
     {
       "code": "CSS_CROSS_FILE_OVERLAP",
-      "count": 15,
+      "count": 22,
       "detail": [
         {
           "selector": ":root",
@@ -19,6 +19,13 @@
             "quotation-document.css",
             "receipt-document.css",
             "style.css"
+          ]
+        },
+        {
+          "selector": ".erp-c360-dialog header button",
+          "files": [
+            "erp-customer-experience.css",
+            "erp-ui.css"
           ]
         },
         {
@@ -32,6 +39,20 @@
           "selector": ".erp-dashboard-views button",
           "files": [
             "erp-customer-experience.css",
+            "erp-ui.css"
+          ]
+        },
+        {
+          "selector": ".erp-council-close",
+          "files": [
+            "erp-decision-council.css",
+            "erp-ui.css"
+          ]
+        },
+        {
+          "selector": ".ar-alert-close",
+          "files": [
+            "erp-receivables.css",
             "erp-ui.css"
           ]
         },
@@ -78,6 +99,13 @@
           ]
         },
         {
+          "selector": ".sidebar .nav-item svg",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
           "selector": ".comform-topbar",
           "files": [
             "erp-ui.css",
@@ -110,6 +138,27 @@
           "files": [
             "erp-ui.css",
             "style.css"
+          ]
+        },
+        {
+          "selector": ".modal",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".app-toast-close",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".exec-detail-close",
+          "files": [
+            "erp-ui.css",
+            "executive-charts.css"
           ]
         },
         {

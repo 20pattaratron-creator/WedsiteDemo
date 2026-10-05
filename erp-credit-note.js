@@ -17,12 +17,13 @@ import { withThaiCalendarMeta } from './erp-date-core.js';
 import { withDemoWriteLease, SALES_LEDGER_WRITE_LEASE } from './erp-demo-concurrency.js';
 import { normalizeProductKey } from './erp-master-data-core.js';
 import { rowActionsHtml } from './erp-row-actions.js';
+import { branchLabelMap, isMultiBranchUi } from './erp-branches-core.js';
 import { icon } from './erp-icons.js';
 
 (() => {
   'use strict';
   if (window.ERPCreditNotes) return;
-  const BRANCH_LABEL = { ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' };
+  const BRANCH_LABEL = branchLabelMap({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels
   const MONTH_LABELS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
   const ALL_MONTHS = Array.from({ length: 12 }, (_, index) => index);
   const SAVE_LABEL = 'บันทึกใบลดหนี้'; // after the save line icon (ADR-017)
@@ -35,6 +36,8 @@ import { icon } from './erp-icons.js';
   const moneyInput = amount => Number.isFinite(Number(amount)) ? roundMoneyValue(amount).toFixed(2) : '';
   const profile = () => window.ComformAuth?.getCurrentProfile?.() || window.CurrentUser || null;
   const lockedBranch = () => { const branch = profile()?.branch; return branch && branch !== 'all' ? branch : ''; };
+  // ADR-022: with one establishment the branch choice is hidden and every credit note belongs to the head office.
+  const defaultBranch = () => lockedBranch() || (isMultiBranchUi() ? '' : 'ubon');
   const branchActive = branch => window.SaaSService?.isBranchActive?.(branch) ?? true;
   const userLabel = () => profile()?.email || 'Local user';
 
@@ -177,6 +180,7 @@ import { icon } from './erp-icons.js';
     if (hint) hint.textContent = `พบใบกำกับภาษี ${shown} รายการ${search ? ` (ค้นหา: ${search})` : ''} — เลือกได้หลายใบ ต้องเป็นลูกค้ารายเดียวกันและรูปแบบ VAT เดียวกัน`;
   }
   function addSelectedInvoice() {
+    if (!form.branch) form.branch = defaultBranch();
     if (!form.branch) { $('cn-br-warn')?.classList.add('show'); notifyUser('กรุณาเลือกสาขาก่อนเลือกใบกำกับภาษี'); return; }
     const raw = $('cn-inv-ref')?.value || '';
     if (!raw) { notifyUser('กรุณาเลือกใบกำกับภาษีจากรายการก่อนกดเพิ่ม'); return; }
@@ -372,6 +376,7 @@ import { icon } from './erp-icons.js';
 
   // ----------------------------------------------------------- form state
   function renderAll() {
+    if (!form.branch && !form.edit) form.branch = defaultBranch();
     applyBranchClasses();
     syncBuyerField();
     renderChips();
@@ -405,7 +410,7 @@ import { icon } from './erp-icons.js';
   }
   function resetForm() {
     form.lines = []; form.context = []; form.returnItems = []; form.edit = null;
-    form.branch = lockedBranch() || '';
+    form.branch = defaultBranch();
     ['cn-cust', 'cn-address', 'cn-tax-id', 'cn-buyer-branch', 'cn-reason', 'cn-reason-text', 'cn-note', 'cn-inv-filter-search'].forEach(id => setValue(id, ''));
     setValue('cn-date', localDateISO());
     setValue('cn-inv-filter-year', String(new Date().getFullYear()));
@@ -447,7 +452,7 @@ import { icon } from './erp-icons.js';
     }
   }
   async function saveUnlocked() {
-    const branch = lockedBranch() || form.branch;
+    const branch = lockedBranch() || form.branch || defaultBranch();
     if (!branch) { $('cn-br-warn')?.classList.add('show'); notifyUser('กรุณาเลือกสาขาก่อนบันทึกใบลดหนี้'); return false; }
     const edit = form.edit;
     if (edit && edit.branch !== branch) { notifyUser('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขใบลดหนี้ได้'); return false; }

@@ -99,7 +99,9 @@ export function creditNoteStatusLabel(record) {
   return isCreditNoteLive(record) ? 'ใช้งาน' : 'ยกเลิกแล้ว';
 }
 
-function creditNoteInvoiceLive(invoice) {
+// A tax invoice that still counts (not voided / cancelled / reversed) — also used by the VAT
+// reports (erp-tax-reports-core.js), so "live" means the same thing in every output-VAT figure.
+export function creditNoteInvoiceLive(invoice) {
   return !!invoice && !invoice.voided && !invoice.cancelled && !invoice.reversed && invoice.status !== 'cancelled' && invoice.documentStatus !== 'cancelled';
 }
 
@@ -781,9 +783,12 @@ export function creditNoteTotals(creditNotes = []) {
   return { count, subtotal: creditNoteMoney(subtotal), vatAmt: creditNoteMoney(vatAmt), total: creditNoteMoney(total) };
 }
 
-// Output VAT (ภาษีขาย) of one period: tax invoices issued in the period minus
-// credit notes issued in the period.
-export function summarizeOutputVat({ invoices = [], creditNotes = [] } = {}) {
+// Output VAT (ภาษีขาย) of one period: tax invoices issued in the period, plus debit notes
+// (ใบเพิ่มหนี้, §86/9) and minus credit notes (ใบลดหนี้, §86/10) issued in the period. The one
+// output-VAT engine: the credit-note list, รายงานภาษีขาย and ภ.พ.30 lines 1 / 5 all use it (ADR-023).
+// `debitNotes` have the credit-note record shape (subtotal / vatAmt / total, positive amounts);
+// stage D stores them — an empty list until then.
+export function summarizeOutputVat({ invoices = [], creditNotes = [], debitNotes = [] } = {}) {
   let salesValue = 0, outputVat = 0, invoiceCount = 0;
   for (const invoice of Array.isArray(invoices) ? invoices : []) {
     if (!creditNoteInvoiceLive(invoice)) continue;
@@ -793,6 +798,7 @@ export function summarizeOutputVat({ invoices = [], creditNotes = [] } = {}) {
     invoiceCount += 1;
   }
   const credit = creditNoteTotals(creditNotes);
+  const debit = creditNoteTotals(debitNotes);
   salesValue = creditNoteMoney(salesValue);
   outputVat = creditNoteMoney(outputVat);
   return {
@@ -802,8 +808,11 @@ export function summarizeOutputVat({ invoices = [], creditNotes = [] } = {}) {
     creditNoteCount: credit.count,
     creditValue: credit.subtotal,
     creditVat: credit.vatAmt,
-    netSalesValue: creditNoteMoney(salesValue - credit.subtotal),
-    netOutputVat: creditNoteMoney(outputVat - credit.vatAmt)
+    debitNoteCount: debit.count,
+    debitValue: debit.subtotal,
+    debitVat: debit.vatAmt,
+    netSalesValue: creditNoteMoney(salesValue + debit.subtotal - credit.subtotal),
+    netOutputVat: creditNoteMoney(outputVat + debit.vatAmt - credit.vatAmt)
   };
 }
 

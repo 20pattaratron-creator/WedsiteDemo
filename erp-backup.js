@@ -1,25 +1,46 @@
 /* Versioned local backup validation and rollback. File bytes are kept in IndexedDB. */
-import { notifyStorageWritten } from './erp-storage-contracts.js';
+import { notifyStorageWritten, COMPANY_LOGO_KEY } from './erp-storage-contracts.js';
+import { validateCompanyProfileBackup } from './erp-company-profile-core.js';
+import { normalizeVatReturnsStore } from './erp-tax-reports-core.js';
 (() => {
   'use strict';
+  // ADR-020: the customer logo (≤ ~300 KB) is kept out of raw-storage snapshots — app.js stores up to
+  // 8 of them in localStorage, and 8 copies of a logo could fill the quota. capture() still carries it
+  // in memory (a non-enumerable property, so JSON.stringify drops it): an in-page rollback such as
+  // restore(capture()) after a failed import puts the logo back too. JSON backups carry the logo in
+  // masterData.companyProfile instead.
+  const MEMORY_ONLY_KEYS=Object.freeze([COMPANY_LOGO_KEY]);
+  const MEMORY_ONLY_PROP='__memoryOnlyKeys';
   function rawKey(k){return window.ComformTenant?.unwrapStorageKey?.(k)||'';}
-  function included(k){const base=rawKey(k);return !!base&&!base.startsWith('comform_auto_backup');}
+  function included(k){const base=rawKey(k);return !!base&&!base.startsWith('comform_auto_backup')&&!MEMORY_ONLY_KEYS.includes(base);}
   function capture(){
-    const out={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(included(k))out[rawKey(k)]=localStorage.getItem(k);}return out;
+    const out={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(included(k))out[rawKey(k)]=localStorage.getItem(k);}
+    const memory={};MEMORY_ONLY_KEYS.forEach(base=>{memory[base]=localStorage.getItem(window.ComformTenant.storageKey(base));});
+    Object.defineProperty(out,MEMORY_ONLY_PROP,{value:Object.freeze(memory),enumerable:false});
+    return out;
+  }
+  function writeMemoryOnly(snapshot){
+    if(!Object.prototype.hasOwnProperty.call(snapshot,MEMORY_ONLY_PROP))return; // e.g. a snapshot read back from JSON: the logo stays as it is
+    for(const [k,v] of Object.entries(snapshot[MEMORY_ONLY_PROP])){const key=window.ComformTenant.storageKey(k);if(v===null)localStorage.removeItem(key);else localStorage.setItem(key,v);}
   }
   function restore(snapshot){
     validate(snapshot);
     const before=capture(),keys=Object.keys(before),write=()=>{
       keys.forEach(k=>{if(!(k in snapshot))localStorage.removeItem(window.ComformTenant.storageKey(k));});
       Object.entries(snapshot).forEach(([k,v])=>localStorage.setItem(window.ComformTenant.storageKey(k),v));
+      writeMemoryOnly(snapshot);
     };
-    try{write();}catch(e){Object.keys(capture()).forEach(k=>{if(!(k in before))localStorage.removeItem(window.ComformTenant.storageKey(k));});Object.entries(before).forEach(([k,v])=>localStorage.setItem(window.ComformTenant.storageKey(k),v));throw e;}
+    try{write();}catch(e){Object.keys(capture()).forEach(k=>{if(!(k in before))localStorage.removeItem(window.ComformTenant.storageKey(k));});Object.entries(before).forEach(([k,v])=>localStorage.setItem(window.ComformTenant.storageKey(k),v));writeMemoryOnly(before);throw e;}
     finally{notifyStorageWritten();}
     window.ERPIntegrity.changed();
   }
   function validate(raw){
     if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new Error('ไฟล์ Backup ต้องเป็น JSON object');
     if(Number(raw.meta?.backupSchemaVersion||0)>4)throw new Error('ไฟล์ Backup เป็นเวอร์ชันใหม่กว่าระบบนี้');
+    // Company profile + logo (ADR-020): checked in full before anything is written; older backups have none.
+    if(raw.masterData&&typeof raw.masterData==='object'&&raw.masterData.companyProfile!==undefined)validateCompanyProfileBackup(raw.masterData.companyProfile);
+    // Filed ภ.พ.30 snapshots (ADR-023): every row validated before anything is written; older backups have none.
+    if(raw.masterData&&typeof raw.masterData==='object'&&raw.masterData.vatReturns!==undefined)normalizeVatReturnsStore(raw.masterData.vatReturns);
     const arrays=new Set(['quotes','invoices','issuedInvoices','receipts','issuedReceipts','productions','expenses','creditNotes','returnItems','contacts','products','salesOrders','billingNotes','payments','reservations','activity','purchaseOrders','goodsReceipts','inventoryMovements','audit','trash','localFiles']);
     function walk(value,name='',depth=0){
       if(depth>35)throw new Error('โครงสร้าง Backup ซ้อนลึกเกินไป');

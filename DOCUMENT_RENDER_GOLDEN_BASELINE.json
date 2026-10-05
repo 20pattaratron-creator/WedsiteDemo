@@ -1,7 +1,7 @@
 {
   "version": 1,
   "purpose": "Source-level golden guard for printable document rendering. A hash change requires explicit visual/PDF review and deliberate baseline regeneration.",
-  "generatedAt": "2026-09-25T14:51:25.882Z",
+  "generatedAt": "2026-10-04T00:54:02.473Z",
   "documents": {
     "quotation": {
       "js": "quotation-document.js",
@@ -18,7 +18,7 @@
       "cssSha256": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10",
       "functions": {
         "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-        "documentPageHtml": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8"
+        "documentPageHtml": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617"
       }
     },
     "receipt": {
@@ -27,7 +27,7 @@
       "cssSha256": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078",
       "functions": {
         "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-        "documentPageHtml": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2"
+        "documentPageHtml": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7"
       }
     }
   },
@@ -36,6 +36,16 @@
       "at": "2026-09-26",
       "document": "receipt:css",
       "reason": "ADR-013: WHT receipts (หัก ณ ที่จ่าย) clipped the WHT / net-cash rows, WHT note and amount in words in Chromium print/PDF; CSS rules scoped to .rcp-doc-totals-wht compact only WHT receipts. Reviewed as PDF (html2canvas + jsPDF, Chromium): WHT receipts show all 5 total rows; receipts without WHT are pixel-identical. Render functions unchanged."
+    },
+    {
+      "at": "2026-10-04",
+      "document": "deliveryTax:documentPageHtml",
+      "reason": "ADR-021: (1) ประกาศอธิบดีฯ VAT ฉบับที่ 199 — the buyer's establishment (\"สำนักงานใหญ่\" / \"สาขาที่ xxxxx\", from invoice.customerBranchCode) is printed after the buyer tax ID on every copy of the full tax invoice; (2) a cancelled invoice prints a \"ยกเลิก / CANCELLED\" stamp with the reason. Both are inline additions that add no bytes when empty: the preview HTML of all 62 seeded invoice/receipt pages with the fields stripped (records saved before ADR-021) is byte-identical to round8-base. Reviewed as Chromium print PDFs (branch buyer, HQ buyer, no-VAT, abbreviated, cancelled). CSS and documentPagesHtml unchanged; abbreviated layout unchanged."
+    },
+    {
+      "at": "2026-10-04",
+      "document": "receipt:documentPageHtml",
+      "reason": "ADR-021: the receipt shows the buyer tax ID, so the buyer's establishment is printed after it like on the tax invoice; a cancelled receipt prints the \"ยกเลิก / CANCELLED\" stamp. Empty fields add no bytes (old records byte-identical). Reviewed as Chromium print PDF. CSS unchanged."
     }
   ]
 }

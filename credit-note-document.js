@@ -13,10 +13,13 @@
 import { escapeHtml, fmt, formatDate, bahtText, safeFilename } from './erp-shared-core.js';
 import { CREDIT_NOTE_VAT_MODE_LABELS, isCreditNoteLive, creditNoteReasonLabel, paginateCreditNoteDocument } from './erp-credit-note-core.js';
 import { icon } from './erp-icons.js';
+import { companyLogoUrl, documentCompany } from './erp-company-profile-core.js';
+import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 
 (() => {
   'use strict';
-  const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
+  // ADR-020: customer logo once saved (data URL), else ./logo.png; updated on COMPANY_PROFILE_CHANGED_EVENT.
+  let COMPANY_LOGO_URL = companyLogoUrl();
   const PAGE_TYPES = Object.freeze([
     Object.freeze({ id: 'original', tab: 'ต้นฉบับ/ORIGINAL', audience: 'สำหรับลูกค้า / CUSTOMER' }),
     Object.freeze({ id: 'copy', tab: 'สำเนา/COPY', audience: 'สำหรับบัญชี / ACCOUNTING' })
@@ -48,6 +51,8 @@ import { icon } from './erp-icons.js';
 
   // Same precedence as receipt-document.js: tenant company profile first, demo defaults last.
   function branchCompany(branch) {
+    const custom = documentCompany(window.CurrentUser, branch, 'credit-note', 'ubon'); // ADR-020: saved company profile
+    if (custom) return custom;
     const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.ubon;
     const profile = window.CurrentUser?.companyProfile || {};
     const branchProfile = profile?.branches?.[branch] || {};
@@ -213,6 +218,7 @@ import { icon } from './erp-icons.js';
 
   async function ensurePdfLogoDataUrl() {
     if (pdfLogoDataUrl) return pdfLogoDataUrl;
+    if (COMPANY_LOGO_URL.startsWith('data:')) return (pdfLogoDataUrl = COMPANY_LOGO_URL); // customer logo: already a data URL
     try {
       const response = await fetch(COMPANY_LOGO_URL, { cache: 'force-cache' });
       if (!response.ok) throw new Error(`โหลดโลโก้ไม่สำเร็จ (${response.status})`);
@@ -318,6 +324,7 @@ import { icon } from './erp-icons.js';
     return overlay;
   }
 
+  window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, () => { COMPANY_LOGO_URL = companyLogoUrl(); pdfLogoDataUrl = ''; });
   window.ComformCreditNoteDocument = Object.freeze({
     pageTypes: PAGE_TYPES,
     buildHtml: (record, pageId = 'original') => pagesHtml(record, pageId, false),

@@ -1,7 +1,7 @@
 {
   "release": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-01T06:52:36.271Z",
+  "checkedAt": "2026-10-04T22:54:06.920Z",
   "status": "PASS",
   "baseline": "DOCUMENT_RENDER_GOLDEN_BASELINE.json",
   "checks": [
@@ -38,8 +38,8 @@
     {
       "id": "deliveryTax:documentPageHtml",
       "ok": true,
-      "expected": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8",
-      "actual": "5fb2f5d63b907cb5dde35db0bb038e188cead441731662fe91d5f94542e421c8"
+      "expected": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617",
+      "actual": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617"
     },
     {
       "id": "receipt:css",
@@ -56,8 +56,8 @@
     {
       "id": "receipt:documentPageHtml",
       "ok": true,
-      "expected": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2",
-      "actual": "49fd51ebcc57f29399275dafbd57dfe26ea5aa2a07358d842cc49e51a5da5cd2"
+      "expected": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7",
+      "actual": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7"
     }
   ],
   "issues": [],

@@ -1,7 +1,10 @@
-import { calculateDocumentTotals, effectiveTaxInvoiceForm, isAbbreviatedTaxInvoice, isGeneralCustomerName, localDateISO, escapeHtml, parseMoney, fmt, formatDate, thaiIntegerText, bahtText, safeFilename, getNestedValue, setNestedValue, resolveStoragePeriod, createDocumentLineItem as createItem, estimateDocumentItemRowUnits as itemRowUnits, selectPrintableDocumentItems as printableItems, paginateDocumentItems as paginateItems } from './erp-shared-core.js';
+import { calculateDocumentTotals, effectiveTaxInvoiceForm, isAbbreviatedTaxInvoice, isGeneralCustomerName, localDateISO, escapeHtml, parseMoney, fmt, formatDate, thaiIntegerText, bahtText, safeFilename, getNestedValue, setNestedValue, resolveStoragePeriod, buyerBranchLabel, normalizeBuyerBranchCode, documentCancelStampHtml, documentCancellationOf, isDocumentCancelled, createDocumentLineItem as createItem, estimateDocumentItemRowUnits as itemRowUnits, selectPrintableDocumentItems as printableItems, paginateDocumentItems as paginateItems } from './erp-shared-core.js';
+import { liveBranchLabel, documentEditorDefaultBranch as startBranch, documentEditorBranch, documentEditorDraft, documentEditorBranchFieldHtml } from './erp-branches-core.js';
 import { runDocumentAction, documentActionFeedback, assertIssuedDocumentMatchesCanonical, FinanceActionError, FINANCE_ACTION_ERROR_CODES } from './erp-document-finance-core.js';
 import { withDemoWriteLease } from './erp-demo-concurrency.js';
 import { icon } from './erp-icons.js';
+import { companyLogoUrl, documentCompany } from './erp-company-profile-core.js';
+import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -14,7 +17,9 @@ const businessStorageKey = (branch,year,month) => tenantStorageKey(`biz2_${branc
 const MAX_ITEMS = 60;
 const ITEM_UNITS_PER_PAGE = 8;
 const BLUE = '#0868c9';
-const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
+// ADR-020: the customer's logo (data URL) once saved in ตั้งค่าบริษัท, else ./logo.png; updated on
+// COMPANY_PROFILE_CHANGED_EVENT (listener at the end of this file).
+let COMPANY_LOGO_URL = companyLogoUrl();
 let pdfLogoDataUrl = '';
 
 const BRANCH_DEFAULTS = {
@@ -40,6 +45,8 @@ const BRANCH_DEFAULTS = {
 
 
 function branchCompany(branch) {
+  const custom = documentCompany(window.CurrentUser, branch, 'tax-invoice', 'khonkaen'); // ADR-020: saved company profile
+  if (custom) return custom;
   const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.khonkaen;
   const profile = window.CurrentUser?.companyProfile || {};
   const branchProfile = profile?.branches?.[branch] || {};
@@ -108,11 +115,13 @@ function createDefaultState() {
   const iso = localDateISO(today);
   return {
     previewOnly: false,
-    branch: 'khonkaen',
-    company: { ...branchCompany('khonkaen') },
+    branch: startBranch(),
+    company: { ...branchCompany(startBranch()) },
     customerName: '',
     customerAddress: '',
     customerTaxId: '',
+    customerBranchCode: '', // ADR-021: buyer's สำนักงานใหญ่ (00000) / สาขาที่ (5 digits); '' = not printed
+    cancellation: null, // ADR-021: { reason, at, by } of a cancelled invoice → "ยกเลิก / CANCELLED" stamp
     contact: '',
     phone: '',
     docNo: createDefaultDocNo(today),
@@ -152,6 +161,7 @@ function createDefaultDocNo(date = new Date()) {
 
 async function ensurePdfLogoDataUrl() {
   if (pdfLogoDataUrl) return pdfLogoDataUrl;
+  if (COMPANY_LOGO_URL.startsWith('data:')) return (pdfLogoDataUrl = COMPANY_LOGO_URL); // customer logo: already a data URL
   try {
     const response = await fetch(COMPANY_LOGO_URL, { cache: 'force-cache' });
     if (!response.ok) throw new Error(`โหลดโลโก้ไม่สำเร็จ (${response.status})`);
@@ -176,7 +186,7 @@ function getLockedBranch() {
 
 function loadDraft() {
   try {
-    const saved = JSON.parse(localStorage.getItem(tenantStorageKey(DTD_STORAGE_KEY)) || 'null');
+    const saved = documentEditorDraft(JSON.parse(localStorage.getItem(tenantStorageKey(DTD_STORAGE_KEY)) || 'null'));
     if (saved && typeof saved === 'object') {
       state = {
         ...createDefaultState(),
@@ -360,6 +370,13 @@ function loadFromInvoice(inv = {}, ref = {}) {
     state.company = { ...branchCompany(branch) };
   }
   state.customerName = inv.customer || '';
+  // ADR-021: buyer data comes from the invoice opened (it used to keep the previous draft's address / tax ID).
+  state.customerAddress = inv.customerAddress || inv.address || '';
+  state.customerTaxId = inv.customerTaxId || '';
+  state.customerBranchCode = normalizeBuyerBranchCode(inv.customerBranchCode);
+  state.contact = inv.contact || '';
+  state.phone = inv.phone || '';
+  state.cancellation = documentCancellationOf(inv);
   // A stored 'abbreviated' invoice that is not VAT-inclusive prints as full form.
   state.taxInvoiceForm = effectiveTaxInvoiceForm(inv);
   state.docNo = inv.no || state.docNo;
@@ -401,7 +418,7 @@ function customerSectionHtml() {
     <div class="dtd-form-section">
       ${sectionHeader(1, 'ข้อมูลลูกค้า')}
       <div class="dtd-production-ref-box dtd-linked-selector">
-        <div class="dtd-linked-selector-head"><div><label for="dtd-production-ref">ดึงข้อมูลจากใบสั่งผลิต (ถ้ามี)</label><small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small></div><span class="dtd-linked-branch-badge">${escapeHtml(BRANCH_DEFAULTS[state.branch]?.label || 'กรุณาเลือกสาขา')}</span></div>
+        <div class="dtd-linked-selector-head"><div><label for="dtd-production-ref">ดึงข้อมูลจากใบสั่งผลิต (ถ้ามี)</label><small>กรองตามสาขาที่เลือก พร้อมเลือกปีและเดือนเพื่อลดความสับสน</small></div><span class="dtd-linked-branch-badge">${escapeHtml(BRANCH_DEFAULTS[state.branch] ? liveBranchLabel(state.branch, BRANCH_DEFAULTS[state.branch].label) : 'กรุณาเลือกสาขา')}</span></div>
         <div class="dtd-linked-filter-row">
           <label><span>ปี</span><select id="dtd-production-filter-year">${productionYearOptionsHtml()}</select></label>
           <label><span>เดือน</span><select id="dtd-production-filter-month"><option value="">ทุกเดือน</option>${Array.from({length:12},(_,i)=>`<option value="${i}" ${String(productionFilterMonth)===String(i)?'selected':''}>${i+1}</option>`).join('')}</select></label>
@@ -431,18 +448,7 @@ function documentSectionHtml() {
     <div class="dtd-form-section">
       ${sectionHeader(2, 'ข้อมูลเอกสาร')}
       <div class="dtd-grid dtd-grid-4">
-        <div class="dtd-field dtd-span-2">
-          <span>เลือกสาขา *</span>
-          <div class="dtd-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
-            <button type="button" class="dtd-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
-              <span class="dtd-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
-            </button>
-            <button type="button" class="dtd-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="dtd-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
-            </button>
-          </div>
-          ${locked ? `<small class="dtd-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="dtd-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}
-        </div>
+        ${documentEditorBranchFieldHtml('dtd', { branch: state.branch, locked, lockedLabel: BRANCH_DEFAULTS[locked]?.label })}
         ${inputHtml('docNo', 'เลขที่/No. *', 'INV-0001')}
         <div class="dtd-grid-line-break" aria-hidden="true"></div>
         ${optionalDateInputHtml('date', 'วันที่')}
@@ -673,7 +679,7 @@ function clearOptionalDate(field) {
 
 function setBranch(branch) {
   const locked = getLockedBranch();
-  if (!BRANCH_DEFAULTS[branch]) return;
+  if (!BRANCH_DEFAULTS[branch] || documentEditorBranch(branch) !== branch) return;
   if (locked && locked !== branch) {
     notify(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
     return;
@@ -835,7 +841,7 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
   const bahtTextValue = isFinalPage ? bahtText(sum.grand) : 'มีรายการต่อหน้าถัดไป';
 
   return `
-    <article class="dtd-document-page ${pdfMode ? 'dtd-pdf-page' : ''} ${!isFinalPage ? 'dtd-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">
+    <article class="dtd-document-page ${pdfMode ? 'dtd-pdf-page' : ''} ${!isFinalPage ? 'dtd-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">${state.cancellation ? documentCancelStampHtml(state.cancellation) : ''}
       <div class="dtd-doc-topbar">
         <div class="dtd-doc-serial-no"><span>เลขที่/No.</span> <strong>${escapeHtml(state.docNo)}</strong>${pageCounter}</div>
       </div>
@@ -864,7 +870,7 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
         <div class="dtd-doc-party-box">
           <div><b>นามลูกค้า/Customer name :</b> ${escapeHtml(state.customerName)}</div>
           <div><b>ที่อยู่/Address :</b><br>${escapeHtml(state.customerAddress).replace(/\n/g, '<br>')}</div>
-          <div class="dtd-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}</div>
+          <div class="dtd-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="dtd-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
         </div>
         <div class="dtd-doc-party-box">
           <div><b>สถานที่ส่งของ/Ship to :</b><br>${escapeHtml(state.shipTo).replace(/\n/g, '<br>')}</div>
@@ -1055,7 +1061,7 @@ function abbreviatedPageHtml(pageType, pdfMode, pageInfo) {
       <td class="num">${fmt(parseMoney(item.qty) * parseMoney(item.priceUnit))}</td>
     </tr>`).join('');
   return `
-    <article class="dtd-document-page dtd-abbr-page ${pdfMode ? 'dtd-pdf-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}" data-tax-invoice-form="abbreviated">
+    <article class="dtd-document-page dtd-abbr-page ${pdfMode ? 'dtd-pdf-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}" data-tax-invoice-form="abbreviated">${state.cancellation ? documentCancelStampHtml(state.cancellation) : ''}
       <div class="dtd-abbr-copy">${copyLabel}${totalPages > 1 ? ` · หน้า ${pageNumber}/${totalPages}` : ''}</div>
       <header class="dtd-abbr-head">
         <img src="${logoSrc}" alt="Company Logo" crossorigin="anonymous" decoding="sync">
@@ -1122,6 +1128,7 @@ async function saveDocumentToSystem(button) {
           const sourcePack = writeSession.get(state.sourceInvoiceBranch, sourceYear, sourceMonth);
           const sourceInvoice = (sourcePack.invoices || []).find(row => String(row.id) === String(state.sourceInvoiceId) || String(row.no) === String(state.sourceInvoiceNo));
           if (!sourceInvoice) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.DEPENDENCY, 'ไม่พบ Invoice ต้นทางในตำแหน่งจัดเก็บที่อ้างอิง กรุณาเปิดรายการต้นทางใหม่');
+          if (isDocumentCancelled(sourceInvoice)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `ใบกำกับภาษี ${sourceInvoice.no || ''} ถูกยกเลิกแล้ว จึงบันทึกฉบับพิมพ์ใหม่ไม่ได้ (พิมพ์ได้พร้อมตรา “ยกเลิก”) — ออกฉบับใหม่แทนด้วยเลขที่ใหม่`);
           return { store, year, month, sourceYear, sourceMonth, writeSession, pack, sourcePack, sourceInvoice };
         },
         plan: ctx => {
@@ -1351,6 +1358,8 @@ function buildStateFromInvoicePreview(inv = {}, ref = {}) {
   previewState.taxInvoiceForm = effectiveTaxInvoiceForm(inv);
   previewState.customerAddress = inv.customerAddress || inv.address || '';
   previewState.customerTaxId = inv.customerTaxId || '';
+  previewState.customerBranchCode = normalizeBuyerBranchCode(inv.customerBranchCode);
+  previewState.cancellation = documentCancellationOf(inv);
   previewState.contact = inv.contact || '';
   previewState.phone = inv.phone || '';
   previewState.docNo = inv.no || previewState.docNo;
@@ -1405,6 +1414,14 @@ window.ComformDeliveryTaxDocument = {
 
 window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('delivery-tax-app')) applyLockedBranch();
+});
+// ADR-020: a saved / reset company profile applies at once (logo, company block, toolbar, draft).
+window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, () => {
+  COMPANY_LOGO_URL = companyLogoUrl();
+  pdfLogoDataUrl = '';
+  state.branch = documentEditorBranch(state.branch); if (BRANCH_DEFAULTS[state.branch]) state.company = { ...branchCompany(state.branch) };
+  persistDraft();
+  if (document.getElementById('delivery-tax-app')) { renderAppShell(); bindEvents(); renderAll(); applyLockedBranch(); }
 });
 
 window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'delivery' } }));
