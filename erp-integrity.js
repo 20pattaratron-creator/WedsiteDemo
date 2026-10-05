@@ -166,6 +166,10 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     // overpayment of the original total; `overpaid` keeps its original meaning.
     const rawRefund=credited>0?round(Math.max(0,paid-effective)):0;
     const refundDue=rawRefund>RECONCILE_TOLERANCE?rawRefund:0;
+    // ADR-021: a cancelled (voided) invoice is kept for the number sequence but owes nothing: every AR /
+    // aging / dashboard / billing figure built on paymentSummary() then excludes it, like ERPIntegrity.live().
+    // Cancelling is refused while live receipts / payments / credit notes exist, so `paid` / `credited` are 0.
+    if(!live(inv))return {total,paid,outstanding:0,overpaid:0,status:'cancelled',evidence,legacy:false,credited,effectiveTotal:0,refundDue:0,cancelled:true};
     return {total,paid,outstanding,overpaid,status:fullyCredited?'credited':settled?'paid':paid>0?'partially_paid':'pending',evidence,legacy,credited,effectiveTotal:effective,refundDue};
   }
   function reconcilePayments() {

@@ -22,15 +22,17 @@
 //   2-digit sequence; BL/PAY as in erp-order-flow.js) and continue after the
 //   highest number already stored (`numberStart`), so they never collide.
 // ============================================================================
-import { roundMoneyValue, calculateVatSummary, calculateWhtSummary, unitPriceForVatMode, addBusinessCalendarDays, parseBusinessDate, businessDaysBetween, GENERAL_CUSTOMER_NAME, TAX_INVOICE_FORM_FULL, TAX_INVOICE_FORM_ABBREVIATED } from './erp-shared-core.js';
+import { roundMoneyValue, buyerBranchFromContact, calculateVatSummary, calculateWhtSummary, unitPriceForVatMode, addBusinessCalendarDays, parseBusinessDate, businessDaysBetween, GENERAL_CUSTOMER_NAME, TAX_INVOICE_FORM_FULL, TAX_INVOICE_FORM_ABBREVIATED } from './erp-shared-core.js';
 import { toBEYear, withThaiCalendarMeta } from './erp-date-core.js';
 import { planQuoteDocumentAction, planInvoiceDocumentAction, planReceiptDocumentAction, planExpenseDocumentAction, buildBillingAction, planBillingPaymentAction, buildPaymentReceiptDrafts } from './erp-document-finance-core.js';
 import { validateCreditNote, buildCreditNoteRecord, creditNoteBuyerBranchLabel } from './erp-credit-note-core.js';
+import { applyDocumentCancel, cancelReasonText } from './erp-document-cancel-core.js';
+import { addTaxPeriods, taxPeriodOfDate, taxPeriodLastDay, taxPeriodFirstDay } from './erp-tax-reports-core.js';
 import { invoiceTermDueDate } from './erp-receivables-core.js';
 import { validateProductMasterRecord } from './erp-master-data-core.js';
-import { PRODUCT_EXPERIENCE_MODE_KEY, NAV_COLLAPSED_SECTIONS_KEY, LEGACY_ORDER_FLOW_STORE_KEY } from './erp-storage-contracts.js';
+import { PRODUCT_EXPERIENCE_MODE_KEY, NAV_COLLAPSED_SECTIONS_KEY, LEGACY_ORDER_FLOW_STORE_KEY, COMPANY_PROFILE_KEY, COMPANY_LOGO_KEY, COMPANY_BRANCH_SETTING_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY } from './erp-storage-contracts.js';
 
-export const DEMO_SEED_CORE_VERSION = '1.1.0';
+export const DEMO_SEED_CORE_VERSION = '1.2.0';
 export const DEMO_SEED_BATCH_ID = 'demo-seed-v2';
 // Shown as "created by" on credit notes / billing activity, so nobody mistakes
 // a sample document for one a real user issued.
@@ -101,6 +103,20 @@ const CUSTOMERS = Object.freeze([
 ]);
 const WALK_IN = Object.freeze({ key: 'WALKIN', name: GENERAL_CUSTOMER_NAME, agency: '', taxId: '', address: '', contactPerson: '', phone: '', email: '', creditTerm: '', salesPerson: '' });
 
+// ADR-023: fictitious VAT-registered suppliers (Supplier Master, role 'supplier') whose full tax invoices
+// the sample expenses carry — 13-digit tax IDs with a valid check digit, head office (00000) or a branch.
+// The stationery shop issues only abbreviated tax invoices (ภาษีซื้อต้องห้าม, 82/5).
+const SUPPLIERS = Object.freeze([
+  { key: 'S_UL', id: 'demo-seed-s01', name: 'บจก. อุบลแลนด์', entityType: 'company', taxId: '0345556001011', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '45 ถนนแจ้งสนิท ตำบลในเมือง อำเภอเมืองอุบลราชธานี จังหวัดอุบลราชธานี 34000', phone: '045-311-450' },
+  { key: 'S_KP', id: 'demo-seed-s02', name: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', entityType: 'company', taxId: '0405557002029', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '77 ถนนประชาสโมสร ตำบลในเมือง อำเภอเมืองขอนแก่น จังหวัดขอนแก่น 40000', phone: '043-224-077' },
+  { key: 'S_NET', id: 'demo-seed-s03', name: 'บจก. อีสานไฟเบอร์เน็ต', entityType: 'company', taxId: '0345560003031', branchCode: '00002', branchName: 'สาขาอุบลราชธานี', address: '9/1 ถนนชยางกูร ตำบลในเมือง อำเภอเมืองอุบลราชธานี จังหวัดอุบลราชธานี 34000', phone: '045-200-009' },
+  { key: 'S_IT', id: 'demo-seed-s04', name: 'บจก. ไอทีซัพพลาย อีสาน', entityType: 'company', taxId: '0105558004044', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '210 ถนนพหลโยธิน แขวงสามเสนใน เขตพญาไท กรุงเทพมหานคร 10400', phone: '02-279-0210' },
+  { key: 'S_OFF', id: 'demo-seed-s05', name: 'บจก. ออฟฟิศพลัส เซ็นเตอร์', entityType: 'company', taxId: '0345562005058', branchCode: '00002', branchName: 'สาขาวารินชำราบ', address: '18 ถนนสถลมาร์ค ตำบลวารินชำราบ อำเภอวารินชำราบ จังหวัดอุบลราชธานี 34190', phone: '045-322-018' },
+  { key: 'S_PUMP', id: 'demo-seed-s06', name: 'หจก. วารินปิโตรเลียม', entityType: 'company', taxId: '0345559006065', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '300 ถนนสถลมาร์ค ตำบลแสนสุข อำเภอวารินชำราบ จังหวัดอุบลราชธานี 34190', phone: '045-321-300' },
+  { key: 'S_SHOP', id: 'demo-seed-s07', name: 'ร้านเครื่องเขียนมิตรภาพ', entityType: 'person', taxId: '3109900543215', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '12 ถนนพโลรังฤทธิ์ ตำบลในเมือง อำเภอเมืองอุบลราชธานี จังหวัดอุบลราชธานี 34000', phone: '045-254-012' },
+  { key: 'S_CLOUD', id: 'demo-seed-s08', name: 'บจก. คลาวด์โซลูชั่น ไทย', entityType: 'company', taxId: '0105561007075', branchCode: '00000', branchName: 'สำนักงานใหญ่', address: '88 ถนนสีลม แขวงสุริยวงศ์ เขตบางรัก กรุงเทพมหานคร 10500', phone: '02-233-0088' }
+]);
+
 // Product master rows in the same shape as app.js saveProductMasterLocal().
 // Inventory items carry opening stock per branch so seeded sales never make stock negative.
 const PRODUCTS = Object.freeze([
@@ -157,7 +173,17 @@ const INVOICES = Object.freeze([
   { key: 'U6', branch: 'ubon', customer: 'C3', offset: -8, useVat: 1, lines: [['DEMO-SV02', 3]] },
   { key: 'K8', branch: 'khonkaen', customer: 'C5', offset: -5, useVat: 1, lines: [['DEMO-SV02', 2]] },
   { key: 'U7', branch: 'ubon', customer: 'WALKIN', offset: -2, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-MN01', 1], ['DEMO-TN01', 2]], note: 'ขายหน้าร้าน ชำระเงินสด' },
-  { key: 'K7', branch: 'khonkaen', customer: 'WALKIN', offset: -1, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-UP01', 1], ['DEMO-KB01', 1]], note: 'ขายหน้าร้าน ชำระเงินสด' }
+  { key: 'K7', branch: 'khonkaen', customer: 'WALKIN', offset: -1, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-UP01', 1], ['DEMO-KB01', 1]], note: 'ขายหน้าร้าน ชำระเงินสด' },
+  // ADR-023 — the VAT story of the last closed tax month (the month before `today`, the ภ.พ.30 the
+  // presenter files now): `monthEnd` = days before its last day. Three walk-in abbreviated invoices on one
+  // day (one line in รายงานภาษีขาย), a full tax invoice cancelled for a wrong buyer establishment and its
+  // replacement under a NEW number (ADR-021). All on the month's last day, after every offset-dated
+  // invoice of that month, so the running numbers of the earlier sample invoices do not move.
+  { key: 'A1', branch: 'ubon', customer: 'WALKIN', monthEnd: 0, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-KB01', 1]], note: 'ขายหน้าร้าน ชำระเงินสด' },
+  { key: 'A2', branch: 'ubon', customer: 'WALKIN', monthEnd: 0, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-TN01', 1]], note: 'ขายหน้าร้าน ชำระเงินสด' },
+  { key: 'A3', branch: 'ubon', customer: 'WALKIN', monthEnd: 0, useVat: 0, taxInvoiceForm: TAX_INVOICE_FORM_ABBREVIATED, lines: [['DEMO-KB01', 2]], note: 'ขายหน้าร้าน ชำระเงินสด' },
+  { key: 'X1', branch: 'ubon', customer: 'C2', monthEnd: 0, useVat: 1, lines: [['DEMO-SV01', 1]], note: 'ติดตั้งเครือข่ายสำนักงานแปลงเกษตร', cancel: { code: 'wrong_details', text: 'ระบุสถานประกอบการของผู้ซื้อผิด ออกฉบับใหม่แทน' } },
+  { key: 'X2', branch: 'ubon', customer: 'C2', monthEnd: 0, useVat: 1, lines: [['DEMO-SV01', 1]], note: 'ออกแทนใบกำกับภาษีที่ยกเลิก (ระบุสถานประกอบการของผู้ซื้อผิด)' }
 ]);
 const RECEIPTS = Object.freeze([
   { key: 'R1', invoice: 'U1', offset: -52, kind: 'full', note: 'โอนเข้าบัญชีธนาคาร' },
@@ -165,7 +191,10 @@ const RECEIPTS = Object.freeze([
   { key: 'R2', invoice: 'U2', offset: -40, kind: 'partial', amount: 40000, note: 'ลูกค้าแบ่งชำระงวดแรก' },
   { key: 'R4', invoice: 'K3', offset: -9, kind: 'full', whtRate: 3, whtCertReceived: true, note: 'ลูกค้าหักภาษี ณ ที่จ่าย 3% (ค่าบริการ)' },
   { key: 'R5', invoice: 'U7', offset: -2, kind: 'full', note: 'เงินสดหน้าร้าน' },
-  { key: 'R6', invoice: 'K7', offset: -1, kind: 'full', note: 'เงินสดหน้าร้าน' }
+  { key: 'R6', invoice: 'K7', offset: -1, kind: 'full', note: 'เงินสดหน้าร้าน' },
+  { key: 'RA1', invoice: 'A1', monthEnd: 0, kind: 'full', note: 'เงินสดหน้าร้าน' },
+  { key: 'RA2', invoice: 'A2', monthEnd: 0, kind: 'full', note: 'เงินสดหน้าร้าน' },
+  { key: 'RA3', invoice: 'A3', monthEnd: 0, kind: 'full', note: 'เงินสดหน้าร้าน' }
 ]);
 const CREDIT_NOTES = Object.freeze([
   { key: 'CN2', invoice: 'U2', offset: -30, reasonCode: 'returned_goods', returns: [['DEMO-UP01', 1]], note: 'ลูกค้าคืน UPS 1 เครื่อง (สินค้าเกินความต้องการ) รับกลับเข้าสต็อก' },
@@ -174,18 +203,31 @@ const CREDIT_NOTES = Object.freeze([
   { key: 'CN3', invoice: 'U6', offset: -6, reasonCode: 'service_cancelled', difference: 4500, note: 'ลดค่าบริการ MA 1 ครั้ง', voidOffset: -5, voidReason: 'ออกใบลดหนี้ผิด — ลูกค้าใช้บริการครบทุกครั้ง จึงยกเลิกและเก็บเลขที่ไว้' }
 ]);
 const BILLING = Object.freeze({ key: 'BL1', invoices: ['K4', 'K5'], billingOffset: -18, paymentOffset: -7, method: 'โอนเงิน', recipient: 'งานการเงิน โรงเรียน', note: 'วางบิลรวม 2 ใบกำกับภาษี' });
+// branchPremises: rent / internet of the second branch's own building — left out when the company has
+// one establishment (ADR-022), because that building does not exist then.
+// tax (ADR-023): the full tax invoice the supplier issued — VAT split of the gross `amount` (`vatMode`),
+// the supplier's TIN / establishment from SUPPLIERS, invoice and received date = the expense date unless
+// given, claimed in the month received unless `claimNextMonth`; `claimable: false` + `reason` = ภาษีซื้อต้องห้าม.
+// In 'add' mode `amount` is the pre-VAT amount typed, as on the form (the stored amount is the total).
+// The online-ads expense keeps no VAT data on purpose: an expense recorded before ADR-023 ("ข้อมูล VAT ไม่ครบ").
 const EXPENSES = Object.freeze([
-  { branch: 'khonkaen', offset: -88, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6801', purpose: 'company' },
-  { branch: 'ubon', offset: -86, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6801', purpose: 'company' },
-  { branch: 'ubon', offset: -58, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6802', purpose: 'company' },
-  { branch: 'ubon', offset: -55, cat: 'ค่าสาธารณูปโภค', vendor: 'การไฟฟ้าส่วนภูมิภาค', desc: 'ค่าไฟฟ้าสำนักงานใหญ่', amount: 4850, docType: 'receipt_tax_invoice', taxStatus: 'received', docNo: 'PEA-2291', purpose: 'company' },
-  { branch: 'khonkaen', offset: -57, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6802', purpose: 'company' },
+  { branch: 'khonkaen', offset: -88, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6801', purpose: 'company', branchPremises: true, tax: { supplier: 'S_KP', vatMode: 'extract' } },
+  { branch: 'ubon', offset: -86, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6801', purpose: 'company', tax: { supplier: 'S_UL', vatMode: 'extract' } },
+  { branch: 'ubon', offset: -58, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6802', purpose: 'company', tax: { supplier: 'S_UL', vatMode: 'extract' } },
+  { branch: 'ubon', offset: -55, cat: 'ค่าสาธารณูปโภค', vendor: 'บจก. อีสานไฟเบอร์เน็ต', desc: 'ค่าอินเทอร์เน็ตและโทรศัพท์สำนักงานใหญ่', amount: 4850, docType: 'receipt_tax_invoice', taxStatus: 'received', docNo: 'NET-2291', purpose: 'company', tax: { supplier: 'S_NET', vatMode: 'extract' } },
+  { branch: 'khonkaen', offset: -57, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6802', purpose: 'company', branchPremises: true, tax: { supplier: 'S_KP', vatMode: 'extract' } },
   { branch: 'khonkaen', offset: -45, cat: 'ค่าขนส่ง/จัดส่ง', vendor: 'ขนส่งด่วนอีสาน', desc: 'ค่าส่งจอมอนิเตอร์ให้โรงเรียน', amount: 1200, docType: 'receipt', taxStatus: 'not_required', docNo: 'TR-0457', purpose: 'delivery' },
   { branch: 'ubon', offset: -33, cat: 'ค่าน้ำมันเชื้อเพลิง', vendor: 'ปั๊มน้ำมันตัวอย่าง', desc: 'ค่าน้ำมันรถติดตั้งหน้างาน', amount: 1500, docType: 'receipt', taxStatus: 'requested', docNo: '', purpose: 'customer_job' },
-  { branch: 'ubon', offset: -28, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6803', purpose: 'company' },
-  { branch: 'khonkaen', offset: -27, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6803', purpose: 'company' },
+  { branch: 'ubon', offset: -28, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. อุบลแลนด์', desc: 'ค่าเช่าอาคารสำนักงานใหญ่', amount: 12000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'UL-6803', purpose: 'company', tax: { supplier: 'S_UL', vatMode: 'extract' } },
+  { branch: 'khonkaen', offset: -27, cat: 'ค่าเช่าสถานที่', vendor: 'บจก. ขอนแก่นพร็อพเพอร์ตี้', desc: 'ค่าเช่าอาคารสาขาขอนแก่น', amount: 9000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'KP-6803', purpose: 'company', branchPremises: true, tax: { supplier: 'S_KP', vatMode: 'extract' } },
   { branch: 'ubon', offset: -15, cat: 'ค่าการตลาด', vendor: 'บจก. โฆษณาออนไลน์ตัวอย่าง', desc: 'โฆษณาออนไลน์แคมเปญโน้ตบุ๊ก', amount: 8000, docType: 'tax_invoice', taxStatus: 'requested', docNo: '', purpose: 'company' },
-  { branch: 'khonkaen', offset: -10, cat: 'ค่าสาธารณูปโภค', vendor: 'การไฟฟ้าส่วนภูมิภาค', desc: 'ค่าไฟฟ้าสาขาขอนแก่น', amount: 3200, docType: 'receipt_tax_invoice', taxStatus: 'received', docNo: 'PEA-4410', purpose: 'company' }
+  { branch: 'khonkaen', offset: -10, cat: 'ค่าสาธารณูปโภค', vendor: 'บจก. อีสานไฟเบอร์เน็ต', desc: 'ค่าอินเทอร์เน็ตสาขาขอนแก่น', amount: 3200, docType: 'receipt_tax_invoice', taxStatus: 'received', docNo: 'NET-4410', purpose: 'company', branchPremises: true, tax: { supplier: 'S_NET', vatMode: 'extract' } },
+  // The tax month's purchases (monthEnd = days before the last day of the month before `today`).
+  { branch: 'ubon', monthEnd: 20, cat: 'ค่าซื้อสินค้า/วัสดุของบริษัท', vendor: 'บจก. ไอทีซัพพลาย อีสาน', desc: 'อะไหล่และอุปกรณ์สำหรับงานติดตั้ง (สวิตช์ สายแลน หัวต่อ)', amount: 21400, docType: 'tax_invoice', taxStatus: 'received', docNo: 'ITS-6909-0172', purpose: 'customer_job', tax: { supplier: 'S_IT', vatMode: 'extract' } },
+  { branch: 'ubon', monthEnd: 18, cat: 'ค่าอุปกรณ์สำนักงาน', vendor: 'ร้านเครื่องเขียนมิตรภาพ', desc: 'เครื่องเขียนและกระดาษ (ใบกำกับภาษีอย่างย่อ)', amount: 535, docType: 'abbreviated_tax_invoice', taxStatus: 'received', docNo: 'AB-1188', purpose: 'company', tax: { supplier: 'S_SHOP', vatMode: 'extract' } },
+  { branch: 'ubon', monthEnd: 15, cat: 'ค่าอุปกรณ์สำนักงาน', vendor: 'บจก. ออฟฟิศพลัส เซ็นเตอร์', desc: 'หมึกพิมพ์และอุปกรณ์สำนักงาน', amount: 3000, docType: 'tax_invoice', taxStatus: 'received', docNo: 'OP-25690915', purpose: 'company', tax: { supplier: 'S_OFF', vatMode: 'add' } },
+  { branch: 'ubon', monthEnd: 14, cat: 'ค่าน้ำมันเชื้อเพลิง', vendor: 'หจก. วารินปิโตรเลียม', desc: 'น้ำมันรถยนต์นั่งของผู้บริหาร (รถเก๋ง 5 ที่นั่ง)', amount: 1070, docType: 'receipt_tax_invoice', taxStatus: 'received', docNo: 'WP-091677', purpose: 'company', tax: { supplier: 'S_PUMP', vatMode: 'extract', claimable: false, reason: 'passenger_car' } },
+  { branch: 'ubon', monthEnd: 5, cat: 'อื่น ๆ', vendor: 'บจก. คลาวด์โซลูชั่น ไทย', desc: 'ค่าบริการคลาวด์และสำรองข้อมูล (ใบกำกับภาษีมาถึงปลายเดือน — ใช้สิทธิ์เดือนถัดไป)', amount: 5350, docType: 'tax_invoice', taxStatus: 'received', docNo: 'CS-2026-0925', purpose: 'company', tax: { supplier: 'S_CLOUD', vatMode: 'extract', receivedMonthEnd: 2, claimNextMonth: true } }
 ]);
 
 // ---------------------------------------------------------------- dates
@@ -198,6 +240,16 @@ function requireIsoDate(value) {
 function periodOf(isoDate) {
   const parts = parseBusinessDate(isoDate);
   return { year: parts.year, month: parts.month - 1 };
+}
+// ADR-023: the sample's tax-month story is dated in the last closed tax month (the month before `today`):
+// `monthEnd` = calendar days before that month's last day (≤ 20, so it exists in every month).
+function lastClosedMonthDay(today, daysBeforeEnd) {
+  const lastDay = taxPeriodLastDay(addTaxPeriods(taxPeriodOfDate(today), -1));
+  return addBusinessCalendarDays(lastDay, -Math.trunc(Number(daysBeforeEnd) || 0));
+}
+// The business date of a scenario row: `offset` days from today, or `monthEnd` (above).
+function specDate(spec, context) {
+  return spec.monthEnd !== undefined ? lastClosedMonthDay(context.today, spec.monthEnd) : context.dateAt(spec.offset);
 }
 // Deterministic "created at" instant for a business date (10:00 Bangkok time).
 function instantOf(isoDate) {
@@ -347,14 +399,15 @@ function customerFields(customer) {
 function agencyOf(customer) {
   return agencyFields(customer.agency, customer === WALK_IN ? '' : customer.name);
 }
-// { total, paid, credited } → what the customer still owes (VAT-inclusive).
+// { total, paid, credited } → what the customer still owes (VAT-inclusive); a cancelled invoice owes nothing.
 function outstandingOf(state) {
+  if (state.cancelled) return 0;
   return roundMoneyValue(Math.max(0, state.total - state.credited - state.paid));
 }
 
 function buildQuote(spec, context) {
   const customer = customerOf(spec.customer);
-  const date = context.dateAt(spec.offset);
+  const date = specDate(spec, context);
   const { year, month } = periodOf(date);
   const items = spec.lines.map(([code, qty]) => quoteItem(code, qty, spec.useVat));
   const raw = items.reduce((sum, item) => sum + item.total, 0);
@@ -386,7 +439,7 @@ function buildQuote(spec, context) {
 
 function buildInvoice(spec, context) {
   const customer = customerOf(spec.customer);
-  const date = context.dateAt(spec.offset);
+  const date = specDate(spec, context);
   const { year, month } = periodOf(date);
   const taxInvoiceForm = spec.taxInvoiceForm || TAX_INVOICE_FORM_FULL;
   const items = spec.lines.map(([code, qty]) => invoiceItem(code, qty, spec.useVat));
@@ -408,6 +461,9 @@ function buildInvoice(spec, context) {
     taxInvoiceForm,
     ...customerFields(customer),
     ...agencyOf(customer),
+    // ADR-021: buyer สำนักงานใหญ่ / สาขาที่ copied from Customer Master exactly as the invoice form does
+    // (buyerBranchFromContact: only with a tax ID; walk-in and abbreviated invoices store '').
+    ...seedBuyerBranch(customer, walkIn || taxInvoiceForm !== TAX_INVOICE_FORM_FULL),
     salesPerson: customer.salesPerson,
     creditTerm,
     dueDate: invoiceTermDueDate(date, creditTerm),
@@ -449,13 +505,20 @@ function buildInvoice(spec, context) {
     // Same stamp as the app's quote link (linkQuoteToChild / invoice save): the quote list shows "🚚 INV…".
     Object.assign(quote, { invoiceId: plan.record.id, invoiceNo: plan.record.no, invoiceStatus: 'created', workflowUpdatedAt: instantOf(date) });
   }
+  if (spec.cancel) {
+    // Cancelled the day it was issued, with the fields the cancel action writes (ADR-021): kept for the
+    // number sequence, reported as "ยกเลิก – reason" with 0.00 in รายงานภาษีขาย.
+    const reason = cancelReasonText('invoices', spec.cancel.code, spec.cancel.text);
+    if (!reason.ok) throw new Error(`เหตุผลยกเลิกของใบกำกับภาษีตัวอย่าง ${spec.key} ไม่ถูกต้อง: ${reason.error}`);
+    return applyDocumentCancel(plan.record, { at: instantOf(date), by: DEMO_SEED_ACTOR, reason: reason.reason, code: reason.code });
+  }
   return plan.record;
 }
 
 function buildReceipt(spec, context) {
   const invoiceState = context.invoices.get(spec.invoice);
   const invoice = invoiceState.record;
-  const date = context.dateAt(spec.offset);
+  const date = specDate(spec, context);
   const { year, month } = periodOf(date);
   const outstanding = outstandingOf(invoiceState);
   // Full payment copies the invoice rows (fillFromInv on an unpaid invoice); a partial
@@ -487,6 +550,8 @@ function buildReceipt(spec, context) {
     customer: invoice.customer,
     customerAddress: invoice.customerAddress,
     customerTaxId: invoice.customerTaxId,
+    customerBranchCode: invoice.customerBranchCode || '',
+    customerBranchName: invoice.customerBranchName || '',
     contact: invoice.contact,
     phone: invoice.phone,
     email: invoice.email,
@@ -630,8 +695,28 @@ function buildBillingAndPayment(spec, context) {
   return { billing, payment, activity, receipts };
 }
 
+function supplierOf(key) {
+  const supplier = SUPPLIERS.find(row => row.key === key);
+  if (!supplier) throw new Error(`ไม่พบผู้จำหน่ายตัวอย่าง ${key}`);
+  return supplier;
+}
+// The purchase-tax fields the expense form sends for a tax-invoice expense (ADR-023), from Supplier Master.
+function expenseTaxDraft(spec, date, context) {
+  if (!spec.tax) return {};
+  const supplier = supplierOf(spec.tax.supplier);
+  if (supplier.name !== spec.vendor) throw new Error(`ผู้ขายของค่าใช้จ่ายตัวอย่าง ${spec.docNo} ไม่ตรงกับ Supplier Master`);
+  const received = spec.tax.receivedMonthEnd !== undefined ? lastClosedMonthDay(context.today, spec.tax.receivedMonthEnd) : date;
+  const claimable = spec.tax.claimable !== false && spec.docType !== 'abbreviated_tax_invoice';
+  const receivedPeriod = taxPeriodOfDate(received);
+  return {
+    vatMode: spec.tax.vatMode, vendorId: supplier.id, vendorTaxId: supplier.taxId, vendorBranchCode: supplier.branchCode, vendorAddress: supplier.address,
+    taxInvoiceDate: date, taxInvoiceReceivedDate: received,
+    claimPeriod: claimable ? (spec.tax.claimNextMonth ? addTaxPeriods(receivedPeriod, 1) : receivedPeriod) : '',
+    inputVatClaimable: claimable, nonClaimableReason: claimable ? '' : (spec.tax.reason || '')
+  };
+}
 function buildExpense(spec, context) {
-  const date = context.dateAt(spec.offset);
+  const date = specDate(spec, context);
   const { year, month } = periodOf(date);
   const record = withThaiCalendarMeta({
     id: context.nextId(),
@@ -647,7 +732,8 @@ function buildExpense(spec, context) {
     docNo: spec.docNo,
     purpose: spec.purpose,
     note: '',
-    attachments: []
+    attachments: [],
+    ...expenseTaxDraft(spec, date, context)
   }, year, month);
   return planExpenseDocumentAction({ draft: record, duplicateDocument: false }).record;
 }
@@ -674,17 +760,45 @@ function contactRow(customer) {
     active: true
   });
 }
+function seedBuyerBranch(customer, none) {
+  if (none || customer === WALK_IN) return { customerBranchCode: '', customerBranchName: '' };
+  const { code, name } = buyerBranchFromContact(contactRow(customer));
+  return { customerBranchCode: code, customerBranchName: name };
+}
 function contactOf(customerKey) {
   return contactRow(customerOf(customerKey));
 }
 export function demoSeedContacts() {
   return CUSTOMERS.map(contactRow);
 }
-export function demoSeedProducts() {
+// Supplier Master rows (ADR-023) in the shape of app.js saveSupplierMaster() + the establishment (G5).
+export function demoSeedSuppliers() {
+  return SUPPLIERS.map(supplier => tag({
+    id: supplier.id,
+    name: supplier.name,
+    role: 'supplier',
+    entityType: supplier.entityType,
+    taxId: supplier.taxId,
+    branchCode: supplier.branchCode,
+    branchName: supplier.branchName,
+    address: supplier.address,
+    contactPerson: '',
+    phone: supplier.phone,
+    email: '',
+    supplierCreditTerm: 'credit30',
+    supplierLeadDays: [],
+    note: 'ผู้จำหน่ายตัวอย่างสำหรับสาธิตภาษีซื้อ (ลบได้ด้วยปุ่ม “ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)”)',
+    active: true
+  }));
+}
+// branchCount 1 (ADR-022): all opening stock sits at the head office (same total per product).
+export function demoSeedProducts(branchCount = 2) {
+  const single = Number(branchCount) === 1;
   return PRODUCTS.map((product, index) => {
     const row = {
       id: `demo-seed-p${String(index + 1).padStart(2, '0')}`,
       ...product,
+      ...(single ? { openingStockUbon: product.openingStockUbon + product.openingStockKhonkaen, openingStockKhonkaen: 0 } : {}),
       openingStock: product.openingStockUbon + product.openingStockKhonkaen,
       active: true
     };
@@ -696,12 +810,26 @@ export function demoSeedProducts() {
 
 // --------------------------------------------------------------- plan
 // options: { today: 'YYYY-MM-DD' (business date), numberStart: collectNumberSequences(...),
-//            businessRuleVersion: number }
+//            businessRuleVersion: number, branchCount: 1 | 2 (ADR-022, default 2) }
+// branchCount 1 = the company has one establishment: every document of the scenario is issued by the
+// head office (`ubon`), the second branch's own rent / electricity is left out, and its opening stock
+// moves to the head office. Numbering is per prefix + month (never per branch), so the running numbers,
+// the billing / payment links and the receipts stay one coherent sequence.
 // Returns { documents: [{collection, branch, year, month, record}], flow: {billingNotes,
 // payments, activity}, contacts, products, expected: {invoices: {key: {...}}} }.
 export function buildDemoSeedPlan(options = {}) {
   const today = requireIsoDate(options.today);
+  const branchCount = Number(options.branchCount ?? 2);
+  if (branchCount !== 1 && branchCount !== 2) throw new Error('จำนวนสาขาของข้อมูลตัวอย่างต้องเป็น 1 หรือ 2');
+  const atHeadOffice = spec => (branchCount === 1 ? { ...spec, branch: 'ubon' } : spec);
+  const quoteSpecs = QUOTES.map(atHeadOffice);
+  const invoiceSpecs = INVOICES.map(atHeadOffice);
+  const expenseSpecs = EXPENSES.filter(spec => branchCount === 2 || !spec.branchPremises).map(atHeadOffice);
   let serial = 0;
+  // Event order key (days relative to today) of a scenario row, also for monthEnd-dated rows.
+  const offsetOf = spec => (spec.monthEnd !== undefined ? businessDaysBetween(today, lastClosedMonthDay(today, spec.monthEnd)) : spec.offset);
+  // Rows of the tax-month story (ADR-023) say so: they follow the calendar month, not `today` − n days.
+  const story = (spec, record) => (spec.monthEnd !== undefined ? { ...record, demoSeedStory: 'tax-month' } : record);
   const context = {
     today,
     dateAt: offset => addBusinessCalendarDays(today, offset),
@@ -710,7 +838,7 @@ export function buildDemoSeedPlan(options = {}) {
     businessRuleVersion: Math.max(1, Math.trunc(Number(options.businessRuleVersion) || 1)),
     quotes: new Map(),
     invoices: new Map(),
-    invoiceSpecs: new Map(INVOICES.map(spec => [spec.key, spec])),
+    invoiceSpecs: new Map(invoiceSpecs.map(spec => [spec.key, spec])),
     invoiceKeyById: new Map(),
     creditNotes: []
   };
@@ -725,14 +853,14 @@ export function buildDemoSeedPlan(options = {}) {
   // Every event in date order, so running numbers and ids follow the calendar and
   // each receipt / credit note / payment sees the balances of the days before it.
   const events = [
-    ...QUOTES.map(spec => ({ offset: spec.offset, order: 0, run: () => { context.quotes.set(spec.key, push('quotes', buildQuote(spec, context))); } })),
-    ...INVOICES.map(spec => ({ offset: spec.offset, order: 1, run: () => {
-      const record = push('invoices', buildInvoice(spec, context));
-      context.invoices.set(spec.key, { record, total: record.total, paid: 0, credited: 0 });
+    ...quoteSpecs.map(spec => ({ offset: offsetOf(spec), order: 0, run: () => { context.quotes.set(spec.key, push('quotes', buildQuote(spec, context))); } })),
+    ...invoiceSpecs.map(spec => ({ offset: offsetOf(spec), order: 1, run: () => {
+      const record = push('invoices', story(spec, buildInvoice(spec, context)));
+      context.invoices.set(spec.key, { record, total: record.total, paid: 0, credited: 0, cancelled: record.voided === true });
       context.invoiceKeyById.set(String(record.id), spec.key);
     } })),
-    ...CREDIT_NOTES.map(spec => ({ offset: spec.offset, order: 2, run: () => { push('creditNotes', buildCreditNote(spec, context)); } })),
-    ...RECEIPTS.map(spec => ({ offset: spec.offset, order: 3, run: () => { push('receipts', buildReceipt(spec, context)); } })),
+    ...CREDIT_NOTES.map(spec => ({ offset: offsetOf(spec), order: 2, run: () => { push('creditNotes', buildCreditNote(spec, context)); } })),
+    ...RECEIPTS.map(spec => ({ offset: offsetOf(spec), order: 3, run: () => { push('receipts', story(spec, buildReceipt(spec, context))); } })),
     { offset: BILLING.paymentOffset, order: 4, run: () => {
       const result = buildBillingAndPayment(BILLING, context);
       flow.billingNotes.push(tag(result.billing));
@@ -740,7 +868,7 @@ export function buildDemoSeedPlan(options = {}) {
       flow.activity.push(tag(result.activity));
       result.receipts.forEach(receipt => push('receipts', receipt));
     } },
-    ...EXPENSES.map(spec => ({ offset: spec.offset, order: 5, run: () => { push('expenses', buildExpense(spec, context)); } }))
+    ...expenseSpecs.map(spec => ({ offset: offsetOf(spec), order: 5, run: () => { push('expenses', story(spec, buildExpense(spec, context))); } }))
   ];
   events.sort((a, b) => a.offset - b.offset || a.order - b.order).forEach(event => event.run());
 
@@ -760,7 +888,7 @@ export function buildDemoSeedPlan(options = {}) {
       daysPastDue: businessDaysBetween(dueDate, today)
     };
   }
-  const plan = { version: DEMO_SEED_CORE_VERSION, batchId: DEMO_SEED_BATCH_ID, today, documents, flow, contacts: demoSeedContacts(), products: demoSeedProducts(), expected };
+  const plan = { version: DEMO_SEED_CORE_VERSION, batchId: DEMO_SEED_BATCH_ID, today, documents, flow, contacts: demoSeedContacts(), suppliers: demoSeedSuppliers(), products: demoSeedProducts(branchCount), branchCount, expected };
   assertSeedStockWithinOpening(plan);
   return plan;
 }
@@ -773,7 +901,8 @@ export function demoSeedStockUsage(plan) {
     usage[key] = roundMoneyValue((usage[key] || 0) + qty);
   };
   for (const { collection, branch, record } of plan.documents) {
-    if (collection === 'invoices') record.items.forEach(item => add(branch, item.productCode, item.qty));
+    // A cancelled invoice gives its goods back (ADR-021), so it never uses stock.
+    if (collection === 'invoices' && record.voided !== true) record.items.forEach(item => add(branch, item.productCode, item.qty));
     if (collection === 'creditNotes' && !record.voided) record.returnItems.forEach(item => add(branch, item.productCode, -item.qty));
   }
   return usage;
@@ -791,6 +920,8 @@ function assertSeedStockWithinOpening(plan) {
 // Period (branch + date + governance scope) of every seeded document, for period-lock checks.
 export function demoSeedPeriods(plan) {
   const rows = plan.documents.map(({ collection, branch, record }) => ({ branch, date: record.date, scope: collection === 'expenses' ? 'purchase' : 'sales', no: record.no || record.docNo || record.desc }));
+  // ADR-023: an input-tax claim belongs to its claim month too — a closed claim month refuses the load.
+  plan.documents.filter(({ collection, record }) => collection === 'expenses' && record.claimPeriod).forEach(({ branch, record }) => rows.push({ branch, date: taxPeriodFirstDay(record.claimPeriod), scope: 'purchase', no: record.docNo || record.desc }));
   plan.flow.payments.forEach(payment => rows.push({ branch: payment.branch, date: payment.date, scope: 'sales', no: payment.no }));
   return rows;
 }
@@ -798,9 +929,13 @@ export function demoSeedPeriods(plan) {
 // ------------------------------------------------------ reset key scope
 // Tenant base keys that only hold how the screen looks (โหมดง่าย / โหมดขั้นสูง, collapsed sidebar
 // sections — ADR-015), not business data; a reset keeps them so the presenter's chosen layout
-// survives (erp-product-experience.js).
+// survives (erp-product-experience.js). The customer's company profile and logo (ADR-020) are
+// settings too: a reset of the sample data keeps them; ตั้งค่าบริษัท has its own reset. So is the number of
+// establishments (ADR-022): reset, then load sample data, keeps a one-branch company one-branch.
 // The retired per-role view key (ADR-014) is not kept: a reset removes it like any other tenant key.
-export const DEMO_RESET_KEPT_BASE_KEYS = Object.freeze([PRODUCT_EXPERIENCE_MODE_KEY, NAV_COLLAPSED_SECTIONS_KEY]);
+// Sales / delivery targets (ADR-021) are kept as keys too: the reset removes only the entries the sample data
+// wrote (stripSeededTargets below), so targets the user typed survive a reset.
+export const DEMO_RESET_KEPT_BASE_KEYS = Object.freeze([PRODUCT_EXPERIENCE_MODE_KEY, NAV_COLLAPSED_SECTIONS_KEY, COMPANY_PROFILE_KEY, COMPANY_LOGO_KEY, COMPANY_BRANCH_SETTING_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY]);
 // Un-prefixed legacy key that erp-order-flow.js loadStore() still copies into an EMPTY store:
 // left behind, it would bring old Sales Orders / billing back right after a reset.
 const DEMO_RESET_LEGACY_KEYS = Object.freeze([LEGACY_ORDER_FLOW_STORE_KEY]);
@@ -827,4 +962,79 @@ export function demoResetStorageKeys(keys = [], tenantId = '') {
     }
   }
   return [...selected].sort();
+}
+
+// ----------------------------------------------------------- sample targets (ADR-021)
+// Per-month sales / delivery targets that make the dashboard's target chart tell a believable story with
+// the sample data: for each month of the seeded history the target sits near what was actually sold —
+// some months beat it, some miss — and the current month and the rest of the year carry a typical
+// target (the average of the last full months). Months before the history get none ("ยังไม่ได้ตั้งเป้า").
+// Keys are app.js targetPeriodOverrideKey(): "<scope>:<YYYY>-<MM>", scope all | ubon | khonkaen.
+// Actuals follow the dashboard: sales = invoice value before VAT − live credit notes in their own month
+// (analyticsPrimarySalesRows + creditAdjustmentRows); delivery = invoice value before VAT.
+const TARGET_PATTERN = Object.freeze({ sales: [0.9, 1.12, 0.94, 1.08, 0.92, 1.1], delivery: [1.1, 0.92, 1.06, 0.9, 1.12, 0.95] });
+const targetMonthKey = (scope, year, month) => `${scope}:${year}-${String(month + 1).padStart(2, '0')}`;
+function targetStep(value) { return value >= 100000 ? 10000 : 5000; }
+export function buildDemoSeedTargets(plan) {
+  const today = requireIsoDate(plan?.today);
+  const current = { year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) - 1 };
+  const index = (year, month) => year * 12 + month;
+  const actual = { sales: new Map(), delivery: new Map() };
+  const add = (metric, scope, year, month, value) => {
+    const key = targetMonthKey(scope, year, month);
+    actual[metric].set(key, roundMoneyValue((actual[metric].get(key) || 0) + value));
+  };
+  let first = index(current.year, current.month);
+  for (const { collection, branch, year, month, record } of plan.documents) {
+    if (collection === 'invoices' && !record.voided) {
+      first = Math.min(first, index(year, month));
+      for (const scope of ['all', branch]) { add('sales', scope, year, month, Number(record.subtotal) || 0); add('delivery', scope, year, month, Number(record.subtotal) || 0); }
+    }
+    if (collection === 'creditNotes' && !record.voided) for (const scope of ['all', branch]) add('sales', scope, year, month, -(Number(record.subtotal) || 0));
+  }
+  const out = { sales: {}, delivery: {} };
+  for (const metric of ['sales', 'delivery']) {
+    for (const scope of ['all', 'ubon', 'khonkaen']) {
+      const past = [];
+      for (let i = first; i < index(current.year, current.month); i += 1) past.push({ year: Math.floor(i / 12), month: i % 12, value: actual[metric].get(targetMonthKey(scope, Math.floor(i / 12), i % 12)) || 0 });
+      // Past months with sales, newest first: alternate beat / miss so the chart is neither all green nor all red.
+      past.filter(row => row.value > 0).reverse().forEach((row, position) => {
+        const factor = TARGET_PATTERN[metric][position % TARGET_PATTERN[metric].length], step = targetStep(row.value);
+        const target = factor < 1 ? Math.floor(row.value * factor / step) * step : Math.ceil(row.value * factor / step) * step;
+        if (target > 0) out[metric][targetMonthKey(scope, row.year, row.month)] = target;
+      });
+      const recent = past.filter(row => row.value > 0).slice(-3);
+      if (!recent.length) continue;
+      const typical = Math.round(recent.reduce((sum, row) => sum + row.value, 0) / recent.length / 10000) * 10000;
+      if (typical <= 0) continue;
+      for (let month = current.month; month < 12; month += 1) out[metric][targetMonthKey(scope, current.year, month)] = typical;
+    }
+  }
+  return out;
+}
+// Target maps after taking out the seeded entries that still hold their seeded value (a value the user
+// changed — or a month the user set that the sample never wrote — is theirs and stays). Pure.
+export function stripSeededTargets(maps = {}, seeded = {}) {
+  const result = {};
+  for (const metric of ['sales', 'delivery']) {
+    const next = { ...(maps[metric] && typeof maps[metric] === 'object' ? maps[metric] : {}) };
+    for (const [key, value] of Object.entries(seeded?.[metric] || {})) if (Object.prototype.hasOwnProperty.call(next, key) && Number(next[key]) === Number(value)) delete next[key];
+    result[metric] = next;
+  }
+  return result;
+}
+// The seeded targets to write into the stored maps: only months without a target yet (never overwrites
+// the user's). → { maps: {sales, delivery} (merged), written: {sales, delivery} (what the seed owns) }.
+export function mergeSeededTargets(maps = {}, targets = {}) {
+  const merged = {}, written = {};
+  for (const metric of ['sales', 'delivery']) {
+    merged[metric] = { ...(maps[metric] && typeof maps[metric] === 'object' ? maps[metric] : {}) };
+    written[metric] = {};
+    for (const [key, value] of Object.entries(targets[metric] || {})) {
+      if (Object.prototype.hasOwnProperty.call(merged[metric], key)) continue;
+      merged[metric][key] = value;
+      written[metric][key] = value;
+    }
+  }
+  return { maps: merged, written };
 }

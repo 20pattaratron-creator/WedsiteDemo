@@ -1,7 +1,10 @@
-import { calculateDocumentTotals, calculateWhtSummary, localDateISO, escapeHtml, parseMoney, fmt, formatDate, thaiIntegerText, bahtText, safeFilename, getNestedValue, setNestedValue, resolveStoragePeriod, createDocumentLineItem as createItem, estimateDocumentItemRowUnits as itemRowUnits, selectPrintableDocumentItems as printableItems, paginateDocumentItems as paginateItems } from './erp-shared-core.js';
+import { calculateDocumentTotals, calculateWhtSummary, localDateISO, escapeHtml, parseMoney, fmt, formatDate, thaiIntegerText, bahtText, safeFilename, getNestedValue, setNestedValue, resolveStoragePeriod, buyerBranchLabel, normalizeBuyerBranchCode, documentCancelStampHtml, documentCancellationOf, isDocumentCancelled, createDocumentLineItem as createItem, estimateDocumentItemRowUnits as itemRowUnits, selectPrintableDocumentItems as printableItems, paginateDocumentItems as paginateItems } from './erp-shared-core.js';
+import { liveBranchLabel, documentEditorDefaultBranch as startBranch, documentEditorBranch, documentEditorDraft, documentEditorBranchFieldHtml } from './erp-branches-core.js';
 import { runDocumentAction, documentActionFeedback, assertIssuedDocumentMatchesCanonical, FinanceActionError, FINANCE_ACTION_ERROR_CODES } from './erp-document-finance-core.js';
 import { withDemoWriteLease } from './erp-demo-concurrency.js';
 import { icon } from './erp-icons.js';
+import { companyLogoUrl, documentCompany, customLogoStyleTag } from './erp-company-profile-core.js';
+import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -16,7 +19,9 @@ const unwrapActiveTenantKey = key => String(key||'').startsWith(activeTenantPref
 const MAX_ITEMS = 60;
 const ITEM_UNITS_PER_PAGE = 8;
 const BLUE = '#0868c9';
-const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
+// ADR-020: the customer's logo (data URL) once saved in ตั้งค่าบริษัท, else ./logo.png; updated on
+// COMPANY_PROFILE_CHANGED_EVENT (listener at the end of this file).
+let COMPANY_LOGO_URL = companyLogoUrl(window.CurrentUser);
 let pdfLogoDataUrl = '';
 
 // ใบเสร็จใช้โลโก้สีจริงเพื่อให้เข้ากับธีมสีชมพูของระบบ
@@ -43,6 +48,8 @@ const BRANCH_DEFAULTS = {
 
 
 function branchCompany(branch) {
+  const saved = documentCompany(window.CurrentUser, branch, 'tax-invoice', 'khonkaen'); // ADR-020: saved company profile
+  if (saved) return saved;
   const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.khonkaen;
   const profile = window.CurrentUser?.companyProfile || {};
   const branchProfile = profile?.branches?.[branch] || {};
@@ -100,11 +107,13 @@ function createDefaultState() {
   const iso = localDateISO(today);
   return {
     previewOnly: false,
-    branch: 'khonkaen',
-    company: { ...branchCompany('khonkaen') },
+    branch: startBranch(),
+    company: { ...branchCompany(startBranch()) },
     customerName: '',
     customerAddress: '',
     customerTaxId: '',
+    customerBranchCode: '', // ADR-021: buyer's สำนักงานใหญ่ / สาขาที่, printed next to the tax ID like the tax invoice
+    cancellation: null, // ADR-021: { reason, at, by } of a cancelled receipt → "ยกเลิก / CANCELLED" stamp
     contact: '',
     phone: '',
     docNo: createDefaultDocNo(today),
@@ -147,6 +156,7 @@ function createDefaultDocNo(date = new Date()) {
 
 async function ensurePdfLogoDataUrl() {
   if (pdfLogoDataUrl) return pdfLogoDataUrl;
+  if (COMPANY_LOGO_URL.startsWith('data:')) return (pdfLogoDataUrl = COMPANY_LOGO_URL); // customer logo: already a data URL
   try {
     const response = await fetch(COMPANY_LOGO_URL, { cache: 'force-cache' });
     if (!response.ok) throw new Error(`โหลดโลโก้ไม่สำเร็จ (${response.status})`);
@@ -173,7 +183,7 @@ function getLockedBranch() {
 
 function loadDraft() {
   try {
-    const saved = JSON.parse(localStorage.getItem(tenantStorageKey(RCP_STORAGE_KEY)) || 'null');
+    const saved = documentEditorDraft(JSON.parse(localStorage.getItem(tenantStorageKey(RCP_STORAGE_KEY)) || 'null'));
     if (saved && typeof saved === 'object') {
       state = {
         ...createDefaultState(),
@@ -231,6 +241,8 @@ function loadFromReceipt(receipt = {}, ref = {}) {
   // state is a persisted draft, the address of the receipt opened before.
   state.customerAddress = receipt.customerAddress || receipt.address || '';
   state.customerTaxId = receipt.customerTaxId || '';
+  state.customerBranchCode = normalizeBuyerBranchCode(receipt.customerBranchCode);
+  state.cancellation = documentCancellationOf(receipt);
   state.contact = receipt.contact || '';
   state.phone = receipt.phone || '';
   // Also from the receipt, never from the previous draft: the invoice it settles (D/O no., as
@@ -331,7 +343,7 @@ function invoiceLinkSectionHtml() {
     <div class="rcp-form-section rcp-invoice-link-section">
       ${sectionHeader(1, 'เชื่อมข้อมูลจากใบส่งสินค้า / ใบกำกับภาษี')}
       <div class="rcp-invoice-link-box">
-        <div class="rcp-linked-context"><span>สาขาที่กำลังใช้งาน</span><b>${escapeHtml(BRANCH_DEFAULTS[state.branch]?.label || 'กรุณาเลือกสาขา')}</b><small>ระบบจะแสดงเฉพาะเอกสารของสาขา ปี และเดือนที่เลือก</small></div>
+        <div class="rcp-linked-context"><span>สาขาที่กำลังใช้งาน</span><b>${escapeHtml(BRANCH_DEFAULTS[state.branch] ? liveBranchLabel(state.branch, BRANCH_DEFAULTS[state.branch].label) : 'กรุณาเลือกสาขา')}</b><small>ระบบจะแสดงเฉพาะเอกสารของสาขา ปี และเดือนที่เลือก</small></div>
         <div class="rcp-grid rcp-grid-4 rcp-linked-filter-grid">
           <label class="rcp-field">
             <span>ปีเอกสาร</span>
@@ -490,6 +502,7 @@ function applyInvoiceToReceipt(invoice) {
   state.customerName = data.customerName || invoice.customer || '';
   state.customerAddress = data.customerAddress || '';
   state.customerTaxId = data.customerTaxId || '';
+  state.customerBranchCode = normalizeBuyerBranchCode(data.customerBranchCode ?? invoice.customerBranchCode);
   state.contact = data.contact || '';
   state.phone = data.phone || '';
   state.salesperson = data.salesperson || invoice.salesPerson || '';
@@ -566,18 +579,7 @@ function documentSectionHtml() {
     <div class="rcp-form-section">
       ${sectionHeader(3, 'ข้อมูลเอกสาร')}
       <div class="rcp-grid rcp-grid-4">
-        <div class="rcp-field rcp-span-2">
-          <span>เลือกสาขา *</span>
-          <div class="rcp-branch-options" role="group" aria-label="เลือกสาขาสำหรับออกเอกสาร">
-            <button type="button" class="rcp-branch-option ${state.branch === 'ubon' ? 'active' : ''}" data-action="set-branch" data-branch="ubon" ${locked && locked !== 'ubon' ? 'disabled' : ''}>
-              <span class="rcp-branch-dot ub"></span><b>สาขาสำนักงานใหญ่</b><small>HEAD OFFICE</small>
-            </button>
-            <button type="button" class="rcp-branch-option ${state.branch === 'khonkaen' ? 'active' : ''}" data-action="set-branch" data-branch="khonkaen" ${locked && locked !== 'khonkaen' ? 'disabled' : ''}>
-              <span class="rcp-branch-dot kk"></span><b>สาขาที่ 00001</b><small>BRANCH 00001</small>
-            </button>
-          </div>
-          ${locked ? `<small class="rcp-branch-lock-note">บัญชีนี้ถูกกำหนดให้ใช้งาน ${escapeHtml(BRANCH_DEFAULTS[locked]?.label || locked)}</small>` : '<small class="rcp-branch-lock-note">Admin สามารถเลือกสาขาก่อนออกเอกสารได้</small>'}
-        </div>
+        ${documentEditorBranchFieldHtml('rcp', { branch: state.branch, locked, lockedLabel: BRANCH_DEFAULTS[locked]?.label })}
         ${inputHtml('docNo', 'เลขที่/No. *', 'REC-0001')}
         <div class="rcp-grid-line-break" aria-hidden="true"></div>
         ${optionalDateInputHtml('date', 'วันที่')}
@@ -813,7 +815,7 @@ function clearOptionalDate(field) {
 
 function setBranch(branch) {
   const locked = getLockedBranch();
-  if (!BRANCH_DEFAULTS[branch]) return;
+  if (!BRANCH_DEFAULTS[branch] || documentEditorBranch(branch) !== branch) return;
   if (locked && locked !== branch) {
     notify(`บัญชีนี้ถูกกำหนดให้ใช้งาน ${BRANCH_DEFAULTS[locked]?.label || locked} เท่านั้น`);
     return;
@@ -968,7 +970,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
   const bahtTextValue = isFinalPage ? bahtText(sum.grand) : 'มีรายการต่อหน้าถัดไป';
 
   return `
-    <article class="rcp-document-page ${pdfMode ? 'rcp-pdf-page' : ''} ${!isFinalPage ? 'rcp-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">
+    <article class="rcp-document-page ${pdfMode ? 'rcp-pdf-page' : ''} ${!isFinalPage ? 'rcp-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">${state.cancellation ? documentCancelStampHtml(state.cancellation) : ''}
       <div class="rcp-doc-topbar">
         <div class="rcp-doc-serial-no"><span>เลขที่/No.</span> <strong>${escapeHtml(state.docNo)}</strong>${pageCounter}</div>
       </div>
@@ -998,7 +1000,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
           <div><b>ชื่อลูกค้า / Customer name :</b> ${escapeHtml(state.customerName)}</div>
           <div><b>ที่อยู่ / Address :</b><br>${escapeHtml(state.customerAddress).replace(/\n/g, '<br>')}</div>
           ${state.contact || state.phone ? `<div class="rcp-receipt-contact"><b>ผู้ติดต่อ / Contact :</b> ${escapeHtml(state.contact)} ${state.phone ? `&nbsp;&nbsp; <b>โทร / Tel :</b> ${escapeHtml(state.phone)}` : ''}</div>` : ''}
-          <div class="rcp-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}</div>
+          <div class="rcp-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="rcp-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
         </div>
       </section>
 
@@ -1157,6 +1159,7 @@ async function saveDocumentToSystem(button) {
           const sourcePack = writeSession.get(state.sourceReceiptBranch, sourceYear, sourceMonth);
           const sourceReceipt = (sourcePack.receipts || []).find(row => String(row.id) === String(state.sourceReceiptId) || String(row.no) === String(state.sourceReceiptNo));
           if (!sourceReceipt) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.DEPENDENCY, 'ไม่พบใบเสร็จต้นทางในตำแหน่งจัดเก็บที่อ้างอิง กรุณาเปิดรายการต้นทางใหม่');
+          if (isDocumentCancelled(sourceReceipt)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `ใบเสร็จ ${sourceReceipt.no || ''} ถูกยกเลิกแล้ว จึงบันทึกฉบับพิมพ์ใหม่ไม่ได้ (พิมพ์ได้พร้อมตรา “ยกเลิก”)`);
           return { store, year, month, sourceYear, sourceMonth, writeSession, pack, sourcePack, sourceReceipt };
         },
         plan: ctx => {
@@ -1349,7 +1352,7 @@ function printDocuments(mode = 'all') {
   const cssUrl = new URL('./receipt-document.css', import.meta.url).href;
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
   const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
-  printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.rcp-document-page{page-break-after:always;margin:0 auto}.rcp-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
+  printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}">${customLogoStyleTag(COMPANY_LOGO_URL)}<style>body{margin:0;background:#fff}.rcp-document-page{page-break-after:always;margin:0 auto}.rcp-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
 
@@ -1387,6 +1390,8 @@ function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
   previewState.customerName = receipt.customer || '';
   previewState.customerAddress = receipt.customerAddress || receipt.address || '';
   previewState.customerTaxId = receipt.customerTaxId || '';
+  previewState.customerBranchCode = normalizeBuyerBranchCode(receipt.customerBranchCode);
+  previewState.cancellation = documentCancellationOf(receipt);
   previewState.contact = receipt.contact || '';
   previewState.phone = receipt.phone || '';
   previewState.docNo = receipt.no || previewState.docNo;
@@ -1442,6 +1447,15 @@ window.ComformReceiptDocument = {
 
 window.addEventListener('comform-auth-ready', () => {
   if (document.getElementById('receipt-document-app')) applyLockedBranch();
+});
+// ADR-020: the receipt follows a saved / reset company profile at once (logo, company, draft).
+window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, () => {
+  COMPANY_LOGO_URL = companyLogoUrl();
+  pdfLogoDataUrl = '';
+  state.branch = documentEditorBranch(state.branch); if (BRANCH_DEFAULTS[state.branch]) state.company = { ...branchCompany(state.branch) };
+  persistDraft();
+  if (!document.getElementById('receipt-document-app')) return;
+  renderAppShell(); bindEvents(); renderAll(); applyLockedBranch();
 });
 
 window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'receipt' } }));

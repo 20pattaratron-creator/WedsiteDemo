@@ -4,6 +4,7 @@ import { buildBillingAction, planBillingPaymentAction } from './erp-document-fin
 import { invoiceDueDate, buildReceivableItems } from './erp-receivables-core.js';
 import { rowActionsHtml } from './erp-row-actions.js';
 import { icon } from './erp-icons.js';
+import { branchLabelMap } from './erp-branches-core.js';
 /*
  * Example Company ERP — Order Flow Upgrade v3
  * Proposal / UAT additive module. Does not replace app.js.
@@ -16,7 +17,7 @@ import { icon } from './erp-icons.js';
   const VERSION = '4.3.1';
   const STORE_BASE_KEY = ORDER_FLOW_STORE_KEY;
   const PREF_BASE_KEY = ORDER_FLOW_PREFERENCES_KEY;
-  const BRANCH_LABEL = { khonkaen: 'สาขาที่ 00001', ubon: 'สาขาสำนักงานใหญ่' };
+  const BRANCH_LABEL = branchLabelMap({ khonkaen: 'สาขาที่ 00001', ubon: 'สาขาสำนักงานใหญ่' }); // ADR-022: live labels, both data ids
   const VALID_BRANCHES = new Set(Object.keys(BRANCH_LABEL));
   const STATUS_LABEL = {
     confirmed: 'ยืนยันคำสั่งซื้อ',
@@ -552,7 +553,7 @@ import { icon } from './erp-icons.js';
       const bills = billingForInvoice(inv).filter(b => b.status !== 'cancelled');
       const due = invoiceDueDate(inv);
       return `<tr>
-        <td><input type="checkbox" class="erp-billing-invoice-check" data-invoice-ref='${esc(JSON.stringify(invoiceRef(inv)))}'></td>
+        <td><label class="erp-check-label erp-check-cell"><input type="checkbox" class="erp-billing-invoice-check" aria-label="เลือก ${esc(inv.no || 'ใบกำกับ')}" data-invoice-ref='${esc(JSON.stringify(invoiceRef(inv)))}'></label></td>
         <td><b>${esc(inv.no || '-')}</b></td><td>${esc(inv.customer || '-')}</td>
         <td>${dateTh(inv.date)}<small>${due ? `ครบ ${dateTh(due)}` : 'ไม่ระบุกำหนด'}</small></td>
         <td class="tn">฿${money(inv.total ?? inv.saleTotal)}</td><td class="tn">฿${money(allocated)}</td><td class="tn neg">฿${money(invoiceOutstanding(inv))}</td>

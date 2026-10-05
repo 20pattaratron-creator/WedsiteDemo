@@ -132,7 +132,8 @@ export const NAV_SECTIONS = Object.freeze([
   Object.freeze({ id: 'sales', label: 'ขายและรับเงิน', panels: Object.freeze(['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'order-flow']) }),
   Object.freeze({ id: 'operations', label: 'ซื้อ / ผลิต / คลัง', panels: Object.freeze(['production-list', 'purchase-order', 'goods-receipt', 'inventory']) }),
   Object.freeze({ id: 'expenses', label: 'ค่าใช้จ่าย', panels: Object.freeze(['expense-list']) }),
-  Object.freeze({ id: 'data', label: 'ข้อมูลและรายงาน', panels: Object.freeze(['master-data', 'linked-flow', 'analytics', 'customer-portal']) }),
+  // ADR-023: รายงานภาษี (รายงานภาษีขาย / ซื้อ / ภ.พ.30) — a report every customer files monthly, so it is in โหมดง่าย too.
+  Object.freeze({ id: 'data', label: 'ข้อมูลและรายงาน', panels: Object.freeze(['master-data', 'tax-reports', 'linked-flow', 'analytics', 'customer-portal']) }),
   Object.freeze({ id: 'settings', label: 'ตั้งค่า', panels: Object.freeze(['business-rules', 'audit-log', 'saas-admin', 'files']) })
 ]);
 

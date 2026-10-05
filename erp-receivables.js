@@ -16,10 +16,11 @@ import { buildReceivableLedger, summarizeReceivableAging, receivableAlertSummary
 import { escapeHtml, fmt, localDateISO } from './erp-shared-core.js';
 import { formatThaiDate } from './erp-date-core.js';
 import { icon } from './erp-icons.js';
+import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
 
 (() => {
   'use strict';
-  const BRANCH_LABELS = Object.freeze({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' });
+  const BRANCH_LABELS = branchLabelMap({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels, both data ids
   const STATE_TONE = Object.freeze({ overdue: 'red', dueToday: 'amber', soon: 'amber', normal: 'blue', none: 'gray' });
   // One banner per host page: the executive dashboard and the "งานของฉัน" home
   // (panel-work-home is created by erp-product-experience.js and may not exist yet).
@@ -52,7 +53,7 @@ import { icon } from './erp-icons.js';
   function scopeBranches(branch = '') {
     return branch ? [branch] : activeBranches();
   }
-  const scopeLabel = branch => (branch ? branchLabel(branch) : 'ทุกสาขา');
+  const scopeLabel = branch => (branch ? branchLabel(branch) : liveBranchAllLabel('ทุกสาขา'));
 
   // Open receivables as of today. `branch` '' = every ACTIVE branch.
   function snapshot(branch = '') {
@@ -189,7 +190,7 @@ import { icon } from './erp-icons.js';
 
   function reportHtml(snap) {
     const aging = snap.aging;
-    const scope = snap.branch ? branchLabel(snap.branch) : 'ทุกสาขา';
+    const scope = scopeLabel(snap.branch);
     const exportButton = aging.rows.length ? `<button type="button" class="btn btn-secondary btn-sm" data-ar-action="export">${icon('download')}Export CSV</button>` : '';
     const head = `<div class="ar-aging-toolbar"><span>ณ วันที่ <b>${escapeHtml(dateText(snap.asOf))}</b> · ${escapeHtml(scope)} · รวมบิลทุกงวดที่ยังค้างชำระ (ไม่ขึ้นกับตัวกรองปี/เดือน)</span>${exportButton}</div>`;
     if (!aging.rows.length) return `${head}<div class="empty ar-aging-empty">✅ ไม่มีลูกหนี้คงค้าง ณ วันนี้</div>`;

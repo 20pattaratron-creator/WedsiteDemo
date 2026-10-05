@@ -65,6 +65,8 @@ const ICON_PATHS = Object.freeze({
   truck: '<path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   receipt: '<path d="M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
   'credit-note': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/>',
+  // ADR-023: รายงานภาษี (VAT reports / ภ.พ.30) — a sheet with a percent sign
+  tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 18l6-6"/><circle cx="9.5" cy="12.5" r="1"/><circle cx="14.5" cy="17.5" r="1"/>',
   factory: '<path d="M3 21h18"/><path d="M5 21V7l8 4V7l8 4v10"/><path d="M9 17h1M14 17h1M19 17h1"/>',
   cart: '<path d="M6 2l1 4h12l-2 8H8L6 2H3"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/>',
   box: '<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',

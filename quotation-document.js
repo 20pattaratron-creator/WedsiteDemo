@@ -1,12 +1,15 @@
 import { localDateISO, escapeHtml, fmt, thaiIntegerText, bahtText } from './erp-shared-core.js';
 import { icon } from './erp-icons.js';
+import { companyLogoUrl, documentCompany, customLogoStyleTag } from './erp-company-profile-core.js';
+import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
 };
 const jsPDF = window.jspdf?.jsPDF;
 
-const COMPANY_LOGO_URL = new URL('./logo.png', import.meta.url).href;
+// ADR-020: customer logo once saved (data URL), else ./logo.png — see the listener at the end.
+let COMPANY_LOGO_URL = companyLogoUrl();
 const QUOTE_CSS_URL = new URL('./quotation-document.css', import.meta.url).href;
 const ITEMS_PER_PAGE = 10;
 const QUOTE_COPY_TYPES = [
@@ -62,6 +65,8 @@ function loadQuote(branch, year, month, id) {
 }
 
 function branchInfo(branch) {
+  const custom = documentCompany(window.CurrentUser, branch, 'quotation', 'ubon'); // ADR-020: saved company profile
+  if (custom) return custom;
   const fallback = BRANCH_DEFAULTS[branch] || BRANCH_DEFAULTS.ubon;
   const profile = window.CurrentUser?.companyProfile || {};
   const branchProfile = profile?.branches?.[branch] || {};
@@ -428,7 +433,7 @@ function printQuote(mode = 'all') {
   printWindow.opener = null;
   const cssUrl = QUOTE_CSS_URL;
   const html = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
-  printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(currentQuote.no || 'Quotation')}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.qdoc-document-page{page-break-after:always;margin:0 auto}.qdoc-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
+  printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(currentQuote.no || 'Quotation')}</title><link rel="stylesheet" href="${cssUrl}">${customLogoStyleTag(COMPANY_LOGO_URL)}<style>body{margin:0;background:#fff}.qdoc-document-page{page-break-after:always;margin:0 auto}.qdoc-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
 
@@ -472,6 +477,15 @@ window.ComformQuotationDocument = {
   buildInlineHtml(record, ref = {}, copyId = 'original') { return buildInlineQuote(record, ref, copyId); },
   renderInlinePreview(target, record, ref = {}, copyId = 'original') { return renderInlineQuotePreview(target, record, ref, copyId); }
 };
+
+// ADR-020: a saved / reset company profile applies at once (toolbar and the open quotation).
+window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, () => {
+  COMPANY_LOGO_URL = companyLogoUrl();
+  document.querySelector('.qdoc-toolbar-brand img')?.setAttribute('src', COMPANY_LOGO_URL);
+  const name = document.querySelector('.qdoc-toolbar-brand small');
+  if (name) name.textContent = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท';
+  renderCurrentQuote();
+});
 
 window.dispatchEvent(new CustomEvent('comform-document-module-ready', { detail: { module: 'quotation' } }));
 

@@ -91,15 +91,17 @@ const ROW_LISTS = {
   // app.js renderIList — ใบส่งสินค้า / ใบกำกับภาษี (actions on the first line of each invoice)
   invoice: {
     name: f => f.no,
-    // settled = paid or fully credited (isInvoicePaid): nothing left to collect.
-    primary: f => (f.settled ? ['doc'] : ['receipt', 'doc']),
+    // settled = paid or fully credited (isInvoicePaid): nothing left to collect. A cancelled invoice is view/print only.
+    primary: f => (f.settled || f.cancelled ? ['doc'] : ['receipt', 'doc']),
+    // ADR-021: an issued invoice is never deleted ("ลบ" removed — there are no draft invoices: a record
+    // exists only once saved/issued); it is cancelled with a reason and kept with its number.
     actions: f => [
       { id: 'doc', group: 'view', icon: ROW_ICON.document, label: 'ต้นฉบับ/สำเนา/PDF', primaryLabel: 'เอกสาร/PDF', title: 'เปิดต้นฉบับ/สำเนาใบส่งสินค้า / ใบกำกับภาษีสำหรับพิมพ์และ PDF', call: rowCall('openDeliveryDocumentFromInvoice', f.b, f.y, f.m, String(f.id)) },
       { id: 'detail', group: 'view', icon: ROW_ICON.view, label: 'ดูรายละเอียด', call: rowCall('showDetailById', 'invoice', f.b, f.y, f.m, String(f.id)) },
-      { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', title: 'แก้ไขข้อมูล', call: rowCall('editInvoice', f.b, f.y, f.m, String(f.id)) },
-      { id: 'receipt', group: 'create', icon: ROW_ICON.receipt, label: 'ออกใบเสร็จ', primaryLabel: 'รับชำระ', title: 'ออกใบเสร็จจากบิลนี้', call: rowCall('issueReceiptFromInvoice', f.b, f.y, f.m, String(f.id)) },
-      { id: 'credit-note', group: 'create', icon: ROW_ICON.creditNote, label: 'ลดหนี้', title: 'ออกใบลดหนี้อ้างอิงบิลนี้ (มาตรา 86/10)', call: rowCall('ERPCreditNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)) },
-      { id: 'delete', group: 'danger', icon: ROW_ICON.delete, label: 'ลบ', call: rowCall('delDoc', f.b, f.y, f.m, 'invoices', f.id) }
+      { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', title: 'แก้ไขข้อมูล', when: !f.cancelled, call: rowCall('editInvoice', f.b, f.y, f.m, String(f.id)) },
+      { id: 'receipt', group: 'create', icon: ROW_ICON.receipt, label: 'ออกใบเสร็จ', primaryLabel: 'รับชำระ', title: 'ออกใบเสร็จจากบิลนี้', when: !f.cancelled, call: rowCall('issueReceiptFromInvoice', f.b, f.y, f.m, String(f.id)) },
+      { id: 'credit-note', group: 'create', icon: ROW_ICON.creditNote, label: 'ลดหนี้', title: 'ออกใบลดหนี้อ้างอิงบิลนี้ (มาตรา 86/10)', when: !f.cancelled, call: rowCall('ERPCreditNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)) },
+      { id: 'cancel', group: 'danger', icon: ROW_ICON.cancel, label: f.vatNone ? 'ยกเลิกใบแจ้งหนี้' : 'ยกเลิกใบกำกับภาษี', title: 'เก็บเอกสารและเลขที่ไว้พร้อมตรา “ยกเลิก” (ไม่ลบ)', when: !f.cancelled, call: rowCall('ERPDocumentCancel.open', 'invoices', f.b, f.y, f.m, String(f.id)) }
     ]
   },
 
@@ -112,7 +114,9 @@ const ROW_LISTS = {
       { id: 'doc', group: 'view', icon: ROW_ICON.document, label: 'ต้นฉบับ/สำเนา/PDF', primaryLabel: 'เอกสาร/PDF', title: 'เปิดต้นฉบับ/สำเนาใบเสร็จรับเงินสำหรับพิมพ์และ PDF', call: rowCall('openReceiptDocumentFromReceipt', f.b, f.y, f.m, String(f.id)) },
       { id: 'detail', group: 'view', icon: ROW_ICON.view, label: 'ดูรายละเอียด', call: rowCall('showDetailById', 'receipt', f.b, f.y, f.m, String(f.id)) },
       { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', when: !f.voided, call: rowCall('editReceipt', f.b, f.y, f.m, String(f.id)) },
-      { id: 'delete', group: 'danger', icon: ROW_ICON.delete, label: 'ลบ', when: !f.voided, call: rowCall('delDoc', f.b, f.y, f.m, 'receipts', f.id) }
+      // ADR-021: an issued receipt is cancelled (kept, number stays in the sequence), never deleted. A receipt
+      // made by a billing payment is voided with that payment; the handler explains it.
+      { id: 'cancel', group: 'danger', icon: ROW_ICON.cancel, label: 'ยกเลิกใบเสร็จ', title: 'เก็บเอกสารและเลขที่ไว้พร้อมตรา “ยกเลิก” (ไม่ลบ)', when: !f.voided, call: rowCall('ERPDocumentCancel.open', 'receipts', f.b, f.y, f.m, String(f.id)) }
     ]
   },
 

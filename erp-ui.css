@@ -8,6 +8,8 @@
    - button levels: primary / secondary / tertiary / danger (ADR-017, part C) — the only place
      that styles .btn; the icon size of the line icons of erp-icons.js
    - executive dashboard layout: compact header, 4 KPIs, "สิ่งที่ต้องทำ", 2 charts (ADR-017)
+   - control sizes (ADR-019): one scale for buttons, tabs / chips, menus, selects, checkboxes, icon
+     buttons and the sidebar — the tokens below; other stylesheets read them instead of fixed px
    Printable documents (*-document.css) are not touched.
    ===================================================================== */
 
@@ -18,8 +20,9 @@
   --erp-menu-hover-bg:#eef6ff;
   --erp-danger-fg:#b91c1c;
   --erp-danger-hover-bg:#fef2f2;
-  /* Smallest height of anything tapped on a phone or tablet. */
-  --erp-touch-target:40px;
+  /* Smallest hit area (height, and width of icon-only controls) of anything tapped on a phone or
+     tablet (≤ 900 px) — ADR-019 raised it from 40 to 44 px. */
+  --erp-touch-target:44px;
 }
 
 /* ---------------------------------------------------------------- button levels (ADR-017)
@@ -30,15 +33,18 @@
    btn-ghost, btn-green, btn-purple, btn-red, btn-amber, btn-view.
    The level rules use `.btn.btn-*` (two classes) so older single-class theme rules cannot win. */
 :root{
-  --erp-btn-height:38px;
-  --erp-btn-height-sm:32px;
+  /* Sizes (ADR-019, was 38 / 32 px, 14 / 13 px text, 16 px icons): readable on a 1366 px laptop
+     for a customer demo; the icon scales with the button. */
+  --erp-btn-height:42px;
+  --erp-btn-height-sm:36px;
   --erp-btn-radius:10px;
-  --erp-btn-pad-x:14px;
-  --erp-btn-pad-x-sm:10px;
-  --erp-btn-font-size:14px;
-  --erp-btn-font-size-sm:13px;
+  --erp-btn-pad-x:16px;
+  --erp-btn-pad-x-sm:12px;
+  --erp-btn-font-size:15px;
+  --erp-btn-font-size-sm:14px;
   --erp-btn-font-weight:700;
-  --erp-btn-icon-size:16px;
+  --erp-btn-icon-size:18px;
+  --erp-btn-icon-size-sm:16px;
   /* Contrast of the label on its background (measured, ADR-017): primary 7.6:1, secondary and
      tertiary 7.6:1 on white, danger 6.5:1 — all above the WCAG AA 4.5:1 for text. */
   --erp-btn-primary-bg:#155886;
@@ -55,6 +61,34 @@
   --erp-btn-danger-fg:#b91c1c;
   --erp-btn-danger-border:#f1b0b0;
   --erp-btn-disabled-opacity:.5;
+}
+/* The same scale for the other control families (ADR-019). Other stylesheets use these tokens
+   instead of fixed sizes, so a control never ends up smaller than a small button. */
+:root{
+  /* Smallest text on any control: small buttons, tabs, chips, selects, checkbox labels. */
+  --erp-control-font-size:14px;
+  /* Selects / text fields that sit next to buttons line up with them. */
+  --erp-control-height:var(--erp-btn-height);
+  --erp-control-height-sm:var(--erp-btn-height-sm);
+  /* Tabs and chips (dashboard view tabs, branch tabs, preview tabs, master-data tabs). */
+  --erp-tab-height:40px;
+  /* Icon-only buttons: close ×, row "⋯", line-item remove, preview zoom. */
+  --erp-icon-btn-size:var(--erp-btn-height-sm);
+  /* Dropdown menu items (Demo menu, row "⋯" menu). */
+  --erp-menu-item-height:40px;
+  /* Checkboxes and radio buttons; their label is the click target. */
+  --erp-check-size:20px;
+}
+/* Phones and tablets: every control is at least a 44 px tap target — raising the tokens here
+   reaches every rule that reads them. */
+@media(max-width:900px){
+  :root{
+    --erp-control-height:var(--erp-touch-target);
+    --erp-control-height-sm:var(--erp-touch-target);
+    --erp-tab-height:var(--erp-touch-target);
+    --erp-icon-btn-size:var(--erp-touch-target);
+    --erp-menu-item-height:var(--erp-touch-target);
+  }
 }
 .btn{
   display:inline-flex;
@@ -99,13 +133,15 @@
 /* Line icons (erp-icons.js): decorative, the label stays. */
 .erp-icon{display:inline-block;flex:0 0 auto;width:1.15em;height:1.15em;vertical-align:-.2em}
 .btn .erp-icon{width:var(--erp-btn-icon-size);height:var(--erp-btn-icon-size);vertical-align:middle}
+.btn.btn-sm .erp-icon{width:var(--erp-btn-icon-size-sm);height:var(--erp-btn-icon-size-sm)}
 /* Branch colour marker in the branch tabs / choices (was 🟣 / 🔵). */
 .branch-dot{display:inline-block;flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
 .branch-dot.ub{background:#8b5cf6}
 .branch-dot.kk{background:#0ea5e9}
-/* Phones and tablets: every button is a ≥ 40 px tap target. */
+/* Phones and tablets: every button is a ≥ 44 px tap target (ADR-019; was 40 px). */
 @media(max-width:900px){
   .btn,.btn.btn-sm{min-height:var(--erp-touch-target)}
+  .btn{min-width:var(--erp-touch-target)}
 }
 
 /* List pages: Excel + "+ สร้าง…" (opens the form) at the top right of the list card. */
@@ -124,7 +160,7 @@
   border-radius:12px;
   box-shadow:var(--erp-menu-shadow);
   color:#1e293b;
-  font-size:14px;
+  font-size:var(--erp-btn-font-size);
   line-height:1.35;
 }
 .erp-menu[hidden]{display:none!important}
@@ -134,7 +170,7 @@
   align-items:center;
   gap:10px;
   width:100%;
-  min-height:var(--erp-touch-target);
+  min-height:var(--erp-menu-item-height);
   padding:8px 12px;
   border:0;
   border-radius:8px;
@@ -156,7 +192,28 @@
 .erp-menu-icon svg{width:18px;height:18px}
 .erp-menu-separator{height:1px;margin:6px 4px;background:#e2e8f0}
 
-/* ---------------------------------------------------------------- sidebar sections (erp-product-experience.js) */
+/* ---------------------------------------------------------------- sidebar sections (erp-product-experience.js)
+   Sizes (ADR-019, was 14 px entries, 12 px headings in #6b7a93 = 4.35:1, 18 px icons): entries 15 px with
+   a Thai-friendly line height (stacked vowels and tone marks) in rows of ≥ 40 px, 20 px icons; headings
+   13 px in #52617a — 6.3:1 on white, 6.1:1 on the sidebar's bottom tint (WCAG AA 4.5:1). The longest
+   entry ("ใบส่งสินค้า / ใบกำกับภาษี") stays on one line in the 245 px sidebar at 1366 px, so the
+   content area keeps its width; 16 px would need a wider sidebar. */
+:root{
+  --erp-nav-font-size:15px;
+  --erp-nav-line-height:1.45;
+  --erp-nav-row-height:40px;
+  --erp-nav-pad-x:10px;
+  --erp-nav-icon-size:20px;
+  --erp-nav-heading-font-size:13px;
+  --erp-nav-heading-height:36px;
+  --erp-nav-heading-fg:#52617a;
+  /* The count badge of an entry (overdue invoices, erp-receivables.css). */
+  --erp-nav-badge-font-size:12px;
+  --erp-nav-badge-size:22px;
+}
+@media(max-width:900px){
+  :root{--erp-nav-heading-height:var(--erp-touch-target)}
+}
 .sidebar .nav-group{margin:0 0 2px}
 .sidebar .nav-group[hidden]{display:none!important}
 .sidebar .nav-group>.nav-group-toggle{
@@ -164,14 +221,15 @@
   align-items:center;
   justify-content:space-between;
   width:calc(100% - 16px);
+  min-height:var(--erp-nav-heading-height);
   margin:10px 8px 2px!important;
-  padding:5px 10px!important;
+  padding:6px 10px!important;
   border:0;
   border-radius:8px;
   background:transparent;
-  color:#6b7a93!important;
+  color:var(--erp-nav-heading-fg)!important;
   font:inherit;
-  font-size:12px!important;
+  font-size:var(--erp-nav-heading-font-size)!important;
   font-weight:800;
   letter-spacing:.02em;
   line-height:1.3;
@@ -197,15 +255,16 @@
 /* A collapsed section still shows the entry of the page on screen (the user collapsed the
    section of the current page; arriving from another entry opens the section again). */
 .sidebar .nav-group.is-collapsed .nav-item:not(.active){display:none!important}
-/* Denser entries: every entry fits on one line in the 245 px sidebar. */
+/* Desktop entries: every entry fits on one line in the 245 px sidebar (the ☰ drawer of phones and
+   tablets has its own entry rule in style.css, with the same font size, line height and icon). */
 @media(min-width:901px){
-  .sidebar .nav-item{padding:7px 12px;font-size:14px;line-height:1.3}
+  .sidebar .nav-item{min-height:var(--erp-nav-row-height);padding:8px var(--erp-nav-pad-x);font-size:var(--erp-nav-font-size);line-height:var(--erp-nav-line-height)}
 }
+.sidebar .nav-item svg{width:var(--erp-nav-icon-size);height:var(--erp-nav-icon-size)}
 /* Phones and tablets (the ☰ drawer, style.css): headings are tap targets too. */
 @media(max-width:900px){
   .sidebar .nav-group>.nav-group-toggle{
     width:100%;
-    min-height:var(--erp-touch-target);
     margin:8px 0 4px!important;
     padding:8px 10px!important;
   }
@@ -215,15 +274,15 @@
 .nav-back-link{
   display:inline-flex;
   align-items:center;
-  min-height:32px;
+  min-height:var(--erp-btn-height-sm);
   margin:0 0 8px;
-  padding:4px 8px;
+  padding:4px 10px;
   border:0;
   border-radius:8px;
   background:transparent;
   color:#155886;
   font:inherit;
-  font-size:13px;
+  font-size:var(--erp-control-font-size);
   font-weight:700;
   cursor:pointer;
 }
@@ -269,8 +328,8 @@
   align-items:center;
   justify-content:center;
   flex:0 0 auto;
-  min-width:34px;
-  height:var(--erp-btn-height-sm);
+  min-width:var(--erp-icon-btn-size);
+  height:var(--erp-icon-btn-size);
   padding:0 8px;
   border:1px solid var(--erp-menu-border);
   border-radius:var(--erp-btn-radius);
@@ -304,7 +363,7 @@
 #panel-dashboard .erp-dash-controls .filter-bar>div{display:flex;align-items:center;gap:8px}
 #panel-dashboard .erp-dash-controls .filter-bar label{margin:0}
 #panel-dashboard .erp-dash-controls #dash-badge{align-self:center!important;margin-left:auto}
-.dtab{display:inline-flex;align-items:center;min-height:36px;border:1px solid transparent!important}
+.dtab{display:inline-flex;align-items:center;min-height:var(--erp-tab-height);border:1px solid transparent!important}
 .dtab.active,.dtab.kk.active,.dtab.ub.active{background:#eaf2f8;border-color:#9ebdd4!important;color:#155886!important;box-shadow:none}
 .dtab:focus-visible{outline:3px solid var(--erp-focus-ring);outline-offset:2px}
 /* 4 KPIs in one row: sales + net profit (2 of renderDash's 5 cards) and the 2 receivables cards. */
@@ -312,7 +371,7 @@
 #panel-dashboard[data-dashboard-view="summary"] .erp-dash-kpi-row .metrics{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
 #panel-dashboard[data-dashboard-view="summary"] :is(#metrics-total,#metrics-single)>.mc:nth-child(n+2):nth-child(-n+4),
 #panel-dashboard[data-dashboard-view="summary"] .erp-branch-detail{display:none}
-.dash-ar-kpis .dash-ar-kpi-link{min-height:0;padding:0 4px;margin-left:2px;vertical-align:baseline}
+.dash-ar-kpis .dash-ar-kpi-link{min-height:var(--erp-btn-height-sm);padding:0 8px;margin-left:2px;vertical-align:middle}
 /* "สิ่งที่ต้องทำ" (work queue + Decision Review) across the width, then the 2 charts side by side. */
 .erp-dash-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;align-items:start}
 .erp-dash-summary>.erp-dash-todo{grid-column:1/-1;padding:14px 16px;border:1px solid #dbe4ef;border-radius:16px;background:#fff}
@@ -365,9 +424,9 @@
   .dash-ar-kpis .dash-ar-kpi-link{display:inline-flex;align-items:center;min-height:var(--erp-touch-target);padding:0 8px}
 }
 
-/* Line-item "ลบรายการ" (quotation / invoice / receipt / PO rows): a labelled trash icon, ≥ 32 px (≥ 40 px on
-   ≤ 900 px), like the document editors' .rcp-remove-item. */
-.erp-item-remove{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:#dc2626;font-size:inherit;cursor:pointer}
+/* Line-item "ลบรายการ" (quotation / invoice / receipt / PO rows): a labelled trash icon, an icon button
+   (≥ 36 px, ≥ 44 px on ≤ 900 px — ADR-019), like the document editors' .rcp-remove-item. */
+.erp-item-remove{display:inline-flex;align-items:center;justify-content:center;min-width:var(--erp-icon-btn-size);min-height:var(--erp-icon-btn-size);padding:0;border:0;border-radius:8px;background:transparent;color:#dc2626;font-size:inherit;cursor:pointer}
 .erp-item-remove:hover{background:#fef2f2}
 .erp-item-remove:focus-visible{outline:2px solid #155886;outline-offset:2px}
 .erp-item-remove .erp-icon{width:18px;height:18px}
@@ -380,3 +439,45 @@
 .tbl-wrap table:has(td.erp-rowact-cell:last-child)>thead>tr>th:last-child{position:sticky;right:0;z-index:2;background:#fff;box-shadow:-10px 0 12px -10px rgba(15,23,42,.3)}
 .tbl-wrap table:has(td.erp-rowact-cell:last-child)>thead>tr>th:last-child{z-index:3;background:var(--erp-sticky-head-bg)}
 :root{--erp-sticky-head-bg:#f5f8fc}
+
+/* ---------------------------------------------------------------- control families (ADR-019)
+   The app's own screens only: the document screens and printable pages (*-document.js / .css, the
+   inline preview of a form, the full preview dialog) keep their own sizes. The floors below have no
+   specificity (:where), so a screen's own rule still decides the look — it only cannot go smaller. */
+/* Checkboxes and radio buttons: 20 px; their label is the click target. */
+:where(.main>.panel:not(#panel-delivery-tax-doc,#panel-receipt-doc,#panel-quotation-document),.modal,[role="dialog"]) input:is([type="checkbox"],[type="radio"]):not(:where(.doc-preview-content *,.doc-preview-modal *)){width:var(--erp-check-size);height:var(--erp-check-size);flex-shrink:0;cursor:pointer}
+/* A checkbox in a table row (approve a quotation, pick an invoice for a billing note). */
+.erp-check-label{display:inline-flex;align-items:center;gap:8px;min-height:var(--erp-control-height-sm);cursor:pointer;font-size:var(--erp-control-font-size);font-weight:600}
+.erp-check-label.erp-check-cell{justify-content:center;min-width:var(--erp-control-height-sm)}
+/* Selects and text fields are at least as tall as a small button, so a filter row lines up with the
+   toolbar beside it (44 px on phones and tablets through the token). */
+:where(.main>.panel:not(#panel-delivery-tax-doc,#panel-receipt-doc,#panel-quotation-document),.modal,[role="dialog"]) :where(select,input:not([type]),input[type="text"],input[type="search"],input[type="number"],input[type="date"],input[type="month"],input[type="email"],input[type="tel"]):not(:where(.doc-preview-content *,.doc-preview-modal *)){min-height:var(--erp-control-height-sm);font-size:var(--erp-control-font-size)}
+/* Icon-only close buttons of dialogs, alerts and toasts: one icon-button size. */
+:is(.modal-close,.ar-alert-close,.app-toast-close,.exec-detail-close,.erp-council-close,.erp-c360-dialog header button,.demo-health-dialog header button){display:inline-flex;align-items:center;justify-content:center;min-width:var(--erp-icon-btn-size);min-height:var(--erp-icon-btn-size)}
+@media(max-width:900px){
+  /* Phones and tablets: a checkbox / radio label is a 44 px tap target. */
+  :where(.main>.panel:not(#panel-delivery-tax-doc,#panel-receipt-doc,#panel-quotation-document),.modal,[role="dialog"]) label:has(>input:is([type="checkbox"],[type="radio"])){min-height:var(--erp-touch-target)}
+}
+
+/* ADR-021 — buyer สำนักงานใหญ่ / สาขาที่ control (invoice + receipt forms) */
+.buyer-branch-control{display:flex;gap:6px;align-items:stretch}
+.buyer-branch-control select{flex:0 0 auto;min-width:9.5em}
+.buyer-branch-control input{flex:1 1 6em;min-width:0;letter-spacing:.08em}
+.buyer-branch-control input[aria-invalid="true"]{border-color:#b91c1c;box-shadow:0 0 0 2px rgba(185,28,28,.18)}
+/* ADR-021 — cancelled (voided) invoices / receipts stay in the lists */
+.invoice-row-cancelled td{color:#64748b;background:#f8fafc!important}
+.invoice-row-cancelled td .badge.b-gray{text-decoration:line-through}
+.erp-cancelled-badge{font-weight:800}
+.erp-cancel-overlay{position:fixed;inset:0;z-index:4000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.erp-cancel-dialog{background:#fff;color:#0f172a;border-radius:14px;max-width:560px;width:100%;max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px;box-shadow:0 20px 50px rgba(15,23,42,.3)}
+.erp-cancel-dialog h2{margin:0 0 6px;font-size:19px;color:#b91c1c}
+.erp-cancel-summary{margin:0 0 10px;color:#334155;font-size:14px}
+.erp-cancel-rule{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;font-size:14px;line-height:1.55}
+.erp-cancel-reasons{border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;margin:0 0 10px}
+.erp-cancel-reasons legend{font-weight:700;padding:0 4px}
+.erp-cancel-reasons label{display:flex;gap:8px;align-items:flex-start;padding:7px 0;font-size:14px;line-height:1.45;cursor:pointer}
+.erp-cancel-reasons input{width:20px;height:20px;flex:0 0 auto;margin:0}
+.erp-cancel-text-label{display:block;font-weight:600;font-size:14px;margin-bottom:4px}
+.erp-cancel-dialog textarea{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px}
+.erp-cancel-error{color:#b91c1c;font-weight:700;margin:8px 0 0;white-space:pre-line}
+.erp-cancel-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}

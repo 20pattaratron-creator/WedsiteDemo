@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ERP Business Platform</title>
 <meta name="erp-demo-build" content="4.3.1-source">
+<!-- ADR-021: SheetJS (Excel export) ships in vendor/ and is loaded on the first export from this local URL; the build rewrites it like the PDF <script> tags. -->
+<meta name="erp-vendor-xlsx" content="./vendor/xlsx-0.18.5.full.min.js">
 <!-- Independent of the application bundle: still works when an asset is missing. -->
 <style id="deployment-fallback-style">
 .sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
@@ -69,6 +71,8 @@
 <link rel="stylesheet" href="executive-charts.css">
 <link rel="stylesheet" href="erp-product-experience.css">
 <link rel="stylesheet" href="erp-receivables.css">
+<link rel="stylesheet" href="erp-company-profile.css">
+<link rel="stylesheet" href="erp-tax-reports.css">
 <link rel="stylesheet" href="erp-ui.css">
 </head>
 <body>
@@ -111,6 +115,7 @@
   <div class="nav-item" onclick="go('inventory',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-inventory"></use></svg>คลังสินค้า</div>
   <div class="nav-item" onclick="go('expense-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-wallet"></use></svg>ค่าใช้จ่าย</div>
   <div class="nav-item" onclick="go('audit-log',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-shield"></use></svg>ศูนย์ควบคุม</div>
+  <div class="nav-item" onclick="go('tax-reports',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-tax"></use></svg>รายงานภาษี</div>
   <div class="nav-item" onclick="go('linked-flow',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-trace"></use></svg>Trace เอกสาร</div>
   <div class="nav-item" onclick="go('master-data',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-contacts"></use></svg>ลูกค้า / ผู้จำหน่าย / สินค้า</div>
   <div class="nav-item" onclick="go('business-rules',this);window.BusinessRulesService?.render?.()"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-rules"></use></svg>สูตรและกฎธุรกิจ</div>
@@ -274,7 +279,7 @@
       <div class="target-setting">
         <label for="delivery-monthly-target">เป้าหมายของมุมมองนี้</label>
         <div class="target-input-wrap">
-          <input id="delivery-monthly-target" type="number" min="0" step="10000" inputmode="decimal" value="1600000" aria-label="เป้าหมายยอดส่งสินค้าต่อเดือน">
+          <input id="delivery-monthly-target" type="number" min="0" step="10000" inputmode="decimal" value="" placeholder="ยังไม่ได้ตั้งเป้า" aria-label="เป้าหมายยอดส่งสินค้าต่อเดือน">
           <span>บาท</span>
           <button type="button" class="btn btn-primary" onclick="saveDeliveryTarget()">บันทึกเป้าหมาย</button>
         </div>
@@ -316,7 +321,7 @@
       <div class="target-setting">
         <label for="sales-monthly-target">เป้าหมายของมุมมองนี้</label>
         <div class="target-input-wrap sales-target-input">
-          <input id="sales-monthly-target" type="number" min="0" step="10000" inputmode="decimal" value="2000000" aria-label="เป้าหมายยอดขายต่อเดือน">
+          <input id="sales-monthly-target" type="number" min="0" step="10000" inputmode="decimal" value="" placeholder="ยังไม่ได้ตั้งเป้า" aria-label="เป้าหมายยอดขายต่อเดือน">
           <span>บาท</span>
           <button type="button" class="btn btn-primary" onclick="saveSalesTarget()">บันทึกเป้าหมาย</button>
         </div>
@@ -1115,6 +1120,7 @@
     <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="i-agency-type" onchange="renderCustomerAgencyHint('i')"></select><small id="i-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff ff-full"><label>ที่อยู่ลูกค้า</label><textarea id="i-address" rows="2" placeholder="ที่อยู่สำหรับออกใบส่งสินค้า / ใบกำกับภาษี"></textarea></div>
     <div class="ff"><label>เลขประจำตัวผู้เสียภาษี</label><input id="i-tax-id" placeholder="0000000000000"></div>
+    <div class="ff buyer-branch-field" data-buyer-branch="i"><label for="i-buyer-branch-kind">สำนักงานใหญ่ / สาขาของผู้ซื้อ</label><div class="buyer-branch-control"><select id="i-buyer-branch-kind" aria-describedby="i-buyer-branch-hint"><option value="">ไม่ระบุ</option><option value="hq">สำนักงานใหญ่</option><option value="branch">สาขาที่</option></select><input id="i-buyer-branch-code" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="00001" autocomplete="off" aria-label="เลขที่สาขาของผู้ซื้อ 5 หลัก" disabled></div><small id="i-buyer-branch-hint" class="section-hint">พิมพ์ต่อจากเลขประจำตัวผู้เสียภาษีของผู้ซื้อ (ตาม ภ.พ.20 ของผู้ซื้อที่จด VAT)</small></div>
     <div class="ff"><label>ผู้ติดต่อ</label><input id="i-contact" placeholder="ชื่อผู้ประสานงาน"></div>
     <div class="ff"><label>เบอร์โทร</label><input id="i-phone" placeholder="000-000-0000"></div>
     <div class="ff"><label>อีเมล</label><input id="i-email" type="email" placeholder="name@example.com"></div>
@@ -1218,6 +1224,7 @@
     <div class="ff customer-agency-field"><label>ประเภทย่อย</label><select id="r-agency-type" onchange="renderCustomerAgencyHint('r')"></select><small id="r-agency-hint" class="section-hint">ระบบจะเดาจากชื่อย่อ เช่น กฟภ., กฟผ., ธ.ก.ส., สอ., รพ., รร., หจก., บจก.</small></div>
     <div class="ff ff-full"><label>ที่อยู่ลูกค้า</label><textarea id="r-address" rows="2" placeholder="ที่อยู่สำหรับออกใบเสร็จรับเงิน"></textarea></div>
     <div class="ff"><label>เลขประจำตัวผู้เสียภาษี</label><input id="r-tax-id" placeholder="0000000000000"></div>
+    <div class="ff buyer-branch-field" data-buyer-branch="r"><label for="r-buyer-branch-kind">สำนักงานใหญ่ / สาขาของผู้ซื้อ</label><div class="buyer-branch-control"><select id="r-buyer-branch-kind" aria-describedby="r-buyer-branch-hint"><option value="">ไม่ระบุ</option><option value="hq">สำนักงานใหญ่</option><option value="branch">สาขาที่</option></select><input id="r-buyer-branch-code" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="00001" autocomplete="off" aria-label="เลขที่สาขาของผู้ซื้อ 5 หลัก" disabled></div><small id="r-buyer-branch-hint" class="section-hint">พิมพ์ต่อจากเลขประจำตัวผู้เสียภาษีของผู้ซื้อ (ตาม ภ.พ.20 ของผู้ซื้อที่จด VAT)</small></div>
     <div class="ff"><label>ผู้ติดต่อ</label><input id="r-contact" placeholder="ชื่อผู้ประสานงาน"></div>
     <div class="ff"><label>เบอร์โทร</label><input id="r-phone" placeholder="000-000-0000"></div>
     <div class="ff"><label>อีเมล</label><input id="r-email" type="email" placeholder="name@example.com"></div>
@@ -1741,6 +1748,8 @@
         <option value="paid">ชำระแล้ว</option>
         <option value="dueSoon">ใกล้ครบกำหนดภายใน 7 วัน</option>
         <option value="overdue">เกินกำหนดชำระ</option>
+        <option value="live">ใช้งาน (ไม่รวมที่ยกเลิก)</option>
+        <option value="cancelled">ยกเลิกแล้ว</option>
       </select>
     </div>
     <div><label>ค้นหาเลขที่</label>
@@ -1811,6 +1820,9 @@
   <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>ลูกค้า</th><th>อ้างอิงใบกำกับภาษี</th><th>สาเหตุ</th><th class="tn">ผลต่าง (ก่อน VAT)</th><th class="tn">VAT</th><th class="tn">รวมลดหนี้</th><th>สถานะ</th><th></th></tr></thead><tbody id="cnltbl"></tbody></table></div>
   <div id="cnlempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
+
+<!-- TAX REPORTS: รายงานภาษีขาย / ภาษีซื้อ / ภ.พ.30 (ADR-023, rendered by erp-tax-reports.js) -->
+<div id="panel-tax-reports" class="panel"><div id="tax-reports-root" class="card tax-rpt-root" aria-live="polite"></div></div>
 
 <!-- ISSUED DELIVERY/TAX DOCUMENT LIST -->
 <div id="panel-issued-invoice-list" class="panel"><div class="card">
@@ -1908,7 +1920,7 @@
           <div class="ff"><label>รหัสสาขา</label><select id="saas-new-branch-code"><option value="ubon">ubon — สำนักงานใหญ่</option><option value="khonkaen">khonkaen — สาขาที่ 00001</option></select></div>
           <div class="ff"><label>ชื่อสาขา</label><input id="saas-new-branch-name" type="text" placeholder="เช่น สาขาที่ 00001"></div>
         </div>
-        <div class="form-actions"><button type="button" class="btn btn-primary" onclick="window.SaaSService?.createBranchFromPanel?.()">+ เพิ่มสาขาตามสิทธิ์แพ็กเกจ</button></div>
+        <div class="form-actions"><button type="button" class="btn btn-secondary" onclick="window.SaaSService?.createBranchFromPanel?.()">+ เพิ่มสาขาตามสิทธิ์แพ็กเกจ</button></div>
         <div id="saas-action-status" class="section-hint"></div>
       </div>
     </div>
@@ -2063,6 +2075,8 @@
 <script type="module" src="app.js"></script>
 <script type="module" src="credit-note-document.js"></script>
 <script type="module" src="erp-credit-note.js"></script>
+<!-- ADR-021: ยกเลิกใบกำกับภาษี / ใบเสร็จ (cancel, never delete) — row "⋯" action + reason dialog. -->
+<script type="module" src="erp-document-cancel.js"></script>
 <script type="module" src="erp-receivables.js"></script>
 <script type="module" src="erp-sales-form-assist.js"></script>
 <script type="module" src="business-rules.js"></script>
@@ -2074,6 +2088,10 @@
 <script type="module" src="erp-decision-council.js"></script>
 <script type="module" src="erp-product-experience.js"></script>
 <script type="module" src="erp-demo-seed.js"></script>
+<!-- ADR-020: ตั้งค่าบริษัท › ข้อมูลบริษัทและโลโก้ (the saved profile itself is merged at boot by local-demo-mode.js). -->
+<script type="module" src="erp-company-profile.js"></script>
+<script type="module" src="erp-tax-forms.js"></script>
+<script type="module" src="erp-tax-reports.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>
 </body>

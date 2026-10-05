@@ -6,6 +6,9 @@
 // in this browser (localStorage / IndexedDB) until the user exports a backup.
 import { attachMenu } from './erp-ui-menu.js';
 import { icon } from './erp-icons.js';
+import { applyCompanyProfileToUser, readCompanyProfileStorage, companyHeaderBranding } from './erp-company-profile-core.js';
+import { COMPANY_PROFILE_KEY, COMPANY_LOGO_KEY, COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
+import { createBranchesApi } from './erp-branches-core.js';
 
 const DEMO_TENANT_ID = 'customer-showcase-local';
 
@@ -36,6 +39,18 @@ const demoProfile = {
 window.ERP_LOCAL_DEMO = true;
 window.CurrentUser = demoProfile;
 window.ComformTenant?.setActiveTenantId?.(DEMO_TENANT_ID);
+// ADR-020: the customer's saved company profile / logo (ตั้งค่าบริษัท), merged here — before the
+// document modules render. Nothing saved = the demo profile above, unchanged.
+try {
+  const saved = readCompanyProfileStorage(localStorage, key => window.ComformTenant?.storageKey?.(key) || key, { profile: COMPANY_PROFILE_KEY, logo: COMPANY_LOGO_KEY });
+  if (saved.errors.length) console.warn('[LocalDemo] saved company profile ignored:', saved.errors.join(' · '));
+  if (saved.profile || saved.logo) applyCompanyProfileToUser(demoProfile, saved);
+} catch (error) {
+  console.warn('[LocalDemo] saved company profile could not be read', error);
+}
+// ADR-022: 1 or 2 establishments (labels + which branches the UI shows), for every later script —
+// including plain scripts that cannot import erp-branches-core.js. Reads live state on every call.
+window.ERPBranches = createBranchesApi(window);
 window.ComformAuth = {
   auth: null,
   getCurrentProfile: () => demoProfile
@@ -47,20 +62,33 @@ function escapeHtml(v='') {
   return String(v).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 }
 
+const DEMO_SUBTITLE = 'ทดลองกรอกข้อมูลได้ · ข้อมูลอยู่เฉพาะ Browser เครื่องนี้ · ไม่เชื่อม Firebase/Cloud';
+// Header: the customer's company name / logo once saved (ADR-020), otherwise the demo title.
+// Text only through textContent; the logo is a validated data URL (companyHeaderBranding).
 function applyDemoBranding() {
+  const branding = companyHeaderBranding(demoProfile);
   const title = document.getElementById('tenant-company-title');
   const subtitle = document.getElementById('tenant-company-subtitle');
-  if (title) title.textContent = 'ERP Business Platform · Local Demo';
-  if (subtitle) subtitle.textContent = 'ทดลองกรอกข้อมูลได้ · ข้อมูลอยู่เฉพาะ Browser เครื่องนี้ · ไม่เชื่อม Firebase/Cloud';
-  document.title = 'ERP Local Demo — Customer Showcase';
+  if (title) title.textContent = branding?.custom ? branding.title : 'ERP Business Platform · Local Demo';
+  if (subtitle) subtitle.textContent = branding?.custom ? `Local Demo · ${DEMO_SUBTITLE}` : DEMO_SUBTITLE;
+  const logo = document.querySelector('.comform-topbar .company-logo');
+  if (logo && branding?.customLogo) {
+    if (logo.dataset.defaultSrc === undefined) logo.dataset.defaultSrc = logo.getAttribute('src') || '';
+    logo.setAttribute('src', branding.logoUrl);
+  } else if (logo && logo.dataset.defaultSrc !== undefined) {
+    logo.setAttribute('src', logo.dataset.defaultSrc);
+  }
+  document.title = branding?.custom ? `${branding.title} — ERP Local Demo` : 'ERP Local Demo — Customer Showcase';
   document.body.classList.add('firebase-local-mode','erp-local-demo');
 }
+window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, applyDemoBranding);
 
 // ------------------------------------------------------------ "Demo" menu (ADR-015)
 // One "Demo" button (gear line icon) at the right of the header replaces the former green Local Demo banner
 // and its five buttons. Each action is still owned by its module, which registers its own item
 // with the same label, id / data attribute and function as its former banner button:
 //   order 10  ตรวจสถานะ Demo                   local-demo-health.js  #local-demo-health-btn
+//   order 15  ข้อมูลบริษัทและโลโก้ (ADR-020)     erp-company-profile.js #local-demo-company-btn
 //   order 20  โหลดข้อมูลตัวอย่างสำหรับสาธิต       erp-demo-seed.js      [data-demo-seed-action="load"]
 //   order 30  วิธีเริ่มทดลอง                     this file             #local-demo-guide-btn
 //   order 40  สำรองข้อมูล                        this file             #local-demo-backup-btn

@@ -5,8 +5,8 @@
 .cloud-disabled-control{opacity:.58;pointer-events:none}
 
 /* "⚙ Demo" button: last item of the dark header, same look as the โหมดง่าย/ขั้นสูง toggle. */
-.erp-demo-menu-btn{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:10px;padding:7px 10px;border:1px solid rgba(255,255,255,.32);border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:13px;font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap}
-.erp-demo-menu-btn svg{width:16px;height:16px;flex:0 0 16px}
+.erp-demo-menu-btn{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;min-height:var(--erp-control-height-sm);margin-left:10px;padding:7px 12px;border:1px solid rgba(255,255,255,.32);border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:var(--erp-control-font-size);font-weight:800;line-height:1.2;cursor:pointer;white-space:nowrap}
+.erp-demo-menu-btn svg{width:18px;height:18px;flex:0 0 18px}
 .erp-demo-menu-btn .erp-demo-menu-caret{width:14px;height:14px;flex-basis:14px;transition:transform .15s ease}
 .erp-demo-menu-btn.is-open .erp-demo-menu-caret{transform:rotate(180deg)}
 .erp-demo-menu-btn:hover,.erp-demo-menu-btn.is-open{background:rgba(255,255,255,.22)}

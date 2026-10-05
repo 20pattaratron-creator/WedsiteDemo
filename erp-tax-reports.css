@@ -1,0 +1,127 @@
+/* ============================================================================
+   erp-tax-reports.css — รายงานภาษี page and the tax fields of the expense / supplier / invoice
+   forms (ADR-023). Controls use the ADR-019 tokens: ≥ 42 px (44 px on touch screens).
+   ============================================================================ */
+
+/* ---------- page */
+.tax-rpt-root{min-width:0}
+.tax-rpt-head p{margin:-.6rem 0 1rem;color:#475569;font-size:15px;line-height:1.6}
+.tax-rpt-head .card-title svg{width:22px;height:22px;margin-right:8px;vertical-align:-4px}
+.tax-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:0;border-bottom:1px solid #dbe4ef}
+.tax-tab{min-height:var(--erp-control-height);padding:0 16px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;background:transparent;color:#334155;font-size:var(--erp-btn-font-size);font-weight:700;cursor:pointer}
+.tax-tab:hover{background:#eef6fb}
+.tax-tab.active{background:#fff;border-color:#dbe4ef;color:#155886;box-shadow:0 -2px 0 #155886 inset}
+.tax-tab:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.tax-rpt-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
+.tax-rpt-filters>div{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1 1 170px;max-width:320px}
+.tax-rpt-filters label{font-size:14px;font-weight:700;color:#475569}
+.tax-rpt-root select,.tax-rpt-root input{min-height:var(--erp-control-height)!important;font-size:var(--erp-control-font-size)}
+.tax-rpt-actions{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px}
+.tax-rpt-actions .btn,.tax-history .btn,.tax-pp30 .btn{min-height:var(--erp-control-height)}
+.tax-rpt-scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.tax-rpt-scroll:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.tax-rpt-table{width:100%;border-collapse:collapse;min-width:1180px;background:#fff;table-layout:auto}
+/* The house table style (style.css) makes every th sticky and unbreakable and, on phones, pins the last
+   column (the row "⋯" actions) — none of that fits the official report: headers wrap, the note column scrolls. */
+.tax-rpt-table th{position:static!important;white-space:normal!important;vertical-align:middle;line-height:1.35}
+.tax-rpt-table th.tax-th-num{text-align:right}
+.tax-rpt-table td{white-space:normal}
+.tax-rpt-table th:last-child,.tax-rpt-table td:last-child{position:static!important;box-shadow:none!important}
+.tax-rpt-table .col-seq{width:56px}
+.tax-rpt-table .col-date{min-width:104px;white-space:nowrap}
+.tax-rpt-table .col-no{min-width:130px}
+.tax-rpt-table .col-party{min-width:190px}
+.tax-rpt-table .col-taxId{min-width:150px;width:150px}
+.tax-rpt-table .col-headOffice,.tax-rpt-table .col-branchNo{width:84px}
+.tax-rpt-table .col-value,.tax-rpt-table .col-vat,.tax-rpt-table .col-total{min-width:124px}
+.tax-rpt-table .col-note{min-width:260px}
+.tax-pp30-table{min-width:0}
+.tax-rpt-table th,.tax-rpt-table td{border:1px solid #d7e0ea;padding:8px 10px;vertical-align:top}
+.tax-rpt-table th{background:#f1f5f9;color:#334155;text-align:center;font-size:13px;line-height:1.35}
+.tax-rpt-table td{font-size:14px}
+.tax-rpt-table td.tn{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tax-rpt-table td.tc{text-align:center}
+.tax-rpt-table td.neg{color:#b91c1c}
+.tax-rpt-table tfoot td{background:#f8fafc;font-weight:700}
+.tax-empty{color:#64748b;padding:18px!important}
+.tax-muted{color:#64748b;font-size:14px}
+.tax-mono{font-variant-numeric:tabular-nums;letter-spacing:.03em}
+
+/* ---------- header of the official form */
+.tax-form-head{border:1px solid #dbe4ef;border-radius:12px;padding:12px 14px;margin:10px 0;background:#fbfdff}
+.tax-form-title{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.tax-form-title h3{margin:0;font-size:18px;color:#0f172a}
+.tax-form-page{font-size:13px;color:#475569}
+.tax-form-month{font-size:15px;font-weight:700;margin:4px 0 8px;color:#155886}
+.tax-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+.tax-form-grid>div{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.tax-form-grid span{color:#475569}
+.tax-form-grid b{overflow-wrap:anywhere}
+.tax-form-checks{gap:18px!important}
+.tax-form-note{margin-top:8px;font-size:13px;color:#475569}
+.tax-form-note-warn{color:#b91c1c;font-weight:700}
+
+/* ---------- warning / info boxes */
+.tax-rpt-box{border-radius:12px;padding:10px 14px;margin:8px 0;font-size:14px;line-height:1.55}
+.tax-rpt-box ul{margin:6px 0 0;padding-left:20px}
+.tax-rpt-box p{margin:4px 0}
+.tax-rpt-box-warn{background:#fffbeb;border:1px solid #fde68a;color:#78350f}
+.tax-rpt-box-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.tax-rpt-box-error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+
+/* ---------- ภ.พ.30 */
+.tax-pp30-status{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 10px;font-size:16px}
+.tax-pp30-key td{background:#fffbeb}
+.tax-pp30-table td small{display:block;color:#64748b;font-size:13px;margin-top:2px}
+.tax-pp30-table td:first-child{width:64px}
+.tax-pp30-table td:last-child{width:190px}
+.tax-carry-input{width:100%;max-width:170px;text-align:right;padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px}
+.tax-pp30-choice{border:1px solid #dbe4ef;border-radius:12px;padding:8px 14px;margin:10px 0;display:flex;flex-wrap:wrap;gap:8px 20px}
+.tax-pp30-choice legend{font-weight:700;font-size:14px;padding:0 4px}
+.tax-pp30-row{display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:16px;align-items:start;margin:10px 0}
+.tax-due{margin:4px 0 0;padding-left:20px;font-size:14px}
+.tax-sub{margin:16px 0 6px;font-size:16px}
+.tax-history{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tax-history li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:6px 10px;font-size:14px}
+.tax-badge{display:inline-flex;align-items:center;min-height:26px;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#eef6fb;color:#155886;border:1px solid #bcd7ea;margin:2px 4px 2px 0;white-space:nowrap}
+.tax-badge-ok{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.tax-badge-warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.tax-badge-bad{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.tax-check{display:inline-flex;align-items:center;gap:8px;min-height:var(--erp-control-height);font-size:15px;font-weight:600;cursor:pointer}
+.tax-check input{width:var(--erp-check-size);height:var(--erp-check-size);min-height:0!important;flex:none}
+
+/* ---------- expense form › ภาษีซื้อ */
+.tax-exp{border:1px solid #bfdbfe;background:#f8fbff;border-radius:14px;padding:14px;margin:6px 0}
+.tax-exp-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.tax-exp-head b{font-size:16px;color:#155886}
+.tax-exp-head small,.tax-help{font-size:13px;color:#475569;line-height:1.5}
+.tax-exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.tax-exp-wide{grid-column:1/-1}
+.tax-exp .ff{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tax-exp .ff input,.tax-exp .ff select,#i-vat-category,.cp-vat-filing select,#md-s-branch-kind,#md-s-branch-code,#md-s-branch-name{min-height:var(--erp-control-height)!important}
+.tax-label{font-size:14px;font-weight:700;color:#475569}
+.tax-branch-row{display:flex;gap:8px}
+.tax-branch-row select{flex:1 1 50%}
+.tax-branch-row input{flex:1 1 50%}
+.tax-exp-split{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;background:#fff;border:1px dashed #93c5fd;border-radius:10px;padding:10px 12px;font-size:14px}
+.tax-exp-split strong{font-variant-numeric:tabular-nums}
+.tax-note{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:8px 12px;font-size:14px}
+.tax-note-info{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;margin-bottom:10px}
+.tax-hint-warn{color:#b45309}
+.tax-hint-ok{color:#15803d}
+.cp-vat-filing{margin-top:12px;display:flex;flex-direction:column;gap:4px;max-width:520px}
+
+/* hidden controls stay hidden even where a family rule sets display */
+#e-tax-section[hidden],#i-vat-category-field[hidden],.tax-exp [hidden],.tax-exp-grid>[hidden]{display:none!important}
+
+@media(max-width:900px){
+  .tax-rpt-filters>div{max-width:none;flex:1 1 140px}
+  .tax-form-grid{grid-template-columns:1fr}
+  .tax-pp30-row{grid-template-columns:1fr}
+  .tax-tab{flex:1 1 auto;padding:0 10px}
+  .tax-pp30-table td:last-child{width:auto}
+}
+@media(max-width:420px){
+  .tax-rpt-filters>div{flex:1 1 100%;min-width:0}
+  .tax-rpt-actions .btn{flex:1 1 auto}
+}

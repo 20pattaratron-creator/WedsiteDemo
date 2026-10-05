@@ -20,11 +20,20 @@
 //    data-price-owner="user"; a suggested price clears the markers too). The
 //    suggestion button is never run automatically, so the two never compete.
 //
+// 3) Buyer establishment (ADR-021, ประกาศอธิบดีฯ VAT ฉบับที่ 199): the "สำนักงานใหญ่ / สาขาที่ [5 หลัก]"
+//    control next to the buyer tax ID on the invoice (#i-buyer-branch-*) and receipt (#r-…) forms.
+//    Picking a Customer Master row fills it (app.js applyCustomerMasterToForm → applyBuyerBranchFromContact);
+//    the user may change it. At save, buyerBranchFromForm() returns {customerBranchCode,
+//    customerBranchName} or {error} (a branch number must be 5 digits). A control the user never
+//    touched and left empty is copied from Customer Master at save time (a buyer chosen through a Sales
+//    Order / production order / quotation never ran the master autofill). Optional: a buyer without a
+//    tax ID, a walk-in buyer and an abbreviated invoice store '' (nothing printed).
+//
 // Rules are pure helpers in erp-shared-core.js / erp-master-data-core.js.
 // Events use addEventListener delegation — no new inline handlers. app.js only
 // calls window.ERPSalesFormAssist from resetF / editInvoice / fillFromProduction.
 // ============================================================================
-import { TAX_INVOICE_FORM_ABBREVIATED, TAX_INVOICE_FORM_FULL, ABBREVIATED_TAX_INVOICE_USE_VAT, GENERAL_CUSTOMER_NAME, normalizeTaxInvoiceForm, convertUnitPriceBetweenVatModes, vatModeGrossFactor } from './erp-shared-core.js';
+import { TAX_INVOICE_FORM_ABBREVIATED, TAX_INVOICE_FORM_FULL, ABBREVIATED_TAX_INVOICE_USE_VAT, GENERAL_CUSTOMER_NAME, normalizeTaxInvoiceForm, convertUnitPriceBetweenVatModes, vatModeGrossFactor, BUYER_HEAD_OFFICE_CODE, normalizeBuyerBranchCode, parseBuyerBranchInput, buyerBranchFromContact, isGeneralCustomerName } from './erp-shared-core.js';
 import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefaultPrice } from './erp-master-data-core.js';
 
 (() => {
@@ -64,6 +73,77 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
     }
     const vat = $('i-vat');
     if (vat) vat.title = abbreviated ? 'ใบกำกับภาษีอย่างย่อใช้ราคารวม VAT แล้วเท่านั้น' : '';
+    renderBuyerBranch('i');
+  }
+
+  // --------------------------------------------- buyer establishment (ADR-021)
+  const buyerKind = prefix => $(`${prefix}-buyer-branch-kind`);
+  const buyerCode = prefix => $(`${prefix}-buyer-branch-code`);
+  const buyerField = prefix => buyerKind(prefix)?.closest('[data-buyer-branch]') || null;
+  function buyerBranchDisabled(prefix) {
+    return prefix === 'i' && invoiceTaxForm() === TAX_INVOICE_FORM_ABBREVIATED;
+  }
+  function renderBuyerBranch(prefix) {
+    const kind = buyerKind(prefix), code = buyerCode(prefix);
+    if (!kind || !code) return;
+    const abbreviated = buyerBranchDisabled(prefix);
+    kind.disabled = abbreviated;
+    const branch = !abbreviated && kind.value === 'branch';
+    code.disabled = !branch;
+    code.required = branch;
+    if (!branch) { code.value = ''; code.removeAttribute('aria-invalid'); }
+    const hint = $(`${prefix}-buyer-branch-hint`);
+    if (hint) hint.textContent = abbreviated ? 'ใบกำกับภาษีอย่างย่อไม่พิมพ์สาขาของผู้ซื้อ' : 'พิมพ์ต่อจากเลขประจำตัวผู้เสียภาษีของผู้ซื้อ (ตาม ภ.พ.20 ของผู้ซื้อที่จด VAT)';
+  }
+  // record: {customerBranchCode, customerBranchName}. `touched` = the value is a decision (typed, or
+  // taken from a saved document) — an untouched empty control is filled from Customer Master at save.
+  function setBuyerBranch(prefix, record = {}, options = {}) {
+    const kind = buyerKind(prefix), codeInput = buyerCode(prefix), field = buyerField(prefix);
+    if (!kind || !codeInput || !field) return;
+    const code = normalizeBuyerBranchCode(record?.customerBranchCode);
+    kind.value = !code ? '' : code === BUYER_HEAD_OFFICE_CODE ? 'hq' : 'branch';
+    codeInput.value = code && code !== BUYER_HEAD_OFFICE_CODE ? code : '';
+    field.dataset.branchName = code && code !== BUYER_HEAD_OFFICE_CODE ? String(record?.customerBranchName || '') : '';
+    field.dataset.branchNameCode = field.dataset.branchName ? code : ''; // the name belongs to this number only
+    field.dataset.touched = (options.touched ?? !!code) ? '1' : '';
+    renderBuyerBranch(prefix);
+  }
+  function clearBuyerBranch(prefix) { setBuyerBranch(prefix, {}, { touched: false }); }
+  // A Customer Master row was picked: its establishment fills the control (the user may still change it).
+  function applyBuyerBranchFromContact(prefix, contact) {
+    const { code, name } = buyerBranchFromContact(contact || {});
+    setBuyerBranch(prefix, { customerBranchCode: code, customerBranchName: name }, { touched: false });
+  }
+  // → {customerBranchCode, customerBranchName} to store, or {error} (shown, nothing saved).
+  function buyerBranchFromForm(prefix, options = {}) {
+    const empty = { customerBranchCode: '', customerBranchName: '' };
+    const kind = buyerKind(prefix), codeInput = buyerCode(prefix), field = buyerField(prefix);
+    if (!kind || !codeInput || !field) return empty;
+    if (prefix === 'i' && normalizeTaxInvoiceForm(options.taxInvoiceForm ?? invoiceTaxForm()) === TAX_INVOICE_FORM_ABBREVIATED) return empty;
+    const parsed = parseBuyerBranchInput(kind.value, codeInput.value);
+    if (!parsed.ok) { codeInput.setAttribute('aria-invalid', 'true'); return { error: parsed.error }; }
+    if (parsed.code) return { customerBranchCode: parsed.code, customerBranchName: parsed.code !== BUYER_HEAD_OFFICE_CODE && field.dataset.branchNameCode === parsed.code ? (field.dataset.branchName || '') : '' };
+    if (field.dataset.touched === '1') return empty;
+    // Untouched and empty: copy from Customer Master at save time — only for a named buyer whose tax ID is on the form.
+    const customer = String($(`${prefix}-cust`)?.value || '').trim(), taxId = String($(`${prefix}-tax-id`)?.value || '').trim();
+    if (!customer || isGeneralCustomerName(customer) || !taxId) return empty;
+    const contact = typeof window.findContactMaster === 'function' ? window.findContactMaster(customer, 'customer') : null;
+    if (!contact) return empty;
+    const { code, name } = buyerBranchFromContact({ ...contact, taxId });
+    return { customerBranchCode: code, customerBranchName: name };
+  }
+  function onBuyerBranchEvent(el, type) {
+    const match = /^([ir])-buyer-branch-(kind|code)$/.exec(el?.id || '');
+    if (!match) return false;
+    const field = buyerField(match[1]);
+    if (field) field.dataset.touched = '1';
+    if (match[2] === 'code' && type === 'input') {
+      const digits = el.value.replace(/\D/g, '').slice(0, 5);
+      if (digits !== el.value) el.value = digits;
+      el.removeAttribute('aria-invalid');
+    }
+    if (match[2] === 'kind') { renderBuyerBranch(match[1]); if (el.value === 'branch') buyerCode(match[1])?.focus?.(); }
+    return true;
   }
   // options.restoreVat (default true): when leaving abbreviated, put back the
   // VAT mode the user had before it was locked. options.recalc (default true).
@@ -282,6 +362,7 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
     const el = event.target;
     if (!el) return;
     if (el.id === 'i-tax-form') { setInvoiceTaxForm(el.value); return; }
+    if (onBuyerBranchEvent(el, 'change')) return;
     if (el.id === 'q-vat') { rebaseDefaultPrices('q-items-body'); return; }
     if (el.id === 'i-vat') { rebaseDefaultPrices('i-items-body'); return; }
     const table = tableOf(el);
@@ -297,6 +378,7 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
   // take ownership away from the autofill.
   function onInput(event) {
     const el = event.target;
+    if (onBuyerBranchEvent(el, 'input')) return;
     const table = tableOf(el);
     if (!table || !el.matches(table.price)) return;
     el.dataset.priceOwner = 'user';
@@ -307,6 +389,7 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
     document.addEventListener('change', onChange);
     document.addEventListener('input', onInput);
     renderTaxFormUi(invoiceTaxForm());
+    renderBuyerBranch('r');
   }
 
   window.ERPSalesFormAssist = Object.freeze({
@@ -314,7 +397,11 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
     setInvoiceTaxForm,
     enforceInvoiceTaxForm,
     applyDefaultPrice,
-    rebaseDefaultPrices
+    rebaseDefaultPrices,
+    buyerBranchFromForm,
+    setBuyerBranch,
+    clearBuyerBranch,
+    applyBuyerBranchFromContact
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();

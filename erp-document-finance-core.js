@@ -1,3 +1,4 @@
+import { planExpenseVatFields, normalizeInvoiceVatCategory, EXPENSE_VAT_FIELD_KEYS, TAX_CORE_TEXT } from './erp-tax-reports-core.js';
 // ============================================================================
 // finance action core — pure Billing / Payment / Receipt action plans
 // ERP DEMO 4.3.1 — Document / Finance Action Core
@@ -379,6 +380,8 @@ export function buildPaymentReceiptDrafts(input = {}) {
       customer: invoice.customer,
       customerAddress: invoice.customerAddress || '',
       customerTaxId: invoice.customerTaxId || '',
+      customerBranchCode: invoice.customerBranchCode || '', // ADR-021: buyer สำนักงานใหญ่ / สาขาที่, as on the invoice
+      customerBranchName: invoice.customerBranchName || '',
       contact: invoice.contact || '',
       phone: invoice.phone || '',
       email: invoice.email || '',
@@ -703,12 +706,20 @@ export function planExpenseDocumentAction(input = {}) {
   if (docType === 'none' && docNo) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'เลือก “ไม่มีเอกสาร” แล้วไม่ควรระบุเลขที่เอกสาร');
   if (taxStatus === 'received' && !EXPENSE_TAX_DOCUMENT_TYPES.has(docType)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'สถานะ “ได้รับใบกำกับภาษีแล้ว” ต้องเลือกประเภทเอกสารที่เป็นใบกำกับภาษี');
   if (taxStatus === 'received' && !docNo) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'กรุณาระบุเลขที่ใบกำกับภาษีที่ได้รับ');
+  // ADR-023: the purchase-tax part (VAT split, seller TIN / establishment, claim month, 82/3 limit,
+  // 82/5 reasons) of a tax-invoice expense; `amount` stays the gross total.
+  const vat = planExpenseVatFields({ ...draft, docType, taxStatus, docNo });
+  if (!vat.ok) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, vat.error);
+  if (input.duplicateDocument === 'tax_invoice') throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, TAX_CORE_TEXT.errDuplicateTaxInvoice(docNo || '-', vat.fields?.vendorTaxId || draft.vendorTaxId || '-'));
   if (input.duplicateDocument) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `เลขที่เอกสาร ${docNo || '-'} ของร้านค้า/ผู้ขายนี้ถูกบันทึกแล้ว`);
 
   const attachments = Array.isArray(draft.attachments) ? draft.attachments.map(file => ({ ...file })) : [];
   const warnings = [];
   if (taxStatus === 'received' && !attachments.length) warnings.push('ได้รับใบกำกับภาษีแล้ว แต่ยังไม่มีไฟล์หลักฐานแนบ');
   const record = { ...draft, docType, taxStatus, purpose, docNo, attachments };
+  // Tax fields are stored only for a tax-invoice expense (never half a set from a hidden form section).
+  for (const key of EXPENSE_VAT_FIELD_KEYS) delete record[key];
+  if (vat.fields) { Object.assign(record, vat.fields); warnings.push(...vat.warnings); }
   return { kind: 'expense', mode: 'create', record, warnings };
 }
 
@@ -768,6 +779,8 @@ export function planInvoiceDocumentAction(input = {}) {
   }
 
   const original = input.original && typeof input.original === 'object' ? input.original : null;
+  // ADR-021: a cancelled tax invoice is kept unchanged (its number stays in the sequence); issue a new one instead.
+  if (original && !financeLive(original)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `ใบกำกับภาษี ${original.no || ''} ถูกยกเลิกแล้ว จึงแก้ไขไม่ได้ — ออกใบกำกับภาษีฉบับใหม่แทนด้วยเลขที่ใหม่`);
   // §86/4: a full-form tax invoice must name the buyer; the walk-in placeholder
   // is only for abbreviated invoices. An existing record that was ALREADY a
   // full-form invoice with the placeholder (legacy data) may still be re-saved
@@ -790,7 +803,8 @@ export function planInvoiceDocumentAction(input = {}) {
     throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'Invoice นี้มีใบลดหนี้อ้างอิงแล้ว จึงไม่อนุญาตให้แก้เลขที่ วันที่ ลูกค้า รายการสินค้า หรือยอดทางการเงิน กรุณายกเลิกใบลดหนี้ที่อ้างอิงก่อน');
   }
 
-  let record = { ...draft };
+  // ADR-023 (G4): 'standard' for VAT invoices; a no-VAT invoice keeps 'zero' (0 %, export) or 'exempt'.
+  let record = { ...draft, vatCategory: normalizeInvoiceVatCategory(financeVatModeOf(draft), draft.vatCategory) };
   if (original) {
     record = preserveFields(record, original, INVOICE_SETTLEMENT_FIELDS);
     record = preserveFields(record, original, INVOICE_LINEAGE_FIELDS);
@@ -848,6 +862,8 @@ export function planReceiptDocumentAction(input = {}) {
   if (input.duplicateNumber) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `เลขที่ใบเสร็จ ${draft.no} มีอยู่แล้ว`);
 
   const original = input.original && typeof input.original === 'object' ? input.original : null;
+  // ADR-021: a cancelled receipt is kept as issued evidence and never edited.
+  if (original && !financeLive(original)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `ใบเสร็จ ${original.no || ''} ถูกยกเลิกแล้ว จึงแก้ไขไม่ได้ (เอกสารที่ยกเลิกเก็บไว้ตามเดิม)`);
   if (original?.paymentId) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.PERMISSION, 'ใบเสร็จนี้สร้างจากรายการรับเงิน กรุณายกเลิกรายการรับเงินแล้วบันทึกใหม่ที่หน้าใบวางบิล');
   if (original && !sameReceiptReference(original, draft)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'ไม่อนุญาตให้เปลี่ยน Invoice อ้างอิงระหว่างแก้ไขใบเสร็จ');
 

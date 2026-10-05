@@ -1,5 +1,5 @@
 /* erp-receivables.css — AR aging report, overdue banner and navigation badge (erp-receivables.js) */
-.ar-nav-badge{margin-left:auto;display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--red,#b91c1c);color:#fff;font-size:10px;font-weight:800;line-height:1}
+.ar-nav-badge{margin-left:auto;display:inline-grid;place-items:center;min-width:var(--erp-nav-badge-size);height:var(--erp-nav-badge-size);padding:0 7px;border-radius:999px;background:var(--red,#b91c1c);color:#fff;font-size:var(--erp-nav-badge-font-size);font-weight:800;line-height:1}
 .ar-alert-banner{display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:11px 14px;border-radius:12px;border:1px solid var(--red-bd,#fecaca);background:var(--red-lt,#fef2f2);color:#7f1d1d;box-shadow:0 4px 14px rgba(185,28,28,.06)}
 .ar-alert-banner[hidden]{display:none}
 .ar-alert-banner[data-tone="warning"]{border-color:var(--amber-bd,#fde68a);background:var(--amber-lt,#fffbeb);color:var(--amber,#92400e)}
@@ -21,7 +21,7 @@
 .ar-aging-table td.ar-aging-late{color:var(--red,#b91c1c);font-weight:600}
 .ar-aging-customer.has-overdue>td:first-child{box-shadow:inset 3px 0 0 var(--red,#b91c1c)}
 .ar-aging-customer small{display:block;font-size:11px;color:var(--g2,#6b7280);margin-top:2px}
-.ar-aging-toggle{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;padding:0;font:inherit;font-weight:700;color:#1e293b;cursor:pointer;text-align:left}.ar-aging-toggle .ar-aging-caret{width:14px;height:14px;transition:transform .15s ease}.ar-aging-toggle[aria-expanded="false"] .ar-aging-caret{transform:rotate(-90deg)}
+.ar-aging-toggle{display:inline-flex;align-items:center;gap:4px;min-height:var(--erp-control-height-sm);border:0;background:transparent;padding:0;font:inherit;font-weight:700;color:#1e293b;cursor:pointer;text-align:left}.ar-aging-toggle .ar-aging-caret{width:14px;height:14px;transition:transform .15s ease}.ar-aging-toggle[aria-expanded="false"] .ar-aging-caret{transform:rotate(-90deg)}
 .ar-aging-toggle:hover,.ar-aging-toggle:focus-visible{color:var(--blue,#1d4ed8);text-decoration:underline}
 .ar-aging-detail[hidden]{display:none}
 .ar-aging-detail>td{background:#f8fafc;padding:8px 10px}
@@ -29,7 +29,7 @@
 .ar-aging-invoices th{font-size:11px;color:var(--g2,#6b7280);text-align:left;padding:5px 6px;border-bottom:1px solid var(--g4,#e5e7eb)}
 .ar-aging-invoices td{padding:6px;border-bottom:1px solid #eef2f7;vertical-align:top}
 .ar-aging-invoices small{color:var(--g2,#6b7280)}
-.ar-aging-link{border:1px solid var(--blue-bd,#bfdbfe);background:#fff;color:var(--blue,#1d4ed8);border-radius:6px;padding:1px 6px;font-size:11px;cursor:pointer;margin-left:4px}
+.ar-aging-link{display:inline-flex;align-items:center;min-height:var(--erp-control-height-sm);border:1px solid var(--blue-bd,#bfdbfe);background:#fff;color:var(--blue,#1d4ed8);border-radius:6px;padding:2px 10px;font-size:var(--erp-control-font-size);cursor:pointer;margin-left:4px}
 .ar-aging-total th{background:#f1f5f9;font-weight:800;color:#0f172a}
 .ar-aging-empty{padding:1rem}
 .brow-gross{font-weight:600}

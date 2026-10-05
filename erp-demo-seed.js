@@ -23,14 +23,15 @@
 // - afterwards re-renders the page the user is on (through the app's own router).
 // One window global: window.ERPDemoSeed. No inline handlers (event delegation).
 // ============================================================================
-import { ORDER_FLOW_STORE_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten } from './erp-storage-contracts.js';
+import { ORDER_FLOW_STORE_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY, DEMO_SEED_TARGETS_KEY } from './erp-storage-contracts.js';
 import { localDateISO } from './erp-shared-core.js';
 import { withDemoWriteLease, SALES_LEDGER_WRITE_LEASE } from './erp-demo-concurrency.js';
 import { assertIdempotentPaymentReceipts, DOCUMENT_PACK_COLLECTIONS } from './erp-document-finance-core.js';
 import { creditNoteLedgerIssues } from './erp-credit-note-core.js';
 import { normalizeProductKey } from './erp-master-data-core.js';
 import { icon } from './erp-icons.js';
-import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPeriods, demoResetStorageKeys, DEMO_SEED_BATCH_ID } from './erp-demo-seed-core.js';
+import { liveBranchCount } from './erp-branches-core.js';
+import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPeriods, demoResetStorageKeys, DEMO_SEED_BATCH_ID, buildDemoSeedTargets, mergeSeededTargets, stripSeededTargets } from './erp-demo-seed-core.js';
 
 (() => {
   'use strict';
@@ -149,6 +150,35 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     catch (error) { console.warn('[DemoSeed] audit log write failed (data already saved)', error); }
   }
 
+  // ------------------------------------------------------- targets (ADR-021)
+  // The per-month target maps the dashboard target UI reads. Unreadable JSON → null: the sample load then
+  // leaves that map alone instead of overwriting what may be the user's targets.
+  const TARGET_KEYS = { sales: SALES_TARGET_PERIODS_KEY, delivery: DELIVERY_TARGET_PERIODS_KEY };
+  function readJsonObject(base) {
+    const raw = localStorage.getItem(storageKey(base));
+    if (raw === null) return {};
+    try { const value = JSON.parse(raw); return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
+    catch (error) { console.warn('[DemoSeed] unreadable target map left untouched', base, error); return null; }
+  }
+  // Writes that add the sample targets for months without one, plus the marker of what the sample owns.
+  function targetWrites(plan) {
+    const maps = { sales: readJsonObject(TARGET_KEYS.sales), delivery: readJsonObject(TARGET_KEYS.delivery) };
+    const targets = buildDemoSeedTargets(plan);
+    for (const metric of Object.keys(TARGET_KEYS)) if (maps[metric] === null) targets[metric] = {};
+    const { maps: merged, written } = mergeSeededTargets({ sales: maps.sales || {}, delivery: maps.delivery || {} }, targets);
+    const writes = Object.keys(TARGET_KEYS).filter(metric => maps[metric] !== null && Object.keys(written[metric]).length).map(metric => [storageKey(TARGET_KEYS[metric]), merged[metric]]);
+    writes.push([storageKey(DEMO_SEED_TARGETS_KEY), { batch: DEMO_SEED_BATCH_ID, today: plan.today, sales: written.sales, delivery: written.delivery }]);
+    return writes;
+  }
+  // Target maps without the sample's entries that still hold the seeded value (targets the user typed stay).
+  function strippedTargetWrites() {
+    const marker = readJsonObject(DEMO_SEED_TARGETS_KEY);
+    if (!marker || (!marker.sales && !marker.delivery)) return [];
+    const maps = { sales: readJsonObject(TARGET_KEYS.sales), delivery: readJsonObject(TARGET_KEYS.delivery) };
+    const stripped = stripSeededTargets({ sales: maps.sales || {}, delivery: maps.delivery || {} }, marker);
+    return Object.keys(TARGET_KEYS).filter(metric => maps[metric] !== null).map(metric => [storageKey(TARGET_KEYS[metric]), Object.keys(stripped[metric]).length ? JSON.stringify(stripped[metric]) : null]); // null: nothing left → key removed
+  }
+
   // --------------------------------------------------------------- wipe
   // This app's data keys for the active tenant (one definition: demoResetStorageKeys).
   function appDataKeys() {
@@ -160,12 +190,14 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
   // Then the app is brought to its first-run state in place: render caches drop
   // (STORAGE_WRITTEN_EVENT) and the Supplier Master seed is re-created like on a new install.
   function wipeAppData(keys) {
-    const before = new Map(keys.map(key => [key, localStorage.getItem(key)]));
+    const targets = strippedTargetWrites(); // ADR-021: sample targets out, the user's targets kept
+    const before = new Map([...keys, ...targets.map(([key]) => key)].map(key => [key, localStorage.getItem(key)]));
     try {
+      targets.forEach(([key, value]) => { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); });
       keys.forEach(key => localStorage.removeItem(key));
     } catch (error) {
       for (const [key, value] of before) {
-        try { if (value !== null) localStorage.setItem(key, value); }
+        try { if (value !== null) localStorage.setItem(key, value); else localStorage.removeItem(key); }
         catch (restoreError) { console.error('[DemoSeed] restore after failed wipe failed for', key, restoreError); }
       }
       notifyStorageWritten();
@@ -246,7 +278,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     const userContacts = snapshot.master.contacts.filter(row => !isDemoSeedRecord(row));
     const userProducts = snapshot.master.products.filter(row => !isDemoSeedRecord(row));
     const builtInProducts = (window.productMasterRows?.() || []).filter(row => !isDemoSeedRecord(row));
-    for (const contact of plan.contacts) {
+    for (const contact of [...plan.contacts, ...(plan.suppliers || [])]) { // ADR-023: + sample suppliers
       if (userContacts.some(row => String(row.id) === contact.id || normalizeProductKey(row.name) === normalizeProductKey(contact.name))) conflicts.push(contact.name);
     }
     for (const product of plan.products) {
@@ -272,7 +304,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     store.payments.push(...plan.flow.payments);
     // erp-order-flow.js keeps the newest activity first and at most 500 rows.
     store.activity = [...plan.flow.activity, ...(store.activity || [])].slice(0, 500);
-    return [...touched.entries(), [snapshot.flowKey, store]];
+    return [...touched.entries(), [snapshot.flowKey, store], ...targetWrites(plan)];
   }
   function planSummary(plan) {
     const counts = {};
@@ -307,11 +339,13 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     const today = options.today || localDateISO();
     const confirmFn = typeof options.confirm === 'function' ? options.confirm : message => window.confirm(message);
     const businessRuleVersion = () => window.BusinessRulesService?.currentVersion?.() || 1;
+    // ADR-022: 1 establishment (ตั้งค่าบริษัท) = every sample document at the head office; 2 = as always.
+    const branchCount = liveBranchCount();
     let snapshot = readSnapshot();
     const contents = storeContents(snapshot);
     const empty = contents.userData === 0 && contents.sampleDocuments === 0 && contents.sampleMaster === 0;
     // Built before anything is changed: a generator error stops here with the store untouched.
-    let plan = buildDemoSeedPlan({ today, businessRuleVersion: businessRuleVersion() });
+    let plan = buildDemoSeedPlan({ today, businessRuleVersion: businessRuleVersion(), branchCount });
     if (!empty) {
       const decision = confirmReplace(contents, plan, confirmFn);
       if (decision !== 'replace') return decision;
@@ -325,7 +359,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
       quotes: allRows('quotes'), invoices: allRows('invoices'), receipts: [...allRows('receipts'), ...allRows('issuedReceipts')], creditNotes: allRows('creditNotes'),
       billingNotes: snapshot.store.billingNotes, payments: snapshot.store.payments
     });
-    plan = buildDemoSeedPlan({ today, numberStart, businessRuleVersion: businessRuleVersion() });
+    plan = buildDemoSeedPlan({ today, numberStart, businessRuleVersion: businessRuleVersion(), branchCount });
     const blocked = lockedPeriods(demoSeedPeriods(plan));
     if (blocked.length) { explainLocks(blocked); refreshScreens(); return { status: 'period-locked', blocked }; }
     const conflicts = masterConflicts(snapshot, plan);
@@ -335,7 +369,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
       return { status: 'master-conflict', conflicts };
     }
     // Master data first: stock and product lookups of the documents need the sample products.
-    if (!window.BusinessRulesService?.seedMasterData?.({ contacts: plan.contacts, products: plan.products })) {
+    if (!window.BusinessRulesService?.seedMasterData?.({ contacts: [...plan.contacts, ...(plan.suppliers || [])], products: plan.products })) {
       notifyUser('บันทึกลูกค้า/สินค้าตัวอย่างไม่สำเร็จ จึงยังไม่ได้โหลดเอกสารตัวอย่าง', 'error');
       refreshScreens();
       return { status: 'failed', issues: ['master-data'] };
@@ -360,7 +394,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     }
     window.ERPIntegrity.reconcilePayments();
     window.ERPIntegrity.changed();
-    audit('create', `โหลดข้อมูลตัวอย่าง ณ วันที่ ${plan.today}: ${planSummary(plan)} · ลูกค้า ${plan.contacts.length} · สินค้า ${plan.products.length}`);
+    audit('create', `โหลดข้อมูลตัวอย่าง ณ วันที่ ${plan.today}: ${planSummary(plan)} · ลูกค้า ${plan.contacts.length} · ผู้จำหน่าย ${(plan.suppliers || []).length} · สินค้า ${plan.products.length}`);
     refreshScreens();
     notifyUser(`โหลดข้อมูลตัวอย่างแล้ว: ${planSummary(plan)} — ล้างออกได้ด้วยปุ่ม “${RESET_LABEL}”`, 'success', 6000);
     return { status: 'loaded', plan, replaced: !empty };
@@ -380,8 +414,8 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     const userData = unreadable || contents.userData > 0;
     const message = `${RESET_LABEL}?\n\n`
       + `จะลบข้อมูลของระบบนี้ใน Browser เครื่องนี้ทั้งหมด: ${unreadable ? 'ข้อมูลเอกสาร (บางเดือนอ่านไม่ได้)' : describeContents(contents)}\n`
-      + 'รวมลูกค้า/สินค้า การตั้งค่า เป้าขาย การปิดงวด และประวัติ Audit Log แล้วเริ่มต้นใหม่เหมือนติดตั้งครั้งแรก\n'
-      + 'ข้อมูลของเว็บ/โปรแกรมอื่นใน Browser นี้ และโหมดการแสดงผลที่เลือกไว้ จะไม่ถูกแตะ\n\n'
+      + 'รวมลูกค้า/สินค้า การตั้งค่า เป้าขายของข้อมูลตัวอย่าง การปิดงวด และประวัติ Audit Log แล้วเริ่มต้นใหม่เหมือนติดตั้งครั้งแรก\n'
+      + 'ข้อมูลของเว็บ/โปรแกรมอื่นใน Browser นี้ โหมดการแสดงผลที่เลือกไว้ ข้อมูลบริษัท/โลโก้ (ตั้งค่าบริษัท) และเป้าขาย/เป้ายอดส่งที่คุณตั้งเอง จะไม่ถูกแตะ\n\n'
       + (userData ? `⚠️ มีข้อมูลที่คุณบันทึกเอง — ${BACKUP_HINT}\n\n` : '')
       + 'ต้องการล้างข้อมูลหรือไม่?';
     if (!confirmFn(message)) { notifyUser('ยังไม่ได้ล้างข้อมูล', 'info'); return { status: 'cancelled' }; }

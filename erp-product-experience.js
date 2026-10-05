@@ -8,12 +8,13 @@ import { ORDER_TO_CASH_STEPS, workflowStageForNavigation } from './erp-workflow-
 import { invoiceDueDate } from './erp-receivables-core.js';
 import { PRODUCT_EXPERIENCE_ROLE_KEY, PRODUCT_EXPERIENCE_MODE_KEY, NAV_COLLAPSED_SECTIONS_KEY } from './erp-storage-contracts.js';
 import { icon } from './erp-icons.js';
+import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
 
 const VERSION='4.3.1';
 // Single Admin view (ADR-014): the former per-role "มุมมอง" choice is retired; its stored value is only removed.
 const RETIRED_ROLE_SETTING=PRODUCT_EXPERIENCE_ROLE_KEY;
 const STORAGE_MODE=PRODUCT_EXPERIENCE_MODE_KEY;
-const BRANCH_LABEL={ubon:'สำนักงานใหญ่',khonkaen:'สาขาที่ 00001'};
+const BRANCH_LABEL=branchLabelMap({ubon:'สำนักงานใหญ่',khonkaen:'สาขาที่ 00001'}); // ADR-022: live labels
 // Menu text of each entry. One entry per document type opens its list (ADR-015); the forms
 // (quote-form, invoice-form, …) have no entry — their list's entry is highlighted instead.
 // The order-flow entry keeps the text erp-order-flow.js gives it (with its badge).
@@ -26,7 +27,9 @@ const PANEL_LABEL={
 // Line icons (erp-icons.js, ADR-017) of the entries created by JavaScript, which used emoji
 // before (ADR-015). The static entries in index.html use the same icon set.
 const NAV_ICONS={'work-home':'home','approval-center':'approval','customer-portal':'user','order-flow':'transfer'};
-const ADVANCED_PANELS=new Set(['analytics','business-rules','audit-log','saas-admin','files']);
+// saas-admin (ตั้งค่าบริษัท) is not advanced since ADR-020: customers set their own company / logo there.
+// In โหมดง่าย that page shows only its "ข้อมูลบริษัทและโลโก้" card (erp-company-profile.css).
+const ADVANCED_PANELS=new Set(['analytics','business-rules','audit-log','files']);
 // "ทางลัด" on งานของฉัน; advanced screens are offered only in โหมดขั้นสูง (their menu items are hidden in โหมดง่าย).
 const QUICK_ACTIONS=[
   ['dashboard','ภาพรวมผู้บริหาร'],
@@ -354,7 +357,7 @@ function renderAvailability(){
     const map=new Map();for(const r of rows){const k=itemKey(r);const old=map.get(k)||{...r,branch:'all',onHand:0,reserved:0,available:0,incoming:0};old.onHand+=n(r.onHand);old.reserved+=n(r.reserved);old.available+=n(r.available);old.incoming+=n(r.incoming);old.reorderPoint=Math.max(n(old.reorderPoint),n(r.reorderPoint));map.set(k,old);}rows=[...map.values()];
   }
   rows.sort((a,b)=>(n(a.available)-n(b.available))||String(a.product).localeCompare(String(b.product),'th'));
-  root.innerHTML=`<div class="pe-section-head"><div><h2>สินค้าพร้อมใช้</h2><p>On Hand − Reserved = Available · Incoming แสดงจำนวนจาก PO ที่ยังรับไม่ครบ</p></div><span>${filter==='all'?'รวมทุกสาขา':esc(BRANCH_LABEL[filter]||filter)}</span></div><div class="pe-availability-legend"><span>On Hand = มีจริง</span><span>Reserved = จองให้ Order</span><span>Available = ขาย/ส่งได้</span><span>Incoming = กำลังเข้า</span></div><div class="tbl-wrap"><table class="pe-availability-table"><thead><tr><th>สินค้า</th><th>On Hand</th><th>Reserved</th><th>Available</th><th>Incoming PO</th><th>Reorder</th><th>สถานะ</th></tr></thead><tbody>${rows.slice(0,100).map(r=>{const tone=n(r.available)<0?'red':n(r.reorderPoint)>0&&n(r.available)<=n(r.reorderPoint)?'amber':'green';const status=n(r.available)<0?'ผิดปกติ':tone==='amber'?'ควรตรวจจัดซื้อ':'พร้อมใช้';return `<tr><td><b>${esc(r.productCode||'-')}</b><span>${esc(r.product||'')}</span></td><td>${money(r.onHand)}</td><td>${money(r.reserved)}</td><td><b>${money(r.available)}</b></td><td>${money(r.incoming)}</td><td>${money(r.reorderPoint)}</td><td>${statusBadge(status,tone)}</td></tr>`;}).join('')}</tbody></table></div>`;
+  root.innerHTML=`<div class="pe-section-head"><div><h2>สินค้าพร้อมใช้</h2><p>On Hand − Reserved = Available · Incoming แสดงจำนวนจาก PO ที่ยังรับไม่ครบ</p></div><span>${esc(filter==='all'?liveBranchAllLabel('รวมทุกสาขา'):(BRANCH_LABEL[filter]||filter))}</span></div><div class="pe-availability-legend"><span>On Hand = มีจริง</span><span>Reserved = จองให้ Order</span><span>Available = ขาย/ส่งได้</span><span>Incoming = กำลังเข้า</span></div><div class="tbl-wrap"><table class="pe-availability-table"><thead><tr><th>สินค้า</th><th>On Hand</th><th>Reserved</th><th>Available</th><th>Incoming PO</th><th>Reorder</th><th>สถานะ</th></tr></thead><tbody>${rows.slice(0,100).map(r=>{const tone=n(r.available)<0?'red':n(r.reorderPoint)>0&&n(r.available)<=n(r.reorderPoint)?'amber':'green';const status=n(r.available)<0?'ผิดปกติ':tone==='amber'?'ควรตรวจจัดซื้อ':'พร้อมใช้';return `<tr><td><b>${esc(r.productCode||'-')}</b><span>${esc(r.product||'')}</span></td><td>${money(r.onHand)}</td><td>${money(r.reserved)}</td><td><b>${money(r.available)}</b></td><td>${money(r.incoming)}</td><td>${money(r.reorderPoint)}</td><td>${statusBadge(status,tone)}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
 
 function workflowStep(panel,subview=''){return workflowStageForNavigation(panel,subview);}

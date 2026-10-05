@@ -3,7 +3,7 @@
 // DEMO 4.3.1
 // ============================================================================
 
-export const SHARED_CORE_VERSION = '1.5.0';
+export const SHARED_CORE_VERSION = '1.6.0';
 export const DEFAULT_VAT_RATE = 0.07;
 export const DEFAULT_VAT_DIVISOR = 1 + DEFAULT_VAT_RATE;
 // Reconciliation tolerance shared by invoice/receipt/billing matching:
@@ -329,6 +329,76 @@ export function invoiceCustomerName(taxInvoiceForm, typedName) {
 // a walk-in customer has no buyer name, so the credit note must collect one.
 export function taxInvoiceLacksBuyer(invoice) {
   return isAbbreviatedTaxInvoice(invoice) && isGeneralCustomerName(invoice?.customer);
+}
+
+// ---------------------------------------------------------------------------
+// Buyer establishment on a full tax invoice (ADR-021). ประกาศอธิบดีกรมสรรพากรเกี่ยวกับภาษีมูลค่าเพิ่ม
+// ฉบับที่ 199 (rd.go.th/27982.html): from 1 Jan 2015, when the buyer is a VAT-registered operator, the
+// §86/4 tax invoice states the buyer's establishment — "สำนักงานใหญ่" or "สาขาที่ …" as in its ภ.พ.20.
+// Stored on invoices / receipts as `customerBranchCode`: '00000' = สำนักงานใหญ่, five digits = สาขาที่,
+// '' = not stated (walk-in, no tax ID, abbreviated invoice, or a record saved before ADR-021 → printed
+// exactly as before). `customerBranchName` keeps the master's branch name (e.g. "โรงงานขอนแก่น").
+// ---------------------------------------------------------------------------
+export const BUYER_HEAD_OFFICE_CODE = '00000';
+export const BUYER_BRANCH_CODE_ERROR = 'เลขที่สาขาของผู้ซื้อต้องเป็นตัวเลข 5 หลัก เช่น 00001 (ถ้าเป็นสำนักงานใหญ่ ให้เลือก “สำนักงานใหญ่”)';
+// Exactly five digits, else '' (never padded or guessed: a printed tax document must show what was typed).
+export function normalizeBuyerBranchCode(value) {
+  const text = String(value ?? '').trim();
+  return /^\d{5}$/.test(text) ? text : '';
+}
+// "สำนักงานใหญ่" | "สาขาที่ 00003" | '' (nothing printed).
+export function buyerBranchLabel(code) {
+  const value = normalizeBuyerBranchCode(code);
+  if (!value) return '';
+  return value === BUYER_HEAD_OFFICE_CODE ? 'สำนักงานใหญ่' : `สาขาที่ ${value}`;
+}
+// The invoice form control: kind '' (ไม่ระบุ) | 'hq' (สำนักงานใหญ่) | 'branch' (สาขาที่ + 5 digits).
+// → { ok: true, code } or { ok: false, error } — a branch number must be 5 digits and not 00000.
+export function parseBuyerBranchInput(kind, code) {
+  if (kind === 'hq') return { ok: true, code: BUYER_HEAD_OFFICE_CODE };
+  if (kind !== 'branch') return { ok: true, code: '' };
+  const value = String(code ?? '').trim();
+  if (!/^\d{5}$/.test(value) || value === BUYER_HEAD_OFFICE_CODE) return { ok: false, error: BUYER_BRANCH_CODE_ERROR };
+  return { ok: true, code: value };
+}
+// Establishment of a Customer Master row ({taxId, branchCode, branchName}) for the invoice form:
+// only for a buyer with a tax ID (§86/4 asks for it when the buyer is VAT-registered). A numeric code
+// of 1–5 digits is padded ('3' → '00003', as typed in older master rows); no code but a branch name
+// saying head office → '00000'. Anything else → '' (the user picks it on the form).
+export function buyerBranchFromContact(contact = {}) {
+  if (!String(contact?.taxId ?? '').trim()) return { code: '', name: '' };
+  const raw = String(contact?.branchCode ?? '').trim(), name = String(contact?.branchName ?? '').trim();
+  let code = '';
+  if (/^\d{1,5}$/.test(raw)) code = raw.padStart(5, '0');
+  else if (!raw && /สำนักงานใหญ่|^สนญ\.?$|head\s*office/i.test(name)) code = BUYER_HEAD_OFFICE_CODE;
+  return { code, name: code && code !== BUYER_HEAD_OFFICE_CODE ? name : '' };
+}
+
+// ---------------------------------------------------------------------------
+// Cancelled (voided) issued documents (ADR-021): an issued tax invoice / receipt is never deleted; it
+// is kept with status 'cancelled' (+ voided: true, the flag every live() check already honours) and
+// prints with a "ยกเลิก / CANCELLED" stamp. Same "not live" rule as ERPIntegrity.live().
+// ---------------------------------------------------------------------------
+export function isDocumentCancelled(record) {
+  return !!record && typeof record === 'object' && (record.voided === true || record.cancelled === true || record.reversed === true || record.status === 'cancelled');
+}
+// The stamp drawn over a cancelled document page (print window, preview, PDF). Inline styles only, so
+// it needs no change to the golden-guarded document CSS and html2canvas draws it like the print.
+// `info` = { reason, at (ISO), by } from the record's voidReason / voidedAt / voidedBy.
+export function documentCancelStampHtml(info = {}) {
+  const at = String(info.at || '').slice(0, 10);
+  const when = /^\d{4}-\d{2}-\d{2}$/.test(at) ? formatDate(at) : '';
+  const meta = [when ? `ยกเลิกเมื่อ ${escapeHtml(when)}` : '', info.by ? `โดย ${escapeHtml(info.by)}` : ''].filter(Boolean).join(' ');
+  return `<div class="erp-doc-cancel-stamp" data-cancelled-stamp="1" style="position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) rotate(-12deg);z-index:6;max-width:80%;box-sizing:border-box;padding:.55em 1.5em .65em;border:.32em solid #c81e1e;border-radius:.5em;background:rgba(255,255,255,.86);color:#c81e1e;text-align:center;font-weight:800;line-height:1.15;pointer-events:none">`
+    + '<div style="font-size:3.2em;letter-spacing:.06em">ยกเลิก / CANCELLED</div>'
+    + `<div style="font-size:1.3em;margin-top:.35em;overflow-wrap:anywhere">เหตุผล: ${escapeHtml(info.reason || '-')}</div>`
+    + (meta ? `<div style="font-size:1.05em;margin-top:.25em;font-weight:700">${meta}</div>` : '')
+    + '</div>';
+}
+// { reason, at, by } of a cancelled record for documentCancelStampHtml(), or null when it is live.
+export function documentCancellationOf(record) {
+  if (!isDocumentCancelled(record)) return null;
+  return { reason: String(record.voidReason || record.cancelReason || '').trim(), at: String(record.voidedAt || record.cancelledAt || ''), by: String(record.voidedBy || record.cancelledBy || '').trim() };
 }
 
 // Converts a pre-VAT (ก่อน VAT) master price into the unit-price basis a
