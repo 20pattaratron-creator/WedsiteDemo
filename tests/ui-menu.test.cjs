@@ -286,11 +286,11 @@ test('sidebar sections: every entry once, forms map to their list entry, stored 
   const panels = navCore.NAV_SECTIONS.flatMap(section => section.panels);
   assert.equal(new Set(panels).size, panels.length, 'no entry in two sections');
   assert.deepEqual(navCore.NAV_SECTIONS.map(section => [section.id, section.label, section.panels.length]), [
-    ['home', 'หน้าหลัก', 3], ['sales', 'ขายและรับเงิน', 5], ['operations', 'ซื้อ / ผลิต / คลัง', 4],
-    ['expenses', 'ค่าใช้จ่าย', 1], ['data', 'ข้อมูลและรายงาน', 5], ['settings', 'ตั้งค่า', 4] // data + รายงานภาษี (ADR-023)
+    ['home', 'หน้าหลัก', 3], ['sales', 'ขายและรับเงิน', 6], ['operations', 'ซื้อ / ผลิต / คลัง', 5], // + ต้นทุนและกำไรต่องาน (ADR-028)
+    ['expenses', 'ค่าใช้จ่าย', 1], ['data', 'ข้อมูลและรายงาน', 8], ['settings', 'ตั้งค่า', 4] // + หลายสกุลเงิน (ADR-031); data + รายงานภาษี (ADR-023) + วิเคราะห์และคาดการณ์ (ADR-027) + สมุดบัญชีและปิดเดือน (ADR-029); sales + ใบเพิ่มหนี้ (ADR-024)
   ]);
-  assert.equal(panels.length, 22);
-  for (const form of ['quote-form', 'invoice-form', 'receipt-form', 'credit-note-form', 'production-form', 'expense-form']) {
+  assert.equal(panels.length, 27); // ADR-028: + job-costing; ADR-029: + accounting; ADR-031: + fx
+  for (const form of ['quote-form', 'invoice-form', 'receipt-form', 'credit-note-form', 'debit-note-form', 'production-form', 'expense-form']) {
     assert.equal(panels.includes(form), false, `${form} has no entry of its own`);
     const entry = navCore.navEntryPanel(form);
     assert.ok(panels.includes(entry), `${form} → ${entry}`);
@@ -306,7 +306,7 @@ test('sidebar sections: every entry once, forms map to their list entry, stored 
   // "← รายการ…" links: every form, to its list; the issued-document lists are not forms.
   assert.deepEqual(navCore.navFormBackTargets(), [
     { form: 'quote-form', list: 'quote-list' }, { form: 'invoice-form', list: 'invoice-list' }, { form: 'receipt-form', list: 'receipt-list' },
-    { form: 'credit-note-form', list: 'credit-note-list' }, { form: 'production-form', list: 'production-list' }, { form: 'expense-form', list: 'expense-list' }
+    { form: 'credit-note-form', list: 'credit-note-list' }, { form: 'debit-note-form', list: 'debit-note-list' }, { form: 'production-form', list: 'production-list' }, { form: 'expense-form', list: 'expense-list' }
   ]);
   // Retired ids (e.g. from an earlier build) and junk are dropped.
   assert.deepEqual(navCore.parseCollapsedNavSections('["data","nope","data",3,"settings","tracking"]'), ['data', 'settings']);
@@ -326,7 +326,7 @@ test('index.html: one slim Local Demo notice, no form entries in the sidebar, li
     assert.equal(notices.length, 1);
     const notice = d.getElementById('erp-trial-safety-banner');
     // Both warnings ("this browser only", "not Production") in the long line and in the phone line.
-    assert.match(notice.querySelector('.erp-demo-notice-long').textContent, /^DEMO 4\.3\.1 · ข้อมูลทดลองเก็บในเบราว์เซอร์นี้เท่านั้น · ยังไม่ใช่ระบบ Production หลายผู้ใช้$/);
+    assert.match(notice.querySelector('.erp-demo-notice-long').textContent, /^DEMO 4\.3\.1 · ข้อมูลอยู่ในเบราว์เซอร์เครื่องนี้เท่านั้น — สำรองข้อมูล \(JSON\) ทุกสัปดาห์และเก็บไว้นอกเครื่อง · กฎหมายให้เก็บเอกสารและรายงานภาษีไม่น้อยกว่า 5 ปี \(มาตรา 87\/3\) · ยังไม่ใช่ระบบ Production หลายผู้ใช้$/ /* r13#MED-8 */);
     const short = notice.querySelector('.erp-demo-notice-short');
     assert.equal(short.hidden, true, 'without the stylesheet only the long line shows');
     assert.match(short.textContent, /เบราว์เซอร์นี้.*ยังไม่ใช่ Production/);

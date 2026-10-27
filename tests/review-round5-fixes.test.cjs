@@ -239,7 +239,9 @@ test('r5fix#6: delete / void in a closed period is refused BEFORE any question w
     const business = I.business();
     const invoice = business.invoices.find(inv => I.live(inv) && inv._type !== 'issuedInvoices' && I.paymentSummary({ ...inv, branch: inv._branch }).paid === 0 && !(I.paymentSummary({ ...inv, branch: inv._branch }).credited > 0));
     const receipt = business.receipts.find(r => I.live(r) && !r.paymentId && !r.voided);
-    const expense = business.expenses.find(e => e && e.id);
+    // r13#MED-7: the rent payments now withhold 5 % with a live 50 ทวิ, whose delete is refused before any question (D3 item 1)
+    // — the scope check needs an expense without withholding.
+    const expense = business.expenses.find(e => e && e.id && e.whtEnabled !== true);
     const quote = business.quotes.find(q => q && q.id);
     assert.ok(invoice && receipt && expense && quote, 'sample rows');
 

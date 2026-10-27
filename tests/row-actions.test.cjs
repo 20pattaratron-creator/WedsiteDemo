@@ -190,6 +190,8 @@ test('"⋯" menus: remaining actions in order with the destructive one last; eac
     for (const name of ['openDeliveryDocumentFromInvoice', 'showDetailById', 'editInvoice', 'issueReceiptFromInvoice', 'delDoc']) { saved[name] = w[name]; w[name] = record(name); }
     saved.ERPCreditNotes = w.ERPCreditNotes;
     w.ERPCreditNotes = { startFromInvoice: record('ERPCreditNotes.startFromInvoice') };
+    saved.ERPDebitNotes = w.ERPDebitNotes; // ADR-024: "ออกใบเพิ่มหนี้"
+    w.ERPDebitNotes = { startFromInvoice: record('ERPDebitNotes.startFromInvoice') };
     saved.ERPDocumentCancel = w.ERPDocumentCancel; // ADR-021: "ยกเลิกใบกำกับภาษี" replaced "ลบ"
     w.ERPDocumentCancel = { open: record('ERPDocumentCancel.open') };
     const cancelLabel = cell => (factsOf(cell).vatNone ? 'ยกเลิกใบแจ้งหนี้' : 'ยกเลิกใบกำกับภาษี');
@@ -198,8 +200,8 @@ test('"⋯" menus: remaining actions in order with the destructive one last; eac
       assert.equal(more.getAttribute('aria-label'), `การทำงานเพิ่มเติม ${factsOf(open).no}`);
       assert.equal(more.getAttribute('aria-haspopup'), 'menu');
       // ADR-017: each item shows its line icon (aria-hidden SVG) and the label.
-      assert.deepEqual(itemLabels(d), ['ต้นฉบับ/สำเนา/PDF', 'ดูรายละเอียด', 'แก้ไข', 'ลดหนี้', cancelLabel(open)]);
-      assert.deepEqual(openMenuItems(d).map(item => item.querySelector('.erp-menu-icon use')?.getAttribute('href')), ['document', 'preview', 'edit', 'credit-note', 'cancel'].map(name => `#erp-i-${name}`));
+      assert.deepEqual(itemLabels(d), ['ต้นฉบับ/สำเนา/PDF', 'ดูรายละเอียด', 'แก้ไข', 'ลดหนี้', 'ออกใบเพิ่มหนี้', cancelLabel(open)]);
+      assert.deepEqual(openMenuItems(d).map(item => item.querySelector('.erp-menu-icon use')?.getAttribute('href')), ['document', 'preview', 'edit', 'credit-note', 'debit-note', 'cancel'].map(name => `#erp-i-${name}`));
       const menu = menuElements(d)[0];
       assert.equal(menu.parentElement, d.body, 'the menu lives in <body>, outside the table wrapper');
       assert.equal(menu.getAttribute('role'), 'menu');
@@ -208,7 +210,7 @@ test('"⋯" menus: remaining actions in order with the destructive one last; eac
       assert.ok(openMenuItems(d).at(-1).classList.contains('is-danger'));
       more.click(); // close
       const f = factsOf(open), s = factsOf(settled);
-      for (const [cell, label] of [[open, 'ต้นฉบับ/สำเนา/PDF'], [open, 'ดูรายละเอียด'], [open, 'แก้ไข'], [open, 'ลดหนี้'], [open, cancelLabel(open)], [settled, 'ออกใบเสร็จ']]) {
+      for (const [cell, label] of [[open, 'ต้นฉบับ/สำเนา/PDF'], [open, 'ดูรายละเอียด'], [open, 'แก้ไข'], [open, 'ลดหนี้'], [open, 'ออกใบเพิ่มหนี้'], [open, cancelLabel(open)], [settled, 'ออกใบเสร็จ']]) {
         openMenu(w, cell);
         chooseItem(d, label);
         assert.equal(menuElements(d).length, 0, 'choosing an item closes the menu');
@@ -220,6 +222,7 @@ test('"⋯" menus: remaining actions in order with the destructive one last; eac
         ['showDetailById', 'invoice', f.b, f.y, f.m, String(f.id)],
         ['editInvoice', f.b, f.y, f.m, String(f.id)],
         ['ERPCreditNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)],
+        ['ERPDebitNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)],
         ['ERPDocumentCancel.open', 'invoices', f.b, f.y, f.m, String(f.id)],
         ['issueReceiptFromInvoice', s.b, s.y, s.m, String(s.id)],
         ['issueReceiptFromInvoice', f.b, f.y, f.m, String(f.id)]

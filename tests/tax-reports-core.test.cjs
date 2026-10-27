@@ -35,7 +35,9 @@ test('tax#1 AC1.1 / AC1.3 / AC1.4 invoice + credit note (negative, issue month);
   const cnVoid = note({ no: 'CN690902', voided: true });
   const sept = sales(core, '2026-09', [{ branch: 'ubon', invoices: [a, cancelled], creditNotes: [cn, cnVoid] }]);
   const rows = sept.rows.map(r => [r.no, r.value, r.vat, r.note]);
-  assert.deepEqual(rows, [['INV690902', 0, 0, 'ยกเลิก – ออกซ้ำ'], ['CN690901', -1000, -70, 'ใบลดหนี้ อ้างอิง INV690901'], ['INV690901', 10000, 700, '']]);
+  assert.deepEqual(rows, [['INV690902', 0, 0, 'ยกเลิก'], ['CN690901', -1000, -70, 'ใบลดหนี้ อ้างอิง INV690901'], ['INV690901', 10000, 700, '']]);
+  // r8 D3#3: the reason sits in the name column (one normal-height row; no buyer, TIN or branch to show).
+  assert.deepEqual([sept.rows[0].party, sept.rows[0].taxId, sept.rows[0].branchCode], ['ยกเลิก – ออกซ้ำ', '', '']);
   assert.deepEqual(plain(sept.totals), { value: 9000, vat: 630, total: 9630 }, 'AC1.1 footer 9,000.00 / 630.00');
   assert.ok(!sept.rows.some(r => r.no === 'CN690902'), 'AC1.3 cancelled credit note omitted');
   // AC1.4: the invoice of 30 Sept is in September; its credit note of 2 Oct belongs to October (its own pack).
@@ -163,10 +165,14 @@ test('tax#6 AC2.1 / AC2.3 / AC2.4 VAT split (amount stays gross), 6-month claim 
   assert.deepEqual(purchase.rows.map(r => [r.no, r.party, r.taxId, r.branchCode, r.value, r.vat, r.note]), [['TI-001', 'บจก. ไอทีซัพพลาย อีสาน', '0105558004044', '00000', 2000, 140, 'ได้รับ 11/09/2569']]);
   assert.deepEqual(plain(purchase.totals), { value: 2000, vat: 140 }, 'AC2.1');
   // AC2.3: invoice of 10 Feb 2026 — claim in Sept (+7 months) refused, Aug (+6) accepted.
-  await assert.rejects(expensePlan({ taxInvoiceDate: '2026-02-10', taxInvoiceReceivedDate: '2026-02-12', claimPeriod: '2026-09' }), /เกินกำหนดใช้สิทธิ 6 เดือน — ใบกำกับภาษีเดือน 02\/2569 ใช้สิทธิ์ได้ถึงเดือน 08\/2569/);
-  const late = await expensePlan({ taxInvoiceDate: '2026-02-10', taxInvoiceReceivedDate: '2026-02-12', claimPeriod: '2026-08' });
+  await assert.rejects(expensePlan({ taxInvoiceDate: '2026-02-10', taxInvoiceReceivedDate: '2026-02-12', claimPeriod: '2026-09' }), /เกินกำหนดใช้สิทธิ์ 6 เดือน — ใบกำกับภาษีเดือน 02\/2569 ใช้สิทธิ์ได้ถึงเดือน 08\/2569/);
+  // r13#LOW-3: a claim month later than the received month needs a reason (ประกาศฯ ฉบับที่ 4) and the endorsement.
+  await assert.rejects(expensePlan({ taxInvoiceDate: '2026-02-10', taxInvoiceReceivedDate: '2026-02-12', claimPeriod: '2026-08' }), /กรุณาเลือกเหตุผล/);
+  const late = await expensePlan({ taxInvoiceDate: '2026-02-10', taxInvoiceReceivedDate: '2026-02-12', claimPeriod: '2026-08', lateClaimReason: 'trade_custom' });
   assert.equal(late.record.claimPeriod, '2026-08');
+  assert.equal(late.record.lateClaimReason, 'trade_custom');
   assert.match(late.warnings.join('\n'), /ใช้สิทธิ์ภาษีซื้อเดือน 08\/2569/);
+  assert.match(late.warnings.join('\n'), /ถือเป็นภาษีซื้อในเดือนภาษี 08\/2569/);
   await assert.rejects(expensePlan({ taxInvoiceReceivedDate: '2026-10-02', claimPeriod: '2026-09' }), /ไม่ก่อนเดือนที่ได้รับ/);
   await assert.rejects(expensePlan({ taxInvoiceReceivedDate: '2026-09-01' }), /ไม่ก่อนวันที่ในใบกำกับภาษี/);
   // AC2.4: duplicate seller TIN + tax-invoice number (any year) → blocked with its own message.
@@ -205,7 +211,7 @@ test('tax#7 AC2.2 / AC2.5 / AC2.6 ภาษีซื้อต้องห้า�
   assert.equal(core.expenseVatIncomplete({ docType: 'receipt', taxStatus: 'not_required' }), false, 'a plain receipt is not "incomplete"');
   assert.deepEqual(core.taxReportTable(report, 'forbidden').header, ['ลำดับที่', 'วัน เดือน ปี', 'เล่มที่/เลขที่', 'ชื่อผู้ขายสินค้า/ผู้ให้บริการ', 'เลขประจำตัวผู้เสียภาษีอากรของผู้ขายสินค้า/ผู้ให้บริการ', 'มูลค่าสินค้าหรือบริการ', 'จำนวนเงินภาษีมูลค่าเพิ่ม', 'เหตุผลที่ต้องห้าม']);
   // A claim moved to October is not in September (listed as deferred) and is in October; a received credit note is negative.
-  const moved = (await expensePlan({ docNo: 'TI-009', claimPeriod: '2026-10' })).record;
+  const moved = (await expensePlan({ docNo: 'TI-009', claimPeriod: '2026-10', lateClaimReason: 'trade_custom' })).record;
   const cnReceived = { ...claimed, id: 99, docType: 'credit_note_received', taxInvoiceNo: 'SCN-1', docNo: 'SCN-1', subtotal: 100, vatAmt: 7 };
   const sept = core.buildPurchaseTaxReport({ period: '2026-09', sources: [{ branch: 'ubon', expenses: [moved, cnReceived] }] });
   const oct = core.buildPurchaseTaxReport({ period: '2026-10', sources: [{ branch: 'ubon', expenses: [moved] }] });
@@ -253,7 +259,8 @@ test('tax#9 AC3.1–AC3.3 ภ.พ.30 lines; lines 5 / 7 are the report footers',
 
 test('tax#10 AC3.5 due dates (paper 15th, e-filing 23rd, weekend roll, extension config) ', async () => {
   const core = await imp('erp-tax-reports-core.js');
-  assert.deepEqual(plain(core.pp30DueDates('2026-09')), { paper: '2026-10-15', efiling: '2026-10-23', efilingRolled: false, efilingExtended: true, checkLatest: false }, 'AC3.5 (23 Oct 2026 is a Friday)');
+  // r13#LOW-1: 23 Oct 2026 (Friday) is วันปิยมหาราช, a government holiday → Monday 26 Oct 2569.
+  assert.deepEqual(plain(core.pp30DueDates('2026-09')), { paper: '2026-10-15', efiling: '2026-10-26', paperRolled: false, efilingRolled: true, efilingExtended: true, checkLatest: false, paperHolidays: [], efilingHolidays: ['วันปิยมหาราช'], holidayStatus: 'official' }, 'AC3.5 (23 Oct 2026 is a Friday and a holiday)'); // r8fix#A4: + paperRolled (the paper date is weekend-rolled now; 15 Oct 2026 is a Thursday, unchanged)
   assert.deepEqual([core.pp30DueDates('2026-07').efiling, core.pp30DueDates('2026-07').efilingRolled], ['2026-08-24', true], '23 Aug 2026 is a Sunday → Monday');
   assert.equal(core.pp30DueDates('2026-12').efiling, '2027-01-25', '23 Jan 2027 Saturday → Monday 25 (still inside the extension)');
   const after = core.pp30DueDates('2027-01');
@@ -284,12 +291,12 @@ test('tax#11 vatReturns: snapshot, amendment numbering (never overwrite), carry-
     assert.throws(() => core.parseVatReturnsStore(bad), /ภ.พ.30/, bad.slice(0, 60));
   }
   assert.deepEqual(plain(core.parseVatReturnsStore(null)), { schemaVersion: 1, returns: [] });
-  // Merge: device copy wins for the same id; new rows added; replace = the backup's list.
+  // Merge: device copy wins for the same id; new rows added; replace is append-only too (r8fix#B4).
   const edited = { ...first, filedBy: 'แก้ในไฟล์' };
   const other = snap([], { id: 'k1', branchKey: 'khonkaen', branches: ['khonkaen'] });
   const merged = core.mergeVatReturnsStores({ schemaVersion: 1, returns: [first] }, { schemaVersion: 1, returns: [edited, other] });
   assert.deepEqual(merged.returns.map(r => [r.id, r.filedBy]), [['r1', 'บัญชี'], ['k1', 'บัญชี']]);
-  assert.deepEqual(core.mergeVatReturnsStores({ schemaVersion: 1, returns: [first] }, { schemaVersion: 1, returns: [other] }, { replace: true }).returns.map(r => r.id), ['k1']);
+  assert.deepEqual(core.mergeVatReturnsStores({ schemaVersion: 1, returns: [first] }, { schemaVersion: 1, returns: [other] }, { replace: true }).returns.map(r => r.id), [first.id, 'k1']); // r8fix#B4: was ['k1'] — replace dropped a filed ภ.พ.30; filing history is append-only now
   assert.throws(() => core.mergeVatReturnsStores(null, { schemaVersion: 1, returns: [{ ...first, period: '2026-13' }] }), /period/);
   // Text of the snapshot is cleaned (one line, no bidi controls).
   assert.equal(snap([], { filedBy: 'a‮b\nc' }).filedBy, 'a b c');
@@ -312,6 +319,8 @@ test('tax#12 pure core: no DOM / storage globals; every text of each new module 
 //   CN1 −1,500.00/−105.00 · U6 13,500.00/945.00 · abbreviated A1–A3 on 30 Sept one line 990+2,290+1,980 = 5,260.00 /
 //   69.30+160.30+138.60 = 368.20 · X1 cancelled 0.00 · X2 6,500.00/455.00 → footer 74,070.00 / 5,184.90;
 //   U8 3,500.00 no VAT (exempt) → L1 77,570.00, L3 3,500.00, L4 74,070.00, L5 5,184.90.
+//   ADR-024 (r8 D4): + DN690901 on X2 (30 Sept) 1,500.00/105.00 → footer 75,570.00 / 5,289.90 / 80,859.90,
+//   L1 79,070.00, L4 75,570.00, L5 5,289.90, L8 = L11 2,894.85 (purchases unchanged).
 // สำนักงานใหญ่ purchases claimed in 09 — rent UL-6803 12,000 incl. VAT → 11,214.95/785.05 · ITS 21,400 → 20,000.00/1,400.00
 //   · office supplies 3,000 + 7 % → 3,000.00/210.00 → L6 34,214.95, L7 2,395.05 → L8 = L11 = 2,789.85.
 //   Not claimed: abbreviated stationery 535 (500/35) + passenger-car fuel 1,070 (1,000/70) = ภาษีซื้อต้องห้าม 1,500.00/105.00;
@@ -322,8 +331,9 @@ function planSources(plan, period, branches) {
   const docs = plan.documents.filter(d => branches.includes(d.branch));
   const inPeriod = d => `${d.year}-${String(d.month + 1).padStart(2, '0')}` === period;
   return {
-    sales: branches.map(branch => ({ branch, invoices: docs.filter(d => d.branch === branch && d.collection === 'invoices' && inPeriod(d)).map(d => d.record), creditNotes: docs.filter(d => d.branch === branch && d.collection === 'creditNotes' && inPeriod(d)).map(d => d.record) })),
-    purchases: branches.map(branch => ({ branch, expenses: docs.filter(d => d.branch === branch && d.collection === 'expenses').map(d => d.record) }))
+    sales: branches.map(branch => ({ branch, invoices: docs.filter(d => d.branch === branch && d.collection === 'invoices' && inPeriod(d)).map(d => d.record), creditNotes: docs.filter(d => d.branch === branch && d.collection === 'creditNotes' && inPeriod(d)).map(d => d.record), debitNotes: docs.filter(d => d.branch === branch && d.collection === 'debitNotes' && inPeriod(d)).map(d => d.record) })),
+    // r13#HIGH-2: + the supplier tax invoices of the goods receipts (stock purchases).
+    purchases: branches.map(branch => ({ branch, expenses: docs.filter(d => d.branch === branch && d.collection === 'expenses').map(d => d.record), goodsReceipts: (plan.costing?.goodsReceipts || []).filter(gr => gr.branch === branch) }))
   };
 }
 test('tax#13 sample data: September 2569 ภ.พ.30 lines equal the hand-worked figures (HQ, branch, combined, one-branch mode)', async () => {
@@ -337,10 +347,19 @@ test('tax#13 sample data: September 2569 ภ.พ.30 lines equal the hand-worked 
     return { s, p, lines: core.buildPp30Summary({ sales: s, purchases: p }).lines };
   };
   const hq = pp30(['ubon']);
-  assert.deepEqual(hq.s.rows.map(r => [r.no, r.value, r.vat]), [['CN690902', -3590, -251.3], ['CN690903', -1500, -105], ['INV690901', 53900, 3773], ['INV690904', 13500, 945], ['INV690906 – INV690908', 5260, 368.2], ['INV690909', 0, 0], ['INV690910', 6500, 455]]);
-  assert.match(hq.s.rows[5].note, /^ยกเลิก – /);
-  assert.deepEqual(plain(hq.lines), { 1: 77570, 2: 0, 3: 3500, 4: 74070, 5: 5184.9, 6: 34214.95, 7: 2395.05, 8: 2789.85, 9: 0, 10: 0, 11: 2789.85, 12: 0 });
-  assert.deepEqual(hq.p.rows.map(r => r.no), ['UL-6803', 'ITS-6909-0172', 'OP-25690915']);
+  // ADR-024 (r8 D4): + DN690901 on INV690910, 1,500.00 + VAT 105.00, positive in its issue month (September).
+  assert.deepEqual(hq.s.rows.map(r => [r.no, r.value, r.vat]), [['CN690902', -3590, -251.3], ['CN690903', -1500, -105], ['INV690901', 53900, 3773], ['INV690904', 13500, 945], ['DN690901', 1500, 105], ['INV690906 – INV690908', 5260, 368.2], ['INV690909', 0, 0], ['INV690910', 6500, 455]]);
+  assert.match(hq.s.rows[6].party, /^ยกเลิก – /); // r8 D3#3: reason in the name column
+  assert.equal(hq.s.rows[6].note, 'ยกเลิก');
+  assert.deepEqual([hq.s.rows[4].kind, hq.s.rows[4].note], ['debit_note', 'ใบเพิ่มหนี้ อ้างอิง INV690910']);
+  assert.deepEqual(plain(hq.s.totals), { value: 75570, vat: 5289.9, total: 80859.9 }, 'footer 74,070 + 1,500 / 5,184.90 + 105');
+  // Hand-worked (was L1 77,570 · L4 74,070 · L5 5,184.90 · L8 = L11 2,789.85): L1 = 77,570 + 1,500 = 79,070;
+  // L4 = 79,070 − 3,500 (no-VAT U8) = 75,570; L5 = 5,184.90 + 105 = 5,289.90; L8 = 5,289.90 − 2,395.05 = 2,894.85.
+  // The withholding on the cloud invoice changes no VAT line (input VAT 350 still claimed in October).
+  // r13#HIGH-2: + GR690901 (6 Sept) 6,900.00 + VAT 483.00 on the supplier's tax invoice ITS-6909-0106 → L6 34,214.95 + 6,900
+  // = 41,114.95; L7 2,395.05 + 483.00 = 2,878.05; L8 = L11 = 5,289.90 − 2,878.05 = 2,411.85.
+  assert.deepEqual(plain(hq.lines), { 1: 79070, 2: 0, 3: 3500, 4: 75570, 5: 5289.9, 6: 41114.95, 7: 2878.05, 8: 2411.85, 9: 0, 10: 0, 11: 2411.85, 12: 0 });
+  assert.deepEqual(hq.p.rows.map(r => r.no), ['ITS-6909-0106', 'UL-6803', 'ITS-6909-0172', 'OP-25690915']);
   assert.deepEqual(hq.p.forbidden.map(r => [r.no, r.reason]), [['AB-1188', 'abbreviated'], ['WP-091677', 'passenger_car']]);
   assert.deepEqual(plain(hq.p.forbiddenTotals), { value: 1500, vat: 105 });
   assert.deepEqual(hq.p.deferred.map(r => [r.no, r.claimPeriod]), [['CS-2026-0925', '2026-10']]);
@@ -349,7 +368,9 @@ test('tax#13 sample data: September 2569 ภ.พ.30 lines equal the hand-worked 
   assert.deepEqual(plain(kk.lines), { 1: 66080, 2: 0, 3: 0, 4: 66080, 5: 4625.6, 6: 11401.86, 7: 798.14, 8: 3827.46, 9: 0, 10: 0, 11: 3827.46, 12: 0 });
   assert.deepEqual(core.taxReportTable(kk.s, 'sales').body.find(r => r[2] === 'INV690902').slice(5, 7), ['', '00003'], 'buyer branch 00003');
   const both = pp30(['ubon', 'khonkaen']);
-  assert.deepEqual([both.lines[1], both.lines[5], both.lines[6], both.lines[7], both.lines[11]], [143650, 9810.5, 45616.81, 3193.19, 6617.31], 'combined = sum of both');
+  // ADR-024: combined L1 143,650 + 1,500 = 145,150; L5 9,810.50 + 105 = 9,915.50. r13#HIGH-2: L6 45,616.81 + 6,900 = 52,516.81;
+  // L7 3,193.19 + 483 = 3,676.19; L11 6,722.31 − 483 = 6,239.31.
+  assert.deepEqual([both.lines[1], both.lines[5], both.lines[6], both.lines[7], both.lines[11]], [145150, 9915.5, 52516.81, 3676.19, 6239.31], 'combined = sum of both');
   // October: the moved cloud-service claim.
   const oct = core.buildPurchaseTaxReport({ period: '2026-10', sources: planSources(plan, '2026-10', ['ubon']).purchases });
   assert.deepEqual(oct.rows.map(r => [r.no, r.value, r.vat]), [['CS-2026-0925', 5000, 350]]);
@@ -358,10 +379,12 @@ test('tax#13 sample data: September 2569 ภ.พ.30 lines equal the hand-worked 
   const src = planSources(single, '2026-09', ['ubon']);
   const s = core.buildSalesTaxReport({ period: '2026-09', sources: src.sales });
   const p = core.buildPurchaseTaxReport({ period: '2026-09', sources: src.purchases });
-  assert.deepEqual(plain(core.buildPp30Summary({ sales: s, purchases: p }).lines), { 1: 143650, 2: 0, 3: 3500, 4: 140150, 5: 9810.5, 6: 34214.95, 7: 2395.05, 8: 7415.45, 9: 0, 10: 0, 11: 7415.45, 12: 0 });
+  // ADR-024: + the debit note (was L1 143,650 · L4 140,150 · L5 9,810.50 · L8 = L11 7,415.45).
+  // r13#HIGH-2: + GR690901 (L6 + 6,900, L7 + 483) → L8 = L11 = 9,915.50 − 2,878.05 = 7,037.45.
+  assert.deepEqual(plain(core.buildPp30Summary({ sales: s, purchases: p }).lines), { 1: 145150, 2: 0, 3: 3500, 4: 141650, 5: 9915.5, 6: 41114.95, 7: 2878.05, 8: 7037.45, 9: 0, 10: 0, 11: 7037.45, 12: 0 });
   // Sample suppliers: valid TIN check digits, an establishment each; the expenses carry them.
   const suppliers = plan.suppliers;
-  assert.equal(suppliers.length, 8);
+  assert.equal(suppliers.length, 13); // ADR-024: + the landlord (individual, ภ.ง.ด.3) and the transport partnership (ภ.ง.ด.53); r13#MED-7: + carrier, subcontractor, crane hire
   assert.ok(suppliers.every(row => core.taxIdCheckDigitOk(row.taxId) && /^\d{5}$/.test(row.branchCode) && row.role === 'supplier' && row.demoSeed === true));
   assert.ok(suppliers.some(row => row.branchCode !== '00000'), 'a supplier branch');
   const vatExpenses = plan.documents.filter(d => d.collection === 'expenses' && d.record.vatMode);

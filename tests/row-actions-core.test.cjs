@@ -25,9 +25,11 @@ const SAMPLES = {
   receipt: [{ ...REF, voided: false }, { ...REF, voided: true }],
   issuedInvoice: [REF],
   issuedReceipt: [REF],
-  expense: [{ ...REF, id: 'e-1' }],
+  expense: [{ ...REF, id: 'e-1' }, { ...REF, id: 'e-2', wht: true }],
   production: [{ ...REF, linked: false, historical: false }, { ...REF, linked: true }, { ...REF, historical: true }],
   creditNote: [{ ...REF, id: '7', live: true }, { ...REF, id: '7', live: false }],
+  // ADR-024 (round 8 stage D): ใบเพิ่มหนี้ list; an expense that withheld tax adds the 50 ทวิ actions.
+  debitNote: [{ ...REF, id: '8', live: true }, { ...REF, id: '8', live: false }],
   purchaseOrder: ['draft', 'ordered', 'partial', 'received', 'cancelled'].map(status => ({ id: 'po_1', no: 'PO-1', status })),
   goodsReceipt: [{ id: 'gr_1', no: 'GR-1', reversed: false }, { id: 'gr_1', no: 'GR-1', reversed: true }],
   contact: [{ id: 'c1', role: 'customer', name: 'ลูกค้า ก' }, { id: 's1', role: 'supplier', name: 'ผู้ขาย ข' }],
@@ -64,10 +66,13 @@ test('invoice: outstanding → "รับชำระ" (issueReceiptFromInvoice)
   assert.equal(primaryOf(open).id, 'receipt');
   assert.equal(primaryOf(open).primaryLabel, 'รับชำระ');
   assert.equal(primaryOf(open).label, 'ออกใบเสร็จ');
-  assert.deepEqual(ids(menuOf(open)), ['doc', 'detail', 'edit', 'credit-note', 'cancel']);
+  assert.deepEqual(ids(menuOf(open)), ['doc', 'detail', 'edit', 'credit-note', 'debit-note', 'cancel']); // ADR-024 adds ออกใบเพิ่มหนี้
   const settled = core.rowActions('invoice', { ...REF, settled: true });
   assert.equal(primaryOf(settled).id, 'doc');
-  assert.deepEqual(ids(menuOf(settled)), ['detail', 'edit', 'receipt', 'credit-note', 'cancel']);
+  assert.deepEqual(ids(menuOf(settled)), ['detail', 'edit', 'receipt', 'credit-note', 'debit-note', 'cancel']);
+  // ADR-024: no ใบเพิ่มหนี้ from a cancelled invoice or an abbreviated tax invoice (no buyer to bill).
+  assert.ok(!ids(core.rowActions('invoice', { ...REF, settled: false, abbreviated: true })).includes('debit-note'));
+  assert.ok(!ids(core.rowActions('invoice', { ...REF, settled: false, cancelled: true })).includes('debit-note'));
   assert.equal(menuOf(settled).at(-1).kind, 'danger');
 });
 
@@ -94,9 +99,9 @@ test('voided / cancelled / locked rows: view only', () => {
 });
 
 test('conditions copied from the old renderers: production, purchase order, product master', () => {
-  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: false, historical: false })), { detail: 'normal', edit: 'normal', invoice: 'primary', delete: 'danger' });
-  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: true, historical: false })), { detail: 'primary', edit: 'normal', delete: 'danger' });
-  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: false, historical: true })), { detail: 'primary', delete: 'danger' });
+  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: false, historical: false })), { detail: 'normal', edit: 'normal', invoice: 'primary', 'job-cost': 'normal', delete: 'danger' });
+  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: true, historical: false })), { detail: 'primary', edit: 'normal', 'job-cost': 'normal', delete: 'danger' });
+  assert.deepEqual(kinds(core.rowActions('production', { ...REF, linked: false, historical: true })), { detail: 'primary', 'job-cost': 'normal', delete: 'danger' });
   const po = status => kinds(core.rowActions('purchaseOrder', { id: 'po', status }));
   assert.deepEqual(po('draft'), { receive: 'primary', cancel: 'danger' });
   assert.deepEqual(po('ordered'), { receive: 'primary', cancel: 'danger' });
@@ -116,6 +121,7 @@ test('same handler, same arguments as the old per-row buttons (quoted ids → St
     edit: ['editInvoice', 'ubon', 2026, 8, '123'],
     receipt: ['issueReceiptFromInvoice', 'ubon', 2026, 8, '123'],
     'credit-note': ['ERPCreditNotes.startFromInvoice', 'ubon', 2026, 8, '123'],
+    'debit-note': ['ERPDebitNotes.startFromInvoice', 'ubon', 2026, 8, '123'],
     cancel: ['ERPDocumentCancel.open', 'invoices', 'ubon', 2026, 8, '123'] // ADR-021 (was delDoc … 'invoices')
   });
   assert.deepEqual(calls('quote', REF), {
@@ -135,10 +141,22 @@ test('same handler, same arguments as the old per-row buttons (quoted ids → St
     detail: ['showDetailById', 'expense', 'ubon', 2026, 8, 'e-9'],
     delete: ['delDoc', 'ubon', 2026, 8, 'expenses', 'e-9']
   });
+  assert.deepEqual(calls('expense', { ...REF, id: 'e-9', wht: true }), {
+    detail: ['showDetailById', 'expense', 'ubon', 2026, 8, 'e-9'],
+    'wht-cert': ['ERPPayerWht.openForExpense', 'ubon', 2026, 8, 'e-9'],
+    'wht-void': ['ERPPayerWht.voidForExpense', 'ubon', 2026, 8, 'e-9'],
+    delete: ['delDoc', 'ubon', 2026, 8, 'expenses', 'e-9']
+  });
+  assert.deepEqual(calls('debitNote', { b: 'ubon', y: 2026, m: 9, id: 'dn1', live: true }), {
+    doc: { dnAction: 'preview-saved', branch: 'ubon', year: '2026', month: '9', id: 'dn1' },
+    void: { dnAction: 'void', branch: 'ubon', year: '2026', month: '9', id: 'dn1' }
+  });
+  assert.deepEqual(calls('debitNote', { b: 'ubon', y: 2026, m: 9, id: 'dn1', live: false }), { doc: { dnAction: 'preview-saved', branch: 'ubon', year: '2026', month: '9', id: 'dn1' } });
   assert.deepEqual(calls('production', REF), {
     detail: ['showDetailById', 'production', 'ubon', 2026, 8, '123'],
     edit: ['editProduction', 'ubon', 2026, 8, '123'],
     invoice: ['useProductionForInvoice', 'ubon', 2026, 8, '123'],
+    'job-cost': ['ERPCosting.openJobSheet', 'ubon', '123'], // ADR-028
     delete: ['delDoc', 'ubon', 2026, 8, 'productions', 123]
   });
   assert.deepEqual(calls('issuedReceipt', REF), { detail: ['showIssuedDocumentDetail', 'issuedReceipts', 'ubon', 2026, 8, '123'] });
@@ -201,8 +219,8 @@ test('rowActionsHtml: exactly one primary button + one "⋯" (a real button nami
 test('rowMenuItems: the non-primary actions in menu order; call actions get onSelect, data-* actions carry their attributes', () => {
   const ran = [];
   const items = core.rowMenuItems(core.rowActions('invoice', { ...REF, settled: true }), action => ran.push(action.id));
-  assert.deepEqual(items.map(item => [item.key, item.danger]), [['detail', false], ['edit', false], ['receipt', false], ['credit-note', false], ['cancel', true]]);
-  assert.deepEqual(items.map(item => item.order), [0, 1, 2, 3, 4]);
+  assert.deepEqual(items.map(item => [item.key, item.danger]), [['detail', false], ['edit', false], ['receipt', false], ['credit-note', false], ['debit-note', false], ['cancel', true]]);
+  assert.deepEqual(items.map(item => item.order), [0, 1, 2, 3, 4, 5]);
   items[2].onSelect();
   assert.deepEqual(ran, ['receipt']);
   const cn = core.rowMenuItems(core.rowActions('creditNote', { b: 'ubon', y: 2026, m: 8, id: '7', live: true }), () => assert.fail('dataset actions are not run here'));
@@ -223,7 +241,7 @@ test('resolveRowActionCall / rowActions input checks', () => {
   assert.equal(core.resolveRowActionCall('', root), null);
   assert.throws(() => core.rowActions('invoices', REF), /unknown list/);
   assert.throws(() => core.rowActions('__proto__', REF), /unknown list/);
-  assert.deepEqual(ids(core.rowActions('invoice', null)), ['doc', 'detail', 'edit', 'receipt', 'credit-note', 'cancel'], 'missing facts do not crash');
+  assert.deepEqual(ids(core.rowActions('invoice', null)), ['doc', 'detail', 'edit', 'receipt', 'credit-note', 'debit-note', 'cancel'], 'missing facts do not crash');
   assert.equal(core.rowMenuLabel('invoice', { no: '' }), 'การทำงานเพิ่มเติม');
   assert.equal(core.rowMenuLabel('contact', { name: 'บจก. เอ' }), 'การทำงานเพิ่มเติม บจก. เอ');
 });

@@ -76,7 +76,7 @@ test('taxui#1 โหมดง่าย: the menu entry, four tabs and the sample
     w.go('tax-reports', entry); // jsdom does not run the inline onclick
     await sleep(30);
     assert.ok(w.document.getElementById('panel-tax-reports').classList.contains('active'));
-    assert.deepEqual([...root(w).querySelectorAll('[data-tax-tab]')].map(text), ['รายงานภาษีขาย', 'รายงานภาษีซื้อ', 'ภาษีซื้อต้องห้าม', 'ภ.พ.30']);
+    assert.deepEqual([...root(w).querySelectorAll('[data-tax-tab]')].map(text), ['รายงานภาษีขาย', 'รายงานภาษีซื้อ', 'ภาษีซื้อต้องห้าม', 'ภ.พ.30', 'ภ.ง.ด.3', 'ภ.ง.ด.53', 'หนังสือรับรอง 50 ทวิ', 'ภ.ง.ด.54', 'ภ.พ.36']); // ADR-024: + the payer-side WHT tabs; ADR-031: + payments abroad
     // Sales, head office.
     await openReport(w, { tab: 'sales', branch: 'ubon' });
     const head = text(root(w).querySelector('.tax-form-head'));
@@ -87,8 +87,9 @@ test('taxui#1 โหมดง่าย: the menu entry, four tabs and the sample
     assert.match(head, /☑ สำนักงานใหญ่\s*☐ สาขาที่ \.\.\.\.\./, 'AC1.6 head office ticked');
     assert.match(head, /ค่าตัวอย่าง \(0000000000000\)/, 'placeholder seller TIN warned');
     const foot = [...root(w).querySelectorAll('.tax-rpt-table tfoot td')].map(text);
-    assert.deepEqual(foot.slice(7, 10), ['74,070.00', '5,184.90', '79,254.90']);
-    assert.equal(root(w).querySelectorAll('.tax-rpt-table tbody tr').length, 7);
+    // ADR-024 sample: + DN690901 (1,500.00 / 105.00) in its issue month (was 74,070.00 / 5,184.90 / 79,254.90, 7 rows).
+    assert.deepEqual(foot.slice(7, 10), ['75,570.00', '5,289.90', '80,859.90']);
+    assert.equal(root(w).querySelectorAll('.tax-rpt-table tbody tr').length, 8);
     assert.match(text(root(w)), /ยอดขายที่ได้รับยกเว้น VAT.*INV690903/, 'exempt U8 listed, not in the report');
     // Branch switch (AC1.6): สาขาที่ 00001.
     change(w, 'tax-rpt-branch', 'khonkaen');
@@ -97,21 +98,22 @@ test('taxui#1 โหมดง่าย: the menu entry, four tabs and the sample
     // Combined view (data, not a filing) and month switch.
     change(w, 'tax-rpt-branch', 'combined');
     assert.match(text(root(w)), /มุมมองรวมทุกสถานประกอบการเป็นข้อมูลประกอบ/);
-    assert.equal(w.ERPTaxReports.view().sales.totals.vat, 9810.5);
+    assert.equal(w.ERPTaxReports.view().sales.totals.vat, 9915.5); // ADR-024: + 105 (was 9,810.50)
     change(w, 'tax-rpt-month', '10');
     assert.equal(w.ERPTaxReports.view().period, '2026-10');
     // Purchase / ภาษีซื้อต้องห้าม / ภ.พ.30 of the head office in September.
     await openReport(w, { tab: 'purchase', branch: 'ubon' });
-    assert.deepEqual([...root(w).querySelectorAll('.tax-rpt-table tfoot td')].map(text).slice(7, 9), ['34,214.95', '2,395.05']);
+    assert.deepEqual([...root(w).querySelectorAll('.tax-rpt-table tfoot td')].map(text).slice(7, 9), ['41,114.95', '2,878.05']); // r13#HIGH-2: + GR690901 6,900.00 / 483.00
     assert.match(text(root(w)), /ข้อมูล VAT ไม่ครบ — ไม่อยู่ในรายงานภาษีซื้อ.*บจก\. โฆษณาออนไลน์ตัวอย่าง/, 'AC2.6 legacy expense listed');
     assert.match(text(root(w)), /ใช้สิทธิ์เดือน 10\/2569/, 'the claim moved to October');
     await openReport(w, { tab: 'forbidden', branch: 'ubon' });
     assert.deepEqual([...root(w).querySelectorAll('.tax-rpt-table tbody tr')].map(tr => text(tr.cells[2])), ['AB-1188', 'WP-091677']);
     await openReport(w, { tab: 'pp30', branch: 'ubon' });
-    assert.deepEqual([1, 3, 4, 5, 6, 7, 8, 11, 12].map(line => lineText(w, line)), ['77,570.00', '3,500.00', '74,070.00', '5,184.90', '34,214.95', '2,395.05', '2,789.85', '2,789.85', '0.00']);
+    assert.deepEqual([1, 3, 4, 5, 6, 7, 8, 11, 12].map(line => lineText(w, line)), ['79,070.00', '3,500.00', '75,570.00', '5,289.90', '41,114.95', '2,878.05', '2,411.85', '2,411.85', '0.00']); // r13#HIGH-2: + GR VAT 483.00; // ADR-024 hand-worked (tax-reports-core tax#13)
     assert.match(text(root(w)), /ไม่คำนวณในเดโม/);
     assert.match(text(root(w)), /ยื่นแบบกระดาษ ภายใน 15\/10\/2569/);
-    assert.match(text(root(w)), /ยื่นทางอินเทอร์เน็ต ภายใน 23\/10\/2569/);
+    // r13#LOW-1: Fri 23 Oct 2569 is วันปิยมหาราช → Mon 26 Oct, and the page names the holiday.
+    assert.match(text(root(w)), /ยื่นทางอินเทอร์เน็ต ภายใน 26\/10\/2569 \(เลื่อนพ้นวันหยุด\) เลื่อนเพราะวันหยุด: วันปิยมหาราช/);
     assert.match(text(root(w)), /เดโมนี้ไม่ได้ยื่นแบบหรือส่งข้อมูลไปกรมสรรพากร/);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
@@ -132,11 +134,11 @@ test('taxui#2 print: A4 landscape report with the official headers and page numb
     const html = written[0];
     assert.match(html, /@page\{size:A4 landscape/);
     for (const label of ['รายงานภาษีขาย', 'เดือนภาษี กันยายน ปี 2569', 'ชื่อผู้ประกอบการ', 'เลขประจำตัวผู้เสียภาษีอากร', 'ชื่อสถานประกอบการ', '☑ สำนักงานใหญ่', 'ลำดับที่', 'วัน เดือน ปี', 'เล่มที่/เลขที่', 'ชื่อผู้ซื้อสินค้า/ผู้รับบริการ', 'เลขประจำตัวผู้เสียภาษีอากรของผู้ซื้อสินค้า/ผู้รับบริการ', 'มูลค่าสินค้าหรือบริการ', 'จำนวนเงินภาษีมูลค่าเพิ่ม', 'หมายเหตุ']) assert.ok(html.includes(label), label);
-    assert.ok(html.includes('แผ่นที่ 1 ในจำนวน 2 แผ่น') && html.includes('แผ่นที่ 2 ในจำนวน 2 แผ่น'), '23 rows → 2 sheets of 18');
+    assert.ok(html.includes('แผ่นที่ 1 ในจำนวน 2 แผ่น') && html.includes('แผ่นที่ 2 ในจำนวน 2 แผ่น'), '24 rows → 2 sheets of 18');
     assert.equal((html.match(/<tfoot>/g) || []).length, 1, 'totals on the last sheet only');
     assert.ok(html.includes('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&quot;&amp;&#39;'), 'customer escaped');
     assert.ok(!html.includes('<img src=x') && !html.includes('<b>tin</b>'), 'no raw markup from data');
-    assert.ok(html.includes('75,670.00') && html.includes('5,296.90'), 'footer: 74,070.00 + 16 × 100.00 / 5,184.90 + 16 × 7.00');
+    assert.ok(html.includes('77,170.00') && html.includes('5,401.90'), 'footer: 75,570.00 + 16 × 100.00 / 5,289.90 + 16 × 7.00 (ADR-024 sample incl. the debit note)');
     // ภ.พ.30 worksheet (portrait, labels of the form, says it is not the official form).
     root(w).querySelector('[data-tax-tab="pp30"]').click();
     root(w).querySelector('[data-tax-action="print"]').click();
@@ -236,7 +238,7 @@ test('taxui#4 expense with a full tax invoice through the form → in ราย�
     await openReport(w, { tab: 'purchase', branch: 'ubon' });
     const row = [...root(w).querySelectorAll('.tax-rpt-table tbody tr')].find(tr => text(tr.cells[2]) === 'OP-UI-001');
     assert.deepEqual([text(row.cells[3]), text(row.cells[4]), text(row.cells[5]), text(row.cells[6]), text(row.cells[7]), text(row.cells[8])], ['บจก. ออฟฟิศพลัส เซ็นเตอร์', '0345562005058', '', '00002', '2,000.00', '140.00']);
-    assert.equal(w.ERPTaxReports.view().purchases.totals.vat, 2535.05, '2,395.05 + 140.00');
+    assert.equal(w.ERPTaxReports.view().purchases.totals.vat, 3018.05, '2,878.05 (r13#HIGH-2: incl. GR VAT 483.00) + 140.00');
     // The expense list shows the claim month; a legacy one shows "ข้อมูล VAT ไม่ครบ".
     w.go('expense-list', null);
     d.getElementById('el-month').value = ''; d.getElementById('el-year').value = '2026'; w.renderEList();
@@ -249,13 +251,17 @@ test('taxui#4 expense with a full tax invoice through the form → in ราย�
     assert.equal(w.ERPIntegrity.business().expenses.length, before);
     // AC2.3: claimed more than 6 months after the invoice month.
     message = await fill({ ...base, 'e-doc-no': 'OP-UI-OLD', 'e-tax-invoice-date': '2026-02-10', 'e-tax-received-date': '2026-02-12' }, { supplier: 'ออฟฟิศพลัส', after: { 'e-tax-claim-period': '2026-09' } });
-    assert.match(message, /เกินกำหนดใช้สิทธิ 6 เดือน/);
+    assert.match(message, /เกินกำหนดใช้สิทธิ์ 6 เดือน/);
     // A closed claim month (period lock, purchases) refuses the claim even when the expense date is open.
     w.ERPGovernance.lockPeriod({ branch: 'ubon', scope: 'purchase', throughDate: '2026-09-30', reason: 'ยื่น ภ.พ.30 แล้ว' });
     message = await fill({ ...base, 'e-date': '2026-10-02', 'e-doc-no': 'OP-UI-002', 'e-tax-invoice-date': '2026-09-28', 'e-tax-received-date': '2026-09-29' }, { supplier: 'ออฟฟิศพลัส', after: { 'e-tax-claim-period': '2026-09' } });
     assert.match(message, /ถูกปิดถึง 2026-09-30/);
     message = await fill({ ...base, 'e-date': '2026-10-02', 'e-doc-no': 'OP-UI-002', 'e-tax-invoice-date': '2026-09-28', 'e-tax-received-date': '2026-09-29' }, { supplier: 'ออฟฟิศพลัส', after: { 'e-tax-claim-period': '2026-10' } });
+    // r13#LOW-3: a claim month after the month the tax invoice was received needs a reason (ประกาศอธิบดีฯ VAT ฉบับที่ 4).
+    assert.match(message, /กรุณาเลือกเหตุผล \(ประกาศอธิบดีฯ VAT ฉบับที่ 4\)/);
+    message = await fill({ ...base, 'e-date': '2026-10-02', 'e-doc-no': 'OP-UI-002', 'e-tax-invoice-date': '2026-09-28', 'e-tax-received-date': '2026-09-29' }, { supplier: 'ออฟฟิศพลัส', after: { 'e-tax-claim-period': '2026-10', 'e-tax-late-reason': 'trade_custom' } });
     assert.match(message, /บันทึกค่าใช้จ่ายเรียบร้อย/, 'moved to the open month → saved');
+    assert.equal(w.ERPIntegrity.business().expenses.find(e => e.docNo === 'OP-UI-002').lateClaimReason, 'trade_custom');
     // ภาษีซื้อต้องห้าม through the form: untick the claim → a reason is required.
     w.go('expense-form', null); w.resetF('expense'); w.selBr('e', 'ubon');
     for (const [id, value] of Object.entries({ ...base, 'e-date': '2026-10-03', 'e-doc-no': 'FUEL-2', 'e-amount': '1070' })) change(w, id, value);
@@ -330,7 +336,7 @@ test('taxui#5 ภ.พ.30 filing: snapshot (append-only), amendment ครั้�
     assert.equal(sept.pp30.lines[10], aug[12]);
     assert.equal(root(w).querySelector('#tax-pp30-carry'), null);
     assert.match(text(root(w)), /จาก ภ.พ.30 เดือน 08\/2569 ที่เลือก "ขอนำไปชำระในเดือนถัดไป"/);
-    assert.equal(sept.pp30.lines[11], Math.max(0, Math.round((5184.9 - 2395.05 - aug[12]) * 100) / 100));
+    assert.equal(sept.pp30.lines[11], Math.max(0, Math.round((5184.9 - 2878.05 - aug[12]) * 100) / 100)); // r13#HIGH-2: L7 incl. GR VAT
     // The branch has no previous return → line 10 typed by hand.
     change(w, 'tax-rpt-branch', 'khonkaen');
     const input = root(w).querySelector('#tax-pp30-carry');
@@ -408,7 +414,7 @@ test('taxui#7 one establishment (ADR-022): only the head office in every selecto
     await openReport(w, { tab: 'pp30', branch: '' });
     assert.deepEqual([...w.document.getElementById('tax-rpt-branch').options].map(o => o.value), ['combined']);
     assert.match(text(root(w)), /วิธียื่น: ยื่นรวมกัน/);
-    assert.deepEqual([lineText(w, 5), lineText(w, 7), lineText(w, 11)], ['9,810.50', '2,395.05', '7,415.45'], 'all sample documents are at the head office');
+    assert.deepEqual([lineText(w, 5), lineText(w, 7), lineText(w, 11)], ['9,915.50', '2,878.05', '7,037.45'], 'all sample documents are at the head office'); // r13#HIGH-2: + GR VAT 483.00; // ADR-024: + DN 105
     assert.match(text(root(w).querySelector('.tax-form-head')), /บริษัท สยามตัวอย่าง จำกัด/);
     assert.match(text(root(w).querySelector('.tax-form-head')), /0105568123453/);
     assert.doesNotMatch(text(root(w).querySelector('.tax-form-head')), /ค่าตัวอย่าง/, 'a real TIN: no warning');

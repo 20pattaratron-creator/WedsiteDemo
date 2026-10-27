@@ -17,10 +17,10 @@ const MODE_KEY = `${TENANT_PREFIX}erp_product_experience_mode_v1`;
 const ADVANCED = ['analytics', 'business-rules', 'audit-log', 'files'];
 const SECTIONS = [
   ['home', 'หน้าหลัก', ['work-home', 'dashboard', 'approval-center']],
-  ['sales', 'ขายและรับเงิน', ['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'order-flow']],
-  ['operations', 'ซื้อ / ผลิต / คลัง', ['production-list', 'purchase-order', 'goods-receipt', 'inventory']],
+  ['sales', 'ขายและรับเงิน', ['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'debit-note-list', 'order-flow']], // ADR-024: + ใบเพิ่มหนี้ (simple mode)
+  ['operations', 'ซื้อ / ผลิต / คลัง', ['production-list', 'purchase-order', 'goods-receipt', 'inventory', 'job-costing']], // ADR-028: + ต้นทุนและกำไรต่องาน (simple mode)
   ['expenses', 'ค่าใช้จ่าย', ['expense-list']],
-  ['data', 'ข้อมูลและรายงาน', ['master-data', 'tax-reports', 'linked-flow', 'analytics', 'customer-portal']], // + ADR-023 รายงานภาษี
+  ['data', 'ข้อมูลและรายงาน', ['master-data', 'tax-reports', 'accounting', 'fx', 'analytics-forecast', 'linked-flow', 'analytics', 'customer-portal']], // + ADR-023 รายงานภาษี, + ADR-029 สมุดบัญชีและปิดเดือน, + ADR-027 วิเคราะห์และคาดการณ์ (simple mode), + ADR-031 หลายสกุลเงิน
   ['settings', 'ตั้งค่า', ['business-rules', 'audit-log', 'saas-admin', 'files']]
 ];
 const ALL_ENTRIES = SECTIONS.flatMap(([, , panels]) => panels);
@@ -60,7 +60,7 @@ test('one slim notice replaces the orange strip + green banner; the header has o
     assert.equal(d.querySelectorAll('#erp-trial-safety-banner').length, 1);
     const notice = d.getElementById('erp-trial-safety-banner');
     // The warning is still on the page: data stays in this browser, not a multi-user Production system.
-    assert.equal(text(notice.querySelector('.erp-demo-notice-long')), 'DEMO 4.3.1 · ข้อมูลทดลองเก็บในเบราว์เซอร์นี้เท่านั้น · ยังไม่ใช่ระบบ Production หลายผู้ใช้');
+    assert.equal(text(notice.querySelector('.erp-demo-notice-long')), 'DEMO 4.3.1 · ข้อมูลอยู่ในเบราว์เซอร์เครื่องนี้เท่านั้น — สำรองข้อมูล (JSON) ทุกสัปดาห์และเก็บไว้นอกเครื่อง · กฎหมายให้เก็บเอกสารและรายงานภาษีไม่น้อยกว่า 5 ปี (มาตรา 87/3) · ยังไม่ใช่ระบบ Production หลายผู้ใช้' /* r13#MED-8 */);
     assert.equal(notice.getAttribute('role'), 'note');
     assert.equal(d.getElementById('local-demo-banner'), null, 'the green banner is gone');
     assert.equal(d.querySelector('.local-demo-banner, .local-demo-banner-actions'), null);
@@ -74,7 +74,7 @@ test('one slim notice replaces the orange strip + green banner; the header has o
     assert.equal(button.getAttribute('aria-controls'), 'erp-demo-menu');
     // Buttons between the header and the page content: only the Demo button and the header's own controls.
     const headerButtons = [...d.querySelectorAll('.comform-topbar button')].map(b => b.id || b.className);
-    assert.deepEqual(headerButtons, ['erp-global-search-btn', 'pe-mode-toggle', 'erp-demo-menu-btn']);
+    assert.deepEqual(headerButtons, ['erp-global-search-btn', 'pe-mode-toggle', 'erp-lang-btn', 'erp-lang-btn', 'erp-demo-menu-btn']); // ADR-026: + the TH | EN switch (two buttons) before the Demo menu
     // No former banner button is left anywhere on the page outside the menu.
     for (const id of ['local-demo-health-btn', 'local-demo-guide-btn', 'local-demo-backup-btn']) {
       assert.equal(d.querySelectorAll(`#${id}`).length, 1, id);
@@ -97,11 +97,13 @@ test('Demo menu: six items once each, in order, reset last in red behind a separ
     assert.equal(menu.getAttribute('role'), 'menu');
     assert.equal(menu.getAttribute('aria-label'), 'เมนู Demo');
     // ADR-020 added "ข้อมูลบริษัทและโลโก้" (order 15, erp-company-profile.js) through the same registration API.
-    assert.deepEqual(items().map(text), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
-    assert.deepEqual(items().map(item => item.id || `[data-demo-seed-action=${item.dataset.demoSeedAction}]`), ['local-demo-health-btn', 'local-demo-company-btn', '[data-demo-seed-action=load]', 'local-demo-guide-btn', 'local-demo-backup-btn', '[data-demo-seed-action=reset]']);
-    assert.ok(items()[5].classList.contains('is-danger'));
-    assert.ok(items().slice(0, 5).every(item => !item.classList.contains('is-danger')));
-    assert.equal(items()[5].previousElementSibling.getAttribute('role'), 'separator');
+    assert.deepEqual(items().map(text), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'สลับเป็นโหมดขั้นสูง (ตอนนี้: โหมดง่าย)', 'English (เปลี่ยนเป็นภาษาอังกฤษ)', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']); // r8fix#C4: + mode switch · ADR-026: + language item (order 50)
+    assert.deepEqual(items().map(item => item.id || `[data-demo-seed-action=${item.dataset.demoSeedAction}]`), ['local-demo-health-btn', 'local-demo-company-btn', '[data-demo-seed-action=load]', 'local-demo-guide-btn', 'local-demo-backup-btn', 'local-demo-mode-btn', 'local-demo-language-btn', '[data-demo-seed-action=reset]']); // r8fix#C4: + mode switch · ADR-026: + language item
+    // r8fix#C4: the mode item (order 45) sits before reset, so reset moved from index 5 to 6 — same assertions on it.
+    // ADR-026: the language item (order 50) sits before reset, so reset moved from index 6 to 7 — same assertions on it.
+    assert.ok(items()[7].classList.contains('is-danger'));
+    assert.ok(items().slice(0, 7).every(item => !item.classList.contains('is-danger')));
+    assert.equal(items()[7].previousElementSibling.getAttribute('role'), 'separator');
     assert.equal(menu.querySelectorAll('[role="separator"]').length, 1);
     assert.ok(items().every(item => item.querySelector('.erp-menu-icon svg')), 'every item has a line icon');
     // Click opens with focus on the first item; an outside click closes.
@@ -121,14 +123,14 @@ test('Demo menu: six items once each, in order, reset last in red behind a separ
     assert.equal(d.activeElement, items()[1]);
     key(items()[1], 'ArrowUp');
     key(items()[0], 'ArrowUp');
-    assert.equal(d.activeElement, items()[5], 'wraps to the reset item');
-    key(items()[5], 'Escape');
+    assert.equal(d.activeElement, items()[7], 'wraps to the reset item');
+    key(items()[7], 'Escape');
     assert.equal(menu.hidden, true, 'Escape closes');
     assert.equal(d.activeElement, button, 'focus back on the Demo button');
     // Tab leaves the menu (closed, focus continues from the button).
     key(button, 'ArrowUp');
-    assert.equal(d.activeElement, items()[5]);
-    key(items()[5], 'Tab');
+    assert.equal(d.activeElement, items()[7]);
+    key(items()[7], 'Tab');
     assert.equal(menu.hidden, true);
     assert.equal(d.activeElement, button);
     assert.deepEqual(h.errors, []);
@@ -205,12 +207,12 @@ test('ERPDemoMenu.register: a module adds its own item by key; registering again
     w.dispatchEvent(new w.Event('erp:storage-written'));
     w.document.dispatchEvent(new w.Event('erp:dashboard-rendered'));
     await sleep(700); // local-demo-health.js retries every 300 ms
-    assert.equal(labels().length, 6);
+    assert.equal(labels().length, 8); // r8fix#C4: + the simple/advanced switch · ADR-026: + the language item
     // A new item by key, placed by order; the same key again replaces it.
     let picked = 0;
     assert.equal(api.register({ key: 'extra', label: 'รายการทดสอบ', order: 25, onSelect: () => { picked += 1; } }), true);
     assert.equal(api.register({ key: 'extra', label: 'รายการทดสอบ (ใหม่)', order: 25, onSelect: () => { picked += 10; } }), true);
-    assert.deepEqual(labels(), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'รายการทดสอบ (ใหม่)', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']);
+    assert.deepEqual(labels(), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', 'โหลดข้อมูลตัวอย่างสำหรับสาธิต', 'รายการทดสอบ (ใหม่)', 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'สลับเป็นโหมดขั้นสูง (ตอนนี้: โหมดง่าย)', 'English (เปลี่ยนเป็นภาษาอังกฤษ)', 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)']); // r8fix#C4
     // Another danger item also goes after the separator (danger items among themselves by order), never
     // above an ordinary item, even with a lower order.
     api.register({ id: 'extra-danger', label: 'ลบทดสอบ', order: 1, danger: true });
@@ -230,7 +232,7 @@ test('ERPDemoMenu.register: a module adds its own item by key; registering again
     assert.equal(api.register({ key: 'no-label' }), false);
     w.console.warn = realWarn;
     assert.equal(warnings.length, 2);
-    assert.equal(labels().length, 8); // 6 (incl. ADR-020 ข้อมูลบริษัทและโลโก้) + 2 test items
+    assert.equal(labels().length, 10); // 8 (incl. ADR-020 ข้อมูลบริษัทและโลโก้, r8fix#C4 mode switch, ADR-026 language item) + 2 test items
     // open / close helpers.
     api.open();
     assert.equal(d.getElementById('erp-demo-menu').hidden, false);
@@ -259,7 +261,7 @@ test('sidebar: six sections with headings, one entry per document type (no creat
     assert.equal(new Set(entries).size, entries.length, 'no duplicate entries');
     assert.deepEqual(entries.filter(panel => /-form$/.test(panel)), [], 'no "create" entries');
     assert.deepEqual(entries, ALL_ENTRIES);
-    for (const [panel, label] of [['quote-list', 'ใบเสนอราคา'], ['invoice-list', 'ใบส่งสินค้า / ใบกำกับภาษี'], ['receipt-list', 'ใบเสร็จ / รับชำระ'], ['credit-note-list', 'ใบลดหนี้'], ['production-list', 'สั่งผลิต'], ['expense-list', 'ค่าใช้จ่าย'], ['order-flow', 'ศูนย์งานขาย & ลูกหนี้']]) {
+    for (const [panel, label] of [['quote-list', 'ใบเสนอราคา'], ['invoice-list', 'ใบส่งสินค้า / ใบกำกับภาษี'], ['receipt-list', 'ใบเสร็จ / รับชำระ'], ['credit-note-list', 'ใบลดหนี้'], ['debit-note-list', 'ใบเพิ่มหนี้'], ['production-list', 'สั่งผลิต'], ['expense-list', 'ค่าใช้จ่าย'], ['order-flow', 'ศูนย์งานขาย & ลูกหนี้']]) {
       assert.match(text(navItems(w).find(item => entryOf(item) === panel)), new RegExp(`^${label.replace(/[/&()]/g, '\\$&')}`), panel);
     }
     // No old flat-list heading is left (they were .nav-sec divs).
@@ -269,9 +271,11 @@ test('sidebar: six sections with headings, one entry per document type (no creat
     assert.equal(d.querySelector('.sidebar .pe-nav-icon, .sidebar .erp-flow-nav-icon'), null);
     const settings = d.querySelector('.nav-group[data-nav-section="settings"]');
     // โหมดง่าย: 18 entries (ADR-020 added ตั้งค่าบริษัท, so "ตั้งค่า" now keeps its heading with that one entry;
-    // ADR-023 added รายงานภาษี, a monthly duty of every VAT-registered customer, so it is not an advanced screen).
+    // ADR-023 added รายงานภาษี, a monthly duty of every VAT-registered customer, so it is not an advanced screen;
+    // ADR-024 added ใบเพิ่มหนี้ to the sales group, also in โหมดง่าย → 19; ADR-027 added วิเคราะห์และคาดการณ์ to the data group → 20;
+    // ADR-028 added ต้นทุนและกำไรต่องาน to the operations group → 21; ADR-029 added สมุดบัญชีและปิดเดือน to the data group → 22; ADR-031 added หลายสกุลเงิน to the data group → 23).
     assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES);
-    assert.equal(visibleEntries(w).length, 18);
+    assert.equal(visibleEntries(w).length, 23);
     assert.deepEqual(navItems(w).filter(item => item.hidden).map(entryOf).sort(), [...ADVANCED].sort());
     assert.equal(settings.hidden, false, 'ตั้งค่า shows with ตั้งค่าบริษัท only (ADR-020)');
     assert.deepEqual([...settings.querySelectorAll('.nav-item')].filter(item => !item.hidden).map(entryOf), ['saas-admin']);
@@ -298,7 +302,7 @@ test('a form screen highlights its document entry, has "← รายการ�
   const d = w.document;
   try {
     const activePanel = () => d.querySelector('.panel.active').id.replace('panel-', '');
-    for (const [form, entry] of [['quote-form', 'quote-list'], ['invoice-form', 'invoice-list'], ['receipt-form', 'receipt-list'], ['credit-note-form', 'credit-note-list'], ['production-form', 'production-list'], ['expense-form', 'expense-list'], ['issued-invoice-list', 'invoice-list'], ['issued-receipt-list', 'receipt-list']]) {
+    for (const [form, entry] of [['quote-form', 'quote-list'], ['invoice-form', 'invoice-list'], ['receipt-form', 'receipt-list'], ['credit-note-form', 'credit-note-list'], ['debit-note-form', 'debit-note-list'], ['production-form', 'production-list'], ['expense-form', 'expense-list'], ['issued-invoice-list', 'invoice-list'], ['issued-receipt-list', 'receipt-list']]) {
       w.go(form);
       assert.deepEqual(activeEntries(w), [entry], form);
       assert.equal(navItems(w).find(item => entryOf(item) === entry).getAttribute('aria-current'), 'page', form);
@@ -442,7 +446,7 @@ test('sections fold and are remembered per browser (tenant key, kept by the demo
       assert.equal(toggle('data').getAttribute('aria-expanded'), 'false');
       assert.ok(group('data').classList.contains('is-collapsed'));
       assert.deepEqual(collapsedStored(), ['data', 'operations']);
-      assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES.filter(panel => !['master-data', 'tax-reports', 'linked-flow', 'customer-portal', 'production-list', 'purchase-order', 'goods-receipt', 'inventory'].includes(panel)));
+      assert.deepEqual(visibleEntries(w), SIMPLE_ENTRIES.filter(panel => !['master-data', 'tax-reports', 'accounting', 'fx', 'analytics-forecast', 'linked-flow', 'customer-portal', 'production-list', 'purchase-order', 'goods-receipt', 'inventory', 'job-costing'].includes(panel))); // ADR-027: + วิเคราะห์และคาดการณ์ (data section); ADR-028: + ต้นทุนและกำไรต่องาน (operations); ADR-029: + สมุดบัญชีและปิดเดือน (data section)
       // Opening a page of a collapsed section from elsewhere (search, quick action, link) expands it, and that is remembered.
       w.go('goods-receipt');
       assert.equal(group('operations').classList.contains('is-collapsed'), false);
