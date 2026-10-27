@@ -2,7 +2,8 @@
 
 ## Status
 Accepted for Local Demo. Revised in round 3 / phase 1 (load/reset semantics, dataset coverage, fixes the
-sample data exposed); see "Revision history".
+sample data exposed) and in R9.1 (dates: two clocks, so the tax-month story is the same on every load date); see
+"Revision history".
 
 ## Context
 - The demo opened with every report, dashboard and aging table at zero, so a presenter had to type
@@ -14,18 +15,19 @@ sample data exposed); see "Revision history".
 ## Decision
 ### Sample data — "📊 โหลดข้อมูลตัวอย่างสำหรับสาธิต"
 - **`erp-demo-seed-core.js`** (pure, DOM/storage free) builds a Thai IT SME's recent history
-  **relative to the business date passed in** (never hardcoded dates; the same date always gives the same
-  plan): 9 customers (8 นิติบุคคล with 13-digit check-digit-valid tax IDs, one of them a buyer **branch**
+  **from the business date passed in** (never hardcoded dates; the same date always gives the same
+  plan; how each row is dated: "Dates — two clocks" below): 9 customers (8 นิติบุคคล with 13-digit check-digit-valid tax IDs, one of them a buyer **branch**
   "สาขาที่ 00003 (โรงงานขอนแก่น)", 1 sole proprietor) + walk-in "ลูกค้าทั่วไป / เงินสด", 12 products/services
   with standard cost and default price, both branches (ubon = สำนักงานใหญ่, khonkaen = สาขาที่ 00001):
   5 quotations (2 converted, 3 pending), 18 tax invoices (full form in all three VAT modes — บวก VAT,
   ราคารวม VAT, ไม่มี VAT — and 2 abbreviated walk-in sales), 8 receipts (one with 3% WHT + certificate
   number, two produced by one billing payment that settles two invoices), 4 credit notes (price adjustment,
   returned goods back into stock, full cancellation, one voided), 1 billing note + payment, 11 expenses.
-- Payment story (T = today): invoices late by exactly **10, 17, 45, 62 and 100 days** fill every aging
-  bucket (1–30 / 31–60 / 61–90 / over 90); five are not yet due; `paymentSummary` statuses `paid`,
-  `partially_paid`, `pending` and `credited` all occur. One unpaid invoice is 130 days old (the over-90
-  bucket); everything else is within ~3 months.
+- Payment story (T = today): invoices late by exactly **10, 45, 62 and 100 days** on every load date fill every
+  aging bucket (1–30 / 31–60 / 61–90 / over 90); a fifth (17 days on a load on the 5th) is always overdue; on days 1–9
+  of a month five are not yet due, later the story month's 30-day bills fall due one by one; `paymentSummary`
+  statuses `paid`, `partially_paid`, `pending` and `credited` all occur. One unpaid invoice is 130 days old (the
+  over-90 bucket); everything else is within ~3 months.
 - Every record is built by the app's own pure builders — `calculateVatSummary`, `calculateWhtSummary`,
   `plan{Quote,Invoice,Receipt,Expense}DocumentAction`, `buildBillingAction`, `planBillingPaymentAction`,
   `buildPaymentReceiptDrafts`, `validateCreditNote` + `buildCreditNoteRecord`, `withThaiCalendarMeta`,
@@ -54,6 +56,55 @@ sample data exposed); see "Revision history".
     `assertIdempotentPaymentReceipts`, `creditNoteLedgerIssues`, `paymentSummary` against the plan, stock ≥ 0)
     and rolled back on any disagreement; `reconcilePayments()` + `changed()` like every save path; one Audit
     Log row. Runs under the `sales-ledger` write lease.
+
+### Dates — two clocks (R9.1, 13 Oct 2569)
+**Problem.** Every row except the ADR-023/024 tax story was dated "today − n days". The story month's ภ.พ.30 also
+counted those rows, so its figures depended on the load day (found in Chromium: HQ September L1 / L5 / L11 =
+79,070.00 / 5,289.90 / 2,894.85 when loaded on 5 Oct, 65,570.00 / 4,344.90 / 1,949.85 on 12 Oct — INV690904 13,500
+slid into October — and 62,070.00 / 4,344.90 / 1,949.85 on 13 Oct — the exempt INV690903 3,500 too). Every test fixed
+the clock at 4–5 Oct, so it was never caught.
+
+**Rule.** The **story month S = the latest fully closed calendar month before `today`** (`demoSeedStoryPeriod`:
+the month before today's month; in January, December of the year before). It is the month whose ภ.พ.30 / ภ.ง.ด.3 /
+ภ.ง.ด.53 the presenter files now, and the month รายงานภาษี opens on. Each scenario row has exactly one clock:
+- **story** (`monthDay: n` 1–28 / `monthEnd: n` 0–27 days before the last day, `storyMonth: 0 | −1`): pinned to the
+  calendar of S or of the month before it — every invoice, credit / debit note, receipt, billing / payment, expense
+  and 50 ทวิ of those two months. Rule for the day: a canonical day ≤ 14 (load on 5 Oct 2569: S = September, the
+  month before = August) counts from the 1st, a later one back from the month end, so the last-day rows stay on the
+  last day and the order holds in a 28-day February. On 5 Oct 2569 the plan is byte-identical to the one before
+  R9.1 (checked: both branch modes), so the hand-worked figures (L1 79,070 · L5 5,289.90 · L11 2,894.85 HQ;
+  3,827.46 branch; 6,722.31 combined; 7,520.45 one branch; ภ.ง.ด.3 6,000 / 300; ภ.ง.ด.53 7,500 / 175; DN 1,605) are
+  the canonical story on every date.
+- **relative** (`offset: n`): today − n days, only for rows at least `RELATIVE_MIN_AGE_DAYS` = 62 days old (S
+  starts at most 61 days back: the 31st, after a 31-day month), so they can never be in S — the four old unpaid
+  bills keep their exact days late — and for open quotations (in no tax figure).
+- **recent** (`recent: n`): today − n days but never before the 1st of today's month (the last walk-in sales; on the
+  1st they are dated that day).
+- The 82/3 case (cloud invoice received at the end of S, claimed the month after) claims in today's month — never
+  a future month. Supplier numbers and "เดือน…" in two descriptions follow the row's month (`storyText`), so a
+  December load does not show "เดือนกันยายน".
+- `buildDemoSeedPlan` throws when a row breaks its clock (relative row in S, recent row before the month, pinned
+  row outside its month) or anything — date, cancel / void instant, purchase tax invoice received, claim month,
+  billing, payment — is after `today`. `plan.storyPeriod` is returned; the loader opens รายงานภาษี on it (also for an
+  explicit `load({ today })`), and the page says "เดือนภาษีล่าสุดที่ปิดแล้ว (เดือนก่อน) …" while it shows that month.
+
+**Fixed vs date-dependent figures** (docs/DEMO_SCRIPT_TH/EN.md mark the latter ⏱ with how to read them): fixed on
+every load date — the whole story month (ภ.พ.30 lines and reports of both establishments / combined / one-branch
+mode, ภ.ง.ด.3 / 53, 50 ทวิ, debit note), AR total 436,889.40 / 11 bills / 8 customers, the over-90 and 61–90 buckets,
+the days late 100 / 62 / 45 / 10, sales / cost / commission / expenses / profit of the history (716,010 / 525,700 /
+21,131.70 / 121,815 / 47,363.30), the live-step figures and the AR total after them (439,329.00). The whole year view
+equals the history for loads from 11 May to 31 Dec (10 May in a leap year). Date-dependent — and equal to the
+script on days 1–9 of any month: overdue total / count (278,260.80 / 5), the other buckets, "not yet due" after the
+live steps (161,068.20); and the target chart's months / this month's target (S always beats its target, the month
+before always misses).
+
+**Year boxes.** `index.html` typed 2026 into the year filters of the bill / production / quotation reference lists
+(the receipt form's list would have shown 2026 bills in 2027); they now start on the current year (`initDropdowns`,
+the existing line). In January the story month's bills are in the year before — the script says to type that year.
+
+**Tests.** `tests/r91-seed-dates.test.cjs` (every day 1 Oct 2569 – 31 Jan 2570, month ends, 29 Feb 2028, two year
+boundaries; days 1–9 of every month 2026–2028) and `tests/r91-seed-dates-app.test.cjs` (the page in TH / EN on 13 Oct,
+20 Nov, 3 Jan and an explicit date); `r8fix#C1` checks the Thai script on six load dates.
 
 ### Reset — "↺ ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)"
 - Removes **exactly this app's data keys for the active tenant**, defined once in
@@ -144,3 +195,5 @@ removed; +receipt/trial/council/governance fixes); runtime / root JS files +2 (t
 - Round 3 / phase 1: load refuses to mix / offers the reset; reset clears this app's keys (one definition);
   dataset: +4 products, buyer branch, VAT-inclusive full invoice, 100-day and fully-credited invoices,
   linked quotations; Trial counts ignore sample data; the four fixes above.
+- R9.1 (13 Oct 2569): two clocks ("Dates — two clocks"); `DEMO_SEED_CORE_VERSION` 1.4.0; the reference-list year
+  boxes start on the current year. Runtime lines +139 (38,860 → 38,999, under 39,400); i18n: the PP.30 / PND due-date lines moved past a weekend now have an English pattern; `app.js` unchanged in length.

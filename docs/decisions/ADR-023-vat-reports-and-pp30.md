@@ -29,11 +29,13 @@ Sources (rd.go.th): ประกาศอธิบดีฯ VAT ฉบับท�
 3. **Sales report.** Columns follow the official order. Credit notes are negative in their own month. Cancelled
    invoices show 0 with the reason. Abbreviated invoices are one daily summary row. Invoices in `none` mode carry
    `vatCategory` (`exempt` / `zero`); old ones count as exempt with a warning.
-4. **ภ.พ.30 lines 1–12.** Lines 5 and 7 equal the report footers. Line 9 is the carry-forward from the filed
-   return of the month before; otherwise it is entered by hand. Lines 13–16 show "ไม่คำนวณในเดโม". Filing is per
+4. **ภ.พ.30 lines 1–12.** Lines 5 and 7 equal the report footers. Line 10 ("ภาษีที่ชำระเกินยกมา") is the
+   carry-forward from the filed return of the month before; otherwise it is entered by hand. (Line 9 is this month's
+   overpayment, L7 − L5 when positive. Corrected in round 13, ADR-030 LOW-8: an earlier version said "Line 9".) Lines 13–16 show "ไม่คำนวณในเดโม". Filing is per
    establishment unless `companyProfile.vatFilingMode = 'combined'`. A repeat filing of the same period is
    "ยื่นเพิ่มเติมครั้งที่ n". After filing, the app offers to lock the sales and purchase periods. Due dates are the
-   15th (paper) and 23rd (e-filing), moved past Saturday and Sunday. The page says that the demo submits nothing.
+   15th (paper) and 23rd (e-filing), moved past Saturday, Sunday and (round 13, ADR-030 LOW-1) the listed government
+   holidays. The page says that the demo submits nothing.
 5. **Storage.** `comform_vat_returns_v1` (ADR-003 pattern): it is read strictly, part of the JSON backup
    (`masterData.vatReturns`, validated fail-closed), and removed by the demo reset.
 6. **Page.** "รายงานภาษี" in the data group (visible in simple mode) has four tabs, branch/month (พ.ศ.) selectors, A4 print
@@ -41,6 +43,8 @@ Sources (rd.go.th): ประกาศอธิบดีฯ VAT ฉบับท�
    and CSV. All text is in one `TEXT` object per module.
 7. **Demo story.** September 2569 sample data, worked by hand in `tests/tax-reports-core.test.cjs`, plus a step in
    `docs/DEMO_SCRIPT_TH.md`.
+   R9.1: the story is the latest closed month of the load date with the same figures on every date (ADR-013 "Dates —
+   two clocks"); the page opens on that month and says so.
 
 ## Not modelled
 Public holidays in due dates (e.g. 23 ต.ค. is วันปิยมหาราช). Actual e-filing or submission. ภ.พ.30 lines 13–16.

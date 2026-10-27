@@ -1,6 +1,74 @@
 # สถาปัตยกรรมระบบ ERP DEMO 4.3.1 (ฉบับภาษาไทย)
 
 > **ผู้อ่าน:** เจ้าของผลิตภัณฑ์ (อยากเข้าใจว่าระบบประกอบกันอย่างไร) และนักพัฒนาที่จะมาทำต่อ
+> **อัปเดต ADR-031 (27 ต.ค. 2569, รอบ 13B — หลายสกุลเงิน):** ไฟล์ใหม่ 3 ไฟล์ — `erp-fx-core.js` (pure: รายการสกุลเงิน ISO
+> + ทศนิยม, ตารางอัตราแลกเปลี่ยน append-only `comform_fx_rates_v1`, กฎวันที่ของอัตรา `fxRateDateFor` (อัตรา ธปท. ที่ประกาศวันที่
+> ความรับผิดเกิด = ของวันทำการก่อนหน้า; วันหยุดจากตาราง 13A), แปลงเป็นบาทครั้งเดียว half-up (`planFxSalesAmounts`,
+> `applyFxToSalesDraft`), รับชำระ/จ่ายเงินสกุลต่างประเทศ (`planFxReceipt`, `fxReceiptRecord`, `planFxPayment` — ภ.ง.ด.54 /
+> gross-up / ภ.พ.36), ปิดเดือน (`planFxMonthEnd`: มูลค่าส่งออก ป.132/2548 + ตีมูลค่าแล้วกลับรายการ, `comform_fx_documents_v1`),
+> นำเข้า CSV, adapter ดึงอัตรา ธปท. ที่ปฏิเสธเสมอ), `erp-fx.js` (หน้า **หลายสกุลเงิน** 7 แท็บ + การ์ดตั้งค่าในตั้งค่าบริษัท,
+> `window.ERPFx`) และ `i18n/en-fx.js` · เอกสารเดิมอ่านแค่ฟิลด์บาท (`total`/`subtotal`/`vatAmt`) จึงไม่ต้องแก้ pipeline ลูกหนี้ /
+> รายงานภาษี / ต้นทุน / Dashboard · สมุดรายวัน: บัญชีใหม่ 2133 / 2142 / 4210 / 4220 / 5420 / 5430 และรายการ `fx_payment`,
+> `pp36_claim`, `fx_revaluation(_reverse)` · รายงานภาษีมีแท็บ ภ.ง.ด.54 / ภ.พ.36 · พิมพ์ใบกำกับภาษี (บาท + "ข้อมูลประกอบ"
+> หรือสกุลเงินเมื่อมีเลขอนุมัติ/ส่งออก), ใบเสร็จ, ใบเสนอราคาเป็นสกุลเงิน · อายุลูกหนี้มีคอลัมน์สกุลเงิน · ใบสั่งซื้อ/รับสินค้า
+> สกุลเงินต่างประเทศ (อัตราขายวันรับสินค้า) · ข้อมูลตัวอย่างเดือน S−3/S−2 — ดู `docs/decisions/ADR-031-multi-currency.md`
+>
+> **อัปเดต ADR-030 (26 ต.ค. 2569, รอบ 13A — แก้ตามผลตรวจบัญชี/ภาษีและภาษา):** ไม่มีไฟล์ runtime ใหม่ ·
+> **ใบสั่งซื้อ/ใบรับสินค้ามี VAT ของผู้ขาย** (`planGoodsReceiptVatFields` ใน `erp-tax-reports-core.js`; ฟอร์มใน `erp-tax-forms.js`
+> ส่วนที่ 5) → เจ้าหนี้ยอดรวม VAT, ภาษีซื้อเข้ารายงานภาษีซื้อ/ภ.พ.30 เมื่อได้ใบกำกับภาษี (ยังไม่ได้ = 1155 + รายการ "ต้องตรวจ") ·
+> หัก ณ ที่จ่ายเงื่อนไข 3 แบ่งภาระผู้จ่าย/ผู้รับ · เกณฑ์ 1,000 บาทต่อสัญญา · วันที่จ่ายเงินแยกได้ · ถาม VAT ของผู้รับเงินแทนการเดา ·
+> ใบกำกับภาษีเมื่อรับชำระ (ม.78/1: `invoiceTaxPointAtPayment` / `paymentTaxPoints`, สมุดรายวัน 2155 → 2154) · ฉบับแทนอ้างเลขเดิม ·
+> ยกเลิกข้ามเดือนกลับรายการวันสุดท้ายของเดือนเอกสาร · ใบอย่างย่อพิมพ์ POS ID/เลขอนุมัติ (`abbreviatedInvoiceApproval`) ·
+> ตารางวันหยุดราชการ (`TAX_PUBLIC_HOLIDAYS`, `taxDueDatePair`) · อัตรา VAT ตามวันที่ (`VAT_RATE_SCHEDULE`, `vatRateOn`) ·
+> บัญชีใหม่ 1156 / 2141 / 2155 / 2181 และรายการ `gr_vat`, `vat_due`, `expense_payment`, `vat_close`, `vat_payment`, `wht_remit` ·
+> ชุดปิดเดือน +3 ชีต · คำเตือนสำรองข้อมูล/เก็บเอกสาร 5 ปี (`erp_demo_last_backup_at`) · คำแปล EN ครบทุกข้อความใหม่ +
+> `PRINT_AGENCY_LABELS_EN` · `singularizeCounts` — ดู `docs/decisions/ADR-030-audit-r13-fixes.md`
+>
+> **อัปเดต ADR-029 (24 ต.ค. 2569):** หน้าใหม่ **สมุดบัญชีและปิดเดือน** (หมวดข้อมูลและรายงาน, โหมดง่าย) 6 แท็บ: สมุดรายวันทั่วไป,
+> บัญชีแยกประเภท, งบทดลอง, ชุดปิดเดือน (ผลตรวจ + Excel หลายชีตคลิกเดียว + ไฟล์ PEAK ผ่านการกำหนดคอลัมน์ + ปิดผลต่างโสหุ้ย + NRV),
+> บันทึกบัญชีด้วยมือ, ยอดยกมา (CSV → ตัวอย่าง → ยืนยัน) · **สมุดรายวันคำนวณใหม่จากเอกสารทุกครั้ง ไม่เก็บ ไม่แก้มือ** (`erp-journal-core.js`
+> `buildJournal`) เดบิต = เครดิตทุกรายการและทุกสถานประกอบการ (ผ่านบัญชีระหว่างสาขา 1190) ไม่งั้น throw · เอกสารยกเลิก = รายการกลับ
+> ในวันที่ยกเลิก (ไม่แก้รายการเดิม) · ต้นทุนขาย = ค่าจาก costing engine · ทุกการเปลี่ยนที่ทำให้รายการในงวดที่ปิดเปลี่ยน ถูกปฏิเสธก่อนเขียน
+> (`lockedJournalChanges`) · แถบแดงเมื่อไม่ลงตัว · ตั้งค่าบริษัทมีการ์ด **ผังบัญชีและการลงบัญชีอัตโนมัติ** (รหัส/ชื่อ, หมวดค่าใช้จ่าย,
+> ค่าเริ่มต้นเมื่อเอกสารไม่ระบุ — ทุกรายการที่ใช้ค่าเริ่มต้นถูกทำเครื่องหมาย) และ **QR พร้อมเพย์บนเอกสาร** (ปิดเป็นค่าเริ่มต้น; เปิดแล้ว
+> ใบกำกับ/ใบเสร็จ (ต้นฉบับ) และใบวางบิลมีกล่อง "สแกนจ่ายด้วยพร้อมเพย์"; ปิด = เอกสารพิมพ์เหมือนเดิมทุกไบต์) · ตัวสร้าง QR เขียนเอง
+> (`erp-qr-core.js`, ไม่มี dependency) · +6 ไฟล์ runtime `erp-journal-core.js`, `erp-journal.js`, `erp-promptpay-core.js`,
+> `erp-promptpay.js`, `erp-qr-core.js`, `i18n/en-journal.js` (+ `erp-journal.css`) · คีย์ใหม่ `comform_journal_settings_v1`,
+> `comform_journal_documents_v1`, `comform_promptpay_settings_v1` — ดู `docs/decisions/ADR-029-journals-month-end-promptpay.md`
+>
+> **อัปเดต ADR-028 (22 ต.ค. 2569):** หน้าใหม่ **ต้นทุนและกำไรต่องาน** (หมวดซื้อ / ผลิต / คลัง, โหมดง่าย) 6 แท็บ:
+> ต้นทุนงาน (ใบต้นทุนงาน งบเทียบจริง อัตรากำไรมีสี + ฟอร์มบันทึกเบิก/คืนวัสดุ ชั่วโมงแรงงาน ค่าใช้จ่ายอื่น ปิดงาน งบ),
+> กำไร (ตามงาน/ลูกค้า/สินค้า/เดือน + สาขา งวด Excel/CSV), การ์ดสินค้า, มูลค่าคงเหลือ/NRV, โสหุ้ย (ปันขาด/เกิน), ตั้งค่าต้นทุน ·
+> ต้นทุนสินค้าคงเหลือ **ถัวเฉลี่ยเคลื่อนที่ต่อ SKU ต่อสาขา** (ค่าเริ่มต้น) หรือ **FIFO** — จำนวนเต็มทั้งหมด (สตางค์ / พันส่วน /
+> ต้นทุนต่อหน่วย 4 ตำแหน่ง), ล็อกวิธีหลังมีรายการแรก เปลี่ยนได้เมื่อมีหนังสืออนุมัติกรมสรรพากร (มาตรา 65 ทวิ (6)),
+> รายการย้อนหลังคำนวณใหม่ไปข้างหน้าแต่ **ไม่ยอมให้ต้นทุนในงวดที่ปิดเปลี่ยน** (ข้อความเดียวกับการปิดงวด) · กำไรขั้นต้นบนหน้า
+> วิเคราะห์และแดชบอร์ดแสดงเฉพาะยอดขายที่มีต้นทุน พร้อม "มีต้นทุน X% ของยอดขาย" · ข้อมูลตัวอย่างมี 4 งาน (ขาดทุน / กำไรสูง /
+> ลูกค้ากำไรบาง) ตัวเลขเท่ากันทุกวันที่โหลด · +4 ไฟล์ runtime `erp-costing-core.js`, `erp-job-costing-core.js`,
+> `erp-costing.js`, `i18n/en-costing.js` (+ `erp-costing.css`) · คีย์ใหม่ `comform_costing_settings_v1`,
+> `comform_job_costing_v1` — ดู `docs/decisions/ADR-028-inventory-and-job-costing.md`
+>
+> **อัปเดต ADR-027 (14 ต.ค. 2569):** หน้าใหม่ **วิเคราะห์และคาดการณ์** (หมวดข้อมูลและรายงาน, โหมดง่าย) 4 แท็บ: เปรียบเทียบ (งวดก่อน / ปีก่อน
+> ตามสินค้า ลูกค้า สาขา หมวด, % "—" เมื่อฐานเป็น 0, 5 อันดับเพิ่ม/ลดพร้อมประโยค), ABC สินค้า, คาดการณ์ยอดขาย (Holt / SES / Holt-Winters
+> เลือกจากทดสอบย้อนหลัง MAPE/sMAPE, ช่วง ~80%, เพดาน 3 เท่า, ต้องมี ≥ 6 เดือน) และจุดสั่งซื้อ (SS = z·σ·√L, ปุ่มสร้าง PO ร่าง, การ์ดใน
+> งานของฉัน) · **นิยามยอดขายย้ายมาอยู่ที่เดียว** `erp-analytics-core.js` (`packSalesRows`) — Dashboard KPI ก็เรียกตัวนี้ ตัวเลขจึงตรงกันเสมอ ·
+> **คาดการณ์มีชุดเดียว**: แท็บคาดการณ์ของแดชบอร์ด วิเคราะห์ธุรกิจ และ Quant อ่านจาก `ERPAnalytics` (ลบเครื่องคาดการณ์เดิมใน `app.js`,
+> app.js ลดลง 468 บรรทัด) · ประวัติยอดขายตัวอย่างรายเดือน `comform_demo_sales_history_v1` ใช้เฉพาะเดือน-สาขาที่ไม่มีเอกสารขาย ·
+> ระยะเวลารอสินค้า `leadTimeDays` ใน Product Master (+4 ไฟล์ runtime `erp-analytics-core.js`, `erp-forecast-core.js`,
+> `erp-analytics.js`, `i18n/en-analytics.js`) — ดู `docs/decisions/ADR-027-analytics-and-forecast.md`
+>
+> **อัปเดต ADR-026 (13 ต.ค. 2569):** สลับภาษา TH | EN (ภาษาไทยเป็นค่าเริ่มต้นและไม่เปลี่ยนแม้แต่ไบต์เดียวในเอกสาร golden) —
+> `erp-i18n-core.js` (pure: ค่าตั้ง `comform_ui_language_v1`, `t()`, วันที่ ค.ศ., ตัวแปลวลีแบบ dictionary + pattern,
+> `englishBahtText`), `erp-i18n.js` (`ERPI18n`: แปลสิ่งที่วาดบนจอด้วย MutationObserver รวมต่อเฟรม กันลูป, ห่อ confirm/alert/prompt,
+> ปุ่ม TH | EN + เมนู Demo, ปุ่ม "?" อธิบายภาษีไทย, ปฏิทินภาษี), `erp-i18n-print.js` (ป้ายภาษาอังกฤษรองบนเอกสารการค้าเมื่อเลือก EN —
+> แบบฟอร์มราชการ 50 ทวิ / ภ.พ.30 / ใบแนบ ภ.ง.ด. พิมพ์ภาษาไทยเท่านั้น) และพจนานุกรมข้อมูลล้วนใน `i18n/` ·
+> **กฎข้อมูลผู้ใช้:** ห้ามแปลค่าใน input/textarea, contenteditable และทุกอย่างใต้ `[data-no-i18n]` — ทุกจุดที่แสดงชื่อลูกค้า/สินค้า/ผู้ขาย
+> ต้องใส่ `data-no-i18n` (`="doc"` = ตัวอย่างเอกสารการค้า, `="form"` = แบบฟอร์มราชการ) · ข้อความ UI ภาษาไทยใหม่ต้องเพิ่มใน `i18n/en-*.js`
+> ไม่เช่นนั้น `tests/i18n-coverage.test.cjs` จะล้ม — ดู `docs/decisions/ADR-026-english-ui.md`
+>
+> **อัปเดต ADR-025 (12 ต.ค. 2569):** แก้ 24 ข้อจากรีวิวรอบ 8 — ฐานหัก ณ ที่จ่ายฝั่งผู้จ่ายเป็นยอดก่อน VAT (เลือก "ราคานี้รวม VAT หรือไม่" `whtVatBasis`), เงื่อนไข 3 ออกให้ครั้งเดียว, ใบลดหนี้เห็นใบเพิ่มหนี้, ภ.พ.30 เลื่อนวันหยุด, bahtText "ล้านเอ็ด"; ควบคุมแบบ fail-closed: แก้บิล/ใบเสร็จตรวจทั้งวันที่เดิมและใหม่ (`ERPGovernance.issuedEditGate`), นำเข้า JSON วางแผนทุก pack ก่อนเขียน (`planBackupPackImport` ใน `erp-document-finance-core.js`: ปฏิเสธงวดที่ปิด, เก็บสำเนาเอกสารที่ออกแล้ว, ประวัติการยื่นแบบต่อท้ายเท่านั้น, ไฟล์ไม่มี checksum ต้องยืนยัน), การปิดงวดอยู่ใน Backup (`masterData.periodLocks` รวมแบบเพิ่มได้อย่างเดียว), กู้คืนจากถังขยะ/ลงสต็อกตรวจปิดงวด, ข้อมูลบริษัทเสีย → แถบเตือน + ห้ามออกเอกสารภาษี (`ERPCompanyProfile.issueRefusal`), pack เดือนเสีย → "อ่านข้อมูลเดือน … ไม่ได้" ทุกหน้า (`ERPIntegrity.safeRender`); UI: กล่องดูเอกสารใช้ `ERPUiMenu.trapDialog`, A4 16 หน่วยบรรทัด/หน้า, ตัวอย่างบนจอย่อส่วนจากหน้า PDF จริง — ไม่มีไฟล์ runtime ใหม่, `app.js` ไม่เพิ่มบรรทัด
+>
+> **อัปเดต ADR-024 (5 ต.ค. 2569):** ใบเพิ่มหนี้ ม.86/9 (collection `debitNotes`, เก็บเงินรวมกับบิลเดิมผ่าน `paymentSummary().debited`) และหัก ณ ที่จ่ายฝั่งผู้จ่าย: ส่วน "หักภาษี ณ ที่จ่าย" ในฟอร์มค่าใช้จ่าย, หนังสือรับรอง 50 ทวิ (collection `whtCertificates`), แท็บ ภ.ง.ด.3 / ภ.ง.ด.53 / ทะเบียน 50 ทวิ ในหน้า "รายงานภาษี", บันทึกการยื่น `comform_wht_filings_v1` (+4 ไฟล์ runtime `erp-debit-note-core.js`, `erp-debit-note.js`, `erp-payer-wht-core.js`, `erp-payer-wht.js`)
+>
 > **อัปเดต ADR-023 (5 ต.ค. 2569):** รายงานภาษีขาย / ภาษีซื้อ / ภาษีซื้อต้องห้าม และสรุป ภ.พ.30 (บรรทัด 1–12) แยกตามสถานประกอบการ — หน้า "รายงานภาษี" ในหมวดข้อมูล, ข้อมูลใบกำกับภาษีซื้อในค่าใช้จ่าย, สาขาผู้จำหน่าย, `vatCategory` ในบิล, collection `vatReturns` (+3 ไฟล์ runtime `erp-tax-reports-core.js`, `erp-tax-forms.js`, `erp-tax-reports.js`)
 >
 > **อัปเดต ADR-022 (4 ต.ค. 2569):** บริษัทเลือกได้ว่ามี **สำนักงานใหญ่อย่างเดียว** หรือ **สำนักงานใหญ่ + 1 สาขา** (ตั้งค่าบริษัท) — แหล่งความจริงเดียวของรายชื่อ/ชื่อสาขาบนหน้าจอคือ `erp-branches-core.js` (+1 ไฟล์ runtime); id ภายในยังเป็น `ubon`/`khonkaen` ทุกที่
@@ -110,35 +178,35 @@ README ระบุตรง ๆ ว่า "เวอร์ชันนี้ย
 |---|---:|---|---|---|
 | `app.js` | 8,279 | UI (+Storage) | H | ตัวควบคุมหลัก: ฟอร์มใบเสนอราคา/ใบกำกับภาษี/ใบเสร็จ/สั่งผลิต/ค่าใช้จ่าย, รายการเอกสาร, แดชบอร์ด, วิเคราะห์ธุรกิจ, ข้อมูลหลัก, นำเข้า CSV, Export/Import, สำรองในเครื่อง, โค้ดซิงก์ Cloud (ปิดใช้ในเดโม) และ `bootComformApp()` |
 | `erp-sales-form-assist.js` | 321 | UI | H | ตัวเลือก "รูปแบบใบกำกับภาษี" (เต็มรูป/อย่างย่อ) ล็อก VAT ให้เป็นราคารวม VAT เมื่อเลือกอย่างย่อ และเติมราคาขายมาตรฐานจากแฟ้มสินค้า |
-| `erp-order-flow.js` | 1,009 | UI + Storage | H | "ศูนย์งานขาย & ลูกหนี้": ใบสั่งขาย, วางแผนจัดสินค้า, คิวงาน, ใบวางบิล, รับชำระ (Payment) และยกเลิกรับชำระ |
-| `erp-document-finance-core.js` | 875 | Core | I | วางแผนการบันทึกเอกสาร (`plan*DocumentAction`), ตัวรัน `runDocumentAction`, สร้างใบวางบิล/รับชำระ/ร่างใบเสร็จจาก Payment, ตรวจ pack ข้อมูลแบบเข้ม |
+| `erp-order-flow.js` | 1,055 | UI + Storage | H | "ศูนย์งานขาย & ลูกหนี้": ใบสั่งขาย, วางแผนจัดสินค้า, คิวงาน, ใบวางบิล, รับชำระ (Payment) และยกเลิกรับชำระ |
+| `erp-document-finance-core.js` | 994 | Core | I | วางแผนการบันทึกเอกสาร (`plan*DocumentAction`), ตัวรัน `runDocumentAction`, สร้างใบวางบิล/รับชำระ/ร่างใบเสร็จจาก Payment, ตรวจ pack ข้อมูลแบบเข้ม |
 | `erp-workflow-definitions.js` | 65 | Core | I | นิยามขั้น Order-to-Cash 6 ขั้น สำหรับแถบความคืบหน้า |
 | `erp-workflow-graph-core.js` | 61 | Core | I | ตัวรัน workflow graph (ปัจจุบันถูกใช้แค่ในเทสต์ `refactor-4-1.test.cjs`) |
-| `quotation-document.js` | 478 | Doc | H | ใบเสนอราคา A4 (ต้นฉบับ/สำเนา), Preview, พิมพ์, PDF |
-| `delivery-tax-document.js` | 1,412 | Doc (+Storage) | H | ใบส่งสินค้า/ใบกำกับภาษี A4 แก้ไขบนหน้าเอกสารได้ และบันทึก "ฉบับพิมพ์" ลง `issuedInvoices` |
+| `quotation-document.js` | 493 | Doc | H | ใบเสนอราคา A4 (ต้นฉบับ/สำเนา), Preview, พิมพ์, PDF |
+| `delivery-tax-document.js` | 1,445 | Doc (+Storage) | H | ใบส่งสินค้า/ใบกำกับภาษี A4 แก้ไขบนหน้าเอกสารได้ และบันทึก "ฉบับพิมพ์" ลง `issuedInvoices` |
 
 #### รับเงิน / ลูกหนี้
 
 | ไฟล์ | บรรทัด | ชั้น | โหลดโดย | หน้าที่ |
 |---|---:|---|---|---|
-| `receipt-document.js` | 1,449 | Doc (+Storage) | H | ใบเสร็จรับเงิน A4 รวมช่องหัก ณ ที่จ่าย และบันทึกฉบับพิมพ์ลง `issuedReceipts` |
-| `erp-integrity.js` | 380 | Storage (+กฎ) | H | `ERPIntegrity`: ตัวเขียนแบบ transaction/rollback, `paymentSummary()` (ยอดชำระ/คงค้างของบิล), `reconcilePayments()`, `reconcileBillings()`, ตรวจใบเสร็จ/การส่งของ, สร้างใบเสร็จจาก Payment |
-| `erp-receivables-core.js` | 634 | Core | I | กฎวันครบกำหนด (`invoiceDueDate`), ช่วงอายุลูกหนี้, บัญชีลูกหนี้ต่อลูกค้า, CSV, การปรับยอดขายจากใบลดหนี้, สรุปกำไรตามสาขา |
+| `receipt-document.js` | 1,473 | Doc (+Storage) | H | ใบเสร็จรับเงิน A4 รวมช่องหัก ณ ที่จ่าย และบันทึกฉบับพิมพ์ลง `issuedReceipts` |
+| `erp-integrity.js` | 452 | Storage (+กฎ) | H | `ERPIntegrity`: ตัวเขียนแบบ transaction/rollback, `paymentSummary()` (ยอดชำระ/คงค้างของบิล), `reconcilePayments()`, `reconcileBillings()`, ตรวจใบเสร็จ/การส่งของ, สร้างใบเสร็จจาก Payment |
+| `erp-receivables-core.js` | 675 | Core | I | กฎวันครบกำหนด (`invoiceDueDate`), ช่วงอายุลูกหนี้, บัญชีลูกหนี้ต่อลูกค้า, CSV, การปรับยอดขายจากใบลดหนี้, สรุปกำไรตามสาขา |
 | `erp-receivables.js` | 353 | UI | H | รายงานอายุลูกหนี้ตามลูกค้า และแถบแจ้งเตือนบิลเกินกำหนด |
 
 #### ใบลดหนี้
 
 | ไฟล์ | บรรทัด | ชั้น | โหลดโดย | หน้าที่ |
 |---|---:|---|---|---|
-| `erp-credit-note-core.js` | 843 | Core | I | กฎใบลดหนี้ ม.86/10: คำนวณ VAT ของผลต่าง, ตรวจยอดลดสะสมไม่เกินบิล, รับคืนสินค้า, แบ่งหน้า, สรุปภาษีขายสุทธิ |
-| `erp-credit-note.js` | 846 | UI + Storage | H | หน้าออกใบลดหนี้/รายการใบลดหนี้, บันทึก, แก้ไข, ยกเลิก (รวมตรวจสต็อกเมื่อยกเลิกใบลดหนี้รับคืน) |
-| `credit-note-document.js` | 327 | Doc | H | ใบลดหนี้ A4 ครบช่องตาม ม.86/10 |
+| `erp-credit-note-core.js` | 876 | Core | I | กฎใบลดหนี้ ม.86/10: คำนวณ VAT ของผลต่าง, ตรวจยอดลดสะสมไม่เกินบิล, รับคืนสินค้า, แบ่งหน้า, สรุปภาษีขายสุทธิ |
+| `erp-credit-note.js` | 868 | UI + Storage | H | หน้าออกใบลดหนี้/รายการใบลดหนี้, บันทึก, แก้ไข, ยกเลิก (รวมตรวจสต็อกเมื่อยกเลิกใบลดหนี้รับคืน) |
+| `credit-note-document.js` | 378 | Doc | H | ใบลดหนี้ A4 ครบช่องตาม ม.86/10 |
 
 #### ผลิต / จัดซื้อ / คลัง
 
 | ไฟล์ | บรรทัด | ชั้น | โหลดโดย | หน้าที่ |
 |---|---:|---|---|---|
-| `erp-production-core.js` | 344 | UI + Storage (ชื่อ "core" แต่ **ไม่ใช่** pure) | H | `ERPProductionCore`: PO, รับสินค้าเข้าคลัง (GR) และกลับรายการ, ปรับยอด/โอนสต็อก, ความเคลื่อนไหวสินค้า, Audit Log, Recycle Bin, ตรวจสต็อกก่อนออกบิล และห่อ (wrap) ฟังก์ชันบันทึกของ `app.js` เพื่อเขียน audit |
+| `erp-production-core.js` | 354 | UI + Storage (ชื่อ "core" แต่ **ไม่ใช่** pure) | H | `ERPProductionCore`: PO, รับสินค้าเข้าคลัง (GR) และกลับรายการ, ปรับยอด/โอนสต็อก, ความเคลื่อนไหวสินค้า, Audit Log, Recycle Bin, ตรวจสต็อกก่อนออกบิล และห่อ (wrap) ฟังก์ชันบันทึกของ `app.js` เพื่อเขียน audit |
 
 งาน "สั่งผลิตสินค้า" และ "รายการสั่งผลิต" อยู่ใน `app.js` (`saveProduction`, `renderPList`) ไม่มีไฟล์แยก
 
@@ -150,19 +218,30 @@ README ระบุตรง ๆ ว่า "เวอร์ชันนี้ย
 
 | ไฟล์ | บรรทัด | ชั้น | โหลดโดย | หน้าที่ |
 |---|---:|---|---|---|
-| `erp-customer-experience.js` | 274 | UI | H | แท็บแดชบอร์ด (ภาพรวม / ลูกหนี้ค้างรับ / ยอดขายและเป้าหมาย / คาดการณ์ / ความเสี่ยง — `role="tablist"`, ลูกศร ←/→) และ (ADR-017) ตาราง `DASHBOARD_VIEW_BLOCKS` ว่าบล็อกใดอยู่แท็บใด: ภาพรวม = KPI 4 ช่อง + "สิ่งที่ต้องทำ" + กราฟ 2 รูป, ค้นหาทั้งระบบ `Ctrl K`, Customer 360 |
+| `erp-customer-experience.js` | 318 | UI | H | แท็บแดชบอร์ด (ภาพรวม / ลูกหนี้ค้างรับ / ยอดขายและเป้าหมาย / คาดการณ์ / ความเสี่ยง — `role="tablist"`, ลูกศร ←/→) และ (ADR-017) ตาราง `DASHBOARD_VIEW_BLOCKS` ว่าบล็อกใดอยู่แท็บใด: ภาพรวม = KPI 4 ช่อง + "สิ่งที่ต้องทำ" + กราฟ 2 รูป, ค้นหาทั้งระบบ `Ctrl K`, Customer 360 |
 | `erp-decision-council-core.js` | 149 | Core | I | "Decision Review": กฎตรวจแบบ deterministic หลายมุมมอง (ไม่ใช่ AI/LLM ตามที่คอมเมนต์ระบุ) |
-| `erp-decision-council.js` | 73 | UI | H | กล่อง Decision Review บนแดชบอร์ด |
+| `erp-decision-council.js` | 87 | UI | H | กล่อง Decision Review บนแดชบอร์ด |
 | `erp-product-experience-core.js` | 118 | Core | I | คิวงาน, ความพร้อมของสต็อก, แถวรายการรออนุมัติ |
-| `erp-product-experience.js` | 253 | UI | H | หน้า "งานของฉัน", "ศูนย์อนุมัติ", "พอร์ทัลลูกค้า (Preview)", ปุ่มสลับโหมดง่าย/ขั้นสูง, ตั้งชื่อเมนู และ (ADR-015) จัดเมนูซ้ายเป็นหมวดพับได้ (`NAV_SECTIONS` ใน core), ไฮไลต์เมนูของเอกสารเมื่ออยู่หน้าฟอร์ม, ลิงก์ "← รายการ…" บนฟอร์ม |
+| `erp-product-experience.js` | 429 | UI | H | หน้า "งานของฉัน", "ศูนย์อนุมัติ", "พอร์ทัลลูกค้า (Preview)", ปุ่มสลับโหมดง่าย/ขั้นสูง, ตั้งชื่อเมนู และ (ADR-015) จัดเมนูซ้ายเป็นหมวดพับได้ (`NAV_SECTIONS` ใน core), ไฮไลต์เมนูของเอกสารเมื่ออยู่หน้าฟอร์ม, ลิงก์ "← รายการ…" บนฟอร์ม |
+| `erp-analytics-core.js` (ADR-027) | 606 | Core | I | pure: นิยามยอดขายเดียวของระบบ (ย้ายจาก app.js: `invoiceNetSales` … `packSalesRows`), เดือน/งวด พ.ศ.–ค.ศ., แยกบรรทัดตามสินค้า/ลูกค้า, เปรียบเทียบ + 5 อันดับ, ABC (สตางค์จำนวนเต็ม), จุดสั่งซื้อ, อ่านประวัติตัวอย่างแบบเข้ม |
+| `erp-forecast-core.js` (ADR-027) | 380 | Core | I | pure: SES / Holt / Holt-Winters additive, grid search, holdout MAPE/sMAPE, ช่วง ~80% √h, clamp ≥ 0, เพดาน 3× ค่าสูงสุด, outlier (ไม่ลบ) — ตรงกับ `scripts/forecast-reference.py` (numpy) |
+| `erp-analytics.js` (ADR-027) | ~1,060 | UI | H | `ERPAnalytics`: หน้า "วิเคราะห์และคาดการณ์" 4 แท็บ, กราฟ SVG, "?" อธิบาย, Excel/CSV, สร้าง PO ร่าง, การ์ดจุดสั่งซื้อใน "งานของฉัน", การ์ดคาดการณ์ในแดชบอร์ด/วิเคราะห์ธุรกิจ, ข้อมูลให้ Quant |
+| `erp-costing-core.js` (ADR-028) | ~1,180 | Core | I | pure: ถัวเฉลี่ยเคลื่อนที่ / FIFO ต่อ SKU ต่อสาขา, ลำดับรายการแน่นอน, สต็อกติดลบ (ต้นทุนชั่วคราว + ปรับเมื่อรับเข้า), โอน/คืน/กลับรายการรับ, ล็อกวิธี, ตรวจงวดที่ปิด (`lockedCostChanges`), มูลค่า ณ วันที่, การ์ดสินค้า, NRV |
+| `erp-job-costing-core.js` (ADR-028) | ~600 | Core | I | pure: งาน = ใบสั่งผลิต, ใบต้นทุนงาน (วัสดุ แรงงาน โสหุ้ย อื่น ๆ งบ), กำไรขั้นต้นบนนิยามยอดขายเดียว + coverage, รายงานกำไร 4 มิติ, โสหุ้ยปันขาด/เกิน, ตรวจรายการก่อนบันทึก |
+| `erp-journal-core.js` (ADR-029) | ~1,270 | Core | I | pure: สมุดรายวันจากเอกสาร (ใบกำกับ/ขายสด/ใบเสร็จ/รับชำระ/CN/DN/ค่าใช้จ่าย/ภาษีซื้อเลื่อนเดือน/สต็อกจาก costing/ต้นทุนงาน/บันทึกมือ/ปิดโสหุ้ย/NRV/ยอดยกมา), `finalize` Dr = Cr ต่อสถานประกอบการ, รายการกลับ, งบทดลอง/แยกประเภท/รายการค้าง, ผังบัญชี + ตรวจ, CSV, แผนนำเข้ายอดยกมา, `lockedJournalChanges` |
+| `erp-journal.js` (ADR-029) | ~1,210 | UI | H | `ERPJournal`: หน้า "สมุดบัญชีและปิดเดือน" 6 แท็บ, ผลตรวจ + แถบแดง, CSV/Excel/PEAK/ชุดปิดเดือน, บันทึกมือ, ยอดยกมา, การ์ดผังบัญชี, ตรวจงวดปิดก่อนเขียน, backup |
+| `erp-promptpay-core.js` (ADR-029) | ~240 | Core | I | pure: payload EMVCo/Thai QR (tag 29 / 30), CRC-16/CCITT-FALSE, ตรวจหมายเลข, จำนวนเงิน, การตั้งค่า strict |
+| `erp-qr-core.js` (ADR-029) | ~370 | Core | I | pure: ตัวเข้ารหัส QR (byte mode, v1–10, L/M/Q/H, Reed–Solomon, 8 mask) + SVG |
+| `erp-promptpay.js` (ADR-029) | ~280 | UI | H | `ERPPromptPay`: การ์ดตั้งค่า (ปิดเป็นค่าเริ่มต้น, รายการแอปธนาคารที่ทดสอบแล้ว), `decorate()` ใส่กล่อง QR ในหน้าสุดท้ายของต้นฉบับ (ไม่เปลี่ยนอะไรเมื่อปิด), `billingBoxHtml()` |
+| `erp-costing.js` (ADR-028) | ~1,000 | UI | H | `ERPCosting`: หน้า "ต้นทุนและกำไรต่องาน" 6 แท็บ, ฟอร์มบันทึก, Excel/CSV, กล่องกำไรขั้นต้นให้หน้าวิเคราะห์/แดชบอร์ด, ปุ่ม "ใบต้นทุนงาน" ในรายการสั่งผลิต, ตรวจงวดปิดให้การรับสินค้า/ปรับสต็อก/โอน/ใบกำกับ, backup |
 
 #### ธรรมาภิบาล / อนุมัติ / สำรองข้อมูล
 
 | ไฟล์ | บรรทัด | ชั้น | โหลดโดย | หน้าที่ |
 |---|---:|---|---|---|
-| `erp-governance-core.js` | 258 | Core | I | Period Lock, ช่วงอายุหนี้ (AR/AP), นโยบายอนุมัติ `DEMO_APPROVAL_POLICY`, checklist ปิดงวด, ความพร้อม e-Tax/WHT |
-| `erp-governance.js` | 112 | Storage + UI | H | `ERPGovernance`: ล็อก/ปลดล็อกงวด, บันทึก audit, Sync Outbox, บันทึกการอนุมัติ |
-| `erp-backup.js` | 58 | Storage | H | `ERPBackup`: capture/restore ทั้ง tenant, ตรวจโครงสร้าง, checksum SHA-256, dry-run |
+| `erp-governance-core.js` | 291 | Core | I | Period Lock, ช่วงอายุหนี้ (AR/AP), นโยบายอนุมัติ `DEMO_APPROVAL_POLICY`, checklist ปิดงวด, ความพร้อม e-Tax/WHT |
+| `erp-governance.js` | 193 | Storage + UI | H | `ERPGovernance`: ล็อก/ปลดล็อกงวด, บันทึก audit, Sync Outbox, บันทึกการอนุมัติ |
+| `erp-backup.js` | 108 | Storage | H | `ERPBackup`: capture/restore ทั้ง tenant, ตรวจโครงสร้าง, checksum SHA-256, dry-run |
 
 #### ข้อมูลหลัก
 
@@ -179,28 +258,36 @@ README ระบุตรง ๆ ว่า "เวอร์ชันนี้ย
 | `boot-status.js` | 73 | Infra | H | เก็บ error ตอนโหลด แสดงแถบ "ระบบโหลดไม่สมบูรณ์" และป้าย "DEMO · Local data" (ป้ายนี้ถูกซ่อนในโหมด Local Demo ตั้งแต่ ADR-015) |
 | `tenant-context.js` | 60 | Infra | H | `ComformTenant`: สร้าง prefix `erp_tenant::{tenantId}::` ให้ทุก key |
 | `local-demo-mode.js` | 112 | Infra | H | ตั้งโปรไฟล์ผู้ใช้สาธิต, ปิด Cloud, `SaaSService` จำลอง และ (ADR-015) ปุ่ม "⚙ Demo" ที่ส่วนหัว + `window.ERPDemoMenu.register()` ให้โมดูลอื่นเพิ่มรายการเมนูเอง (แทนแถบเขียวเดิม) |
-| `erp-ui-menu.js` (ADR-015) | 484 | UI | I | เมนู dropdown ที่เข้าถึงด้วยคีย์บอร์ดได้ (menu button pattern) ใช้กับเมนู Demo และเมนู "⋯" ของแถวในตาราง (`openMenuFor`, ADR-016) |
+| `erp-ui-menu.js` (ADR-015) | 539 | UI | I | เมนู dropdown ที่เข้าถึงด้วยคีย์บอร์ดได้ (menu button pattern) ใช้กับเมนู Demo และเมนู "⋯" ของแถวในตาราง (`openMenuFor`, ADR-016) |
 | `erp-icons.js` (ADR-017) | 131 | UI | I | ชุดไอคอนเส้นชุดเดียวของปุ่ม/เมนู/แถบเครื่องมือ/เมนูซ้าย (`icon(name)` → `<svg class="erp-icon" aria-hidden="true"><use href="#erp-i-…">`, sprite ใส่ท้าย `<body>` ครั้งเดียว) — รวมไอคอนของ part A ไว้ที่นี่ที่เดียว; ไฟล์ที่รันแบบ script ธรรมดาใช้ `window.ERPIcons` |
 | `erp-row-actions.js` (ADR-016, 017) | 599 | UI (+ core pure) | I | ปุ่มของแต่ละแถวในตารางรายการ: รายการการทำงานต่อแถวชุดเดียว (`rowActions(listId, facts)`) กำหนดทั้งปุ่มหลัก 1 ปุ่มและเมนู "⋯" (เรียงดู/พิมพ์ → แก้ไข → สร้างเอกสารต่อ → อื่น ๆ → ลบ/ยกเลิก สีแดงท้ายสุด), เรียกฟังก์ชันเดิมด้วยอาร์กิวเมนต์เดิม, ตัวดักคลิกเดียวต่อหน้า (`window.ERPRowActions`), (ADR-017) คืนโฟกัสคีย์บอร์ดให้ปุ่มของแถวเดิมหลังรายการถูกวาดใหม่ — import โดย `app.js`, `erp-credit-note.js`, `erp-order-flow.js`, `business-rules.js`; `erp-production-core.js` ใช้ผ่าน `window.ERPRowActions` |
 | `local-file-store.js` | 193 | Storage | H | `LocalFileStore`: เก็บไฟล์แนบใน IndexedDB `comform-local-files` |
 | `click-fallback.js` | 103 | Infra | H | `go()` สำรองสำหรับ `onclick` ในกรณีที่ `app.js` ยังโหลดไม่เสร็จ และเมนู ☰ บนมือถือ (ปิดเมื่อเลือกเมนูใดก็ได้) |
 | `erp-storage-contracts.js` | 38 | Infra | I | ชื่อ key ที่เก็บถาวร และ event `erp:storage-written` |
-| `erp-shared-core.js` | 431 | Core | I | VAT, WHT, ปัดเศษ ป.86/2542, รูปแบบใบกำกับภาษี, จำนวนเงินเป็นตัวอักษร, แบ่งหน้าเอกสาร, วันที่ธุรกิจ |
+| `erp-shared-core.js` | 549 | Core | I | VAT, WHT, ปัดเศษ ป.86/2542, รูปแบบใบกำกับภาษี, จำนวนเงินเป็นตัวอักษร, แบ่งหน้าเอกสาร, วันที่ธุรกิจ |
 | `erp-date-core.js` | 101 | Core | I | แปลง พ.ศ./ค.ศ., แยกวันที่หลายรูปแบบ, ป้ายเดือนไทย |
 | `erp-demo-concurrency.js` | 30 | Infra | I | `withDemoWriteLease()` กันสองแท็บบันทึกบัญชีขายพร้อมกัน |
 | `erp-detail-security.js` | 13 | Infra | I | กรอง URL ไฟล์แนบ (อนุญาต `blob:`, `https:`, data URL ของรูป/PDF) |
 | `local-demo-health.js` | 38 | Infra | H | รายการ "ตรวจสถานะ Demo" ในเมนู Demo และ guard กันกดบันทึกซ้ำ (single-flight) |
 | `trial-mode.js` | 137 | Infra | H | `TrialService`: onboarding และโควตาทดลอง (ในโหมดเดโม: ใบเสนอราคา 30, ใบกำกับ 20, ใบเสร็จ 20, ลูกค้า 30, ผู้จำหน่าย 20, สินค้า 50 — ไม่นับข้อมูลตัวอย่าง) |
-| `erp-demo-seed-core.js` | 829 | Core | I | สร้างข้อมูลตัวอย่างบริษัท IT ไทย โดยอิงวันที่ปัจจุบัน (ADR-013) |
+| `erp-demo-seed-core.js` | 1,255 | Core | I | สร้างข้อมูลตัวอย่างบริษัท IT ไทย จากวันที่โหลด 2 แบบ: บิลค้างเก่านับย้อนจากวันนี้ เรื่องภาษีของเดือนภาษีล่าสุดที่ปิดแล้วลงวันที่ตามปฏิทินเดือนนั้น (ADR-013, R9.1) |
 | `erp-demo-seed.js` | 478 | UI + Storage | H | รายการ "โหลดข้อมูลตัวอย่างสำหรับสาธิต" และ "ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)" (สีแดง ล่างสุด) ในเมนู Demo |
-| `erp-company-profile-core.js` (ADR-020) | 591 | Core | I | ข้อมูลบริษัท/โลโก้ของลูกค้า: ตรวจเลขผู้เสียภาษี (check digit) รหัสสาขา ช่องบังคับ, อ่าน/เขียน 2 key แบบ all-or-nothing, รวมเข้า `CurrentUser.companyProfile`, `documentCompany()` ให้ `branchCompany()` ของเอกสาร, `companyLogoUrl()` ตัวเดียว, ย่อโลโก้ด้วย canvas, ตรวจ Backup |
+| `erp-company-profile-core.js` (ADR-020) | 636 | Core | I | ข้อมูลบริษัท/โลโก้ของลูกค้า: ตรวจเลขผู้เสียภาษี (check digit) รหัสสาขา ช่องบังคับ, อ่าน/เขียน 2 key แบบ all-or-nothing, รวมเข้า `CurrentUser.companyProfile`, `documentCompany()` ให้ `branchCompany()` ของเอกสาร, `companyLogoUrl()` ตัวเดียว, ย่อโลโก้ด้วย canvas, ตรวจ Backup |
 | `erp-document-cancel-core.js` (ADR-021) | 104 | Core | I | กติกายกเลิกใบกำกับภาษี/ใบเสร็จ (ไม่ลบ): รายการเหตุผล, ตรวจเหตุผล, ข้อความเอกสารที่ต้องยกเลิกก่อน, `applyDocumentCancel()` (status `cancelled` + `voided`), ปลดการเชื่อมใบเสนอราคา/ใบสั่งผลิต |
 | `erp-document-cancel.js` (ADR-021) | 214 | UI + Storage | H | `ERPDocumentCancel`: เมนู ⋯ › "ยกเลิกใบกำกับภาษี / ยกเลิกใบเสร็จ", กล่องเหตุผล, ปฏิเสธเมื่อปิดงวด/มีเอกสารอ้างอิง, บันทึกใน write session เดียว + Audit Log |
-| `erp-company-profile.js` (ADR-020, 022) | 716 | UI | H | หน้า ตั้งค่าบริษัท › "ข้อมูลบริษัทและโลโก้": ฟอร์ม + ตัวอย่างหัวเอกสาร, อัปโหลดโลโก้, บันทึก/คืนค่า/กลับไปใช้ข้อมูลตัวอย่าง, `ERPCompanyProfile` (export/restore ใน Backup JSON) และ (ADR-022) "จำนวนสถานประกอบการ" (ปฏิเสธเมื่อสาขา 2 ยังมีข้อมูล) + ตัวปรับหน้าจอสาขา (`applyBranchScreens`: ชื่อสาขาในฟอร์ม/ตัวกรอง/แท็บ, ซ่อนสาขา 2 ในโหมดสาขาเดียว, แถบเตือนเมื่อพบข้อมูลสาขา 2) |
-| `erp-tax-reports-core.js` (ADR-023) | 840 | Core | I | pure: งวดภาษี/วันครบกำหนด, ตรวจเลขผู้เสียภาษี, รหัสสถานประกอบการผู้ขาย, `planExpenseVatFields` (ม.82/3, 82/5, ซ้ำ), `buildSalesTaxReport` / `buildPurchaseTaxReport` / `buildPp30Summary`, CSV, `vatReturns` (normalize/parse/merge/ยอดยกมา) |
+| `erp-company-profile.js` (ADR-020, 022) | 778 | UI | H | หน้า ตั้งค่าบริษัท › "ข้อมูลบริษัทและโลโก้": ฟอร์ม + ตัวอย่างหัวเอกสาร, อัปโหลดโลโก้, บันทึก/คืนค่า/กลับไปใช้ข้อมูลตัวอย่าง, `ERPCompanyProfile` (export/restore ใน Backup JSON) และ (ADR-022) "จำนวนสถานประกอบการ" (ปฏิเสธเมื่อสาขา 2 ยังมีข้อมูล) + ตัวปรับหน้าจอสาขา (`applyBranchScreens`: ชื่อสาขาในฟอร์ม/ตัวกรอง/แท็บ, ซ่อนสาขา 2 ในโหมดสาขาเดียว, แถบเตือนเมื่อพบข้อมูลสาขา 2) |
+| `erp-tax-reports-core.js` (ADR-023) | 861 | Core | I | pure: งวดภาษี/วันครบกำหนด, ตรวจเลขผู้เสียภาษี, รหัสสถานประกอบการผู้ขาย, `planExpenseVatFields` (ม.82/3, 82/5, ซ้ำ), `buildSalesTaxReport` / `buildPurchaseTaxReport` / `buildPp30Summary`, CSV, `vatReturns` (normalize/parse/merge/ยอดยกมา) |
 | `erp-tax-forms.js` (ADR-023) | 408 | UI | H | `ERPTaxForms`: ส่วนใบกำกับภาษีซื้อในฟอร์มค่าใช้จ่าย, สาขาผู้จำหน่าย, `vatCategory` ในฟอร์มบิล, ป้าย "ข้อมูล VAT ไม่ครบ" |
-| `erp-tax-reports.js` (ADR-023) | 665 | UI + Storage | H | `ERPTaxReports`: หน้า "รายงานภาษี" 4 แท็บ, พิมพ์ A4 / Excel / CSV, บันทึกการยื่น ภ.พ.30 (`comform_vat_returns_v1`) + เสนอปิดงวด |
-| `erp-branches-core.js` (ADR-022) | 342 | Core | I | แหล่งความจริงเดียวของสาขา: การตั้งค่า 1/2 (`comform_company_branch_setting_v1`, ไม่มี = 2), ชื่อสาขาจากข้อมูลบริษัท (`branchLabelMap()` แทน `BRANCH_TH`/`BRANCH_LABEL` ของทุกโมดูล), สำรวจข้อมูลสาขา 2 (`branchDataCensus`), ข้อความปฏิเสธ/เตือน, ช่องเลือกสาขาของหน้าเอกสาร A4 — `window.ERPBranches` ติดตั้งโดย `local-demo-mode.js` สำหรับ script ธรรมดา |
+| `erp-tax-reports.js` (ADR-023, 024) | 850 | UI + Storage | H | `ERPTaxReports`: หน้า "รายงานภาษี" 7 แท็บ (+ ภ.ง.ด.3, ภ.ง.ด.53, ทะเบียน 50 ทวิ — ADR-024), พิมพ์ A4 / Excel / CSV, บันทึกการยื่น ภ.พ.30 (`comform_vat_returns_v1`) + เสนอปิดงวด |
+| `erp-debit-note-core.js` (ADR-024) | 402 | Core | I | pure: กฎใบเพิ่มหนี้ ม.86/9 — สาเหตุ 5 แบบ, มูลค่าเดิม = บิล + ใบเพิ่มหนี้ก่อน − ใบลดหนี้ก่อน, VAT ของผลต่างคิดครั้งเดียว, ลูกค้า/สาขา/โหมด VAT เดียว, ห้ามบิลยกเลิก/อย่างย่อ, เลขไม่ซ้ำรวมใบที่ยกเลิก, export / ledger |
+| `erp-debit-note.js` (ADR-024) | 901 | UI + Storage | H | `ERPDebitNotes`: ฟอร์ม + รายการใบเพิ่มหนี้ (หมวดขาย, โหมดง่าย), ออกจากเมนู ⋯ ของบิล, บันทึกใน write session, ยกเลิก (ปฏิเสธก่อนถามเมื่อปิดงวด/เก็บเงินแล้ว), Excel, พิมพ์ผ่าน `credit-note-document.js` |
+| `erp-payer-wht-core.js` (ADR-024) | 604 | Core | I | pure: ประเภทเงินได้/อัตรา (ท.ป.4/2528), เงื่อนไข 1/2/3, กฎ 1,000 บาท, `planExpenseWhtFields`, 50 ทวิ (เล่มที่ พ.ศ./เลขที่ต่อสถานประกอบการ), ใบแนบ ภ.ง.ด.3/53, วันครบกำหนด, `whtFilings` (normalize/merge แบบ fail-closed) |
+| `erp-payer-wht.js` (ADR-024) | 684 | UI + Storage | H | `ERPPayerWht`: ส่วนหัก ณ ที่จ่ายในฟอร์มค่าใช้จ่าย (ดึงจาก Supplier Master), ออก 50 ทวิ ใน write session เดียวกับค่าใช้จ่าย, หน้าจอ/พิมพ์ ฉบับที่ 1 + 2, ยกเลิก, ข้อมูล ภ.ง.ด. + บันทึกการยื่น, ตัวกันลบค่าใช้จ่าย (D3), Backup hooks |
+| `erp-i18n-core.js` (ADR-026) | 594 | Core | I | pure: ค่าตั้งภาษา (fail-safe = ไทย), `t(key)`, วันที่ พ.ศ.→ค.ศ. และ ฿→THB, ตัวแปลวลี (exact + pattern + แยกส่วน, ข้อมูลผู้ใช้ไม่ถูกแปลครึ่ง ๆ), `englishBahtText`, `thaiBahtTextToAmount` |
+| `erp-i18n.js` (ADR-026) | 760 | UI + Storage | H | `ERPI18n`: แปลหน้าจอเมื่อเลือก EN (text node + placeholder/title/aria-label/alt, `<title>`, `<html lang>`), MutationObserver รวมต่อเฟรมพร้อมตัวกันลูป, ห่อ confirm/alert/prompt, ปุ่ม TH \| EN, ปุ่ม "?" และปฏิทินภาษี, หัวคอลัมน์ Excel/CSV |
+| `erp-i18n-print.js` (ADR-026) | 190 | UI | H | ป้ายภาษาอังกฤษรองและจำนวนเงินตัวอักษรภาษาอังกฤษบนใบเสนอราคา/ใบกำกับ/ใบเสร็จ/ใบลดหนี้/ใบเพิ่มหนี้ (เฉพาะ EN) |
+| `i18n/en-*.js` (ADR-026) | ~5,000 | Data | – | พจนานุกรม TH→EN (4,363 วลี, 79 pattern), คำอธิบายภาษี, ป้ายเอกสารพิมพ์ — ข้อมูลล้วน ไม่มีโค้ด |
+| `erp-branches-core.js` (ADR-022) | 359 | Core | I | แหล่งความจริงเดียวของสาขา: การตั้งค่า 1/2 (`comform_company_branch_setting_v1`, ไม่มี = 2), ชื่อสาขาจากข้อมูลบริษัท (`branchLabelMap()` แทน `BRANCH_TH`/`BRANCH_LABEL` ของทุกโมดูล), สำรวจข้อมูลสาขา 2 (`branchDataCensus`), ข้อความปฏิเสธ/เตือน, ช่องเลือกสาขาของหน้าเอกสาร A4 — `window.ERPBranches` ติดตั้งโดย `local-demo-mode.js` สำหรับ script ธรรมดา |
 
 **ไฟล์อื่นที่หน้าเว็บใช้:** `index.html` (2,067 บรรทัด, 201 KB), CSS 15 ไฟล์ (ใหญ่สุด `style.css` 2,667 บรรทัด), `logo.png` (322 KB), `vendor/html2canvas-1.4.1.min.js`, `vendor/jspdf-2.5.1.umd.min.js` และ `deployment-check.html` (หน้าตรวจไฟล์เว็บ)
 
@@ -403,10 +490,18 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | `comform_auto_backup_index_v1`, `comform_auto_backup_v1_{id}` | `app.js` | ✗ | backup ในเครื่อง สูงสุด 8 ชุด (`CLOUD_SYNC_SAFETY.maxBackups`) |
 | `comform_delivery_tax_document_draft_v1`, `comform_receipt_document_draft_v1` | document renderers | ✗ | ฉบับร่างของหน้าเอกสาร A4 |
 | `erp_product_experience_mode_v1` | `erp-product-experience.js` | ✓ | โหมดง่าย/ขั้นสูง |
+| `comform_ui_language_v1` | `erp-i18n.js` (ADR-026) | ✓ (`masterData.settings`, รีเซ็ตเดโมไม่ลบ) | ภาษาหน้าจอ `{schemaVersion:1, language:'th'\|'en', updatedAt}` — ค่าเสีย/ไม่มี = ไทย |
+| `comform_demo_sales_history_v1` | `erp-demo-seed.js` (ADR-027) | ✗ (รีเซ็ตเดโมลบ) | ประวัติยอดขายตัวอย่างรายเดือน `{schemaVersion:1, kind, demoSeed:true, storyPeriod, start, columns, rows:[[period, branch, productCode, customer, qty, value]]}` ~40 KB — ใช้เฉพาะเดือน-สาขาที่ไม่มีเอกสารขาย, เสีย = ไม่ใช้ทั้งชุด |
+| `comform_costing_settings_v1` | `erp-costing.js` (ADR-028) | ✓ (`masterData.costing`, รีเซ็ตเดโมลบ) | วิธีคิดต้นทุน + ประวัติการเปลี่ยน (เลขที่อนุมัติ), อัตราค่าแรง, ประมาณการโสหุ้ย, หมวดค่าใช้จ่ายโสหุ้ย, ต้นทุนยกมา, ราคา NRV — อ่านแบบ strict |
+| `comform_journal_settings_v1` | `erp-journal.js` (ADR-029) | ✓ (`masterData.accounting`, รีเซ็ตเดโมเก็บไว้) | ผังบัญชีของบริษัท (รหัส/ชื่อต่อบทบาท, บัญชีเพิ่มเติม), หมวดค่าใช้จ่าย → บัญชี, ค่าเริ่มต้นการลงบัญชี, การกำหนดคอลัมน์ PEAK, ตัวเลือกต้นทุนขายสิ้นเดือน — อ่านแบบ strict |
+| `comform_journal_documents_v1` | `erp-journal.js` (ADR-029) | ✓ (`masterData.accounting`, รีเซ็ตเดโมลบ) | เอกสารของสมุดบัญชีเอง: บันทึกมือ (JV), ปิดผลต่างโสหุ้ย, ลดมูลค่า NRV, ชุดยอดยกมา AR/AP/สต็อก + วันยอดยกมา; ยกเลิกไม่ลบ (สตางค์) — สมุดรายวันเองไม่เก็บ (คำนวณใหม่) |
+| `comform_promptpay_settings_v1` | `erp-promptpay.js` (ADR-029) | ✓ (`masterData.promptpay`, รีเซ็ตเดโมเก็บไว้) | เปิด/ปิด (ปิดเป็นค่าเริ่มต้น), ประเภท + หมายเลขพร้อมเพย์, ชื่อผู้รับเงิน, เอกสารที่แสดง, Bill Payment (Biller ID, Ref2), วันที่ทดสอบสแกนแต่ละแอปธนาคาร |
+| `comform_job_costing_v1` | `erp-costing.js` (ADR-028) | ✓ (`masterData.costing`, รีเซ็ตเดโมลบ) | รายการต้นทุนงาน (แรงงาน ค่าใช้จ่ายอื่น ปิดงาน; ยกเลิกไม่ลบ) + งบต่องาน; การเบิก/คืนวัสดุอยู่ใน `comform_inventory_movements_v1` (kind `job_issue` / `job_return` / `job_completion`) |
 | `erp_nav_collapsed_sections_v1` | `erp-product-experience.js` | ✓ | หมวดเมนูซ้ายที่พับไว้ (ADR-015) |
 | `comform_company_profile_v1` | `erp-company-profile.js` (ADR-020) | ✓ | ข้อมูลบริษัทของลูกค้า `{schemaVersion, nameTh, nameEn, taxId, addressTh, phone, email, website, branches:{ubon,khonkaen:{code,label,addressTh}}, updatedAt}` — ไม่มี key = ใช้ข้อมูลตัวอย่างเดิม; รีเซ็ตข้อมูลสาธิต **ไม่ลบ** |
 | `comform_company_logo_v1` | `erp-company-profile.js` (ADR-020) | ✓ | โลโก้ `{schemaVersion, dataUrl (PNG/JPEG base64 ≤ 300,000 ตัวอักษร, ≤ 600 px), mime, width, height, updatedAt}` — ไม่มี/`null` = `logo.png`; **ไม่อยู่ใน** `ERPBackup.capture()` (snapshot ในเครื่อง 8 ชุด) แต่อยู่ใน Backup JSON (`masterData.companyProfile`); รีเซ็ตข้อมูลสาธิตไม่ลบ |
 | `comform_vat_returns_v1` | `erp-tax-reports.js` (ADR-023) | ✓ (`masterData.vatReturns`, ตรวจแบบ fail-closed) | `{schemaVersion, returns:[{id, schemaVersion, branchKey (ubon/khonkaen/combined), branches[], period YYYY-MM, filingMode, amendment (0 = ยื่นปกติ / n = ยื่นเพิ่มเติมครั้งที่ n), lines{1..12}, carryForwardIn, carryForwardSource, overpaidAction, channel, dueDate, filedAt, filedBy, seller, counts}]}` บันทึกการยื่นในเดโม (ไม่ได้ส่งกรมสรรพากร) — รีเซ็ตข้อมูลสาธิตลบ |
+| `comform_wht_filings_v1` | `erp-payer-wht.js` (ADR-024) | ✓ (`masterData.whtFilings`, ตรวจแบบ fail-closed) | `{schemaVersion, filings:[{id, schemaVersion, branch, period YYYY-MM, form PND3/PND53, amendment, rows[{seq, certId, certNo, payee…, date, incomeLabel, rate, amountPaid, taxWithheld, condition}], totals (ต้องเท่าผลรวมแถว), channel, dueDate, filedAt, filedBy, payer}]}` บันทึกการยื่น ภ.ง.ด. ในเดโม (append-only) — รีเซ็ตข้อมูลสาธิตลบ |
 | `erp_product_experience_role_v1` | – | ✓ (retired, ADR-014) | มุมมองตามบทบาทเดิม ถูกลบตอนเริ่มระบบ |
 | `trial::{tenantId}::…` | `trial-mode.js` | ✗ | สถานะ onboarding (**ไม่ใช้ prefix `erp_tenant::`**) |
 | `erp_demo_write_lease_v1:{scope}` | `erp-demo-concurrency.js` | ✗ | lease ชั่วคราวข้ามแท็บ (**ไม่แยก tenant**) |
@@ -517,7 +612,9 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | **ใบกำกับภาษีอย่างย่อ ม.86/6** | ต้องเป็นราคารวม VAT (`extract`) เท่านั้น ไม่บังคับชื่อผู้ซื้อ (ใช้ `GENERAL_CUSTOMER_NAME`) ถ้าใส่เลขผู้เสียภาษีผู้ซื้อจะเตือนให้ใช้เต็มรูป ข้อมูลเก่าที่ระบุอย่างย่อแต่ไม่ใช่ราคารวม VAT จะถูกถือเป็นเต็มรูป | `planInvoiceDocumentAction()`, `effectiveTaxInvoiceForm()` (`erp-shared-core.js`), UI ใน `erp-sales-form-assist.js` |
 | **ห้ามแก้บิลที่รับเงินหรือลดหนี้แล้ว** | ถ้ามีการรับเงิน (`paid > 0`) หรือมีใบลดหนี้อ้างอิง จะแก้เลขที่/วันที่/ลูกค้า/รายการ/ยอดไม่ได้ (เทียบด้วย `invoiceFinancialFingerprint`) และบิลที่มีฉบับพิมพ์แล้วแก้ต้นทางไม่ได้ | `planInvoiceDocumentAction()`; `ERPIntegrity.assertEditable()` |
 | **ใบลดหนี้ ม.86/10** | ต้องมีเลขที่ไม่ซ้ำ (รวมใบที่ยกเลิก เลข CN ไม่ออกซ้ำ), สาเหตุ 5 แบบ (สินค้าชำรุด, คิดราคาเกิน, รับคืน, ยกเลิก/ลดค่าบริการ, อื่น ๆ ต้องอธิบาย), อ้างอิงบิลของลูกค้าเดียว สาขาเดียว โหมด VAT เดียวกัน, วันที่ไม่ก่อนบิล, ยอดลดสะสมไม่เกินบิล, บิลอย่างย่อที่ไม่มีชื่อผู้ซื้อต้องใส่ชื่อผู้ซื้อและออกแยกใบ, VAT ของผลต่างคิดครั้งเดียวจากยอดรวมแล้วกระจายกลับรายบิลด้วยวิธี largest remainder, ใบลดหนี้อยู่ในงวดภาษีของวันที่ใบลดหนี้ | `validateCreditNote()`, `calculateCreditNote()`, `buildCreditNoteRecord()` ใน `erp-credit-note-core.js` |
-| **ภาษีขายสุทธิ** | ภาษีขาย = VAT ใบกำกับ + VAT ใบเพิ่มหนี้ (รับ `debitNotes` ไว้แล้ว ยังไม่มีหน้าออกใบ) − VAT ใบลดหนี้; บิลที่ยกเลิกไม่นับ | `summarizeOutputVat()` ใน `erp-credit-note-core.js` |
+| **ภาษีขายสุทธิ** | ภาษีขาย = VAT ใบกำกับ + VAT ใบเพิ่มหนี้ − VAT ใบลดหนี้ (แต่ละใบอยู่ในเดือนที่ออก); บิลที่ยกเลิกไม่นับ | `summarizeOutputVat()` ใน `erp-credit-note-core.js` |
+| **ใบเพิ่มหนี้ ม.86/9 (ADR-024)** | มูลค่าที่ถูกต้องต้องมากกว่ามูลค่าเดิม (มูลค่าเดิม = บิล + ใบเพิ่มหนี้ก่อน − ใบลดหนี้ก่อน), อ้างอิงบิลเต็มรูปที่ยังใช้งานของลูกค้า/สาขา/โหมด VAT เดียว, เลข DN ไม่ออกซ้ำ, ยอดค้างรับของบิลเพิ่มขึ้น (`debited`) และเก็บด้วยใบเสร็จของบิลเดิม; บิลที่มีใบเพิ่มหนี้ยกเลิก/แก้ยอดไม่ได้; ยกเลิกใบเพิ่มหนี้ไม่ได้เมื่อเก็บเงินแล้ว | `validateDebitNote()` (`erp-debit-note-core.js`), `ERPIntegrity.paymentSummary()` |
+| **หัก ณ ที่จ่าย (เราหักผู้ขาย, ADR-024)** | ฐาน = ยอดก่อน VAT, ปัดครึ่งขึ้นถึงสตางค์, ต่ำกว่า 1,000 บาทไม่หัก (เลือกหักได้), เงื่อนไข 2 = gross-up, เงื่อนไข 4 ไม่รองรับ, ไม่มีเลข 13 หลักออก 50 ทวิ ไม่ได้, ภ.ง.ด.3 = บุคคลธรรมดา / 53 = นิติบุคคล, ยื่นวันที่ 7 (กระดาษ) / 15 (อินเทอร์เน็ต); ลบค่าใช้จ่ายไม่ได้ถ้ามี 50 ทวิ ใช้งานอยู่ หรือเดือนที่ใช้สิทธิภาษีซื้อปิดงวด/ยื่น ภ.พ.30 แล้ว (ปฏิเสธก่อนถาม) | `planExpenseWhtFields()`, `buildWhtFormReport()` (`erp-payer-wht-core.js`), `ERPPayerWht.deleteRefusal()` |
 | **`vatCategory` ของบิล (ADR-023)** | บิลโหมด `none` เลือกได้ `exempt` (ยกเว้น → ภ.พ.30 บรรทัด 3) หรือ `zero` (อัตรา 0% → บรรทัด 2); บิลเก่าที่ไม่มีค่า = ยกเว้น + เตือนในรายงาน | `normalizeInvoiceVatCategory()` (`erp-tax-reports-core.js`), `planInvoiceDocumentAction()` |
 | **ภาษีซื้อในค่าใช้จ่าย (ADR-023)** | ยอด `amount` ยังเป็นยอดรวม; เก็บแยก ก่อน VAT/VAT, เลขผู้เสียภาษี + สาขาผู้ขาย, เลข/วันที่ใบกำกับ, เดือนที่ใช้สิทธิ; เตือน ม.82/3 เกิน 6 เดือน, เลือกเหตุต้องห้าม ม.82/5 (ไม่นับเป็นภาษีซื้อ), ห้ามซ้ำ เลขผู้เสียภาษีผู้ขาย + เลขใบกำกับ, เดือนที่ใช้สิทธิต้องยังไม่ปิดงวด; ข้อมูลเก่าที่ไม่มีแยก VAT แสดงป้าย "ข้อมูล VAT ไม่ครบ" และไม่เข้ารายงาน | `planExpenseVatFields()` (`erp-tax-reports-core.js`), `planExpenseDocumentAction()`, `erp-tax-forms.js` |
 | **รายงานภาษีขาย / ภาษีซื้อ (ADR-023)** | เรียงคอลัมน์ตามแบบกรมสรรพากร, ใบลดหนี้ติดลบในเดือนของใบลดหนี้, บิลยกเลิกแสดง 0 พร้อมเหตุ, ใบกำกับอย่างย่อรวมเป็นยอดรายวัน, ภาษีซื้อตาม "เดือนที่ใช้สิทธิ" แยกตามสาขาหรือรวม | `buildSalesTaxReport()` / `buildPurchaseTaxReport()` |
@@ -527,6 +624,8 @@ biz2_{branch}_{ปี ค.ศ.}_{เดือน 01–12}      เช่น biz2
 | **วันครบกำหนด** | ลำดับความสำคัญ: `dueDate` ที่ระบุในบิล → คำนวณจาก `creditTerm` (`cash`, `deposit50` = 0 วัน; `credit30/60/90/120/150/180`) → ถ้าไม่มีเลย ครบกำหนดวันออกบิล (ขายหน้าร้าน/ไม่ระบุเครดิต) → ถ้าวันที่บิลใช้ไม่ได้ = "ไม่ระบุวันครบกำหนด" วันที่ผิดจริง (เช่น 30 ก.พ.) ไม่ถูกเลื่อนเอง | `invoiceDueDateInfo()` / `invoiceDueDate()` ใน `erp-receivables-core.js` |
 | **อายุลูกหนี้** | ช่วง: ยังไม่ถึงกำหนด / 1–30 / 31–60 / 61–90 / เกิน 90 วัน / ไม่ระบุวันครบกำหนด; "ใกล้ครบกำหนด" = ภายใน 7 วัน (`AR_DUE_SOON_DAYS`); คำนวณเป็นสตางค์เพื่อให้ยอดรวมตรงกันทุกรายงาน | `agingBucket()` (`erp-governance-core.js`), `buildReceivableLedger()`, `summarizeReceivableAging()` (`erp-receivables-core.js`) |
 | **วันที่ธุรกิจ** | เก็บเป็น ISO ค.ศ. แสดงเป็น พ.ศ.; ปีที่ ≥ 2400 ถือเป็น พ.ศ.; ห้ามใช้ `new Date().toISOString().slice(0,10)` (เพี้ยนตาม UTC) — audit `UTC_BUSINESS_DATE` ตรวจ | `erp-date-core.js`, `localDateISO()` / `parseBusinessDate()` (`erp-shared-core.js`), ADR-001 |
+| **สมุดรายวันอัตโนมัติ (ADR-029)** | คำนวณจากเอกสารทุกครั้ง (ไม่เก็บ ไม่แก้มือ), เดบิต = เครดิตทุกรายการและทุกสถานประกอบการ (บัญชีระหว่างสาขา 1190) ไม่งั้น throw; ยกเลิก = รายการกลับในวันที่ยกเลิก (เวลาไทย); ภาษีขาย/ซื้อของเดือน = ภ.พ.30 บรรทัด 5/7 (ภาษีซื้อที่ใช้สิทธิเดือนหลังพักไว้ที่ 1155 แล้วโอนวันที่ 1 ของเดือนที่ใช้สิทธิ), ภาษีหัก ณ ที่จ่ายค้างจ่าย = ภ.ง.ด.3/53; ต้นทุนขาย = costing engine; ที่เอกสารไม่ระบุ (บัญชีรับ/จ่ายเงิน) ใช้ค่าเริ่มต้นของบริษัทและทำเครื่องหมาย; งวดที่ปิดแล้วเปลี่ยนไม่ได้ | `buildJournal()`, `finalize()`, `lockedJournalChanges()` (`erp-journal-core.js`) |
+| **QR พร้อมเพย์ (ADR-029)** | tag 00=01, 01=11/12, 29 (AID A000000677010111; 01 มือถือ 0066+9 หลัก / 02 เลขผู้เสียภาษี 13 หลัก / 03 e-Wallet 15 หลัก) หรือ 30 Bill Payment (ต้องมีสัญญากับธนาคาร), 53=764, 54 จำนวนเงิน 2 ตำแหน่ง, 58=TH, 63 CRC-16/CCITT-FALSE; ปิดเป็นค่าเริ่มต้น; เจ้าของต้องทดสอบสแกนกับแอปธนาคารหลักทุกแอป | `buildPromptPayPayload()`, `buildBillPaymentPayload()` (`erp-promptpay-core.js`), `encodeQr()` (`erp-qr-core.js`) |
 | **เลขที่เอกสาร** | `{prefix}{ปี พ.ศ. 2 หลัก}{เดือน 2 หลัก}{ลำดับ}`: QT, INV, REC, CN (`AUTO_DOCUMENT_NUMBER_SPECS`, app.js) · SO, BL, PAY (`nextNumber`, erp-order-flow.js) · PO, GR (`docNo`, erp-production-core.js) · REC จาก Payment (`createPaymentReceipts`, erp-integrity.js) ผู้ใช้แก้เลขเองได้ ระบบตรวจซ้ำก่อนบันทึก (`documentNumberExistsForWrite`) | หลายไฟล์ (ดูหัวข้อ 9) |
 
 ---
@@ -685,8 +784,8 @@ root มี 50 `.json` + 58 `.md` ส่วนใหญ่เป็นบัน�
 
 - ~~**รายงานภาษีขาย / ภาษีซื้อ / สรุป ภ.พ.30** แยกตามสถานประกอบการ — G2–G7, G11, G14~~ ทำแล้วใน ADR-023; ยังเหลือ: ภาษีซื้อจากใบรับสินค้า (GR) — G15, ภ.พ.30 บรรทัด 13–16, วันหยุดราชการในวันครบกำหนด
 - ~~ยกเลิก (void) ใบกำกับภาษีแทนการลบ — G1~~ ทำแล้วใน ADR-021; snapshot สาขาผู้ซื้อในบิล (G3) ทำแล้วใน ADR-021 (`customerBranchCode`)
-- **ใบเพิ่มหนี้ ม.86/9** — collection `debitNotes` คู่กับใบลดหนี้ และให้ `paymentSummary` รู้จักยอดเพิ่มหนี้ — G8–G10
-- **หัก ณ ที่จ่ายฝั่งผู้จ่าย: หนังสือรับรอง 50 ทวิ, ภ.ง.ด.3 / ภ.ง.ด.53** — field WHT ในค่าใช้จ่าย และ `whtCertificates` / `whtFilings` — G12–G13
+- ~~**ใบเพิ่มหนี้ ม.86/9** — G8–G10~~ ทำแล้วใน ADR-024; ยังเหลือ: ใบเพิ่มหนี้/ใบลดหนี้ที่ *ได้รับ* จากผู้ขาย
+- ~~**หัก ณ ที่จ่ายฝั่งผู้จ่าย: 50 ทวิ, ภ.ง.ด.3 / ภ.ง.ด.53** — G12–G13~~ ทำแล้วใน ADR-024; ยังเหลือ: เงื่อนไข (4), e-Withholding Tax 1%, วันจ่ายแยกจากวันที่ค่าใช้จ่าย, จ่ายบางส่วน
 - ควรเพิ่ม WHT ในหน้ารับชำระผ่านใบวางบิลด้วย และให้ `delDoc` / `voidPayment` ตรวจปิดงวด
 
 ### 10.2 วิธีแยกโมดูลออกจาก `app.js` อย่างปลอดภัย
