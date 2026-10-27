@@ -17,10 +17,16 @@ async function creditNoteFor(invoice, id, no, differenceAmount) {
   const calc = c.calculateCreditNote({ lines: [{ invoice: { ...invoice, _year: 2026, _month: 8 }, differenceAmount }] });
   return { id, no, date: '2026-09-15', branch: 'ubon', customer: invoice.customer, reasonCode: 'price_overcharge', reasonLabel: 'x', lines: calc.lines, invoiceNos: [invoice.no], subtotal: calc.subtotal, vatAmt: calc.vatAmt, total: calc.total, vatMode: 'add', status: 'issued', voided: false };
 }
-const backupFile = data => ({ text: async () => JSON.stringify({ meta: { app: 'comform-esan', backupType: 'month' }, data }) });
+// r8fix#B2: an unsigned file now asks "no checksum — import anyway?" first; these fixtures model the app's own exports,
+// which are always signed (schema 4 + contentSha256), so they are signed here too.
+async function backupFile(w, data) {
+  const payload = { meta: { app: 'comform-esan', backupType: 'month', backupSchemaVersion: 4, contentSha256: '' }, data };
+  payload.meta.contentSha256 = await w.ERPBackup.digest(payload);
+  return { text: async () => JSON.stringify(payload) };
+}
 async function importBackup(w, data, mode) {
   w.document.getElementById('import-mode').value = mode;
-  await w.importJSON({ target: { files: [backupFile(data)], value: 'x' } });
+  await w.importJSON({ target: { files: [await backupFile(w, data)], value: 'x' } });
   return w.document.getElementById('import-json-status').textContent;
 }
 // jsdom arrays belong to another realm: compare plain copies with deepStrictEqual.

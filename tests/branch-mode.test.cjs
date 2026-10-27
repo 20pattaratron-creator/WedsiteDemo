@@ -85,8 +85,8 @@ test('branch#1 a store that never chose keeps 2 branches and today\'s screens ex
     await sleep(80);
     assert.deepEqual([...w.document.querySelectorAll('[data-erp-branch-hidden]')].map(el => el.id || el.className), [], 'nothing hidden');
     assert.equal(w.document.getElementById('erp-branch-warning'), null);
-    assert.deepEqual(['dt-all', 'dt-ub', 'dt-kk'].map(id => text(w.document.getElementById(id))), ['รวมทั้ง 2 สาขา', 'สาขาสำนักงานใหญ่', 'สาขาที่ 00001']);
-    assert.deepEqual([...w.document.getElementById('il-br').options].map(o => o.textContent), ['ทุกสาขา', 'สาขาสำนักงานใหญ่', 'สาขาที่ 00001']);
+    assert.deepEqual(['dt-all', 'dt-ub', 'dt-kk'].map(id => text(w.document.getElementById(id))), ['รวมทั้ง 2 สาขา', 'สำนักงานใหญ่', 'สาขาที่ 00001']);
+    assert.deepEqual([...w.document.getElementById('il-br').options].map(o => o.textContent), ['ทุกสาขา', 'สำนักงานใหญ่', 'สาขาที่ 00001']);
     assert.deepEqual([...w.document.getElementById('po-branch').options].map(o => o.textContent), ['สำนักงานใหญ่', 'สาขาที่ 00001'], 'each screen keeps its own wording');
     assert.equal(text(w.document.getElementById('i-br-kk')), 'สาขาที่ 00001');
     assert.equal(settingsForm(w).querySelector('input[name="cp-branch-count"]:checked').value, '2');
@@ -108,7 +108,16 @@ test('branch#2 empty store → "สำนักงานใหญ่อย่า
     assert.equal(branchTwoRecords(w), 0, 'no branch-2 record');
     const I = w.ERPIntegrity, data = I.business(), flow = I.flow();
     const seeded = rows => rows.filter(r => r.demoSeed === true);
-    assert.deepEqual([seeded(data.invoices).length, seeded(data.receipts).length, seeded(data.creditNotes).length, seeded(data.quotes).length, seeded(data.expenses).length], [23, 11, 4, 5, 12]); // ADR-023 tax-month story (was 18 / 8 / 4 / 5 / 7)
+    assert.deepEqual([seeded(data.invoices).length, seeded(data.receipts).length, seeded(data.creditNotes).length, seeded(data.quotes).length, seeded(data.expenses).length, seeded(data.debitNotes).length], [24, 13, 4, 5, 17, 1]); // ADR-031 + the multi-currency story (1 USD export invoice, 2 USD receipts, 1 JPY expense, all at the head office); ADR-023 tax-month story (was 18 / 8 / 4 / 5 / 7); ADR-024 + 2 WHT payments, 1 debit note; r13#MED-7 + J1 / J3 subcontract payments
+    // ADR-024 / r13#MED-7: every 50 ทวิ is issued by the head office — one per withheld payment of the plan (rent, transport,
+    // subcontract, service), numbered 0001… per พ.ศ. book in payment-date order, no gaps.
+    const certs = plain(w.ERPPayerWht.readCertificates().map(c => [c.branch, c.no]));
+    assert.equal(certs.length, result.plan.documents.filter(d => d.collection === 'whtCertificates').length);
+    assert.ok(certs.every(([branch]) => branch === 'ubon'));
+    for (const year of new Set(certs.map(([, no]) => no.slice(3, 7)))) {
+      const book = certs.map(([, no]) => no).filter(no => no.startsWith(`WHT${year}-`)).sort();
+      assert.deepEqual(book, book.map((_, i) => `WHT${year}-${String(i + 1).padStart(4, '0')}`), year);
+    }
     assert.ok(Object.values(data).flat().every(row => row._branch === 'ubon' && row.branch === 'ubon'));
     assert.doesNotMatch(JSON.stringify(flow), /khonkaen/);
     // The same checks as the two-branch sample (demo-seed.test.cjs): balances, statuses, credit-note ledger, stock.
@@ -116,10 +125,10 @@ test('branch#2 empty store → "สำนักงานใหญ่อย่า
     for (const inv of seeded(data.invoices)) {
       const expected = Object.values(result.plan.expected.invoices).find(x => x.no === inv.no);
       const s = I.paymentSummary(inv);
-      assert.deepEqual(plain([s.total, s.paid, s.credited, s.outstanding]), plain([expected.total, expected.paid, expected.credited, expected.outstanding]), inv.no);
+      assert.deepEqual(plain([s.total, s.paid, s.credited, s.debited, s.outstanding]), plain([expected.total, expected.paid, expected.credited, expected.debited, expected.outstanding]), inv.no);
       statuses[s.status] = (statuses[s.status] || 0) + 1;
     }
-    assert.deepEqual(plain(statuses), { paid: 10, partially_paid: 1, pending: 10, credited: 1, cancelled: 1 }); // ADR-023 story
+    assert.deepEqual(plain(statuses), { paid: 11, partially_paid: 1, pending: 10, credited: 1, cancelled: 1 }); // ADR-023 story; ADR-031 + the USD export invoice (paid in two USD receipts)
     const cnCore = await imp('erp-credit-note-core.js');
     assert.deepEqual(plain(cnCore.creditNoteLedgerIssues(data.invoices, data.creditNotes, { matches: I.creditNoteMatches })), []);
     for (const p of result.plan.products.filter(x => x.flowType === 'inventory' && x.fulfillmentType === 'stock')) {
@@ -187,7 +196,10 @@ test('branch#4 money rule: switching to one establishment is refused while branc
     assert.equal(w.localStorage.getItem(SETTING_KEY), null, 'nothing saved');
     const error = w.document.getElementById('cp-branch-count-error');
     assert.equal(error.hidden, false);
-    assert.match(text(error), /^เปลี่ยนเป็น "สำนักงานใหญ่อย่างเดียว" ไม่ได้ — สาขาที่ 00001 ยังมีข้อมูล: ใบเสนอราคา 2 · ใบส่งสินค้า\/ใบกำกับภาษี 9 · ใบเสร็จรับเงิน 5 · ใบลดหนี้ 1 · ค่าใช้จ่าย 5 · ใบวางบิล 1 · รายการรับชำระ 1 · สินค้าที่มียอดตั้งต้นของสาขานี้ 6 · ระบบไม่ซ่อน/);
+    assert.match(text(error), /^เปลี่ยนเป็น "สำนักงานใหญ่อย่างเดียว" ไม่ได้ — สาขาที่ 00001 ยังมีข้อมูล: ใบเสนอราคา 2 · ใบสั่งผลิต 2 · ใบส่งสินค้า\/ใบกำกับภาษี 9 · ใบเสร็จรับเงิน 5 · ใบลดหนี้ 1 · ค่าใช้จ่าย 6 · หนังสือรับรองการหักภาษี ณ ที่จ่าย 5 · ใบวางบิล 1 · รายการรับชำระ 1 · ใบสั่งซื้อ \(PO\) 1 · ใบรับสินค้า \(GR\) 1 · รายการเคลื่อนไหวสต็อก 6 · สินค้าที่มียอดตั้งต้นของสาขานี้ 11 · ระบบไม่ซ่อน/);
+    // r13#MED-7: + the crane hire of job J3 (ค่าใช้จ่าย 5 → 6) and the branch's own 50 ทวิ (3 × rent 5 %, transport 1 %, crane 3 %).
+    // ADR-028: the costing story adds at สาขาที่ 00001 the jobs J3 / J4 (2 production orders), 1 PO + 1 goods receipt of
+    // cable, 6 stock movements (that receipt + 5 material issues) and 5 raw materials with opening stock there (6 → 11).
     assert.match(h.messages.join('\n'), /ไม่ได้ — สาขาที่ 00001 ยังมีข้อมูล/);
     assert.equal(w.ERPBranches.multi(), true);
     assert.deepEqual([...w.document.querySelectorAll('[data-erp-branch-hidden]')].filter(el => !el.closest('#company-profile-form')).map(el => el.id || el.className), [], 'screens unchanged (the form only previews the unsaved choice)');

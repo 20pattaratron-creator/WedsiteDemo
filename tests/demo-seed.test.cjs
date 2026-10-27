@@ -28,6 +28,12 @@ const sum = (rows, pick) => round2(rows.reduce((total, row) => total + pick(row)
 const invoicesOf = plan => plan.documents.filter(d => d.collection === 'invoices').map(d => d.record);
 const recordsOf = (plan, collection) => plan.documents.filter(d => d.collection === collection).map(d => d.record);
 const byKey = (plan, key) => plan.expected.invoices[key];
+// R9.1: the browser clock of the demo laptop fixed on `day` 10:00 Bangkok time (new Date() / Date.now()).
+const pinClock = day => w => {
+  const fixed = Date.parse(`${day}T10:00:00+07:00`);
+  const Real = w.Date;
+  w.Date = class extends Real { constructor(...a) { if (a.length) super(...a); else super(fixed); } static now() { return fixed; } };
+};
 // Every localStorage entry except the short-lived write-lease metadata.
 function dumpStorage(w) {
   const out = {};
@@ -69,7 +75,14 @@ test('core: the plan is deterministic for a business date, fully tagged, and cov
   a.documents.forEach(d => { counts[d.collection] = (counts[d.collection] || 0) + 1; });
   // ADR-023 added the tax-month story: 3 abbreviated walk-in invoices (+3 cash receipts), 1 cancelled invoice + its
   // replacement, and 5 purchase tax invoices (one claimed next month, two ภาษีซื้อต้องห้าม) — was 18 / 11 / 5 / 8 / 4.
-  assert.deepEqual(counts, { invoices: 23, expenses: 16, quotes: 5, receipts: 11, creditNotes: 4 });
+  // ADR-024 (r8 stage D): + 1 debit note on the replacement invoice, + 2 payments with withholding (rent to an
+  // individual, transport to a partnership; the cloud service fee already there now withholds too) and their 3 × 50 ทวิ.
+  // ADR-028: + 4 production orders (the jobs of the costing story, one per invoice U3 / U6 / K3 / K8).
+  // r13#MED-7: every rent payment withholds 5 % (6 building rents → 6 × 50 ทวิ), the August transport 1 %, and the two job
+  // subcontract payments (J1 electrician 3 %, J3 crane hire 3 %) are new expenses with their 50 ทวิ: expenses 18 → 20, 3 → 12.
+  // ADR-031 (r13B): + the multi-currency story of S−3 / S−2 — 1 USD export invoice, its 2 USD receipts, 1 JPY expense from
+  // abroad (its payment lives on the expense): invoices 23 → 24, receipts 11 → 13, expenses 20 → 21.
+  assert.deepEqual(counts, { invoices: 24, expenses: 21, quotes: 5, receipts: 13, creditNotes: 4, debitNotes: 1, whtCertificates: 12, productions: 4 });
   // Customers: 9 named (8 นิติบุคคล + 1 sole proprietor) + walk-in cash sales; one buyer is a BRANCH.
   assert.equal(a.contacts.length, 9);
   assert.ok(a.contacts.every(c => /^\d{13}$/.test(c.taxId)), '13-digit tax IDs');
@@ -91,26 +104,37 @@ test('core: the plan is deterministic for a business date, fully tagged, and cov
   assert.ok(all.every(r => r.demoSeedBatch === core.DEMO_SEED_BATCH_ID));
   const ids = a.documents.map(d => d.record.id);
   assert.equal(new Set(ids).size, ids.length, 'unique ids');
-  assert.ok(ids.every(id => Number.isInteger(id) && id > 1e12 && id < 1e12 + 1000), 'numeric ids in the reserved range');
-  const numbers = a.documents.map(d => d.record.no).filter(Boolean);
+  // A 50 ทวิ takes the id of its payment (`wht-<expense id>`, as ERPPayerWht.attachCertificate does).
+  const certs = recordsOf(a, 'whtCertificates');
+  assert.ok(ids.filter(id => !String(id).startsWith('wht-')).every(id => Number.isInteger(id) && id > 1e12 && id < 1e12 + 1000), 'numeric ids in the reserved range');
+  assert.deepEqual(certs.map(c => c.id), certs.map(c => `wht-${c.sourceExpenseId}`));
+  // เล่มที่ = พ.ศ. of the payment, เลขที่ running per establishment in payment-date order (no gaps).
+  for (const branch of ['ubon', 'khonkaen']) {
+    const own = a.documents.filter(d => d.collection === 'whtCertificates' && d.branch === branch).map(d => d.record).sort((x, y) => (x.date < y.date ? -1 : 1));
+    assert.deepEqual(own.map(c => c.no), own.map((c, i) => `WHT${Number(c.date.slice(0, 4)) + 543}-${String(i + 1).padStart(4, '0')}`), branch);
+  }
+  const numbers = a.documents.map(d => (d.collection === 'whtCertificates' ? `${d.branch}|${d.record.no}` : d.record.no)).filter(Boolean);
   assert.equal(new Set(numbers).size, numbers.length, 'unique document numbers');
-  for (const d of a.documents.filter(x => x.record.no)) {
-    const prefix = { quotes: 'QT', invoices: 'INV', receipts: 'REC', creditNotes: 'CN' }[d.collection];
+  for (const d of a.documents.filter(x => x.record.no && x.collection !== 'whtCertificates')) {
+    const prefix = { quotes: 'QT', invoices: 'INV', receipts: 'REC', creditNotes: 'CN', debitNotes: 'DN', productions: 'PD' }[d.collection]; // ADR-028: + the jobs' production orders
     const [y, m] = d.record.date.split('-').map(Number);
     assert.match(d.record.no, new RegExp(`^${prefix}${String(y + 543).slice(-2)}${String(m).padStart(2, '0')}\\d{2}$`), d.record.no);
   }
-  assert.match(a.flow.billingNotes[0].no, /^BL6909-0001$/);
-  assert.match(a.flow.payments[0].no, /^PAY6909-0001$/);
+  // R9.1: the billing / payment are pinned to the story month (August for a load on 26 Sep; was 18 / 7 days before today).
+  assert.match(a.flow.billingNotes[0].no, /^BL6908-0001$/);
+  assert.match(a.flow.payments[0].no, /^PAY6908-0001$/);
 
   // Dates: never in the future; one old unpaid invoice (130 days) for the "over 90 days" bucket,
   // everything else within ~3 months; each record sits in the pack of its own date.
+  // ADR-031: the multi-currency story (demoSeedStory 'fx-story') is pinned to S−3 / S−2 — up to ~5 months back.
+  const fxStory = d => d.record.demoSeedStory === 'fx-story';
   for (const d of a.documents) {
     const age = shared.businessDaysBetween(d.record.date, a.today);
-    assert.ok(age >= 0 && age <= 130, `${d.record.no || d.record.desc} ${d.record.date}`);
+    assert.ok(age >= 0 && age <= (fxStory(d) ? 160 : 130), `${d.record.no || d.record.desc} ${d.record.date}`);
     const [y, m] = d.record.date.split('-').map(Number);
     assert.deepEqual([d.year, d.month], [y, m - 1]);
   }
-  assert.equal(a.documents.filter(d => shared.businessDaysBetween(d.record.date, a.today) > 92).length, 1);
+  assert.equal(a.documents.filter(d => !fxStory(d) && shared.businessDaysBetween(d.record.date, a.today) > 92).length, 1);
   for (const branch of ['ubon', 'khonkaen']) {
     assert.ok(invoicesOf(a).some(i => i.branch === branch));
     assert.ok(recordsOf(a, 'expenses').some(e => e.branch === branch));
@@ -125,7 +149,9 @@ test('core: the plan is deterministic for a business date, fully tagged, and cov
 
   // Payment story: the exact days late the demo relies on, and every bucket.
   const e = a.expected.invoices;
-  assert.deepEqual([e.U2, e.U4, e.U3, e.K1, e.U0].map(x => x.daysPastDue), [10, 17, 45, 62, 100]);
+  assert.deepEqual([e.U2, e.U3, e.K1, e.U0].map(x => x.daysPastDue), [10, 45, 62, 100]);
+  // R9.1: U4 is pinned to the month before the story month — always overdue, 17 days only on a 5th (here 26 Sep: 39).
+  assert.equal(e.U4.daysPastDue, 39);
   assert.ok([e.U2, e.U4, e.U3, e.K1, e.U0].every(x => x.outstanding > 0));
   const open = Object.values(e).filter(x => x.outstanding > 0);
   const bucket = d => d <= 0 ? 'current' : d <= 30 ? '1_30' : d <= 60 ? '31_60' : d <= 90 ? '61_90' : 'over_90';
@@ -162,35 +188,51 @@ test('core: the plan is deterministic for a business date, fully tagged, and cov
   assert.ok(invoicesOf(a).filter(i => !converted.some(q => q.invoiceNo === i.no)).every(i => i.sourceQuoteId === ''));
 });
 
-test('core: dates are relative — another business date gives the same story, and aging moves with the calendar', async () => {
+test('core: two clocks — the old unpaid bills keep their distance from today (exact days late), the last two closed months keep their calendar (R9.1); aging moves with the calendar', async () => {
   const core = await imp('erp-demo-seed-core.js');
   const shared = await imp('erp-shared-core.js');
   const ar = await imp('erp-receivables-core.js');
-  const t1 = '2026-09-26', t2 = '2027-01-10'; // t2 crosses the year end and the BE year (2569 → 2570)
+  // R9.1: was 26 Sep 2569 / 10 Jan 2570 with every non-story row "today − n days"; both dates are now days 1–9 of their
+  // month, the window in which the demo scripts' aging figures hold (tests/r91-seed-dates.test.cjs r91#3 checks every
+  // date). t2 crosses the year end and the BE year (2569 → 2570).
+  const t1 = '2026-10-05', t2 = '2027-01-08';
   const p1 = core.buildDemoSeedPlan({ today: t1 });
   const p2 = core.buildDemoSeedPlan({ today: t2 });
-  const shift = shared.businessDaysBetween(t1, t2);
   assert.equal(p1.documents.length, p2.documents.length);
-  // ADR-023: the tax-month story (demoSeedStory 'tax-month') sits in the last closed month at the same distance from its
-  // last day (so the ภ.พ.30 to file always has it); every other row keeps its distance from today. (Ids and numbers
-  // follow the calendar order of the events, so rows are compared by what they are, not by id.)
-  const lastDayBefore = today => { const [y, m] = today.split('-').map(Number); return shared.localDateISO(new Date(y, m - 1, 0)); };
-  const isStory = d => d.record.demoSeedStory === 'tax-month';
-  const keyOf = (d, base) => `${d.collection}|${shared.businessDaysBetween(d.record.date, base)}|${d.record.total ?? d.record.amount}|${d.record.customer || d.record.desc || ''}`;
-  const keys = (plan, story, base) => plan.documents.filter(d => isStory(d) === story).map(d => keyOf(d, base)).sort();
-  assert.equal(p1.documents.filter(isStory).length, 13, '5 invoices + 3 receipts + 5 expenses');
-  assert.deepEqual(keys(p1, true, lastDayBefore(t1)), keys(p2, true, lastDayBefore(t2)));
-  assert.deepEqual(keys(p1, false, t1), keys(p2, false, t2));
-  assert.ok(p1.documents.filter(isStory).every(d => d.record.date.slice(0, 7) === lastDayBefore(t1).slice(0, 7)), 'in the month before today');
-  // Same balances per scenario invoice; the same days late except the tax-month story (dated from the month's end).
-  const storyKeys = ['A1', 'A2', 'A3', 'X1', 'X2'];
+  // Pinned rows (demoSeedStory 'tax-month' = the story month S, 'month-before' = the month before) sit in their month
+  // on both dates; every other row keeps its distance from today. (Ids and numbers follow the calendar order of the
+  // events, so rows are compared by what they are, not by id.)
+  const tagOf = d => d.record.demoSeedStory || '';
+  const keyOf = (d, base) => `${d.collection}|${base ? shared.businessDaysBetween(d.record.date, base) : ''}|${d.record.total ?? d.record.amount}|${d.record.customer || d.record.vendor || d.record.payee?.name || ''}`;
+  // ADR-028: a job's production order follows its INVOICE (a few days before it, never before the 1st of the invoice's
+  // month), not today — checked against its invoice below, so it is left out of the distance-from-today comparison.
+  const notJob = d => d.collection !== 'productions';
+  const keys = (plan, tag, base) => plan.documents.filter(d => notJob(d) && tagOf(d) === tag).map(d => keyOf(d, base)).sort();
+  for (const plan of [p1, p2]) {
+    for (const job of plan.documents.filter(d => d.collection === 'productions')) {
+      const invoice = plan.documents.find(d => d.collection === 'invoices' && d.record.sourceProductionId === job.record.id).record;
+      assert.ok(job.record.date <= invoice.date && job.record.date.slice(0, 7) === invoice.date.slice(0, 7), `${job.record.no} ${job.record.date} / ${invoice.no} ${invoice.date}`);
+      assert.equal(tagOf(job), invoice.demoSeedStory || '');
+    }
+  }
+  // tax-month: U5 K6 U8 U6 K8 + A1–A3 X1 X2, Q2, 4 credit notes, the debit note, R4 + RA1–3 + the 2 billing receipts,
+  // 12 expenses, 3 × 50 ทวิ (was 19: only the ADR-023/024 rows). month-before: K4 U4 K5 K3 K9, R1–R3, 4 expenses.
+  // r13#MED-7: tax-month + the 50 ทวิ of the two September building rents (37 → 39); month-before + the two August rent
+  // 50 ทวิ, the transport 50 ทวิ and the J3 crane payment with its 50 ทวิ (12 → 17); relative rows + the two July rent
+  // 50 ทวิ and the J1 subcontract payment with its 50 ทวิ (16 → 20).
+  assert.deepEqual(['tax-month', 'month-before', ''].map(tag => p1.documents.filter(d => notJob(d) && tagOf(d) === tag).length), [39, 17, 20]);
+  assert.deepEqual([p1.storyPeriod, p2.storyPeriod], ['2026-09', '2026-12']);
+  for (const [plan, months] of [[p1, { 'tax-month': '2026-09', 'month-before': '2026-08' }], [p2, { 'tax-month': '2026-12', 'month-before': '2026-11' }]]) {
+    for (const [tag, month] of Object.entries(months)) assert.ok(plan.documents.filter(d => tagOf(d) === tag).every(d => d.record.date.slice(0, 7) === month), `${plan.today} ${tag}`);
+    assert.deepEqual(keys(plan, 'tax-month'), keys(p1, 'tax-month'));
+    assert.deepEqual(keys(plan, 'month-before'), keys(p1, 'month-before'));
+  }
+  assert.deepEqual(keys(p1, '', t1), keys(p2, '', t2));
+  // Same balances per scenario invoice; exactly the same days late for the bills dated from today.
   const byKey = plan => Object.entries(plan.expected.invoices).sort(([a], [b]) => a.localeCompare(b));
   assert.deepEqual(byKey(p1).map(([key]) => key), byKey(p2).map(([key]) => key));
-  byKey(p1).forEach(([key, x], i) => {
-    const y = byKey(p2)[i][1];
-    assert.equal(x.outstanding, y.outstanding, key);
-    if (!storyKeys.includes(key)) assert.equal(x.daysPastDue, y.daysPastDue, key);
-  });
+  byKey(p1).forEach(([key, x], i) => assert.equal(x.outstanding, byKey(p2)[i][1].outstanding, key));
+  assert.deepEqual(['U0', 'K1', 'U3', 'U2'].map(key => [p1.expected.invoices[key].daysPastDue, p2.expected.invoices[key].daysPastDue]), [[100, 100], [62, 62], [45, 45], [10, 10]]);
   assert.ok(invoicesOf(p2).some(i => /^INV7001\d{2}$/.test(i.no)) && invoicesOf(p2).some(i => /^INV6912\d{2}$/.test(i.no)), 'numbers follow each document month (BE year)');
 
   // Aging with the receivables core, using the plan's balances (hand-checked figures).
@@ -200,15 +242,15 @@ test('core: dates are relative — another business date gives the same story, a
     return ar.summarizeReceivableAging(items).totals.buckets;
   };
   const b1 = aging(p1, t1);
-  assert.deepEqual(plain(b1), plain(aging(p2, t2)), 'same buckets on each plan\'s own date');
+  assert.deepEqual(plain(b1), plain(aging(p2, t2)), 'same buckets on each plan\'s own date (days 1–9 of a month)');
   // current: U5 57,673 + K6 64,820.60 + U8 3,500 + U6 14,445 + K8 9,630 + X2 6,955 (ADR-023 replacement invoice,
-  // 60-day credit) · 1–30: U2 47,611.60 + U4 35,224.40 · 31–60: U3 26,750 · 61–90: K1 124,933.20 · over 90: U0 43,741.60
+  // 60-day credit) + DN690901 1,605 collected with X2 (ADR-024: 1,500 + VAT 105; was 157,023.60) · 1–30: U2 47,611.60 + U4 35,224.40 · 31–60: U3 26,750 · 61–90: K1 124,933.20 · over 90: U0 43,741.60
   // (the cancelled X1 owes nothing; the abbreviated A1–A3 are paid in cash the same day)
-  assert.deepEqual(plain(b1), { current: 157023.6, '1_30': 82836, '31_60': 26750, '61_90': 124933.2, over_90: 43741.6, undated: 0 });
+  assert.deepEqual(plain(b1), { current: 158628.6, '1_30': 82836, '31_60': 26750, '61_90': 124933.2, over_90: 43741.6, undated: 0 });
   // The same data viewed 30 days later: K6 (due +40) and X2 (due +60 from the last day of the previous month) are still
   // current; the rest moves one bucket.
   const later = aging(p1, shared.addBusinessCalendarDays(t1, 30));
-  assert.deepEqual(plain(later), { current: 71775.6, '1_30': 85248, '31_60': 82836, '61_90': 26750, over_90: 168674.8, undated: 0 });
+  assert.deepEqual(plain(later), { current: 73380.6, '1_30': 85248, '31_60': 82836, '61_90': 26750, over_90: 168674.8, undated: 0 });
   assert.throws(() => core.buildDemoSeedPlan({ today: '26/09/2026' }), /วันที่อ้างอิง/);
 });
 
@@ -230,13 +272,16 @@ test('core: every total comes from the app calculators (VAT add / extract / none
   for (const r of recordsOf(plan, 'receipts').filter(x => !x.paymentId)) {
     const vat = shared.calculateVatSummary(r.items.reduce((s, i) => s + i.saleTotal, 0), r.useVat);
     assert.deepEqual([r.subtotal, r.vatAmt, r.total], [vat.subtotal, vat.vatAmt, vat.total], r.no);
+    // ADR-031: a receipt in a currency settles the receivable's carrying baht (`total`); the bank got the currency at the
+    // receipt's rate (cashReceived = amountThb) — the difference is the realised exchange gain / loss.
+    if (r.currency) { assert.deepEqual([r.cashReceived, round2(r.total + r.fxRealisedThb), r.whtAmount], [r.amountThb, r.amountThb, 0], r.no); continue; }
     const wht = shared.calculateWhtSummary(r.subtotal, r.whtRate, r.total);
     assert.deepEqual([r.whtAmount, r.cashReceived], [wht.whtAmount, wht.cashReceived]);
     assert.equal(round2(r.cashReceived + r.whtAmount), r.total, 'cash + WHT settles the full total');
   }
   const whtReceipt = recordsOf(plan, 'receipts').find(r => r.whtAmount > 0);
   assert.deepEqual([whtReceipt.subtotal, whtReceipt.whtAmount, whtReceipt.cashReceived, whtReceipt.total], [15500, 465, 16120, 16585]);
-  const partial = recordsOf(plan, 'receipts').find(r => /บางส่วน/.test(r.items[0].product));
+  const partial = recordsOf(plan, 'receipts').find(r => /บางส่วน/.test(r.items[0].product) && !r.currency); // the baht one (ADR-031: a USD partial receipt exists too)
   assert.deepEqual([partial.total, partial.vatMode, partial.subtotal, partial.vatAmt], [40000, 'extract', 37383.18, 2616.82]);
   // Credit notes: stored figures equal calculateCreditNote() on the referenced invoice.
   const invoices = invoicesOf(plan);
@@ -263,7 +308,9 @@ test('core: document numbers continue after the highest stored number and never 
     billingNotes: [{ no: 'BL6909-0003' }], payments: [{ no: 'PAY69090002' }]
   });
   assert.deepEqual(plain(existing), { QT6909: 11, INV6909: 7, INV6908: 12, REC6909: 1, CN6909: 2, BL6909: 3, PAY6909: 2 });
-  const plan = core.buildDemoSeedPlan({ today: '2026-09-26', numberStart: existing });
+  // R9.1: loaded on 5 Oct (story month = September) — on 26 Sep the credit notes / billing now sit in August, outside
+  // the September numbers this fixture stores (was today 26 Sep).
+  const plan = core.buildDemoSeedPlan({ today: '2026-10-05', numberStart: existing });
   const inSept = prefix => plan.documents.map(d => d.record.no).filter(no => no && no.startsWith(prefix)).sort();
   assert.equal(inSept('INV6909')[0], 'INV690908');
   assert.equal(inSept('INV6908')[0], 'INV690813');
@@ -312,16 +359,26 @@ test('load on an empty store: no question; every seeded document passes the app\
     assert.equal(plan.today, shared.localDateISO());
     const I = w.ERPIntegrity, data = I.business(), store = I.flow();
     const seeded = rows => rows.filter(r => r.demoSeed === true);
-    assert.deepEqual([seeded(data.invoices).length, seeded(data.receipts).length, seeded(data.creditNotes).length, seeded(data.quotes).length, seeded(data.expenses).length], [23, 11, 4, 5, 16]); // ADR-023 tax-month story (was 18 / 8 / 4 / 5 / 11)
+    assert.deepEqual([seeded(data.invoices).length, seeded(data.receipts).length, seeded(data.creditNotes).length, seeded(data.quotes).length, seeded(data.expenses).length, seeded(data.debitNotes).length, w.ERPPayerWht.readCertificates().filter(r => r.demoSeed === true).length], [24, 13, 4, 5, 21, 1, 12]); // ADR-031: + 1 USD export invoice, 2 USD receipts, 1 JPY expense; ADR-023 tax-month story (was 18 / 8 / 4 / 5 / 11); ADR-024 + 2 WHT payments, 1 debit note, 3 × 50 ทวิ
 
     for (const r of seeded(data.receipts).filter(x => !x.paymentId)) assert.doesNotThrow(() => I.validateReceipt(r, r.id), r.no);
     const statuses = {};
     for (const inv of seeded(data.invoices)) {
+      // ADR-031: the USD export invoice re-plans to itself (same baht from the same stored rate) and is fully received.
+      if (inv.currency) {
+        const again = finance.planInvoiceDocumentAction({ draft: inv, original: null, duplicateNumber: false, fx: { allowedCurrencies: [inv.currency], approval: null } });
+        assert.deepEqual(plain([again.record.total, again.record.amountFx, again.warnings]), plain([inv.total, inv.amountFx, []]), inv.no);
+        assert.deepEqual(plain([inv.no, inv.total, I.paymentSummary(inv).outstanding]), plain([plan.fx.expected.invoice.no, plan.fx.expected.invoice.total, 0]), inv.no);
+        statuses[inv.paymentStatus] = (statuses[inv.paymentStatus] || 0) + 1;
+        continue;
+      }
       const plan1 = finance.planInvoiceDocumentAction({ draft: inv, original: null, duplicateNumber: false });
-      assert.deepEqual(plain(plan1.warnings), [], inv.no);
+      // r13#LOW-5: the two multi-month service invoices (K3 2 months, U5 12 months) carry the deferred-revenue notice on purpose.
+      assert.deepEqual(plain(plan1.warnings.filter(text => text !== finance.SERVICE_PERIOD_WARNING)), [], inv.no);
+      if (inv.servicePeriodTo && inv.servicePeriodTo.slice(0, 7) > inv.date.slice(0, 7)) assert.ok(plan1.warnings.includes(finance.SERVICE_PERIOD_WARNING), inv.no);
       const expected = Object.values(plan.expected.invoices).find(x => x.no === inv.no);
       const s = I.paymentSummary(inv);
-      assert.deepEqual(plain([s.total, s.paid, s.credited, s.outstanding]), plain([expected.total, expected.paid, expected.credited, expected.outstanding]), inv.no);
+      assert.deepEqual(plain([s.total, s.paid, s.credited, s.debited, s.outstanding]), plain([expected.total, expected.paid, expected.credited, expected.debited, expected.outstanding]), inv.no);
       // Stored payment fields were reconciled exactly like after a real save.
       assert.deepEqual(plain([inv.paymentStatus, inv.paidAmount, inv.outstandingAmount]), plain([s.status, s.paid, s.outstanding]), inv.no);
       statuses[s.status] = (statuses[s.status] || 0) + 1;
@@ -331,7 +388,8 @@ test('load on an empty store: no question; every seeded document passes the app\
     }
     // Every paymentSummary status the app knows: paid · partially paid · unpaid · fully credited · cancelled.
     // ADR-023: + 3 abbreviated cash sales (paid), the replacement X2 (pending) and the cancelled X1.
-    assert.deepEqual(plain(statuses), { paid: 10, partially_paid: 1, pending: 10, credited: 1, cancelled: 1 });
+    // ADR-031: + the USD export invoice, fully received in two USD payments (paid 10 → 11).
+    assert.deepEqual(plain(statuses), { paid: 11, partially_paid: 1, pending: 10, credited: 1, cancelled: 1 });
     assert.deepEqual(plain(cnCore.creditNoteLedgerIssues(data.invoices, data.creditNotes, { matches: I.creditNoteMatches })), []);
     // Each live credit note re-validates as an edit of itself against the stored ledger.
     const invoiceRows = data.invoices.map(i => ({ ...i }));
@@ -372,7 +430,9 @@ test('load on an empty store: no question; every seeded document passes the app\
 });
 
 test('load: dashboard tiles, AR banner, AR report, governance aging and Decision Council are non-zero and agree', async () => {
-  const h = await boot(); const { w } = h;
+  // R9.1: the hand-checked "5 late" holds for loads on days 1–9 of a month (from the 10th the story month's 30-day bills
+  // fall due — tests/r91-seed-dates.test.cjs r91#3): the clock is fixed on 5 Oct 2569 (was the real date).
+  const h = await boot({ beforeScripts: pinClock('2026-10-05') }); const { w } = h;
   try {
     const shared = await imp('erp-shared-core.js');
     const $ = id => w.document.getElementById(id);
@@ -383,9 +443,9 @@ test('load: dashboard tiles, AR banner, AR report, governance aging and Decision
     const overdue = open.filter(x => x.daysPastDue > 0);
     const arTotal = sum(open, x => x.outstanding), overdueTotal = sum(overdue, x => x.outstanding);
     // Hand-checked: 11 open invoices, 5 of them late (U2, U4, U3, K1, U0).
-    // 157,023.60 current (ADR-023: + X2 6,955, the replacement of the cancelled X1) + 82,836 + 26,750 + 124,933.20
-    // + 43,741.60 = 435,284.40; late = the last four = 278,260.80 (unchanged).
-    assert.deepEqual([open.length, overdue.length, arTotal, overdueTotal], [11, 5, 435284.4, 278260.8]);
+    // 158,628.60 current (ADR-023: + X2 6,955, the replacement of the cancelled X1; ADR-024: + its debit note 1,605)
+    // + 82,836 + 26,750 + 124,933.20 + 43,741.60 = 436,889.40 (was 435,284.40); late = the last four = 278,260.80 (unchanged).
+    assert.deepEqual([open.length, overdue.length, arTotal, overdueTotal], [11, 5, 436889.4, 278260.8]);
 
     // Receivables snapshot (report + banner source) and governance aging.
     const snap = w.ERPReceivables.snapshot('');
@@ -421,11 +481,11 @@ test('load: dashboard tiles, AR banner, AR report, governance aging and Decision
     w.switchDashTab('all');
     const ub = w.testApp.branchStats('ubon', year, -1), kk = w.testApp.branchStats('khonkaen', year, -1);
     assert.ok(ub.st > 0 && kk.st > 0 && ub.gp > 0 && kk.gp > 0 && ub.net > 0 && kk.net > 0, JSON.stringify({ ub, kk }));
-    // Independent recomputation from the plan: invoice subtotals − live credit-note subtotals in that year.
+    // Independent recomputation from the plan: invoice subtotals − live credit-note + live debit-note subtotals in that year.
     const inYear = r => Number(r.date.slice(0, 4)) === year;
     for (const [branch, stats] of [['ubon', ub], ['khonkaen', kk]]) {
       // live invoices only: the cancelled sample invoice (ADR-023 / ADR-021) is not a sale
-      const sales = sum(invoicesOf(plan).filter(i => i.branch === branch && inYear(i) && !i.voided), i => i.subtotal) - sum(recordsOf(plan, 'creditNotes').filter(n => n.branch === branch && !n.voided && inYear(n)), n => n.subtotal);
+      const sales = sum(invoicesOf(plan).filter(i => i.branch === branch && inYear(i) && !i.voided), i => i.subtotal) - sum(recordsOf(plan, 'creditNotes').filter(n => n.branch === branch && !n.voided && inYear(n)), n => n.subtotal) + sum(recordsOf(plan, 'debitNotes').filter(n => n.branch === branch && !n.voided && inYear(n)), n => n.subtotal);
       assert.equal(stats.st, round2(sales), branch);
       assert.equal(stats.ex, sum(recordsOf(plan, 'expenses').filter(e => e.branch === branch && inYear(e)), e => e.amount), branch);
     }
@@ -464,7 +524,7 @@ test('reset: asks first, removes exactly this app\'s keys (foreign keys survive)
     assert.equal(reset.status, 'reset', h.messages.join('\n'));
     assert.equal(questions.length, 1);
     assert.match(questions[0], /ล้างข้อมูลสาธิตทั้งหมด \(รีเซ็ต\)\?/);
-    assert.match(questions[0], /เอกสารตัวอย่าง 61 รายการ/); // ADR-023: 59 documents + billing note + payment (was 48)
+    assert.match(questions[0], /เอกสารตัวอย่าง 86 รายการ/); // ADR-031: + the multi-currency story (1 invoice, 2 receipts, 1 expense). r13#MED-7: + 2 expenses, + 9 × 50 ทวิ. ADR-023: 59 documents + billing note + payment (was 48); ADR-024: + 1 DN, 2 expenses, 3 × 50 ทวิ; ADR-028: + 4 production orders (jobs)
     assert.match(questions[0], /ข้อมูลของเว็บ\/โปรแกรมอื่นใน Browser นี้/);
     // Every removed key was this app's; foreign keys, other tenants and the view preference survive.
     assert.ok(reset.removedKeys.every(k => k.startsWith(`erp_tenant::${TENANT}::`) || k.startsWith(`trial::${TENANT}::`) || k === 'example_erp_order_flow_v2'), reset.removedKeys.join('\n'));
@@ -526,7 +586,7 @@ test('load never mixes with or silently overwrites user data: refuses, offers th
     assert.equal(loaded.status, 'loaded', h.messages.join('\n'));
     assert.equal(loaded.replaced, true);
     const invoices = w.ERPIntegrity.business().invoices;
-    assert.equal(invoices.length, 23); // ADR-023 (was 18)
+    assert.equal(invoices.length, 24); // ADR-023 (was 18); ADR-031: + the USD export invoice
     assert.ok(invoices.every(i => i.demoSeed === true) && !invoices.some(i => i.id === userInvoice.id), 'no mixing');
     assert.ok(!w.findContactMaster('บริษัท ลูกค้าจริง จำกัด'));
     assert.equal(w.localStorage.getItem('another_app_setting'), 'keep', 'foreign key untouched');
@@ -535,10 +595,13 @@ test('load never mixes with or silently overwrites user data: refuses, offers th
 });
 
 test('load over earlier sample data: one confirmation replaces it with a fresh set for the new date (no duplicates)', async () => {
-  const h = await boot(); const { w } = h;
+  // R9.1: clock fixed on 5 Oct 2569 — "newest = yesterday" and "5 late" are not true on the 1st (the last walk-in sales
+  // stay in the month) or after the 9th of a month (was the real date).
+  const h = await boot({ beforeScripts: pinClock('2026-10-05') }); const { w } = h;
   try {
     const shared = await imp('erp-shared-core.js');
-    const lastWeek = shared.addBusinessCalendarDays(shared.localDateISO(), -7);
+    const today = '2026-10-05'; // the pinned app clock (the test process keeps the real one)
+    const lastWeek = shared.addBusinessCalendarDays(today, -7);
     const first = await w.ERPDemoSeed.load({ today: lastWeek });
     assert.equal(first.status, 'loaded');
     const count = seededCount(w);
@@ -554,10 +617,10 @@ test('load over earlier sample data: one confirmation replaces it with a fresh s
     assert.equal(asked.length, 2, 'no second confirmation: nothing of the user\'s is deleted');
     assert.equal(seededCount(w), count, 'no duplicates');
     const invoices = w.ERPIntegrity.business().invoices;
-    assert.equal(invoices.length, 23); // ADR-023 (was 18)
+    assert.equal(invoices.length, 24); // ADR-023 (was 18); ADR-031: + the USD export invoice
     // Aging is right for TODAY again: the plan dates come from today, not from last week.
     const newest = invoices.map(i => i.date).sort().at(-1);
-    assert.equal(newest, shared.addBusinessCalendarDays(shared.localDateISO(), -1));
+    assert.equal(newest, shared.addBusinessCalendarDays(today, -1));
     assert.equal(w.ERPReceivables.snapshot('').alert.overdueCount, 5);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
@@ -589,7 +652,7 @@ test('UI: labelled controls in the header Demo menu and the dashboard empty stat
     const bannerButtons = () => [...w.document.querySelectorAll('#erp-demo-menu [role="menuitem"]')];
     // local-demo-health.js adds its check item first; the sample-data controls wrap guide + backup.
     // ADR-020 added "ข้อมูลบริษัทและโลโก้" (order 15) to the Demo menu.
-    assert.deepEqual(bannerButtons().map(text), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', LOAD_LABEL.replace('📊 ', ''), 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', RESET_LABEL.replace('↺ ', '')]);
+    assert.deepEqual(bannerButtons().map(text), ['ตรวจสถานะ Demo', 'ข้อมูลบริษัทและโลโก้', LOAD_LABEL.replace('📊 ', ''), 'วิธีเริ่มทดลอง', 'สำรองข้อมูล', 'สลับเป็นโหมดขั้นสูง (ตอนนี้: โหมดง่าย)', 'English (เปลี่ยนเป็นภาษาอังกฤษ)', RESET_LABEL.replace('↺ ', '')]); // r8fix#C4: + the simple/advanced switch (hidden in the header on phones) · ADR-026: + the language item
     assert.equal($('local-demo-clear-btn'), null, 'the former separate clear button was merged into the reset');
     assert.ok(bannerButtons().every(b => !b.disabled));
     assert.equal($('erp-dashboard-empty').hidden, false);
@@ -618,12 +681,18 @@ test('printed receipt shows its own buyer details, never those of the receipt op
     const walkIn = receipts.find(r => r.customer === GENERAL);
     const open = r => { w.openReceiptDocumentFromReceipt(r._branch, r._year, r._month, r.id); return w.ComformReceiptDocument.getState(); };
     const first = open(wht);
+    // r13B backlog: a receipt of a credit invoice shows the invoice's credit term and ITS due date (before: "เงินสด" with
+    // the receipt's own due date); a cash sale shows "เงินสด" and no due date.
+    const whtInvoice = w.ERPIntegrity.business().invoices.find(row => row.no === wht.invNo && row._branch === wht._branch);
+    assert.ok(whtInvoice?.dueDate);
     assert.deepEqual([first.customerName, first.customerAddress, first.customerTaxId, first.contact, first.phone, first.doNo, first.dueDate],
-      [wht.customer, wht.customerAddress, wht.customerTaxId, wht.contact, wht.phone, wht.invNo, '']);
+      [wht.customer, wht.customerAddress, wht.customerTaxId, wht.contact, wht.phone, wht.invNo, whtInvoice.dueDate]);
+    assert.notEqual(first.paymentTerm, 'เงินสด');
     assert.ok(first.customerAddress && /^\d{13}$/.test(first.customerTaxId));
     const second = open(walkIn);
     assert.deepEqual([second.customerName, second.customerAddress, second.customerTaxId, second.contact, second.phone, second.doNo],
       [GENERAL, '', '', '', '', walkIn.invNo], 'nothing carried over from the previous receipt');
+    assert.deepEqual([second.paymentTerm, second.dueDate], ['เงินสด', ''], 'cash sale: no due date');
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });

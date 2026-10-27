@@ -22,7 +22,7 @@ test('Step 3B-1 shared document primitives preserve formatting behavior',async()
   assert.equal(c.thaiIntegerText(0),'ศูนย์');
   assert.equal(c.thaiIntegerText(11),'สิบเอ็ด');
   assert.equal(c.thaiIntegerText(21),'ยี่สิบเอ็ด');
-  assert.equal(c.thaiIntegerText(1000001),'หนึ่งล้านหนึ่ง');
+  assert.equal(c.thaiIntegerText(1000001),'หนึ่งล้านเอ็ด'); // r8fix#A5: was 'หนึ่งล้านหนึ่ง' (buggy) — Royal Institute: a units 1 after any higher digit reads เอ็ด
   assert.equal(c.bahtText(0),'ศูนย์บาทถ้วน');
   assert.equal(c.bahtText(21.25),'ยี่สิบเอ็ดบาทยี่สิบห้าสตางค์');
   assert.equal(c.safeFilename('INV 001/2026?.pdf'),'INV_001_2026_.pdf');
@@ -137,14 +137,19 @@ test('Step 3C-1 persistence hardening preserves the material controller-duplicat
   assert.ok(report.metrics.normalizedDuplicate10LineGroups<275,JSON.stringify(report.metrics));
   // 6 → 5 (ADR-020): branchCompany() of delivery-tax-document.js and receipt-document.js now
   // differ (each asks the saved company profile first, in its own words).
-  assert.equal(report.metrics.exactSameNameFunctionPairs,5);
+  // 5 → 4 (r8fix#C6): documentPagesHtml() of the two controllers passes its own row estimator (dtdRowUnits / rcpRowUnits).
+  assert.equal(report.metrics.exactSameNameFunctionPairs,4);
   // 143 → 140 (ADR-009): delivery-tax-document.js now routes preview/print/PDF
   // through formPagesHtml(), so three 10-line windows no longer match receipt-document.js.
   // 140 → 131 (ADR-020): the logo / company-profile lines near the top differ between the two.
   // 131 → 133 (ADR-021): the same two state fields (customerBranchCode, cancellation) were added to both
   // createDefaultState() lists, which lengthens two existing shared 10-line windows; the shared logic itself
   // (buyerBranchLabel, documentCancelStampHtml, documentCancellationOf) lives once in erp-shared-core.js.
-  assert.equal(report.metrics.normalizedDuplicate10LineGroups,133);
+  // 133 → 125 (r8fix#C6 / C9): the pagination constants, row estimator and contact helper near the top are named per
+  // controller, so fewer identical 10-line windows remain (the shared rules stay in erp-shared-core / profile core).
+  // 125 → 124 (ADR-031): receipt-document.js now resolves its payment term from the invoice (rcpTermOf) and both
+  // controllers print their own multi-currency notes, so one more shared 10-line window differs.
+  assert.equal(report.metrics.normalizedDuplicate10LineGroups,124);
   const extracted=new Map(report.boundaryPlan.extractedPureHelpers.map(row=>[row.name,row]));
   for(const name of EXTRACTED){
     const row=extracted.get(name);

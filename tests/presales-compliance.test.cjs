@@ -49,12 +49,12 @@ test('r8a#5 the printed full tax invoice shows the buyer สำนักงา�
       assert.deepEqual(labelOf(hqInv, page), ['สำนักงานใหญ่'], page);
     }
     const bottom = parse(w, doc.buildInlineHtml(branchInv, { b: branchInv._branch }, 'original')).querySelector('.dtd-doc-party-box .dtd-doc-party-bottom');
-    assert.equal(text(bottom), `เลขประจำตัวผู้เสียภาษี ${branchInv.customerTaxId}สาขาที่ 00003`);
+    assert.equal(text(bottom), `เลขประจำตัวผู้เสียภาษีอากร ${branchInv.customerTaxId}สาขาที่ 00003`);
     // A record saved before ADR-021 (no field) prints exactly the old line — no empty label.
     const old = { ...hqInv }; delete old.customerBranchCode; delete old.customerBranchName;
     const oldBox = parse(w, doc.buildInlineHtml(old, { b: old._branch }, 'original'));
     assert.equal(oldBox.querySelectorAll('.dtd-doc-buyer-branch').length, 0);
-    assert.equal(oldBox.querySelector('.dtd-doc-party-box .dtd-doc-party-bottom').innerHTML, `<b>เลขประจำตัวผู้เสียภาษี</b> ${old.customerTaxId}`);
+    assert.equal(oldBox.querySelector('.dtd-doc-party-box .dtd-doc-party-bottom').innerHTML, `<b>เลขประจำตัวผู้เสียภาษีอากร</b> ${old.customerTaxId}`);
     // Abbreviated (§86/6) layout unchanged even with a code on the record.
     const abbrHtml = doc.buildInlineHtml({ ...abbr, customerBranchCode: '00003' }, { b: abbr._branch }, 'original');
     assert.match(abbrHtml, /ใบกำกับภาษีอย่างย่อ/);

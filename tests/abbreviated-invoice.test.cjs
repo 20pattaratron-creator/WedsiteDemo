@@ -137,7 +137,7 @@ test('print: abbreviated layout has the §86/6 contents, optional buyer and esca
   try {
     const doc = w.ComformDeliveryTaxDocument;
     const html = doc.buildInlineHtml(abbrInvoice(), { b: 'ubon' });
-    for (const needle of ['ใบกำกับภาษีอย่างย่อ', 'ABBREVIATED TAX INVOICE', 'ราคารวมภาษีมูลค่าเพิ่มแล้ว', 'เลขประจำตัวผู้เสียภาษี 0000000000000', 'INV-AB-1', 'สินค้าหน้าร้าน', '1,070.00', '1,000.00', '70.00', 'หนึ่งพันเจ็ดสิบบาทถ้วน', 'data-tax-invoice-form="abbreviated"']) assert.ok(html.includes(needle), needle);
+    for (const needle of ['ใบกำกับภาษีอย่างย่อ', 'ABBREVIATED TAX INVOICE', 'ราคารวมภาษีมูลค่าเพิ่มแล้ว', 'เลขประจำตัวผู้เสียภาษีอากร 0000000000000' /* r13 language audit: the RD form wording */, 'INV-AB-1', 'สินค้าหน้าร้าน', '1,070.00', '1,000.00', '70.00', 'หนึ่งพันเจ็ดสิบบาทถ้วน', 'data-tax-invoice-form="abbreviated"']) assert.ok(html.includes(needle), needle);
     assert.equal(html.includes(GENERAL), false, 'walk-in: no buyer block');
     assert.equal(html.includes('ใบส่งสินค้า/ใบกำกับภาษี'), false, 'not the full-form title');
     const box = w.document.createElement('div'); box.innerHTML = html;

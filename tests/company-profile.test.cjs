@@ -157,7 +157,7 @@ test('company#boot2 a saved profile + logo is merged at boot and every document 
     assert.match(docs.quotation, /โทร\. 02-123-4567 · อีเมล info@siamtuayang\.co\.th/);
     assert.match(docs.quotationHead, /qdoc-branch-pill">สำนักงานใหญ่</);
     assert.match(docs.creditNote, /cn-doc-company-th">บริษัท สยามตัวอย่าง จำกัด</);
-    assert.match(docs.creditNote, /เลขประจำตัวผู้เสียภาษี 0105568123453 · สำนักงานใหญ่/);
+    assert.match(docs.creditNote, /เลขประจำตัวผู้เสียภาษีอากร 0105568123453 · สำนักงานใหญ่/);
     // the receipt print window gets the "don't tint a customer logo" CSS; the page has it too
     assert.ok(w.document.getElementById('erp-custom-logo-css'));
     // toolbars: document-entry forms (app.js) and the quotation screen

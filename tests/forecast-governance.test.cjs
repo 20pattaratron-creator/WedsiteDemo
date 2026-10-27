@@ -1,67 +1,109 @@
+// Forecast governance (round 10, ADR-027). The dashboard, วิเคราะห์ธุรกิจ and Quant now read the single engine of
+// erp-forecast-core.js through ERPAnalytics (the old app.js candidate/CV engine was removed so that no screen can
+// show a second, different forecast). The governance rules are kept, restated for that engine:
+//  * invalid observations invalidate a series instead of being compressed away;      (was: buildStandardForecastModel)
+//  * an unreadable month pack fails closed (read-error state), it never becomes 0;   (was: forecastStoredHistory null)
+//  * every candidate is scored on the same test months;                              (was: identical rolling origins)
+//  * an error figure needs a real denominator — never "perfect" on zeros;            (was: WAPE/MASE = Infinity)
+//  * too little history gives no accuracy and no invented zero-width band;
+//  * the band widens with √h and is never shown when σ is unknown;                  (was: 8-error residual scenarios)
+//  * the dashboard renders "no forecast" without boot errors and never says P50.
+// MASE was dropped with the old engine (the brief asks for MAPE / sMAPE); its fold-by-fold test has no successor.
 const {boot}=require('./dom-helper.cjs');
 const {test,before,after}=require('node:test');
 const assert=require('node:assert/strict');
+const path=require('node:path');
+const {pathToFileURL}=require('node:url');
+const core=()=>import(pathToFileURL(path.join(__dirname,'..','erp-forecast-core.js')).href);
 let h,a;
 before(async()=>{h=await boot();a=h.w.testApp;});
 after(()=>h?.close());
 const plain=x=>JSON.parse(JSON.stringify(x));
+const fresh=()=>{h.w.ERPAnalytics.invalidate();return h.w.ERPAnalytics;};
 test('forecast preserves zero months at both boundaries and in the middle',()=>{
  assert.deepEqual(plain(a.forecastActiveSeries([0,100,0,50,0])),[0,100,0,50,0]);
  assert.deepEqual(plain(a.forecastActiveSeries([0,0,0])),[0,0,0]);
 });
-test('missing, negative and nonfinite observations invalidate rather than compress a series',()=>{
+test('missing, negative and nonfinite observations invalidate rather than compress a series',async()=>{
+ const f=await core();
  for(const invalid of [null,undefined,NaN,Infinity,-5,'10'])assert.equal(a.forecastActiveSeries([20,invalid,30]).length,0);
- const model=a.buildStandardForecastModel([10,null,20]);assert.equal(model.valid,false);assert.equal(model.forecast,null);
-});
-test('missing monthly storage differs from a stored empty month and corrupt data',()=>{
- const w=h.w,rows=[0,1,2,3].map(month=>({year:2020,month,value:0}));
- w.saveFor('ubon',2020,1,w.loadFor('ubon',2020,1));
- w.saveFor('ubon',2020,3,w.loadFor('ubon',2020,3));
- const checked=a.forecastStoredHistory(rows,['ubon']);
- assert.deepEqual(plain(checked.map(r=>r.value)),[0,null,0]);
- assert.equal(a.buildStandardForecastModel(checked.map(r=>r.value)).valid,false);
- assert.equal(a.forecastStoredHistory(rows,['ubon','missing-branch']).length,0);
- for(const corrupt of ['{broken','[]','{"quotes":[]}']){
-  w.localStorage.setItem(a.keyFor('ubon',2020,2),corrupt);
-  assert.equal(a.forecastStoredHistory(rows,['ubon'])[1].value,null);
+ for(const invalid of [null,undefined,NaN,Infinity,'10']){
+  const r=f.forecastSeries([10,20,30,40,50,60,invalid,80]);
+  assert.equal(r.status,'invalid');assert.deepEqual(r.forecast,[]);
  }
- w.localStorage.removeItem(a.keyFor('ubon',2020,2));
+ // A negative month is real data (credit notes above sales); the forecast itself is clamped at 0.
+ assert.equal(f.forecastSeries([10,20,-5,40,50,60,70]).status,'ok');
 });
-test('all eligible models including Naive share identical rolling-origin test months',()=>{
+test('an unreadable month pack fails closed instead of becoming a zero month',()=>{
+ const w=h.w,key=a.keyFor('ubon',2020,2);
+ try{
+  for(const corrupt of ['{broken','[]']){
+   w.localStorage.setItem(key,corrupt);
+   const out=fresh().forecastForBranches(['ubon']);
+   assert.ok(out.error,'read error reported');assert.equal(out.result,undefined,'no forecast from partial data');
+   const q=fresh().quantForecast(['ubon']);assert.equal(q.model.valid,false);assert.equal(q.next,null);assert.ok(q.error);
+  }
+ }finally{w.localStorage.removeItem(key);} // never leave a damaged pack for the next test
+ assert.equal(fresh().forecastForBranches(['ubon']).error,null);
+});
+test('every candidate method is scored on the same test months',async()=>{
+ const f=await core();
  for(const length of [8,12,26,27,36]){
-  const m=a.buildStandardForecastModel(Array.from({length},(_,i)=>100+i*5+(i%3)*7));
-  const rows=m.candidates.filter(x=>x.eligible);assert.ok(rows.length>=2);
-  for(const row of rows){assert.deepEqual(plain(row.origins),plain(rows[0].origins));assert.ok(row.n>=3);}
-  assert.equal(m.candidates.find(x=>x.id==='hw').eligible,length>=27);
-  assert.equal(m.cv.rmse,Math.min(...rows.map(x=>x.rmse)));
+  const values=Array.from({length},(_,i)=>100+i*5+(i%3)*7);
+  const r=f.forecastSeries(values);assert.equal(r.status,'ok');
+  const rows=r.selection.candidates;assert.ok(rows.length>=2);
+  for(const row of rows)assert.deepEqual(plain(row.actuals),values.slice(length-r.selection.holdout));
+  assert.equal(rows.some(x=>x.method==='hw'),length>=27,'Holt-Winters only from 27 months');
+  const best=Math.min(...rows.filter(x=>x.eligible).map(x=>x.error));
+  assert.equal(r.accuracy.value,rows.find(x=>x.method===r.method).error);
+  assert.ok(Math.abs(r.accuracy.value-best)<1e-12,'the chosen method has the lowest holdout error (Holt kept on ties)');
  }
 });
-test('MASE uses training data at each fold, excluding the new actual',()=>{
- const v=[1,2,100,101,102,103],cv=a.forecastRollingCv(v,'naive',2);
- const expected=(98/1+1/49.5+1/(100/3)+1/(101/4))/4;
- assert.ok(Math.abs(cv.mase-expected)<1e-10);
+test('holdout diagnostics for the Quant views are hand-checkable',async()=>{
+ const f=await core();
+ // actual 100, 50, 0, 50; forecast 90, 60, 10, 50 → errors 10, −10, −10, 0; Σ|e| 30, Σ|A| 200.
+ const d=f.holdoutDiagnostics([100,50,0,50],[90,60,10,50]);
+ assert.equal(d.wape,15);assert.equal(d.biasPct,-5);assert.equal(d.mae,7.5);
+ assert.equal(d.trackingSignal,-10/7.5);assert.equal(d.rmse,Math.sqrt(300/4));
 });
-test('zero denominators produce unavailable WAPE/MASE rather than perfect accuracy',()=>{
- const m=a.buildStandardForecastModel(Array(12).fill(0));
- assert.equal(m.cv.wape,Infinity);assert.equal(m.cv.mase,Infinity);
- assert.equal(a.quantForecastDecision(m.cv).cls,'muted');
+test('zero denominators produce unavailable accuracy rather than perfect accuracy',async()=>{
+ const f=await core();
+ const none=f.forecastSeries(Array(12).fill(0));assert.equal(none.status,'insufficient');assert.equal(none.reason,'no-sales');
+ // Sales early on, zeros in every test month: a forecast exists but its error cannot be judged.
+ const r=f.forecastSeries([50,60,70,80,0,0,0,0]);assert.equal(r.status,'ok');
+ assert.equal(r.accuracy.value,null);assert.equal(r.accuracy.label,null);assert.equal(r.accuracy.metric,'smape');
+ assert.equal(f.holdoutDiagnostics([0,0],[5,5]).wape,null);
+ assert.equal(f.mape([0,10],[0,0]),null,'MAPE is undefined on a zero actual');
+ assert.equal(f.smape([0,10],[0,0]),100);
+ assert.equal(a.quantForecastDecision({eligible:false,wape:Infinity}).cls,'muted');
  assert.equal(a.quantCompositeRiskScore({cv:0,hhi:0,drawdown:0,overdueRate:0,wape:Infinity,trackingSignal:0}).cls,'muted');
- assert.equal(a.forecastSmape([0,10],[0,0]),100);
 });
-test('few observations have no accuracy percentage or invented zero-width intervals',()=>{
- const m=a.buildStandardForecastModel([100,120]);
- assert.equal(m.cv.eligible,false);assert.equal(m.confidence,undefined);
- assert.ok(m.intervals.every(x=>x.lower===null&&x.upper===null));
+test('few observations have no accuracy percentage or invented zero-width intervals',async()=>{
+ const f=await core();
+ for(const values of [[100,120],[100,120,90,110,105]]){
+  const r=f.forecastSeries(values);assert.equal(r.status,'insufficient');assert.equal(r.reason,'too-few-months');
+  assert.deepEqual(r.forecast,[]);assert.equal(r.accuracy,undefined);
+ }
+ assert.equal(f.residualSigma([1,2]),null,'σ needs at least three residuals');
+ assert.deepEqual(plain(f.intervalFor(100,null,1,1000)),{lower:null,upper:null});
 });
-test('residual scenarios require eight errors and are not extrapolated to longer horizons',()=>{
- const m=a.buildStandardForecastModel(Array.from({length:36},(_,i)=>100+i*2+(i%4)*20),'auto',6);
- assert.ok(m.cv.n>=8);assert.equal(m.intervals[0].available,true);
- assert.ok(m.intervals.slice(1).every(x=>x.lower===null&&x.upper===null));
- assert.equal(m.intervals[0].p50,null,'point forecast is not claimed to be a median');
+test('the ~80% band widens with √h, stays within [0, cap] and the point is not called a median',async()=>{
+ const f=await core();
+ const r=f.forecastSeries(Array.from({length:36},(_,i)=>100+i*2+(i%4)*20),{horizon:6});
+ assert.equal(r.status,'ok');assert.equal(r.forecast.length,6);assert.ok(r.residualCount>=3);
+ for(const row of r.forecast){
+  const half=f.INTERVAL_Z80*r.sigma*Math.sqrt(row.h);
+  assert.ok(Math.abs(row.upper-Math.min(r.cap,row.value+half))<1e-9);
+  assert.ok(Math.abs(row.lower-Math.max(0,row.value-half))<1e-9);
+  assert.ok(row.lower>=0&&row.upper<=r.cap);
+  assert.equal(row.p50,undefined,'point forecast is not claimed to be a median');
+ }
 });
-test('forecast table renders unavailable ranges as a dash and does not call base P50',()=>{
- const html=a.forecastFutureTableHtml({future:[{year:2026,month:8,value:100,lower:null,upper:null,p50:null}]});
- assert.match(html,/—/);assert.doesNotMatch(html,/P50/);assert.equal(a.forecastMoney(null),'—');
+test('the embedded forecast renders "no forecast" and dashes, never P50',()=>{
+ const host=h.w.document.createElement('div');
+ fresh().renderEmbeddedForecast(host,{branches:['ubon']});
+ assert.match(host.textContent,/ยังไม่คาดการณ์/);assert.doesNotMatch(host.textContent,/P50/);
+ assert.equal(a.forecastMoney(null),'—');
 });
 test('analytics uses the latest zero month for actual and forecast date',()=>{
  const rows=[100,50,0].map((value,month)=>({year:2026,month,value}));
@@ -85,13 +127,15 @@ test('Monte Carlo does not simulate when error scale is unavailable',()=>{
  assert.equal(mc.n,1000);assert.deepEqual(plain(mc),plain(a.quantMonteCarlo(100,20,120,1000,'same')));
 });
 test('empty dashboard has unavailable forecast and renders without boot errors',()=>{
+ fresh();
  const f=a.buildSalesForecast();assert.equal(f.model.valid,false);assert.equal(f.next,null);
  h.w.renderSalesForecast();h.w.renderDataAnalytics();
- assert.match(h.w.document.getElementById('forecast-metrics').textContent,/—/);
- assert.doesNotMatch(h.w.document.getElementById('forecast-metrics').textContent,/คะแนนความน่าเชื่อถือ/);
+ const text=h.w.document.getElementById('forecast-unified').textContent;
+ assert.match(text,/ยังไม่คาดการณ์/);
+ assert.doesNotMatch(text,/คะแนนความน่าเชื่อถือ/);
+ assert.match(h.w.document.getElementById('analytics-forecast-summary').textContent,/ยังไม่คาดการณ์/);
  assert.deepEqual(h.errors,[]);
 });
-
 test('January automatic history ends in previous December',()=>{
  const time=a.now.getTime();
  try{
@@ -101,11 +145,15 @@ test('January automatic history ends in previous December',()=>{
   assert.equal(rows.at(-1).year,2025);assert.equal(rows.at(-1).month,11);
  }finally{a.now.setTime(time);}
 });
-test('complete stored zero-sales months remain usable history in the dashboard',()=>{
+test('stored zero-sales months give an honest "no sales" state, not a forecast of 0',()=>{
  const first=a.buildSalesForecast(),end=a.forecastMonthKey(first.ref.year,first.ref.month);
  for(let off=11;off>=0;off--){
   const d=a.forecastMonthFromKey(end-off);
   for(const b of a.dashBranches())h.w.saveFor(b,d.year,d.month,h.w.loadFor(b,d.year,d.month));
  }
- const f=a.buildSalesForecast();assert.equal(f.model.valid,true);assert.equal(f.next,0);assert.equal(f.model.historyCount,12);
+ fresh();
+ const f=a.buildSalesForecast();
+ // The old engine forecast 0 from twelve zero months; the new one says there is no level to forecast from.
+ assert.equal(f.model.valid,false);assert.equal(f.next,null);
+ assert.ok(['no-sales','too-few-months'].includes(f.model.reason));
 });

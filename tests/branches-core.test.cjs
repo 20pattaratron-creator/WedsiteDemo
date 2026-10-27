@@ -54,7 +54,7 @@ test('branches#2 labels: from the company profile ("สาขาที่ 00003 
   assert.equal(b.branchLabelFromProfile({ branches: { khonkaen: { code: '12' } } }, 'khonkaen'), '', 'invalid code → not from the profile');
   // No profile: each screen keeps the text it always showed.
   assert.equal(b.branchDisplayLabel('khonkaen', {}), 'สาขาที่ 00001');
-  assert.equal(b.branchDisplayLabel('ubon', {}), 'สาขาสำนักงานใหญ่');
+  assert.equal(b.branchDisplayLabel('ubon', {}), 'สำนักงานใหญ่');
   assert.equal(b.branchDisplayLabel('ubon', { fallback: 'สำนักงานใหญ่' }), 'สำนักงานใหญ่');
   assert.equal(b.branchDisplayLabel('ubon', { count: 1 }), 'สำนักงานใหญ่', 'one establishment: the legal name, not "สาขา…"');
   assert.equal(b.branchDisplayLabel('khonkaen', { profile: PROFILE, fallback: 'สาขา 00001' }), 'สาขาที่ 00003 · สาขาขอนแก่น', 'the profile wins over the fallback');
@@ -66,9 +66,9 @@ test('branches#2 labels: from the company profile ("สาขาที่ 00003 
   // Live map: values follow window.CurrentUser + the stored setting at read time; keys stay the 2 ids.
   const storage = memoryStorage();
   const win = { localStorage: storage, CurrentUser: {} };
-  const map = b.branchLabelMap({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }, win);
+  const map = b.branchLabelMap({ ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }, win);
   assert.deepEqual(Object.keys(map), ['ubon', 'khonkaen']);
-  assert.deepEqual({ ...map }, { ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' });
+  assert.deepEqual({ ...map }, { ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' });
   win.CurrentUser = { companyProfile: { customProfile: true, custom: PROFILE } };
   assert.deepEqual({ ...map }, { ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00003 · สาขาขอนแก่น' });
   assert.equal(map.other, undefined, 'unknown ids stay unknown (validity checks keep working)');
@@ -95,7 +95,7 @@ test('branches#3 census: every branch-2 record counts once (cancelled too), othe
     production: { purchaseOrders: [{ id: 'po', branch: 'khonkaen' }], goodsReceipts: [], inventoryMovements: [{ branch: 'khonkaen', voided: true }, { branch: 'ubon' }] },
     products: [{ code: 'P1', openingStockKhonkaen: 5 }, { code: 'P2', openingStockKhonkaen: 0 }, { code: 'P3', openingStockUbon: 9 }]
   });
-  assert.deepEqual(plain(census.counts), { quotes: 1, productions: 0, invoices: 2, receipts: 0, creditNotes: 0, expenses: 2, salesOrders: 1, billingNotes: 1, payments: 1, reservations: 0, purchaseOrders: 1, goodsReceipts: 0, inventoryMovements: 1, openingStock: 1, unreadable: 1 });
+  assert.deepEqual(plain(census.counts), { quotes: 1, productions: 0, invoices: 2, receipts: 0, creditNotes: 0, debitNotes: 0, expenses: 2, whtCertificates: 0, salesOrders: 1, billingNotes: 1, payments: 1, reservations: 0, purchaseOrders: 1, goodsReceipts: 0, inventoryMovements: 1, openingStock: 1, vatReturns: 0, whtFilings: 0, periodLocks: 0, unreadable: 1 }); // ADR-024 adds the two new pack kinds; r8fix#B10 adds filings + branch locks (zero here)
   assert.equal(census.total, 12);
   assert.equal(b.describeBranchCensus(census), 'ใบเสนอราคา 1 · ใบส่งสินค้า/ใบกำกับภาษี 2 · ค่าใช้จ่าย 2 · ใบสั่งขาย 1 · ใบวางบิล 1 · รายการรับชำระ 1 · ใบสั่งซื้อ (PO) 1 · รายการเคลื่อนไหวสต็อก 1 · สินค้าที่มียอดตั้งต้นของสาขานี้ 1 · ชุดข้อมูลที่อ่านไม่ได้ 1');
   assert.equal(b.branchDataCensus({ packs: [{ branch: 'khonkaen', data: { invoices: [], receipts: [] } }] }).total, 0, 'an empty pack is not data');
@@ -146,9 +146,20 @@ test('branches#4 sample data for one establishment: every document at the head o
   assert.ok(expenses.every(d => !/สาขาขอนแก่น/.test(d.record.desc)));
   assert.ok(expenses.some(d => d.record.desc === 'ค่าส่งจอมอนิเตอร์ให้โรงเรียน'), 'the delivery cost moves to the head office');
   // Running numbers: one sequence per prefix + month, unique, no gaps — exactly the two-branch set.
-  const numbers = plan => plan.documents.map(d => d.record.no).filter(Boolean).sort();
+  const numbers = plan => plan.documents.map(d => d.record.no).filter(no => no && !/^WHT/.test(no)).sort();
   assert.deepEqual(numbers(one), numbers(two));
   assert.equal(new Set(numbers(one)).size, numbers(one).length);
+  // r13#MED-7: 50 ทวิ run per establishment and พ.ศ. book. The branch's own rent (withheld 5 %) does not exist with one
+  // establishment, so the head office book is the two-branch head office book plus the moved delivery payment — unique, no gaps.
+  const certNos = plan => plan.documents.filter(d => d.collection === 'whtCertificates').map(d => d.record.no);
+  const book = (list, year) => list.filter(no => no.startsWith(`WHT${year}-`)).sort();
+  for (const year of new Set(certNos(one).map(no => no.slice(3, 7)))) {
+    const list = book(certNos(one), year);
+    assert.deepEqual(list, list.map((_, i) => `WHT${year}-${String(i + 1).padStart(4, '0')}`), `one establishment: book ${year} gapless`);
+  }
+  const branchBuilding = two.documents.filter(d => d.collection === 'whtCertificates' && /สาขาขอนแก่น/.test(two.documents.find(e => e.collection === 'expenses' && e.record.id === d.record.sourceExpenseId).record.desc));
+  assert.ok(branchBuilding.length > 0);
+  assert.equal(certNos(one).length, certNos(two).length - branchBuilding.length, 'only the branch-building payments drop out');
   assert.deepEqual(plain(one.flow.billingNotes.map(x => x.no)), plain(two.flow.billingNotes.map(x => x.no)));
   // Stock: all opening stock at the head office, same total per product; seeded sales never exceed it.
   for (const product of one.products) {

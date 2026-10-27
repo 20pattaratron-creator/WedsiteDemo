@@ -38,7 +38,8 @@ test('r8a#1 seeded invoices carry the buyer establishment from Customer Master; 
   const branchBuyer = invoices.find(i => i.customer === 'บมจ. แก่นนคร ฟู้ดส์');
   assert.deepEqual([branchBuyer.customerBranchCode, branchBuyer.customerBranchName], ['00003', 'โรงงานขอนแก่น']);
   for (const inv of invoices) {
-    if (inv.taxInvoiceForm === 'abbreviated') assert.equal(inv.customerBranchCode, '', inv.no);
+    // ADR-031: the foreign buyer of the USD export has no Thai tax ID and so no establishment code.
+    if (inv.taxInvoiceForm === 'abbreviated' || (inv.currency && !inv.customerTaxId)) assert.equal(inv.customerBranchCode, '', inv.no);
     else assert.match(inv.customerBranchCode, /^\d{5}$/, inv.no);
   }
   const receipts = plan.documents.filter(d => d.collection === 'receipts').map(d => d.record);

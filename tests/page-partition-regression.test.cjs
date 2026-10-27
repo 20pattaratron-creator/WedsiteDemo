@@ -62,10 +62,12 @@ async function buildHarness(file,stateItems=[]){
   const printableItems=(items=state.items)=>shared.selectPrintableDocumentItems(items);
   const paginateItems=(items=printableItems(state.items),options={})=>shared.paginateDocumentItems(items,{unitsPerPage:8,...options});
   const factory=new Function(
-    'state','printableItems','paginateItems','ITEM_UNITS_PER_PAGE','documentPageHtml',
+    'state','printableItems','paginateItems','ITEM_UNITS_PER_PAGE','documentPageHtml','dtdRowUnits','rcpRowUnits',
     `${pagesSource}\nreturn {documentPagesHtml};`
   );
-  const controllerApi=factory(state,printableItems,paginateItems,8,documentPageHtml);
+  // r8fix#C6: the controllers pass their own row estimator; this harness keeps the shared default (undefined) so the
+  // partition fixtures below (units by name length at 8 units per page) still check the shared paginator.
+  const controllerApi=factory(state,printableItems,paginateItems,8,documentPageHtml,undefined,undefined);
   return {api:{printableItems,paginateItems,documentPagesHtml:controllerApi.documentPagesHtml},pageCalls};
 }
 
