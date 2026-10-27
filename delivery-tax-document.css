@@ -1672,3 +1672,25 @@
 .dtd-section-title{font-size:15px}
 .dtd-summary-box{min-height:48px}
 @media(max-width:760px){.dtd-grid-2,.dtd-grid-3,.dtd-grid-4{grid-template-columns:1fr!important}.dtd-span-2{grid-column:auto!important}}
+
+/* r8fix#C6 (ADR-025): 16 line units per A4 page — each unit row is 1.8em of the page font (the JS sets a data row
+   to units × 1.8em; empty filler rows are one unit). Single-line rows get a slimmer padding so 16 fit above the
+   totals box in the print and PDF layouts (checked with Chromium); a long name wraps inside its cell.
+   The document tables use the page font: inside the app the global `table { font-size: 13px }` (style.css) reached
+   the PDF stage and the preview, so their rows were taller than on paper and ran into the totals box. The on-screen
+   preview is an exact miniature of the A4 PDF page: its font scales with the preview width (10.9px per 794px). */
+.dtd-document-page .dtd-doc-items-table tbody tr,
+.dtd-document-page .dtd-doc-items-table tbody tr.empty { height: 1.8em; }
+.dtd-document-page .dtd-doc-items-table tbody tr.dtd-data-row td,
+.dtd-document-page .dtd-doc-items-table tbody tr.empty td { padding-top: .22em; padding-bottom: .18em; }
+.dtd-document-page .dtd-doc-items-table tbody tr.dtd-data-row td.dtd-doc-desc { overflow-wrap: anywhere; word-break: break-word; }
+.dtd-document-page table { font-size: inherit; }
+#dtd-live-preview { container-type: inline-size; }
+#dtd-live-preview .dtd-document-page:not(.dtd-pdf-page) { font-size: calc(100cqi * 10.9 / 794); }
+
+/* r8fix#C5: ≤ 1,250 px the editor and preview stack in ONE column that fits the screen — a later rule set
+   600px 560px columns, so on a phone the editor card ran to x = 616. */
+@media (max-width: 1250px) {
+  .dtd-workspace { grid-template-columns: minmax(0, 1fr); }
+  .dtd-editor-card, .dtd-preview-card { min-width: 0; max-width: 100%; }
+}

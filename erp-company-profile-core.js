@@ -25,6 +25,15 @@ import { normalizeBranchSetting } from './erp-branches-core.js';
 
 export const COMPANY_PROFILE_SCHEMA_VERSION = 1;
 export const PLACEHOLDER_TAX_ID = '0000000000000';
+// r8fix#C9: the sample company's phone is a placeholder like its TIN — never printed, only shown as a hint.
+export const PLACEHOLDER_PHONE = '000-000-0000';
+export function isPlaceholderPhone(value) { const digits = String(value ?? '').replace(/\D/g, ''); return digits.length > 0 && /^0+$/.test(digits); }
+// A printed contact line without its placeholder numbers: "Tel: 000-000-0000   Fax: 000-000-0000" → '';
+// "Tel: 02-123-4567   Fax: 000-000-0000" → "Tel: 02-123-4567". Parts are split on 2+ spaces or " · ".
+export function printableContactLine(text) {
+  const source = String(text ?? ''), separator = source.includes(' · ') ? ' · ' : '   ';
+  return source.split(/\s{2,}|\s·\s/).map(part => part.trim()).filter(part => part && !(isPlaceholderPhone(part) && !/[a-z0-9]@|www\.|https?:/i.test(part))).join(separator);
+}
 export const HEAD_OFFICE_BRANCH_CODE = '00000';
 // The system's two branch ids (index.html, every document module): ubon = head office,
 // khonkaen = the second branch. Only the code / label / address printed for them is editable.
@@ -47,7 +56,19 @@ export const LOGO_LIMITS = Object.freeze({
   maxSourcePixels: 50000000
 });
 export const LOGO_ACCEPTED_TYPES = Object.freeze(['image/png', 'image/jpeg', 'image/webp']);
-export const FIELD_LIMITS = Object.freeze({ nameTh: 160, nameEn: 160, addressTh: 300, phone: 60, email: 120, website: 160, branchLabel: 60 });
+export const FIELD_LIMITS = Object.freeze({ nameTh: 160, nameEn: 160, addressTh: 300, phone: 60, email: 120, website: 160, branchLabel: 60, approvalNo: 60, posId: 40 });
+// r13#MED-5 — ใบกำกับภาษีอย่างย่อ (มาตรา 86/6) may be issued only by a VAT-registered RETAILER, and when it is issued by a
+// cash register / computer the Director-General's approval (ภ.พ.06) is needed and every slip prints the machine number
+// he assigns (ประกาศอธิบดีฯ VAT ฉบับที่ 46 ข้อ 2, 3(3)–(4), 5). Stored only when chosen (older profiles keep their shape).
+export const ABBREVIATED_TEXT = Object.freeze({
+  notApproved: 'บริษัทยังไม่ได้ตั้งค่า "ได้รับอนุมัติออกใบกำกับภาษีอย่างย่อ (ภ.พ.06)" — ใบกำกับภาษีอย่างย่อออกได้เฉพาะผู้ประกอบการค้าปลีก (มาตรา 86/6) และการออกด้วยคอมพิวเตอร์ต้องได้รับอนุมัติก่อน (ประกาศอธิบดีฯ ฉบับที่ 46) — ถ้ายังไม่ได้รับอนุมัติ ให้ออกใบกำกับภาษีเต็มรูป',
+  noPosId: branch => `ยังไม่ได้ระบุหมายเลขเครื่อง (POS ID) ของ${branch} — ใบกำกับภาษีอย่างย่อต้องพิมพ์หมายเลขเครื่องที่ได้รับอนุมัติ`,
+  expertCheck: 'ให้ผู้เชี่ยวชาญยืนยันว่า ERP บนเว็บที่พิมพ์ใบกำกับภาษีอย่างย่อ ต้องขออนุมัติแบบเครื่องบันทึกการเก็บเงิน (ภ.พ.06) หรือไม่',
+  errApproval: 'เลือก "ได้รับอนุมัติแล้ว" ต้องกรอกเลขที่หนังสืออนุมัติ ภ.พ.06',
+  errApprovalMode: 'การออกใบกำกับภาษีอย่างย่อต้องเป็น "ไม่ได้ขออนุมัติ" หรือ "ได้รับอนุมัติแล้ว"',
+  errPosId: 'หมายเลขเครื่อง (POS ID) ใช้ตัวอักษรอังกฤษ ตัวเลข ขีด และ / ได้ไม่เกิน 40 ตัว'
+});
+const POS_ID_RE = /^[A-Za-z0-9][A-Za-z0-9/._ -]{0,39}$/;
 const PROFILE_FIELDS = Object.freeze(['nameTh', 'nameEn', 'taxId', 'addressTh', 'phone', 'email', 'website']);
 const BASE_PROP = '__erpCompanyProfileBase';
 
@@ -151,6 +172,8 @@ export function validateCompanyProfile(input, { allowPlaceholderTaxId = false } 
     };
     profile.branches[branch.id] = row;
     const at = field => `branches.${branch.id}.${field}`;
+    const posId = cleanText(raw.posId);
+    if (posId) { row.posId = posId; if (!POS_ID_RE.test(posId)) errors[at('posId')] = ABBREVIATED_TEXT.errPosId; }
     if (branch.headOffice && raw.code !== undefined && String(raw.code).trim() !== HEAD_OFFICE_BRANCH_CODE) errors[at('code')] = 'รหัสสำนักงานใหญ่ต้องเป็น 00000';
     if (!branch.headOffice && !isValidBranchCode(row.code)) errors[at('code')] = 'รหัสสาขาต้องเป็นตัวเลข 5 หลัก และไม่ใช่ 00000 (00000 = สำนักงานใหญ่)';
     if (row.label.length > FIELD_LIMITS.branchLabel) errors[at('label')] = `ชื่อสาขายาวเกิน ${FIELD_LIMITS.branchLabel} ตัวอักษร`;
@@ -161,6 +184,15 @@ export function validateCompanyProfile(input, { allowPlaceholderTaxId = false } 
   const filingMode = String(source.vatFilingMode ?? '').trim();
   if (filingMode === 'combined') profile.vatFilingMode = 'combined';
   else if (filingMode && filingMode !== 'separate') errors.vatFilingMode = 'วิธียื่น ภ.พ.30 ต้องเป็น "แยกยื่นรายสถานประกอบการ" หรือ "ยื่นรวมกัน"';
+  // r13#MED-5: abbreviated tax invoices — 'approved' (retailer with ภ.พ.06 approval: number required) or not set.
+  const abbreviated = String(source.abbreviatedApproval ?? '').trim();
+  if (abbreviated === 'approved') {
+    profile.abbreviatedApproval = 'approved';
+    const approvalNo = cleanText(source.abbreviatedApprovalNo);
+    if (!approvalNo) errors.abbreviatedApprovalNo = ABBREVIATED_TEXT.errApproval;
+    else if (approvalNo.length > FIELD_LIMITS.approvalNo) errors.abbreviatedApprovalNo = `เลขที่อนุมัติยาวเกิน ${FIELD_LIMITS.approvalNo} ตัวอักษร`;
+    profile.abbreviatedApprovalNo = approvalNo;
+  } else if (abbreviated && abbreviated !== 'none') errors.abbreviatedApproval = ABBREVIATED_TEXT.errApprovalMode;
   return { ok: Object.keys(errors).length === 0, errors, profile };
 }
 
@@ -185,7 +217,7 @@ export function companyProfileFormValues(saved, baseCompanyProfile = {}) {
     nameEn: base.nameEn || base.companyNameEn || '',
     taxId: base.taxId || PLACEHOLDER_TAX_ID,
     addressTh: base.addressTh || '',
-    phone: base.phone || '',
+    phone: isPlaceholderPhone(base.phone) ? '' : base.phone || '', // r8fix#C9: the placeholder stays a placeholder
     email: base.email || '',
     website: base.website || '',
     branches: {}
@@ -195,9 +227,11 @@ export function companyProfileFormValues(saved, baseCompanyProfile = {}) {
   values.branches = {};
   for (const branch of COMPANY_BRANCHES) {
     const row = source.branches?.[branch.id] || {};
-    values.branches[branch.id] = { code: String(row.code || branch.defaultCode), label: String(row.label || ''), addressTh: String(row.addressTh || '') };
+    values.branches[branch.id] = { code: String(row.code || branch.defaultCode), label: String(row.label || ''), addressTh: String(row.addressTh || ''), posId: String(row.posId || '') };
   }
   values.vatFilingMode = source.vatFilingMode === 'combined' ? 'combined' : 'separate';
+  values.abbreviatedApproval = source.abbreviatedApproval === 'approved' ? 'approved' : 'none';
+  values.abbreviatedApprovalNo = String(source.abbreviatedApprovalNo || '');
   return values;
 }
 
@@ -289,13 +323,13 @@ const clone = value => (value === undefined ? undefined : JSON.parse(JSON.string
 const deepFreeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(deepFreeze); Object.freeze(value); } return value; };
 
 function contactLine(profile) {
-  const parts = [`Tel: ${profile.phone || '-'}`];
+  const parts = [`Tel: ${isPlaceholderPhone(profile.phone) ? '-' : profile.phone || '-'}`];
   if (profile.email) parts.push(`Email: ${profile.email}`);
   if (profile.website) parts.push(`Web: ${profile.website}`);
   return parts.join('   ');
 }
 function quotationContact(profile) {
-  return [profile.phone || '-', profile.email ? `อีเมล ${profile.email}` : '', profile.website ? `เว็บไซต์ ${profile.website}` : ''].filter(Boolean).join(' · ');
+  return [isPlaceholderPhone(profile.phone) ? '-' : profile.phone || '-', profile.email ? `อีเมล ${profile.email}` : '', profile.website ? `เว็บไซต์ ${profile.website}` : ''].filter(Boolean).join(' · ');
 }
 
 // The company block of one document for one branch. `style`:
@@ -324,6 +358,19 @@ export function companyForDocument(profile, branchId, style, fallbackBranchId = 
 
 const globalUser = () => (typeof window !== 'undefined' ? window.CurrentUser : undefined);
 
+// r13#MED-5: the abbreviated-invoice approval of the SAVED profile (the demo profile is never approved).
+//   → { approved, approvalNo, posId, warnings: [text] }
+export function abbreviatedInvoiceApproval(user = globalUser(), branchId = 'ubon', branchName = '') {
+  const profile = user?.companyProfile;
+  const custom = profile && profile.customProfile === true && isPlainObject(profile.custom) ? profile.custom : null;
+  const approved = custom?.abbreviatedApproval === 'approved' && !!cleanText(custom.abbreviatedApprovalNo);
+  const posId = cleanText(custom?.branches?.[branchId]?.posId);
+  const warnings = [];
+  if (!approved) warnings.push(ABBREVIATED_TEXT.notApproved);
+  else if (!posId) warnings.push(ABBREVIATED_TEXT.noPosId(branchName || legalBranchLabel(custom?.branches?.[branchId]?.code || HEAD_OFFICE_BRANCH_CODE)));
+  return { approved, approvalNo: approved ? cleanText(custom.abbreviatedApprovalNo) : '', posId: approved ? posId : '', warnings };
+}
+
 // For branchCompany() / branchInfo() of the document modules: null while no profile is saved
 // (they then keep their built-in behaviour exactly).
 export function documentCompany(user, branchId, style, fallbackBranchId) {
@@ -335,6 +382,18 @@ export function documentCompany(user, branchId, style, fallbackBranchId) {
 export function companyLogoUrl(user = globalUser()) {
   const url = user?.companyProfile?.logoDataUrl;
   return isCustomLogoUrl(url) && isStorableLogoDataUrl(url) ? url : DEFAULT_COMPANY_LOGO_URL;
+}
+
+// r8fix#C6: a customer logo is a data URL (≤ 300 KB) that every printed page repeats twice (header + watermark) —
+// 35 lines used to make a 4.8 MB print window. The print HTML carries it ONCE: the <img>s lose their src and a
+// tiny script gives them the one copy before the window's load event (print runs after load). A file logo
+// (./logo.png, cached by the browser) is left as it is.
+export function printHtmlWithSingleLogo(html, logoUrl) {
+  const url = String(logoUrl || ''), source = String(html ?? '');
+  if (!/^data:image\/[a-z+.-]+(?:;[\w.=-]+)*;base64,[A-Za-z0-9+/=]+$/i.test(url)) return source;
+  const needle = `src="${url}"`;
+  if (source.split(needle).length < 3) return source;
+  return `${source.split(needle).join('data-erp-logo=""')}<script>(function(){var u=${JSON.stringify(url)};var a=document.querySelectorAll('img[data-erp-logo]');for(var i=0;i<a.length;i+=1)a[i].src=u;})();<\/script>`;
 }
 
 // <style> for a print window: empty for the default logo, so its HTML stays as it was.

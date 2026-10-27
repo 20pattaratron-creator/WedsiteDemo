@@ -1,24 +1,24 @@
 {
   "release": "4.3.1",
   "phase": "Step 3C-1 Issued Document Transaction & Sync Boundary",
-  "checkedAt": "2026-10-04T22:56:13.120Z",
+  "checkedAt": "2026-10-27T09:07:31.984Z",
   "budgetFile": "DOCUMENT_CONTROLLER_DUPLICATION_BUDGET.json",
   "status": "PASS",
   "metrics": {
     "controllerLines": {
-      "quotation-document.js": 493,
-      "delivery-tax-document.js": 1430,
-      "receipt-document.js": 1464
+      "quotation-document.js": 534,
+      "delivery-tax-document.js": 1499,
+      "receipt-document.js": 1527
     },
-    "totalControllerLines": 3387,
+    "totalControllerLines": 3560,
     "topLevelFunctions": {
-      "quotation-document.js": 27,
-      "delivery-tax-document.js": 56,
-      "receipt-document.js": 56
+      "quotation-document.js": 28,
+      "delivery-tax-document.js": 59,
+      "receipt-document.js": 60
     },
     "sameNameFunctionPairs": 46,
-    "exactSameNameFunctionPairs": 5,
-    "normalizedDuplicate10LineGroups": 133,
+    "exactSameNameFunctionPairs": 4,
+    "normalizedDuplicate10LineGroups": 124,
     "crossControllerImports": 0
   },
   "budget": {
@@ -34,8 +34,8 @@
     {
       "left": "quotation-document.js",
       "right": "delivery-tax-document.js",
-      "leftFunctions": 27,
-      "rightFunctions": 56,
+      "leftFunctions": 28,
+      "rightFunctions": 59,
       "sameNameFunctions": 2,
       "exactSameNameFunctions": 0,
       "exactFunctions": [],
@@ -47,8 +47,8 @@
     {
       "left": "quotation-document.js",
       "right": "receipt-document.js",
-      "leftFunctions": 27,
-      "rightFunctions": 56,
+      "leftFunctions": 28,
+      "rightFunctions": 60,
       "sameNameFunctions": 2,
       "exactSameNameFunctions": 0,
       "exactFunctions": [],
@@ -60,39 +60,33 @@
     {
       "left": "delivery-tax-document.js",
       "right": "receipt-document.js",
-      "leftFunctions": 56,
-      "rightFunctions": 56,
+      "leftFunctions": 59,
+      "rightFunctions": 60,
       "sameNameFunctions": 42,
-      "exactSameNameFunctions": 5,
+      "exactSameNameFunctions": 4,
       "exactFunctions": [
         {
           "name": "getLockedBranch",
-          "leftLine": 182,
-          "rightLine": 179,
+          "leftLine": 227,
+          "rightLine": 219,
           "lines": 4
         },
         {
           "name": "addItem",
-          "leftLine": 748,
-          "rightLine": 875,
+          "leftLine": 795,
+          "rightLine": 917,
           "lines": 10
         },
         {
           "name": "removeItem",
-          "leftLine": 759,
-          "rightLine": 886,
+          "leftLine": 806,
+          "rightLine": 928,
           "lines": 10
         },
         {
-          "name": "documentPagesHtml",
-          "leftLine": 798,
-          "rightLine": 925,
-          "lines": 9
-        },
-        {
           "name": "waitForPdfStageAssets",
-          "leftLine": 1247,
-          "rightLine": 1280,
+          "leftLine": 1314,
+          "rightLine": 1340,
           "lines": 17
         }
       ],
@@ -124,6 +118,7 @@
         "updateItemAmount",
         "renderTabs",
         "updateComputedAndPreview",
+        "documentPagesHtml",
         "renderPreview",
         "documentPageHtml",
         "signatureBox",
@@ -141,173 +136,63 @@
     [
       {
         "file": "quotation-document.js",
-        "line": 377
+        "line": 416
       },
       {
         "file": "delivery-tax-document.js",
-        "line": 1252
+        "line": 1319
       },
       {
         "file": "receipt-document.js",
-        "line": 1285
+        "line": 1345
       }
     ],
     [
       {
         "file": "quotation-document.js",
-        "line": 378
+        "line": 417
       },
       {
         "file": "delivery-tax-document.js",
-        "line": 1253
+        "line": 1320
       },
       {
         "file": "receipt-document.js",
-        "line": 1286
+        "line": 1346
       }
     ],
     [
       {
         "file": "quotation-document.js",
-        "line": 379
+        "line": 418
       },
       {
         "file": "delivery-tax-document.js",
-        "line": 1254
+        "line": 1321
       },
       {
         "file": "receipt-document.js",
-        "line": 1287
+        "line": 1347
       }
     ],
     [
       {
         "file": "quotation-document.js",
-        "line": 380
+        "line": 419
       },
       {
         "file": "delivery-tax-document.js",
-        "line": 1255
+        "line": 1322
       },
       {
         "file": "receipt-document.js",
-        "line": 1288
+        "line": 1348
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 24
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 27
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 25
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 28
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 26
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 29
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 27
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 30
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 28
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 31
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 29
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 32
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 30
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 33
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 31
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 34
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 32
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 35
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 33
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 36
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 34
-      },
-      {
-        "file": "receipt-document.js",
-        "line": 37
-      }
-    ],
-    [
-      {
-        "file": "delivery-tax-document.js",
-        "line": 35
+        "line": 38
       },
       {
         "file": "receipt-document.js",
@@ -317,7 +202,7 @@
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 36
+        "line": 39
       },
       {
         "file": "receipt-document.js",
@@ -327,7 +212,7 @@
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 37
+        "line": 40
       },
       {
         "file": "receipt-document.js",
@@ -337,7 +222,7 @@
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 38
+        "line": 41
       },
       {
         "file": "receipt-document.js",
@@ -347,11 +232,91 @@
     [
       {
         "file": "delivery-tax-document.js",
+        "line": 42
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 42
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 43
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 43
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 44
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 44
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 45
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 45
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 46
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 46
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 47
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 47
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 48
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 48
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 49
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 49
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
         "line": 50
       },
       {
         "file": "receipt-document.js",
-        "line": 53
+        "line": 50
       }
     ],
     [
@@ -361,7 +326,7 @@
       },
       {
         "file": "receipt-document.js",
-        "line": 54
+        "line": 51
       }
     ],
     [
@@ -371,87 +336,117 @@
       },
       {
         "file": "receipt-document.js",
-        "line": 55
+        "line": 52
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 53
+        "line": 64
       },
       {
         "file": "receipt-document.js",
-        "line": 56
+        "line": 64
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 54
+        "line": 65
       },
       {
         "file": "receipt-document.js",
-        "line": 57
+        "line": 65
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 55
+        "line": 66
       },
       {
         "file": "receipt-document.js",
-        "line": 58
+        "line": 66
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 56
+        "line": 67
       },
       {
         "file": "receipt-document.js",
-        "line": 59
+        "line": 67
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 57
+        "line": 68
       },
       {
         "file": "receipt-document.js",
-        "line": 60
+        "line": 68
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 58
+        "line": 69
       },
       {
         "file": "receipt-document.js",
-        "line": 61
+        "line": 69
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 59
+        "line": 70
       },
       {
         "file": "receipt-document.js",
-        "line": 62
+        "line": 70
       }
     ],
     [
       {
         "file": "delivery-tax-document.js",
-        "line": 60
+        "line": 71
       },
       {
         "file": "receipt-document.js",
-        "line": 63
+        "line": 71
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 72
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 72
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 73
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 73
+      }
+    ],
+    [
+      {
+        "file": "delivery-tax-document.js",
+        "line": 74
+      },
+      {
+        "file": "receipt-document.js",
+        "line": 74
       }
     ]
   ],
@@ -604,13 +599,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 47,
+            "line": 61,
             "lines": 19,
             "hash": "7e7a2ccc9c99dd8aebec962a30a66fc4cd7f78cd"
           },
           {
             "file": "receipt-document.js",
-            "line": 50,
+            "line": 61,
             "lines": 19,
             "hash": "db6f10a80c952407288c4130ea4bf9dd52b15d87"
           }
@@ -621,13 +616,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 182,
+            "line": 227,
             "lines": 4,
             "hash": "5ed830e599c8c576514a5b6dabcda6fc8ad550b8"
           },
           {
             "file": "receipt-document.js",
-            "line": 179,
+            "line": 219,
             "lines": 4,
             "hash": "5ed830e599c8c576514a5b6dabcda6fc8ad550b8"
           }
@@ -638,13 +633,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 748,
+            "line": 795,
             "lines": 10,
             "hash": "983ff953505213f54a33b0fdc34cd720d24ff75a"
           },
           {
             "file": "receipt-document.js",
-            "line": 875,
+            "line": 917,
             "lines": 10,
             "hash": "983ff953505213f54a33b0fdc34cd720d24ff75a"
           }
@@ -655,13 +650,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 759,
+            "line": 806,
             "lines": 10,
             "hash": "bd606cf727df9b8aed5b2ea4c54ef56d92d94d5e"
           },
           {
             "file": "receipt-document.js",
-            "line": 886,
+            "line": 928,
             "lines": 10,
             "hash": "bd606cf727df9b8aed5b2ea4c54ef56d92d94d5e"
           }
@@ -672,21 +667,21 @@
         "occurrences": [
           {
             "file": "quotation-document.js",
-            "line": 251,
+            "line": 290,
             "lines": 5,
             "hash": "1d32b309e017566dd51ef7a1a79d58fe1bc717e5"
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 798,
+            "line": 845,
             "lines": 9,
-            "hash": "c2152af945c066e4ca3946168914b0096231e327"
+            "hash": "14436849e74785fd3ff4e28b18355a7d62169574"
           },
           {
             "file": "receipt-document.js",
-            "line": 925,
+            "line": 967,
             "lines": 9,
-            "hash": "c2152af945c066e4ca3946168914b0096231e327"
+            "hash": "ec3a8a3091e6487f41818b9d4d12007d19c081b1"
           }
         ]
       },
@@ -695,13 +690,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1247,
+            "line": 1314,
             "lines": 17,
             "hash": "b2647e09df03c812ef2626e9969c396fe558c36a"
           },
           {
             "file": "receipt-document.js",
-            "line": 1280,
+            "line": 1340,
             "lines": 17,
             "hash": "b2647e09df03c812ef2626e9969c396fe558c36a"
           }
@@ -714,15 +709,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 113,
-            "lines": 41,
-            "hash": "577afdcdf6c83d9c3111a3194bffc80c56e28fb5"
+            "line": 155,
+            "lines": 44,
+            "hash": "e6f5fbacfbc98bf1a6ac93403ad55aa358e4e8d9"
           },
           {
             "file": "receipt-document.js",
-            "line": 105,
-            "lines": 44,
-            "hash": "b10dde5107ac55287eb26e56edac0b0bf1372c61"
+            "line": 144,
+            "lines": 45,
+            "hash": "579e0a235973cc8888042c8c9241db7f541b974f"
           }
         ]
       },
@@ -731,13 +726,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 155,
+            "line": 200,
             "lines": 6,
             "hash": "18b8ccb4e69db15da901094fae28c46fc0fe37ce"
           },
           {
             "file": "receipt-document.js",
-            "line": 150,
+            "line": 190,
             "lines": 6,
             "hash": "931803a11a8b00b5eb01cd05227d909988b21b27"
           }
@@ -748,13 +743,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 187,
+            "line": 232,
             "lines": 20,
             "hash": "7694b3bc1603b233e1da7edc079ae82043e03379"
           },
           {
             "file": "receipt-document.js",
-            "line": 184,
+            "line": 224,
             "lines": 20,
             "hash": "568963c299a3818eb83e6507a1866ec1cb0c1e22"
           }
@@ -765,13 +760,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 208,
+            "line": 253,
             "lines": 7,
             "hash": "6b91b0d80859c63724ad38a8d90a9c397a8bed25"
           },
           {
             "file": "receipt-document.js",
-            "line": 205,
+            "line": 245,
             "lines": 7,
             "hash": "95e85f22af44198d7955760420e0c8eec768a01b"
           }
@@ -782,19 +777,19 @@
         "occurrences": [
           {
             "file": "quotation-document.js",
-            "line": 261,
+            "line": 300,
             "lines": 44,
-            "hash": "25f17f28fc0cf3f4e7576c185cbc274a5d0e466d"
+            "hash": "31657ccb8cf4eb604b54e06d7b4625d8035705f2"
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 216,
+            "line": 261,
             "lines": 18,
             "hash": "2c9412fb4b0869d12be3a2c783564b6adfde102a"
           },
           {
             "file": "receipt-document.js",
-            "line": 213,
+            "line": 253,
             "lines": 17,
             "hash": "66049c4786209de03b1ceeebad07072a8c008b36"
           }
@@ -805,15 +800,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 235,
+            "line": 280,
             "lines": 45,
-            "hash": "f49f4b29bed7ef6bde32e0abfac15fa9fd5bc814"
+            "hash": "1bfeea0a91395a4818e0f0638754031b53079df3"
           },
           {
             "file": "receipt-document.js",
-            "line": 288,
+            "line": 330,
             "lines": 46,
-            "hash": "b94a94a7bcb0b95264f3bc70cc8cf8f812dbb886"
+            "hash": "6f81ec3af902c20e139f918b2ca611cd9e822ae4"
           }
         ]
       },
@@ -822,13 +817,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 416,
+            "line": 463,
             "lines": 28,
             "hash": "6dfe45131937088f1a7d66a151a52a904365a2ac"
           },
           {
             "file": "receipt-document.js",
-            "line": 561,
+            "line": 603,
             "lines": 14,
             "hash": "8018b422198afc001e2e8d62b565a06c5ce16bc4"
           }
@@ -839,15 +834,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 445,
+            "line": 492,
             "lines": 38,
-            "hash": "53d52e0c1bfd2004dd275e394820dca19388bbc4"
+            "hash": "35ef49a74e96ee117064f692e4bc73540c69b4b6"
           },
           {
             "file": "receipt-document.js",
-            "line": 576,
+            "line": 618,
             "lines": 38,
-            "hash": "0b316d3c1dc6838450c5906c8736c6811c758914"
+            "hash": "c9e96c2e8fac2853e818108eafe279d16546f37b"
           }
         ]
       },
@@ -856,13 +851,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 484,
+            "line": 531,
             "lines": 17,
             "hash": "a5840460d865a13ec5e2580f572e8deb287ac2c2"
           },
           {
             "file": "receipt-document.js",
-            "line": 615,
+            "line": 657,
             "lines": 17,
             "hash": "abcbfcfb8d8243fb0dda616113523dfd8a4ebcea"
           }
@@ -873,15 +868,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 502,
+            "line": 549,
             "lines": 22,
-            "hash": "efc099046d3a3fd17abb32d44c479a0ad3df1132"
+            "hash": "62f72dbe0aec6ce17c5af0d02d43786ad815e0a5"
           },
           {
             "file": "receipt-document.js",
-            "line": 633,
+            "line": 675,
             "lines": 22,
-            "hash": "047903518d011950b619cf9768816a1a5b8d8f93"
+            "hash": "031c1a6db71405beb75a1e76c8168f4b65f2125c"
           }
         ]
       },
@@ -890,13 +885,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 525,
+            "line": 572,
             "lines": 18,
             "hash": "3e6ded84857e85297ff5d80e2a183ef8e4881f49"
           },
           {
             "file": "receipt-document.js",
-            "line": 656,
+            "line": 698,
             "lines": 18,
             "hash": "3c03b47b0cadfa550432ee875d63b9a0ccb27008"
           }
@@ -907,13 +902,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 592,
+            "line": 639,
             "lines": 78,
             "hash": "247f84e3ddd7e43eee5d250b882a2e7c132d474b"
           },
           {
             "file": "receipt-document.js",
-            "line": 723,
+            "line": 765,
             "lines": 83,
             "hash": "0f71f396e0ee6329d91838f710b60bd6aac0746f"
           }
@@ -924,13 +919,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 726,
+            "line": 773,
             "lines": 16,
             "hash": "365a1ea1cd86ce460eb81e02827dddd44585fcd2"
           },
           {
             "file": "receipt-document.js",
-            "line": 853,
+            "line": 895,
             "lines": 16,
             "hash": "4bc332c344d0426825500446e319b36d2127ef1a"
           }
@@ -941,13 +936,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 770,
+            "line": 817,
             "lines": 14,
             "hash": "70d15ec3875aace41d60d0a93b437706e714f766"
           },
           {
             "file": "receipt-document.js",
-            "line": 897,
+            "line": 939,
             "lines": 14,
             "hash": "d17af9a25e59afc799dd1f479e4a259a8cbd2326"
           }
@@ -958,15 +953,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 808,
+            "line": 855,
             "lines": 6,
             "hash": "2281221beb0eb777dc787ec887360778b3c2d26c"
           },
           {
             "file": "receipt-document.js",
-            "line": 935,
+            "line": 977,
             "lines": 6,
-            "hash": "d73150a652066f9b294d367a9cca7f76be629603"
+            "hash": "1fa63ca62b635a761b9cd0a531880bdf8ecbb968"
           }
         ]
       },
@@ -975,15 +970,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 815,
-            "lines": 146,
-            "hash": "ff5d58c354d6a063f0216eabba62353e6c67c2e5"
+            "line": 862,
+            "lines": 159,
+            "hash": "2ecc62aae7e2a411bbe2cc3d45e7e90b55f154de"
           },
           {
             "file": "receipt-document.js",
-            "line": 942,
-            "lines": 164,
-            "hash": "0db481269e3ca27c50c0d08efa638df9d2da5067"
+            "line": 984,
+            "lines": 172,
+            "hash": "e3fdbb752e200904a369f46e11ff695fc5663c7e"
           }
         ]
       },
@@ -992,13 +987,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1098,
+            "line": 1165,
             "lines": 8,
             "hash": "92959747c060640c65fa77b9517f09ed54b25f12"
           },
           {
             "file": "receipt-document.js",
-            "line": 1125,
+            "line": 1175,
             "lines": 13,
             "hash": "87ad5106c81678cd5de260ea434c42ad79a7a4bc"
           }
@@ -1009,13 +1004,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1107,
+            "line": 1174,
             "lines": 129,
             "hash": "dc6ee0e3973c5653a37c2c389d4711c18fd064d9"
           },
           {
             "file": "receipt-document.js",
-            "line": 1139,
+            "line": 1189,
             "lines": 130,
             "hash": "704afaf3b8daf0321bf7ecf5cac460263a517ddc"
           }
@@ -1026,13 +1021,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1265,
+            "line": 1332,
             "lines": 40,
             "hash": "706481dacddae336fefc5ccaff05524ffa3a1bd5"
           },
           {
             "file": "receipt-document.js",
-            "line": 1298,
+            "line": 1358,
             "lines": 40,
             "hash": "2dbcae6a83e0f8c013d70be6c88b768080d73c30"
           }
@@ -1043,15 +1038,15 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1306,
+            "line": 1373,
             "lines": 19,
-            "hash": "54c9de99684badbf34d2425ad1a85cbe688e6db9"
+            "hash": "f405ecb37a65d4093f91c02701ed9505119c435b"
           },
           {
             "file": "receipt-document.js",
-            "line": 1339,
+            "line": 1399,
             "lines": 19,
-            "hash": "a6dfde7974e7c366c6dc28c311b55e0fa94456ad"
+            "hash": "0c312c5f6aa0340fb99300adecbcf8a0a4d90b53"
           }
         ]
       },
@@ -1060,13 +1055,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1326,
+            "line": 1393,
             "lines": 13,
             "hash": "6524c16f6a91e4f1df58998a35494dbd6ab8f893"
           },
           {
             "file": "receipt-document.js",
-            "line": 1359,
+            "line": 1419,
             "lines": 13,
             "hash": "4a7687244c9c117eb408044d22add8ff15cdfa67"
           }
@@ -1077,13 +1072,13 @@
         "occurrences": [
           {
             "file": "delivery-tax-document.js",
-            "line": 1340,
+            "line": 1407,
             "lines": 8,
             "hash": "70b2ecc60dd275ce82124f66b345f411e07083fd"
           },
           {
             "file": "receipt-document.js",
-            "line": 1373,
+            "line": 1433,
             "lines": 8,
             "hash": "cfbdf3b2cc68805319df9cbc79b79c3fb0ec2652"
           }

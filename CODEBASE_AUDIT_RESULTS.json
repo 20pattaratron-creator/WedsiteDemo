@@ -1,15 +1,15 @@
 {
   "version": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-04T22:54:51.520Z",
-  "runtimeRootFiles": 124,
-  "jsFiles": 53,
-  "inlineHandlerFunctions": 101,
+  "checkedAt": "2026-10-27T09:04:32.423Z",
+  "runtimeRootFiles": 149,
+  "jsFiles": 73,
+  "inlineHandlerFunctions": 100,
   "issues": [],
   "notes": [
     {
       "code": "CSS_CROSS_FILE_OVERLAP",
-      "count": 22,
+      "count": 30,
       "detail": [
         {
           "selector": ":root",
@@ -46,6 +46,13 @@
           "selector": ".erp-council-close",
           "files": [
             "erp-decision-council.css",
+            "erp-ui.css"
+          ]
+        },
+        {
+          "selector": ".pe-portal-warning",
+          "files": [
+            "erp-product-experience.css",
             "erp-ui.css"
           ]
         },
@@ -159,6 +166,55 @@
           "files": [
             "erp-ui.css",
             "executive-charts.css"
+          ]
+        },
+        {
+          "selector": ".analytics-filter-grid",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".analytics-filter-grid select",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".analytics-chart .chart-bar-row",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".export-grid",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".export-box",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".import-json-options label",
+          "files": [
+            "erp-ui.css",
+            "style.css"
+          ]
+        },
+        {
+          "selector": ".main",
+          "files": [
+            "erp-ui.css",
+            "style.css"
           ]
         },
         {

@@ -1,0 +1,76 @@
+/* erp-costing.css — page "ต้นทุนและกำไรต่องาน" (ADR-028). Tables, tabs, cards and stats reuse erp-analytics.css
+   (afc-*); this file adds the job cost sheet, the entry forms and the margin colours. Controls follow the ADR-019 size
+   tokens: 42 px desktop, 44 px at ≤ 900 px. */
+.jc-root{min-width:0}
+.jc-head .card-title{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.jc-method{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#155886;background:#eef6fc;border:1px solid #bcd7ea;border-radius:999px;padding:6px 12px}
+.jc-method.jc-locked{color:#7c2d12;background:#fff7ed;border-color:#fed7aa}
+.jc-method .erp-icon{width:16px;height:16px}
+.jc-table{min-width:760px}
+/* The note under a row heading (job date · branch, labour hours) on its own line, as in the td cells of afc-table. */
+.jc-root .afc-table th small{display:block;color:#64748b;font-size:12px;font-weight:400;margin-top:2px;white-space:normal}
+.jc-sheet-table{min-width:560px}
+.jc-row-active th,.jc-row-active td{background:#f0f7ff!important}
+.jc-row-warn td{background:#fffbeb!important}
+.jc-row-opening td{background:#f8fafc!important;font-weight:600}
+.jc-good{color:#15803d!important}
+.jc-thin{color:#b45309!important}
+.jc-loss{color:#b91c1c!important}
+.afc-stat.jc-good b,.afc-stat.jc-loss b,.afc-stat.jc-thin b{color:inherit}
+.jc-badge-open{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.jc-badge-done{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.jc-badge-warn{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.jc-sheet{border-color:#9ebdd4}
+.jc-sheet-head{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;margin:4px 0 8px}
+.jc-sheet-head div{min-width:0}
+.jc-sheet-head dt{font-size:13px;font-weight:700;color:#475569}
+.jc-sheet-head dd{margin:2px 0 0;font-size:15px;color:#0f172a;overflow-wrap:anywhere}
+.jc-result{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0;padding:12px;border-radius:12px;border:2px solid #cbd5e1;background:#f8fafc}
+.jc-result.jc-good{border-color:#86efac;background:#f0fdf4}
+.jc-result.jc-thin{border-color:#fcd34d;background:#fffbeb}
+.jc-result.jc-loss{border-color:#fca5a5;background:#fef2f2}
+.jc-result small{display:block;font-size:13px;font-weight:700;color:#475569}
+.jc-result b{display:block;font-size:20px;margin-top:2px}
+.jc-forms{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+.jc-form{border:1px solid #dbe4ef;border-radius:12px;padding:12px;background:#fbfdff;display:flex;flex-direction:column;gap:8px;min-width:0}
+.jc-form h4{display:flex;align-items:center;gap:6px;margin:0 0 2px;font-size:15px;color:#0f172a}
+.jc-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.jc-field label,.jc-radios legend{font-size:14px;font-weight:700;color:#475569}
+.jc-form input,.jc-form select,.jc-field input,.jc-field select,.jc-person input,.jc-nrv-input{min-height:var(--erp-control-height,42px);font-size:15px;box-sizing:border-box;width:100%;max-width:100%}
+.jc-nrv-input{max-width:140px;text-align:right}
+/* The row buttons are .btn-sm elsewhere (36 px); on this page every control is at least the 42 px token (ADR-019). */
+.jc-form .btn,.jc-actions .btn,.jc-root .btn.btn-sm,.jc-table .btn,.jc-sheet .btn{min-height:var(--erp-control-height,42px)}
+.jc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.jc-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.jc-radios{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:10px}
+.jc-radio,.jc-check{display:inline-flex;align-items:center;gap:8px;min-height:var(--erp-control-height,42px);padding:0 12px;border:1px solid #dbe4ef;border-radius:10px;background:#fff;font-size:15px}
+.jc-radio input,.jc-check input{width:var(--erp-check-size,20px);height:var(--erp-check-size,20px)}
+.jc-checks{display:flex;flex-wrap:wrap;gap:8px}
+.jc-people{display:flex;flex-direction:column;gap:8px;max-width:520px}
+.jc-person{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.jc-law p{margin:6px 0 0}
+.jc-history{margin:8px 0;padding-left:20px;font-size:14px}
+.jc-formula{display:flex;flex-direction:column;gap:4px;border:1px dashed #9ebdd4;border-radius:12px;padding:10px 12px;margin:6px 0 10px;background:#f8fbff}
+.jc-formula small{color:#64748b}
+.jc-details{margin-top:10px}
+.jc-details summary{cursor:pointer;font-weight:700;min-height:var(--erp-control-height,42px);display:flex;align-items:center}
+.jc-gp-note b{margin-right:4px}
+.jc-coverage{font-weight:700}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media (max-width:900px){
+  .jc-form input,.jc-form select,.jc-field input,.jc-field select,.jc-person input,.jc-nrv-input,.jc-form .btn,.jc-actions .btn,.jc-root .btn.btn-sm,.jc-table .btn,.jc-sheet .btn,.jc-radio,.jc-check,.jc-details summary{min-height:var(--erp-touch-target,44px)}
+}
+@media (max-width:560px){
+  .jc-forms{grid-template-columns:1fr}
+  .jc-table{min-width:620px}
+  /* The cost sheet on a 390 px phone: one block per cost category — its name, then budget / actual / variance side by
+     side, each labelled (data-label) — so nothing scrolls off screen. The header row stays for screen readers only. */
+  .jc-root .afc-table.jc-sheet-table{min-width:0}
+  .jc-root .jc-sheet-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .jc-root .jc-sheet-table tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .jc-root .afc-table.jc-sheet-table th[scope="row"]{grid-column:1/-1;border-bottom:0}
+  .jc-root .afc-table.jc-sheet-table td{padding:4px 6px 8px;font-size:13px;white-space:normal}
+  .jc-root .jc-sheet-table td::before{content:attr(data-label);display:block;font-size:11px;font-weight:600;color:#64748b;text-align:right}
+  .jc-result b{font-size:18px}
+  .jc-form .btn{width:100%;justify-content:center}
+}

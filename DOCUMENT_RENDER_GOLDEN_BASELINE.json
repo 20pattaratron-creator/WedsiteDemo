@@ -1,36 +1,7 @@
 {
   "version": 1,
   "purpose": "Source-level golden guard for printable document rendering. A hash change requires explicit visual/PDF review and deliberate baseline regeneration.",
-  "generatedAt": "2026-10-04T00:54:02.473Z",
-  "documents": {
-    "quotation": {
-      "js": "quotation-document.js",
-      "css": "quotation-document.css",
-      "cssSha256": "e3fdff95e84ec9aa956acab1e5483a22c17c05cd13ae2f06297fb085b7c5e0d4",
-      "functions": {
-        "pageHtml": "146a11418095c608bb854957da6c573cd79d16b3eb2be7dd8c2542898c042eed",
-        "documentPagesHtml": "f4e6bd29c98dd0172d74e62c2b16c7fb4ba9e7a7c1f62db823d6d6af97df8583"
-      }
-    },
-    "deliveryTax": {
-      "js": "delivery-tax-document.js",
-      "css": "delivery-tax-document.css",
-      "cssSha256": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10",
-      "functions": {
-        "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-        "documentPageHtml": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617"
-      }
-    },
-    "receipt": {
-      "js": "receipt-document.js",
-      "css": "receipt-document.css",
-      "cssSha256": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078",
-      "functions": {
-        "documentPagesHtml": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-        "documentPageHtml": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7"
-      }
-    }
-  },
+  "generatedAt": "2026-10-27T05:00:00.000Z",
   "changes": [
     {
       "at": "2026-09-26",
@@ -46,6 +17,110 @@
       "at": "2026-10-04",
       "document": "receipt:documentPageHtml",
       "reason": "ADR-021: the receipt shows the buyer tax ID, so the buyer's establishment is printed after it like on the tax invoice; a cancelled receipt prints the \"ยกเลิก / CANCELLED\" stamp. Empty fields add no bytes (old records byte-identical). Reviewed as Chromium print PDF. CSS unchanged."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "deliveryTax:css",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png)."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "deliveryTax:documentPagesHtml",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png)."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "deliveryTax:documentPageHtml",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png). ADR-025 r8fix#C9: the sample placeholder phone 000-000-0000 is not printed (printableContactLine); a real number prints exactly as before."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "receipt:css",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png)."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "receipt:documentPagesHtml",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png)."
+    },
+    {
+      "at": "2026-10-12",
+      "document": "receipt:documentPageHtml",
+      "reason": "ADR-025 r8fix#C6: A4 pagination 8 → 16 line units per page (row = units × 1.8em, slimmer single-line padding, long names wrap in their cell and take more units); in-app document tables use the page font instead of style.css table{13px}; the on-screen preview is a miniature of the PDF page (font = width × 10.9/794). Reviewed in Chromium: print + A4 PDF of 15/16/17/35/60-line invoices and receipts (short and long names) — 0 rows past the totals box, 0 clipped cells, PDF page count = layout pages; 35 short lines 3 pages (was 5), 35 mixed 4 (was 9–11); in-app PDF stage and preview at 1440/1280 px 0 overflow (/tmp/claude-0/r8fix-pages, r8fix-c6-preview-*.png). ADR-025 r8fix#C9: the sample placeholder phone 000-000-0000 is not printed (printableContactLine); a real number prints exactly as before."
+    }
+  ],
+  "documents": {
+    "quotation": {
+      "js": "quotation-document.js",
+      "css": "quotation-document.css",
+      "cssSha256": "e3fdff95e84ec9aa956acab1e5483a22c17c05cd13ae2f06297fb085b7c5e0d4",
+      "functions": {
+        "pageHtml": "146a11418095c608bb854957da6c573cd79d16b3eb2be7dd8c2542898c042eed",
+        "documentPagesHtml": "f4e6bd29c98dd0172d74e62c2b16c7fb4ba9e7a7c1f62db823d6d6af97df8583"
+      }
+    },
+    "deliveryTax": {
+      "js": "delivery-tax-document.js",
+      "css": "delivery-tax-document.css",
+      "cssSha256": "37cc94b2076a9cf8446109980362ba0b61ffb932f6e00d4e53f03362f4cbdbb7",
+      "functions": {
+        "documentPagesHtml": "e08a3af55ef239b55e6e21a1caacbb3aaf75f3bb7977a54102c3b225c3230258",
+        "documentPageHtml": "7277190d21f12475203a15bbcb0a2da9a0087885f66f5daf2c0f28d0064c4bc6"
+      }
+    },
+    "receipt": {
+      "js": "receipt-document.js",
+      "css": "receipt-document.css",
+      "cssSha256": "c1a96ee7b97d9d1ab051aa7a6ed161594f137ba46dfcd03b1d4e93f56cafa207",
+      "functions": {
+        "documentPagesHtml": "861afad0eae964ed30c3d1f0d889275dd5fa727fc95a5667ec90a19b32ce5663",
+        "documentPageHtml": "fbb86623d0b8f8435f60d106965706a8eb3a89a21534721998a8575eb3cef21e"
+      }
+    }
+  },
+  "regeneratedEntries": [
+    {
+      "id": "deliveryTax:documentPageHtml",
+      "round": "13A (ADR-030)",
+      "reviewedPngs": [
+        "/tmp/claude-0/r13a-golden-before-invoice-full.png",
+        "/tmp/claude-0/r13a-golden-after-invoice-full.png",
+        "/tmp/claude-0/r13a-golden-before-invoice-abbreviated.png",
+        "/tmp/claude-0/r13a-golden-after-invoice-abbreviated.png",
+        "/tmp/claude-0/r13a-golden-before-invoice-novat.png",
+        "/tmp/claude-0/r13a-golden-after-invoice-novat.png"
+      ],
+      "justification": "Language audit (Notification 199 / RD form wording): \"เลขประจำตัวผู้เสียภาษีอากร\", \"ชื่อลูกค้า\", sentence-case English labels (Salesperson, Payment terms, Subtotal, Grand total, Approved by, Prepared by, Delivered by, For office use, Ordered by), amount-in-words label \"จำนวนเงิน (ตัวอักษร) / Amount in words\" (3 short lines, fits the 12 % column). Tax audit: MED-4 0 % row \"ภาษีมูลค่าเพิ่ม 0% / VAT 0%\" + export declaration no. on zero-rated sales; MED-3 replacement line \"ออกแทนใบกำกับภาษีเลขที่ … ลงวันที่ …\"; MED-6 service invoice with the tax point at payment prints as \"ใบแจ้งหนี้\" + the ม.78/1 notice. Totals, layout and pagination unchanged; Thai-mode output of existing records differs only in these labels."
+    },
+    {
+      "id": "receipt:documentPageHtml",
+      "round": "13A (ADR-030)",
+      "reviewedPngs": [
+        "/tmp/claude-0/r13a-golden-before-receipt.png",
+        "/tmp/claude-0/r13a-golden-after-receipt.png",
+        "/tmp/claude-0/r13a-service-receipt-th.png"
+      ],
+      "justification": "Language audit: removed the contradictory \"โปรดชำระเงินเข้าบัญชี…\" line on a paid receipt (H9), RD wording \"เลขประจำตัวผู้เสียภาษีอากร\", \"หนังสือรับรองการหักภาษี ณ ที่จ่าย\", \"ผู้รับเงิน / Collector\", sentence-case labels, amount-in-words label, the bilingual validity box marked data-bilingual. Tax audit MED-6: the receipt of a service invoice issued with the tax point at payment prints as \"ใบเสร็จรับเงิน/ใบกำกับภาษี\" with THIS payment's value/VAT and a ม.78/1 note. Totals of ordinary receipts unchanged."
+    },
+    {
+      "id": "deliveryTax:documentPageHtml",
+      "round": "13B (ADR-031)",
+      "reviewedPngs": [
+        "/tmp/claude-0/r13b-invoice-usd-noapproval-th-1440.png",
+        "/tmp/claude-0/r13b-invoice-usd-approval-th-1440.png",
+        "/tmp/claude-0/r13b-invoice-export-th-1440.png"
+      ],
+      "proof": "/tmp/claude-0/r13b/golden-identity.log",
+      "justification": "Multi-currency print: a tax invoice in a currency without the Director-General approval prints in baht with a \"ข้อมูลประกอบ (ไม่ใช่ยอดตามใบกำกับภาษี)\" box (currency, rate, rate date); with the approval (or an export invoice of goods, ป.132/2548 ข้อ 6) the amounts print in the currency with the rate, the baht value and the baht VAT. The branches are taken only for records with a foreign currency and use inline styles (CSS unchanged). Every THB invoice of the sample (load 26 Oct 2569, both branches, original + copy) renders byte-identical to round13a-fixes."
+    },
+    {
+      "id": "receipt:documentPageHtml",
+      "round": "13B (ADR-031)",
+      "reviewedPngs": [
+        "/tmp/claude-0/r13b-receipt-fxgain-th-1440.png"
+      ],
+      "proof": "/tmp/claude-0/r13b/golden-identity.log",
+      "justification": "Multi-currency print: a receipt in a currency prints the currency received, its baht at the receipt rate and, on the accounting / file copies, the receivable settled and the realised exchange difference (inline styles, CSS unchanged). Backlog fix (r13B item 8): the payment term follows the invoice — a credit invoice shows its term and ITS due date, a cash sale \"เงินสด\" with no due date (before: \"เงินสด\" with the print date as due date). The THB receipts of the sample differ from round13a-fixes only in those two cells (golden-identity.log lists every differing line)."
     }
   ]
 }

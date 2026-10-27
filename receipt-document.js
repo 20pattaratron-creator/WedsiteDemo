@@ -3,8 +3,12 @@ import { liveBranchLabel, documentEditorDefaultBranch as startBranch, documentEd
 import { runDocumentAction, documentActionFeedback, assertIssuedDocumentMatchesCanonical, FinanceActionError, FINANCE_ACTION_ERROR_CODES } from './erp-document-finance-core.js';
 import { withDemoWriteLease } from './erp-demo-concurrency.js';
 import { icon } from './erp-icons.js';
-import { companyLogoUrl, documentCompany, customLogoStyleTag } from './erp-company-profile-core.js';
+import { companyLogoUrl, documentCompany, customLogoStyleTag, printableContactLine, printHtmlWithSingleLogo } from './erp-company-profile-core.js';
 import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
+import { invoicePaymentTermLabel } from './erp-receivables-core.js';
+import { fxReceiptPrintInfo } from './erp-fx-core.js';
+// r8fix#C9: the sample company's placeholder number (000-000-0000) is never printed (like its TIN).
+const rcpContactText = phone => { const line = printableContactLine(phone); return !line ? '' : line.startsWith('Tel:') ? line : `Mobile : ${line}`; };
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -17,7 +21,14 @@ const businessStorageKey = (branch,year,month) => tenantStorageKey(`biz2_${branc
 const activeTenantPrefix = () => `erp_tenant::${window.ComformTenant?.getActiveTenantId?.() || 'anonymous'}::`;
 const unwrapActiveTenantKey = key => String(key||'').startsWith(activeTenantPrefix()) ? String(key).slice(activeTenantPrefix().length) : '';
 const MAX_ITEMS = 60;
-const ITEM_UNITS_PER_PAGE = 8;
+// r8fix#C6: an A4 page holds 16 line units (≥ 15 single-line rows), each ITEM_UNIT_HEIGHT_EM em of the page font —
+// measured in Chromium print / PDF / preview so no row ever runs past the totals box. A name is estimated in lines
+// of ITEM_WRAP_CHARS characters of the description column only (the product code has its own column); a long name
+// wraps inside its cell and takes as many units as lines (up to a whole page).
+const ITEM_UNITS_PER_PAGE = 16;
+const ITEM_UNIT_HEIGHT_EM = 1.8;
+const ITEM_WRAP_CHARS = 46;
+const rcpRowUnits = item => itemRowUnits({ product: item?.product || '' }, ITEM_WRAP_CHARS, ITEM_UNITS_PER_PAGE);
 const BLUE = '#0868c9';
 // ADR-020: the customer's logo (data URL) once saved in ตั้งค่าบริษัท, else ./logo.png; updated on
 // COMPANY_PROFILE_CHANGED_EVENT (listener at the end of this file).
@@ -36,8 +47,8 @@ const BRANCH_DEFAULTS = {
     taxId: '0000000000000'
   },
   ubon: {
-    label: 'สาขาสำนักงานใหญ่',
-    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาสำนักงานใหญ่)',
+    label: 'สำนักงานใหญ่',
+    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สำนักงานใหญ่)',
     companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
     addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '88/2 Example Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
@@ -72,7 +83,7 @@ const PAGE_TYPES = [
     id: 'original',
     tab: 'ต้นฉบับ/ORIGINAL',
     titleTh: 'ใบเสร็จรับเงิน',
-    titleEn: '(ORIGINAL RECEIPT)',
+    titleEn: '(RECEIPT — ORIGINAL)',
     audience: 'สำหรับลูกค้า / CUSTOMER',
     note: '(เอกสารออกเป็นชุด)'
   },
@@ -80,20 +91,48 @@ const PAGE_TYPES = [
     id: 'account-copy',
     tab: 'สำเนาสำหรับบัญชี',
     titleTh: 'ใบเสร็จรับเงิน',
-    titleEn: '(ACCOUNT COPY RECEIPT)',
-    audience: 'สำหรับบัญชี / ACCOUNT',
+    titleEn: '(RECEIPT — ACCOUNTING COPY)',
+    audience: 'สำหรับบัญชี / ACCOUNTING',
     note: '(เอกสารออกเป็นชุด)'
   },
   {
     id: 'file-copy',
     tab: 'สำเนาเก็บหลักฐาน',
     titleTh: 'ใบเสร็จรับเงิน',
-    titleEn: '(FILE COPY RECEIPT)',
+    titleEn: '(RECEIPT — FILE COPY)',
     audience: 'เก็บไว้เป็นหลักฐาน / FILE COPY',
     note: '(เอกสารออกเป็นชุด)'
   }
 ];
 
+// r13#MED-6: the tax-point figures of a receipt that settles a service invoice issued "ใบกำกับภาษีเมื่อรับเงิน" (null otherwise).
+// Round 13B (backlog): the printed payment term and due date agree — a cash receipt shows no due date; the receipt of a
+// credit invoice shows the invoice's credit term and the invoice's due date (it used to print "เงินสด" next to a due date).
+function rcpTermOf(receipt = {}, branch = '') {
+  let invoice = null;
+  const invoiceNo = receipt.invNo || receipt.sourceInvoiceNo || receipt.invoiceNo;
+  try { if (invoiceNo || receipt.invoiceId) invoice = window.ERPIntegrity?.resolveInvoice?.({ branch: receipt.invoiceBranch || receipt.branch || branch, invoiceId: receipt.invoiceId || receipt.sourceInvoiceId, invoiceNo }) || null; }
+  catch (error) { console.warn('[Receipt] payment term', error); invoice = null; }
+  const creditTerm = String(receipt.creditTerm || invoice?.creditTerm || '');
+  const label = invoicePaymentTermLabel(creditTerm);
+  return label && creditTerm !== 'cash' ? { paymentTerm: label, dueDate: String(invoice?.dueDate || receipt.dueDate || '') } : { paymentTerm: 'เงินสด', dueDate: '' };
+}
+// ADR-031: a receipt in a currency prints the currency received, its baht at the receipt's rate and (accounting copy)
+// the receivable settled and the realised exchange difference. A baht receipt prints exactly as before.
+function rcpFxNotesHtml(fx, pageId) {
+  if (!fx) return '';
+  const rate = `${escapeHtml(fx.rate)} บาท ต่อ ${escapeHtml(fx.per)} ${escapeHtml(fx.currency)} (${escapeHtml(fx.rateTypeTh)} ของวันที่ ${formatDate(fx.rateDate)})`;
+  const books = pageId === 'original' ? '' : `<br>บันทึกบัญชี: ตัดลูกหนี้ตามราคาตามบัญชี ${fmt(fx.settledThb)} บาท · ${fx.realisedThb >= 0 ? 'กำไร' : 'ขาดทุน'}จากอัตราแลกเปลี่ยนที่เกิดขึ้นแล้ว ${fmt(Math.abs(fx.realisedThb))} บาท`;
+  return `<div class="rcp-doc-fx-info" style="margin-top:4px;padding:3px 6px;border:1px dashed #94a3b8;font-size:.86em;line-height:1.35"><b>รับเงิน ${escapeHtml(fx.currency)} ${escapeHtml(fx.amountFx)}</b> = ${fmt(fx.cashThb)} บาท<br>อัตราแลกเปลี่ยน ${rate}${books}</div>`;
+}
+function rcpTaxPointOf(receipt = {}, branch = '') {
+  try { return window.ERPTaxForms?.receiptTaxPoint?.(receipt, branch) || null; } catch (error) { console.warn('[Receipt] tax point', error); return null; }
+}
+const RECEIPT_TAX_INVOICE_TITLES = Object.freeze({
+  original: Object.freeze({ titleTh: 'ใบเสร็จรับเงิน/ใบกำกับภาษี', titleEn: '(RECEIPT / TAX INVOICE — ORIGINAL)' }),
+  'account-copy': Object.freeze({ titleTh: 'ใบเสร็จรับเงิน/ใบกำกับภาษี', titleEn: '(RECEIPT / TAX INVOICE — ACCOUNTING COPY)' }),
+  'file-copy': Object.freeze({ titleTh: 'ใบเสร็จรับเงิน/ใบกำกับภาษี', titleEn: '(RECEIPT / TAX INVOICE — FILE COPY)' })
+});
 let state = createDefaultState();
 let activePage = 'original';
 let uploadedTemplateUrl = '';
@@ -131,6 +170,7 @@ function createDefaultState() {
     whtRate: 0,
     whtCertNo: '',
     whtCertReceived: false,
+    taxPoint: null, // r13#MED-6: { invoiceNo, invoiceDate, value, vat, total } — this receipt is the ใบเสร็จรับเงิน/ใบกำกับภาษี
     note: '',
     attachments: [],
     sourceInvoiceId: '',
@@ -248,7 +288,8 @@ function loadFromReceipt(receipt = {}, ref = {}) {
   // Also from the receipt, never from the previous draft: the invoice it settles (D/O no., as
   // loadFromInvoice fills it) and its own due date (blank when the receipt has none).
   state.doNo = receipt.invNo || receipt.sourceInvoiceNo || '';
-  state.dueDate = receipt.dueDate || '';
+  Object.assign(state, rcpTermOf(receipt, branch));
+  state.fxReceipt = fxReceiptPrintInfo(receipt);
   state.docNo = receipt.no || state.docNo;
   state.date = receipt.date || state.date;
   state.salesperson = receipt.salesPerson || '';
@@ -257,6 +298,7 @@ function loadFromReceipt(receipt = {}, ref = {}) {
   state.whtRate = Number(receipt.whtRate || 0) || 0;
   state.whtCertNo = receipt.whtCertNo || '';
   state.whtCertReceived = !!receipt.whtCertReceived;
+  state.taxPoint = rcpTaxPointOf(receipt, branch);
   state.note = receipt.note || '';
   state.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
   state.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
@@ -294,7 +336,7 @@ function renderAppShell() {
         <div class="rcp-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="rcp-company-mini">${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
+            <div class="rcp-company-mini" data-no-i18n>${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
             <h2>ออกใบเสร็จรับเงิน</h2>
           </div>
         </div>
@@ -323,7 +365,7 @@ function renderAppShell() {
           <div class="rcp-preview-heading">ตัวอย่างเอกสารแบบเรียลไทม์</div>
           <div class="rcp-preview-tabs" id="rcp-preview-tabs"></div>
           <div class="rcp-preview-scroll">
-            <div id="rcp-live-preview"></div>
+            <div id="rcp-live-preview" data-no-i18n="doc"></div>
           </div>
           <div id="rcp-template-preview" class="rcp-template-preview" hidden></div>
         </section>
@@ -586,7 +628,7 @@ function documentSectionHtml() {
         ${optionalDateInputHtml('dueDate', 'วันครบกำหนด')}
         ${inputHtml('customerCode', 'รหัสลูกค้า', 'เช่น 012')}
         ${inputHtml('poNo', 'P/O No.', 'เลขที่ใบสั่งซื้อ')}
-        ${inputHtml('doNo', 'D/O No.', 'เลขที่ใบส่งของ')}
+        ${inputHtml('doNo', 'D/O No.', 'เลขที่ใบส่งสินค้า')}
         ${inputHtml('salesperson', 'พนักงานขาย', 'ชื่อพนักงานขาย')}
         <label class="rcp-field">
           <span>เงื่อนไขการชำระเงิน</span>
@@ -641,7 +683,7 @@ function summarySectionHtml() {
             <option value="1" ${state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคายังไม่รวม VAT — บวกเพิ่ม</option>
             <option value="0" ${!state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคารวม VAT แล้ว — แยกภาษี</option><option value="2" ${state.vatNone?'selected':''}>ไม่มี VAT</option>
           </select>
-          <small class="rcp-vat-help">รวม VAT 7% = รวมมูลค่าสินค้า + VAT 7% • ไม่รวม VAT 7% = ถอดฐานภาษีด้วย รวมมูลค่าสินค้า × 100 ÷ 107 แล้วบวก VAT 7%</small>
+          <small class="rcp-vat-help">ราคายังไม่รวม VAT = รวมมูลค่าสินค้า + VAT 7% • ราคารวม VAT แล้ว = ถอดฐานภาษีด้วย ยอดรวม × 100 ÷ 107 แล้วแยก VAT 7%</small>
         </label>
         <div class="rcp-summary-box"><span>รวมมูลค่าสินค้า</span><strong id="rcp-subtotal">0.00</strong><em>บาท</em></div>
         <div class="rcp-summary-box"><span>ภาษีมูลค่าเพิ่ม (7%)</span><strong id="rcp-vat">0.00</strong><em>บาท</em></div>
@@ -923,7 +965,7 @@ function updateComputedAndPreview() {
 }
 
 function documentPagesHtml(pageType, pdfMode = false) {
-  const chunks = paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE });
+  const chunks = paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE, rowUnits: rcpRowUnits });
   return chunks.map((chunk, index) => documentPageHtml(pageType, pdfMode, {
     chunk,
     pageNumber: index + 1,
@@ -936,25 +978,31 @@ function renderPreview() {
   const preview = document.getElementById('rcp-live-preview');
   if (!preview) return;
   const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
-  preview.innerHTML = documentPagesHtml(page, false);
+  preview.innerHTML = receiptPagesHtml(page, false);
 }
 
-function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
-  const sum = calculateDocumentTotals(state.items, { vatNone: state.vatNone, vatEnabled: state.vatEnabled });
+function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
+  const point = state.taxPoint && !state.taxPoint.pending ? state.taxPoint : null;
+  const pageType = point ? { ...sourcePageType, ...(RECEIPT_TAX_INVOICE_TITLES[sourcePageType.id] || {}) } : sourcePageType;
+  // r13#MED-6: the receipt of a service invoice with the tax point at payment shows the VAT of THIS payment.
+  const sum = point ? { subtotal: point.value, vat: point.vat, grand: point.total } : calculateDocumentTotals(state.items, { vatNone: state.vatNone, vatEnabled: state.vatEnabled });
   const wht = calculateWhtSummary(sum.subtotal, state.whtRate, sum.grand);
   const hasWht = wht.whtAmount > 0;
-  const chunk = pageInfo.chunk || paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE })[0];
+  const chunk = pageInfo.chunk || paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE, rowUnits: rcpRowUnits })[0];
   const pageNumber = Number(pageInfo.pageNumber || 1);
   const totalPages = Number(pageInfo.totalPages || 1);
   const isFinalPage = pageInfo.isFinalPage !== false;
+  // ADR-031: a receipt in a currency (one "รับชำระ" line) shows the currency received in the amount columns and totals.
+  const fxMain = state.fxReceipt && state.items.length === 1 ? state.fxReceipt : null;
+  const fxUnit = fxMain ? ` (${escapeHtml(fxMain.currency)})` : '';
   const rowHtml = chunk.rows.map(({ item, units }) => `
-    <tr class="rcp-data-row" style="height:${(3.15 * units).toFixed(2)}em">
+    <tr class="rcp-data-row" style="height:${(ITEM_UNIT_HEIGHT_EM * units).toFixed(2)}em">
       <td>${escapeHtml(item.productCode)}</td>
       <td class="rcp-doc-desc">${escapeHtml(item.product).replace(/\n/g, '<br>')}</td>
       <td>${escapeHtml(item.unit)}</td>
       <td class="num">${fmt(item.qty)}</td>
-      <td class="num">${fmt(item.priceUnit)}</td>
-      <td class="num">${fmt(parseMoney(item.qty) * parseMoney(item.priceUnit))}</td>
+      <td class="num">${fxMain ? escapeHtml(fxMain.amountFx) : fmt(item.priceUnit)}</td>
+      <td class="num">${fxMain ? escapeHtml(fxMain.amountFx) : fmt(parseMoney(item.qty) * parseMoney(item.priceUnit))}</td>
     </tr>
   `).join('');
   const emptyUnits = Math.max(0, ITEM_UNITS_PER_PAGE - Number(chunk.usedUnits || 0));
@@ -962,12 +1010,13 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
   const company = state.company || branchCompany(state.branch);
   const logoSrc = pdfMode && pdfLogoDataUrl ? pdfLogoDataUrl : COMPANY_LOGO_URL;
   const pageCounter = totalPages > 1 ? `<span class="rcp-doc-page-counter">หน้ารายการ ${pageNumber}/${totalPages}</span>` : '';
-  const subtotalText = isFinalPage ? fmt(sum.subtotal) : '';
-  const vatText = isFinalPage ? fmt(sum.vat) : '';
-  const grandText = isFinalPage ? fmt(sum.grand) : '';
+  const subtotalText = isFinalPage ? (fxMain ? escapeHtml(fxMain.amountFx) : fmt(sum.subtotal)) : '';
+  const vatText = isFinalPage ? (fxMain ? '-' : fmt(sum.vat)) : '';
+  const grandText = isFinalPage ? (fxMain ? escapeHtml(fxMain.amountFx) : fmt(sum.grand)) : '';
   const whtText = isFinalPage ? fmt(wht.whtAmount) : '';
   const cashReceivedText = isFinalPage ? fmt(wht.cashReceived) : '';
-  const bahtTextValue = isFinalPage ? bahtText(sum.grand) : 'มีรายการต่อหน้าถัดไป';
+  const fx = state.fxReceipt || null;
+  const bahtTextValue = isFinalPage ? (fx ? `${escapeHtml(fx.wordsTh)}<br><span lang="en">${escapeHtml(fx.wordsEn)}</span>` : bahtText(sum.grand)) : 'มีรายการต่อหน้าถัดไป';
 
   return `
     <article class="rcp-document-page ${pdfMode ? 'rcp-pdf-page' : ''} ${!isFinalPage ? 'rcp-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">${state.cancellation ? documentCancelStampHtml(state.cancellation) : ''}
@@ -982,8 +1031,8 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
             <div class="rcp-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
             <div class="rcp-doc-contact">${escapeHtml(company.addressTh)}</div>
             <div class="rcp-doc-contact">${escapeHtml(company.addressEn)}</div>
-            <div class="rcp-doc-contact">${escapeHtml((company.phone || '').trim().startsWith('Tel:') ? company.phone : `Mobile : ${company.phone || ''}`)}</div>
-            <div class="rcp-doc-tax">เลขประจำตัวผู้เสียภาษี ${escapeHtml(company.taxId)}</div>
+            <div class="rcp-doc-contact">${escapeHtml(rcpContactText(company.phone))}</div>
+            <div class="rcp-doc-tax">เลขประจำตัวผู้เสียภาษีอากร ${escapeHtml(company.taxId)}</div>
           </div>
         </div>
         <div class="rcp-doc-title">
@@ -1000,18 +1049,18 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
           <div><b>ชื่อลูกค้า / Customer name :</b> ${escapeHtml(state.customerName)}</div>
           <div><b>ที่อยู่ / Address :</b><br>${escapeHtml(state.customerAddress).replace(/\n/g, '<br>')}</div>
           ${state.contact || state.phone ? `<div class="rcp-receipt-contact"><b>ผู้ติดต่อ / Contact :</b> ${escapeHtml(state.contact)} ${state.phone ? `&nbsp;&nbsp; <b>โทร / Tel :</b> ${escapeHtml(state.phone)}` : ''}</div>` : ''}
-          <div class="rcp-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="rcp-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
+          <div class="rcp-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษีอากร</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="rcp-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
         </div>
       </section>
 
       <table class="rcp-doc-meta-table">
         <thead><tr>
           <th>รหัสลูกค้า<br><span>Customer code</span></th>
-          <th>ใบส่งสินค้าเลขที่<br><span>D/O. No.</span></th>
-          <th>ใบสั่งซื้อเลขที่<br><span>P/O. No.</span></th>
-          <th>พนักงานขาย<br><span>Salesman</span></th>
-          <th>เงื่อนไขการชำระเงิน<br><span>Payment Term</span></th>
-          <th>วันครบกำหนด<br><span>Due Date</span></th>
+          <th>ใบส่งสินค้าเลขที่<br><span>D.O. No.</span></th>
+          <th>ใบสั่งซื้อเลขที่<br><span>P.O. No.</span></th>
+          <th>พนักงานขาย<br><span>Salesperson</span></th>
+          <th>เงื่อนไขการชำระเงิน<br><span>Payment terms</span></th>
+          <th>วันครบกำหนด<br><span>Due date</span></th>
           <th>วันที่<br><span>Date</span></th>
         </tr></thead>
         <tbody><tr>
@@ -1032,27 +1081,28 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
             <th>รายการ<br><span>Description</span></th>
             <th>หน่วยนับ<br><span>Unit</span></th>
             <th>จำนวน<br><span>Quantity</span></th>
-            <th>ราคาต่อหน่วย<br><span>Unit Price</span></th>
-            <th>จำนวนเงิน<br><span>Amount</span></th>
+            <th>ราคาต่อหน่วย${fxUnit}<br><span>Unit price${fxUnit}</span></th>
+            <th>จำนวนเงิน${fxUnit}<br><span>Amount${fxUnit}</span></th>
           </tr></thead>
           <tbody>${rowHtml}${emptyHtml}</tbody>
         </table>
         <img class="rcp-doc-watermark" src="${logoSrc}" alt="" crossorigin="anonymous" decoding="sync">
         <div class="rcp-doc-bottom-area">
           <div class="rcp-doc-payment-note">
-            <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>${escapeHtml(company.companyNameTh || window.CurrentUser?.tenantName || 'บริษัท')}</b></div>
+            
             <div>ได้รับชำระเงินตามรายการข้างต้นเรียบร้อยแล้ว</div>
+            ${point ? `<div class="rcp-doc-taxpoint">ใบกำกับภาษีค่าบริการที่ได้รับชำระ ตามใบแจ้งหนี้เลขที่ ${escapeHtml(point.invoiceNo)}${point.invoiceDate ? ` ลงวันที่ ${formatDate(point.invoiceDate)}` : ''} (มาตรา 78/1)</div>` : ''}${isFinalPage ? rcpFxNotesHtml(fx, pageType.id) : ''}
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
-            ${hasWht && isFinalPage ? `<div class="rcp-doc-wht-note">หัก ณ ที่จ่าย ${escapeHtml(String(wht.whtRate))}% = ${whtText} บาท${state.whtCertNo ? ` · เลขที่หนังสือรับรอง ${escapeHtml(state.whtCertNo)}` : ''}${state.whtCertReceived ? ' · ได้รับหนังสือรับรองหัก ณ ที่จ่ายแล้ว' : ' · รอรับหนังสือรับรองหัก ณ ที่จ่าย'}</div>` : ''}
+            ${hasWht && isFinalPage ? `<div class="rcp-doc-wht-note">หัก ณ ที่จ่าย ${escapeHtml(String(wht.whtRate))}% = ${whtText} บาท${state.whtCertNo ? ` · เลขที่หนังสือรับรอง ${escapeHtml(state.whtCertNo)}` : ''}${state.whtCertReceived ? ' · ได้รับหนังสือรับรองการหักภาษี ณ ที่จ่ายแล้ว' : ' · รอรับหนังสือรับรองการหักภาษี ณ ที่จ่าย'}</div>` : ''}
             ${!isFinalPage ? `<div class="rcp-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
-            <div class="rcp-doc-baht"><b>บาท<br><span>Baht</span></b><strong>${bahtTextValue}</strong></div>
+            <div class="rcp-doc-baht"><b style="font-size:8px !important;line-height:1.05;white-space:nowrap">จำนวนเงิน<br>(ตัวอักษร)<br><span>Amount in words</span></b><strong>${bahtTextValue}</strong></div>
           </div>
           <div class="rcp-doc-totals${hasWht ? ' rcp-doc-totals-wht' : ''}">
-            <div><span>รวมมูลค่าสินค้า<br><em>Total</em></span><strong>${subtotalText}</strong></div>
+            <div><span>รวมมูลค่าสินค้า${fxUnit}<br><em>Subtotal${fxUnit}</em></span><strong>${subtotalText}</strong></div>
             <div><span>ภาษีมูลค่าเพิ่ม 7%<br><em>VAT 7%</em></span><strong>${vatText}</strong></div>
-            <div><span>ยอดรวม<br><em>Grand Total</em></span><strong>${grandText}</strong></div>
-            ${hasWht ? `<div><span>หัก ณ ที่จ่าย<br><em>Withholding Tax</em></span><strong>-${whtText}</strong></div>
-            <div><span>รับเงินสด/โอนจริง<br><em>Net Cash Received</em></span><strong>${cashReceivedText}</strong></div>` : ''}
+            <div><span>ยอดรวม${fxUnit}<br><em>Grand total${fxUnit}</em></span><strong>${grandText}</strong></div>
+            ${hasWht ? `<div><span>หัก ณ ที่จ่าย<br><em>Withholding tax</em></span><strong>-${whtText}</strong></div>
+            <div><span>รับเงินสด/โอนจริง<br><em>Net amount received</em></span><strong>${cashReceivedText}</strong></div>` : ''}
           </div>
         </div>
       </div>
@@ -1062,7 +1112,7 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
           <div>กรณีชำระเงินด้วยเช็ค ใบเสร็จรับเงินฉบับนี้จะสมบูรณ์เมื่อธนาคารเรียกเก็บเงินตามเช็คได้เรียบร้อยแล้ว</div>
           <div>กรณีชำระเงินล่าช้า บริษัทฯ ขอสงวนสิทธิ์คิดดอกเบี้ยในอัตรา 2% ต่อเดือน นับจากวันที่ครบกำหนด</div>
         </div>
-        <div class="rcp-doc-officer-label">สำหรับเจ้าหน้าที่ / <span>For officer</span></div>
+        <div class="rcp-doc-officer-label">สำหรับเจ้าหน้าที่ / <span>For office use</span></div>
       </div>
 
       <section class="rcp-receipt-footer">
@@ -1072,21 +1122,21 @@ function documentPageHtml(pageType, pdfMode = false, pageInfo = {}) {
             <small>ได้รับต้นฉบับใบเสร็จรับเงินไว้เรียบร้อยแล้ว</small>
             <div class="rcp-receipt-payer-row">
               <span class="rcp-receipt-write-line" aria-hidden="true"></span>
-              <span class="rcp-receipt-payer-label">ผู้ส่งมอบ/Payer</span>
+              <span class="rcp-receipt-payer-label">ผู้จ่ายเงิน/Payer</span>
               <span class="rcp-receipt-date-write">__/__/__</span>
               <span class="rcp-receipt-date-label">วันที่/Date</span>
             </div>
           </div>
         </div>
         <div class="rcp-receipt-footer-box rcp-receipt-validity-box">
-          <div class="rcp-receipt-validity-text">
+          <div class="rcp-receipt-validity-text" data-bilingual>
             <div>ใบเสร็จรับเงินฉบับนี้จะสมบูรณ์เมื่อได้รับเงินสด</div>
-            <div>หรือเช็คธนาคารเข้าเป็นเงินผ่านธนาคารเรียบร้อยแล้ว</div>
-            <div class="rcp-receipt-validity-en">This receipt will be valid if payment by cash or<br>cheque is collected through the bank.</div>
+            <div>หรือเมื่อธนาคารเรียกเก็บเงินตามเช็คได้แล้ว</div>
+            <div class="rcp-receipt-validity-en">This receipt is valid only when cash is received<br>or the cheque has been cleared by the bank.</div>
           </div>
         </div>
         <div class="rcp-receipt-footer-box rcp-receipt-sign-box">
-          <div class="rcp-receipt-footer-head"><b>ผู้อนุมัติ</b><span>Authorized signature</span></div>
+          <div class="rcp-receipt-footer-head"><b>ผู้อนุมัติ</b><span>Approved by</span></div>
           <div class="rcp-receipt-footer-body">
             <div class="rcp-receipt-sign-line"></div>
             <div class="rcp-receipt-date-line">____/____/______</div>
@@ -1267,13 +1317,23 @@ async function saveDocumentToSystem(button) {
   }
 }
 
+function receiptPagesHtml(pageType, pdfMode = false) {
+  // ADR-029: "สแกนจ่ายด้วยพร้อมเพย์" (cash after withholding tax) on the customer's original only; decorate() returns the
+  // golden-guarded documentPagesHtml() output itself when the QR is off.
+  const html = documentPagesHtml(pageType, pdfMode);
+  if (pageType.id !== 'original' || !window.ERPPromptPay?.decorate) return html;
+  const sum = calculateDocumentTotals(state.items, { vatNone: state.vatNone, vatEnabled: state.vatEnabled });
+  const wht = calculateWhtSummary(sum.subtotal, state.whtRate, sum.grand);
+  return window.ERPPromptPay.decorate('receipt', html, { amount: wht.cashReceived, docNo: state.docNo, cancelled: !!state.cancellation });
+}
+
 function createOffscreenPages(mode = 'all') {
   const container = document.createElement('div');
   container.className = 'rcp-pdf-stage';
   container.setAttribute('aria-hidden', 'true');
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
-  container.innerHTML = mode === 'current' ? documentPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => documentPagesHtml(page, true)).join('');
-  document.body.appendChild(container);
+  container.innerHTML = mode === 'current' ? receiptPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => receiptPagesHtml(page, true)).join('');
+  document.body.appendChild(window.ERPI18n?.prepareDocumentStage?.(container) || container); // ADR-026: English → bilingual labels (erp-i18n-print.js); Thai → unchanged
   return container;
 }
 
@@ -1351,7 +1411,7 @@ function printDocuments(mode = 'all') {
   printWindow.opener = null;
   const cssUrl = new URL('./receipt-document.css', import.meta.url).href;
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
-  const html = mode === 'current' ? documentPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => documentPagesHtml(page, false)).join('');
+  const html = (window.ERPI18n?.bilingualHtml || String)(printHtmlWithSingleLogo(mode === 'current' ? receiptPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => receiptPagesHtml(page, false)).join(''), COMPANY_LOGO_URL)); // r8fix#C6 · ADR-026 bilingual in English
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}">${customLogoStyleTag(COMPANY_LOGO_URL)}<style>body{margin:0;background:#fff}.rcp-document-page{page-break-after:always;margin:0 auto}.rcp-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -1402,6 +1462,9 @@ function buildStateFromReceiptPreview(receipt = {}, ref = {}) {
   previewState.whtRate = Number(receipt.whtRate || 0) || 0;
   previewState.whtCertNo = receipt.whtCertNo || '';
   previewState.whtCertReceived = !!receipt.whtCertReceived;
+  previewState.taxPoint = rcpTaxPointOf(receipt, branch);
+  Object.assign(previewState, rcpTermOf(receipt, branch));
+  previewState.fxReceipt = fxReceiptPrintInfo(receipt);
   previewState.note = receipt.note || '';
   previewState.attachments = Array.isArray(receipt.attachments) ? receipt.attachments.map(item => ({ ...item })) : [];
   previewState.sourceInvoiceNo = receipt.invNo || receipt.sourceInvoiceNo || '';
@@ -1417,7 +1480,7 @@ function buildInlineReceiptHtml(receipt = {}, ref = {}, pageId = 'original') {
     state = buildStateFromReceiptPreview(receipt, ref);
     activePage = pageId || 'original';
     const page = PAGE_TYPES.find(item => item.id === activePage) || PAGE_TYPES[0];
-    return documentPagesHtml(page, false);
+    return receiptPagesHtml(page, false);
   } finally {
     state = prevState;
     activePage = prevActivePage;

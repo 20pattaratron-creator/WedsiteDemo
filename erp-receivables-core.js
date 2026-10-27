@@ -96,6 +96,14 @@ function arTypedDateParts(value) {
   return null;
 }
 
+// r8fix#C9: the printed "เงื่อนไขการชำระเงิน" of a tax invoice from its stored creditTerm (the print used to
+// show the form default "เงินสด" next to a credit due date). '' when the term is not recorded.
+const INVOICE_PAYMENT_TERM_LABELS = Object.freeze({ cash: 'เงินสด', deposit50: 'มัดจำ 50%' });
+export function invoicePaymentTermLabel(creditTerm) {
+  const term = arText(creditTerm);
+  if (INVOICE_PAYMENT_TERM_LABELS[term]) return INVOICE_PAYMENT_TERM_LABELS[term];
+  return Object.prototype.hasOwnProperty.call(INVOICE_CREDIT_TERM_DAYS, term) && INVOICE_CREDIT_TERM_DAYS[term] > 0 ? `เครดิต ${INVOICE_CREDIT_TERM_DAYS[term]} วัน` : '';
+}
 export function invoiceTermDueDate(invoiceDate, creditTerm) {
   const term = arText(creditTerm);
   if (!Object.prototype.hasOwnProperty.call(INVOICE_CREDIT_TERM_DAYS, term)) return '';
@@ -154,7 +162,7 @@ function arCustomerKey(name) {
 }
 
 // One open item per invoice that still has money owed.
-//   options.summarize(invoice) → { total, paid, credited, outstanding } — pass
+//   options.summarize(invoice) → { total, paid, credited, debited, outstanding } — pass
 //     ERPIntegrity.paymentSummary so credit notes / WHT / allocations /
 //     tolerance are applied exactly once, in one place.
 //   options.asOf  'YYYY-MM-DD' (default: today, local business date)
@@ -221,6 +229,8 @@ export function buildReceivableLedger(invoices = [], options = {}) {
       total: arMoney(summary.total ?? invoice.total),
       paid: arMoney(summary.paid),
       credited: arMoney(summary.credited),
+      // ADR-024: debit notes (ใบเพิ่มหนี้) on the invoice — included in `outstanding` by paymentSummary().
+      debited: arMoney(summary.debited),
       outstanding,
       source: invoice
     });
@@ -382,7 +392,13 @@ export function receivableAgingCsvRows(summary = {}, options = {}) {
   const buckets = AR_AGING_BUCKETS.filter(bucket => bucket.key !== 'undated' || summary?.hasUndated);
   const refunds = !!summary?.hasRefunds;
   const refundColumn = value => (refunds ? [value] : []);
-  const header = ['ลูกค้า', 'เลขที่บิล', 'สาขา', 'วันที่บิล', 'วันครบกำหนด', 'เกณฑ์วันครบกำหนด', 'เกินกำหนด (วัน)', ...buckets.map(bucket => bucket.label), 'ค้างรับรวม', ...refundColumn('เครดิตค้างคืนลูกค้า')];
+  // ADR-031: when any open invoice is in a foreign currency, two more columns carry its currency and open amount in
+  // that currency (`options.fxOf(invoice)` → { currency, openText }). Baht columns are unchanged; without such an
+  // invoice the file is exactly as before.
+  const fxOf = typeof options.fxOf === 'function' ? options.fxOf : () => null;
+  const hasFx = arList(summary?.rows).some(row => arList(row.items).some(item => fxOf(item.source)));
+  const fxColumns = item => (hasFx ? (fx => (fx ? [fx.currency, fx.openText] : ['THB', '']))(fxOf(item?.source)) : []);
+  const header = ['ลูกค้า', 'เลขที่บิล', 'สาขา', 'วันที่บิล', 'วันครบกำหนด', 'เกณฑ์วันครบกำหนด', 'เกินกำหนด (วัน)', ...buckets.map(bucket => bucket.label), 'ค้างรับรวม', ...refundColumn('เครดิตค้างคืนลูกค้า'), ...(hasFx ? ['สกุลเงิน', 'ค้างรับ (สกุลเงิน)'] : [])];
   const rows = [header];
   for (const row of arList(summary?.rows)) {
     for (const item of arList(row.items)) {
@@ -396,16 +412,17 @@ export function receivableAgingCsvRows(summary = {}, options = {}) {
         item.daysPastDue !== null && item.daysPastDue > 0 ? item.daysPastDue : 0,
         ...buckets.map(bucket => (item.bucket === bucket.key ? item.outstanding : 0)),
         item.outstanding,
-        ...refundColumn(0)
+        ...refundColumn(0),
+        ...fxColumns(item)
       ]);
     }
     // Refund-due invoices: only the refund column carries money.
     for (const credit of arList(row.credits)) {
-      rows.push([row.label, credit.no, branchLabel(credit.branch), credit.date ? formatDate(credit.date) : '', '', 'เครดิตค้างคืนลูกค้า', 0, ...buckets.map(() => 0), 0, ...refundColumn(credit.refundDue)]);
+      rows.push([row.label, credit.no, branchLabel(credit.branch), credit.date ? formatDate(credit.date) : '', '', 'เครดิตค้างคืนลูกค้า', 0, ...buckets.map(() => 0), 0, ...refundColumn(credit.refundDue), ...(hasFx ? ['', ''] : [])]);
     }
   }
   const totals = summary?.totals?.buckets || arEmptyBuckets();
-  rows.push(['รวมทั้งหมด', '', '', '', '', '', '', ...buckets.map(bucket => arMoney(totals[bucket.key])), arMoney(summary?.totals?.total), ...refundColumn(arMoney(summary?.totals?.refundDue))]);
+  rows.push(['รวมทั้งหมด', '', '', '', '', '', '', ...buckets.map(bucket => arMoney(totals[bucket.key])), arMoney(summary?.totals?.total), ...refundColumn(arMoney(summary?.totals?.refundDue)), ...(hasFx ? ['', ''] : [])]);
   return rows;
 }
 
@@ -553,10 +570,15 @@ const AR_AGENCY_FIELDS = Object.freeze(['customerAgencyGroup', 'customerAgencyTy
 // Each row is attributed to the ORIGINAL invoice's customer and salesperson
 // (a walk-in note nets against the walk-in row even if a buyer name was typed).
 //   resolveInvoice({branch, invoiceId, invoiceNo}, creditNote) → invoice | null
+// ADR-024: a debit note (ใบเพิ่มหนี้, documentKind 'debit-note') in the same list gives the mirror row:
+// positive sales on the original invoice's customer / items in its own period, no cost (nothing moves in
+// stock), `_type: 'debitNotes'`. It keeps `_creditAdjustment: true` ("an adjustment row, not a document",
+// so counts of documents skip it) and adds `_debitAdjustment: true`.
 export function buildCreditNoteSalesAdjustments(creditNotes = [], resolveInvoice = () => null) {
   const rows = [];
   for (const creditNote of arList(creditNotes)) {
     if (!arObject(creditNote) || !isCreditNoteLive(creditNote)) continue;
+    const debit = creditNote.documentKind === 'debit-note';
     const documentValue = arMoney(creditNote.subtotal);
     if (!documentValue) continue;
     const lines = arList(creditNote.lines).filter(arObject);
@@ -570,14 +592,14 @@ export function buildCreditNoteSalesAdjustments(creditNotes = [], resolveInvoice
         ? resolveInvoice({ branch: arText(line.invoiceBranch || creditNote.branch || creditNote._branch), invoiceId: arText(line.invoiceId), invoiceNo: arText(line.invoiceNo) }, creditNote)
         : null;
       const invoice = arObject(found) ? found : null;
-      const spread = arCreditItems(invoice, creditNote, line, value);
+      const spread = debit ? arDebitItems(invoice, value) : arCreditItems(invoice, creditNote, line, value);
       const agencySource = invoice || creditNote;
       const agency = {};
       AR_AGENCY_FIELDS.forEach(field => {
         if (arText(agencySource[field])) agency[field] = agencySource[field];
       });
       const branch = arText(creditNote._branch || creditNote.branch);
-      rows.push({
+      const row = {
         ...agency,
         _type: 'creditNotes',
         _creditAdjustment: true,
@@ -608,10 +630,36 @@ export function buildCreditNoteSalesAdjustments(creditNotes = [], resolveInvoice
         commAmt: 0,
         // Revenue given back, partly offset by the cost of goods that came back to stock.
         profit: arMoney(spread.returnedCost - value)
-      });
+      };
+      if (debit) {
+        // Extra revenue on the same sale: + value, no cost (a price / scope adjustment moves no goods).
+        Object.assign(row, { _type: 'debitNotes', _debitAdjustment: true, debitNoteId: row.creditNoteId, creditNoteId: '', subtotal: value, total: value, costTotal: 0, profit: value });
+      }
+      rows.push(row);
     });
   }
   return rows;
+}
+
+// A debit-note line's pre-VAT `value` spread over the invoice's items by their sales value (positive rows).
+function arDebitItems(invoice, value) {
+  const items = arList(invoice?.items).filter(arObject);
+  if (!items.length) return { items: [], returnedCost: 0 };
+  const shares = allocateMoneyByWeights(value, items.map(salesItemValue));
+  const out = [];
+  items.forEach((item, index) => {
+    if (!shares[index]) return;
+    out.push({
+      product: arText(item.product || item.name) || 'ไม่ระบุสินค้า',
+      productCode: arText(item.productCode || item.code),
+      productCategory: arText(item.productCategory || item.category),
+      unit: arText(item.unit),
+      qty: 0,
+      saleTotal: shares[index],
+      costTotal: 0
+    });
+  });
+  return { items: out, returnedCost: 0 };
 }
 
 // Branch P&L figures for the dashboard comparison. Gross profit = sales − cost

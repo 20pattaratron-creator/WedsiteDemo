@@ -79,7 +79,8 @@ import { icon } from './erp-icons.js';
     card.querySelector('[data-open-council]').onclick=open;
   }
   // The dashboard header's "ตรวจ Decision Council" duplicated the card's "เปิด Council" and is gone (ADR-017).
-  function refresh(){lastReport=null;run();}
+  // r8fix#B9: an unreadable month shows the read-error state in the card instead of an uncaught error.
+  function refresh(){lastReport=null;try{run();}catch(error){if(!window.ERPIntegrity?.isReadError?.(error))throw error;const host=document.getElementById('erp-dash-todo-body');if(!host)return;let card=document.getElementById('erp-decision-council-card');if(!card){card=document.createElement('section');card.id='erp-decision-council-card';card.className='erp-decision-council-card';host.append(card);}card.innerHTML=window.ERPIntegrity.readErrorHtml(error);}}
   function init(){if(window.__ERP_DECISION_COUNCIL__)return;window.__ERP_DECISION_COUNCIL__=true;setTimeout(refresh,220);document.addEventListener('erp:dashboard-rendered',()=>setTimeout(refresh,20));window.addEventListener('erp-flow:changed',()=>setTimeout(refresh,20));window.addEventListener('storage',()=>setTimeout(refresh,50));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal)close();});}
   window.ERPDecisionCouncil={VERSION:COUNCIL_VERSION,run,open,close,getReport:()=>lastReport||run(),getRegistry:()=>RULE_REGISTRY};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

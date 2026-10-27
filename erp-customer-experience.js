@@ -124,7 +124,9 @@ import { icon } from './erp-icons.js';
     // credited = paymentSummary().credited of this customer's live invoices; refundDue is money owed back.
     // A cancelled/voided invoice is not a receivable (paymentSummary itself does not look at the invoice's own status).
     const credited=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(summaries.get(x).credited),0));
-    const sales=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(x.total??x.saleTotal??x.subtotal),0)-credited);
+    // ADR-024: debit notes (ใบเพิ่มหนี้) raise the same invoices — paymentSummary().debited, symmetric to credited.
+    const debited=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(summaries.get(x).debited),0));
+    const sales=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(x.total??x.saleTotal??x.subtotal),0)-credited+debited);
     const refundDue=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(summaries.get(x).refundDue),0));
     const ar=roundMoneyValue(liveInvoices.reduce((s,x)=>s+num(summaries.get(x).outstanding),0));
     const overdue=roundMoneyValue(liveInvoices.reduce((s,x)=>{const due=invoiceDueDate(x);return s+((due&&isBusinessDateBefore(due,localDateISO()))?num(summaries.get(x).outstanding):0)},0));
@@ -136,6 +138,12 @@ import { icon } from './erp-icons.js';
       row.total+=num(doc.total);noteMap.set(key,row);
     }));
     const creditNotes=[...noteMap.values()];
+    const debitMap=new Map();
+    liveInvoices.forEach(inv=>creditedByInvoice(inv,b.debitNotes||[],{matches:I.creditNoteMatches}).creditNotes.forEach(doc=>{
+      const key=String(doc.id??doc.no),row=debitMap.get(key)||{id:doc.id,no:doc.no,date:doc.date,total:0};
+      row.total+=num(doc.total);debitMap.set(key,row);
+    }));
+    const debitNotes=[...debitMap.values()];
     const timeline=[];
     quotes.forEach(x=>timeline.push({date:x.date,label:'Quotation',no:x.no,amount:x.total||x.subtotal}));
     orders.forEach(x=>timeline.push({date:x.orderDate,label:'Sales Order',no:x.no,amount:x.total}));
@@ -143,9 +151,10 @@ import { icon } from './erp-icons.js';
     billings.forEach(x=>timeline.push({date:x.billingDate,label:'Billing',no:x.no,amount:x.totalBilled}));
     receipts.forEach(x=>timeline.push({date:x.date,label:'Receipt',no:x.no,amount:x.total||x.saleTotal||x.subtotal}));
     creditNotes.forEach(x=>timeline.push({date:x.date,label:'Credit Note',no:x.no,amount:-roundMoneyValue(x.total)}));
+    debitNotes.forEach(x=>timeline.push({date:x.date,label:'Debit Note',no:x.no,amount:roundMoneyValue(x.total)}));
     payments.forEach(x=>timeline.push({date:x.date,label:'Payment',no:x.no,amount:x.amount}));
     timeline.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-    return {c,quotes,orders,invoices,liveInvoices,receipts,billings,payments,creditNotes,credited,sales,ar,overdue,refundDue,timeline,context,summaries};
+    return {c,quotes,orders,invoices,liveInvoices,receipts,billings,payments,creditNotes,debitNotes,credited,debited,sales,ar,overdue,refundDue,timeline,context,summaries};
   }
 
   function openCustomer360(name){
@@ -153,8 +162,8 @@ import { icon } from './erp-icons.js';
     customerModal=document.createElement('div'); customerModal.className='erp-c360-overlay';
     const invOpen=x.liveInvoices.filter(i=>num(x.summaries.get(i).outstanding)>0);
     customerModal.innerHTML=`<section class="erp-c360-dialog"><header><div><small>CUSTOMER 360°</small><h2>${esc(x.c.name||name)}</h2><p>${esc([x.c.taxId,x.c.phone,x.c.email].filter(Boolean).join(' · ')||'ข้อมูลลูกค้าใน Master')}</p></div><button type="button" data-c360-close aria-label="ปิด">${icon('close')}</button></header>
-      <div class="erp-c360-kpis"><div><small>ยอด Invoice${x.credited>0?' (หักใบลดหนี้)':''}</small><b>฿${money(x.sales)}</b></div><div class="warn"><small>ยอดค้างรับ</small><b>฿${money(x.ar)}</b></div><div class="${x.overdue>0?'risk':''}"><small>เกินกำหนด</small><b>฿${money(x.overdue)}</b></div>${x.refundDue>0?`<div class="warn"><small>ต้องคืน / เครดิตให้ลูกค้า</small><b>฿${money(x.refundDue)}</b></div>`:''}<div><small>Order กำลังติดตาม</small><b>${x.orders.filter(o=>o.status!=='cancelled'&&window.ERPIntegrity.orderProgress(o).items.some(i=>i.remainingQty>0)).length}</b></div></div>
-      <div class="erp-c360-grid"><article><h3>ภาพรวมความสัมพันธ์</h3><div class="erp-c360-stats"><span>Quotation <b>${x.quotes.length}</b></span><span>Sales Order <b>${x.orders.length}</b></span><span>Invoice <b>${x.invoices.length}</b></span><span>ค้างชำระ <b>${invOpen.length}</b></span><span>Billing <b>${x.billings.length}</b></span><span>Receipt <b>${x.receipts.length}</b></span><span>ใบลดหนี้ <b>${x.creditNotes.length}</b></span></div><div class="erp-c360-actions"><button data-c360-quote class="btn btn-primary">+ สร้างใบเสนอราคา</button><button data-c360-flow class="btn btn-secondary">เปิดศูนย์งานขาย</button></div></article>
+      <div class="erp-c360-kpis"><div><small>ยอด Invoice${x.credited>0?' (หักใบลดหนี้)':''}${x.debited>0?' (รวมใบเพิ่มหนี้)':''}</small><b>฿${money(x.sales)}</b></div><div class="warn"><small>ยอดค้างรับ</small><b>฿${money(x.ar)}</b></div><div class="${x.overdue>0?'risk':''}"><small>เกินกำหนด</small><b>฿${money(x.overdue)}</b></div>${x.refundDue>0?`<div class="warn"><small>ต้องคืน / เครดิตให้ลูกค้า</small><b>฿${money(x.refundDue)}</b></div>`:''}<div><small>Order กำลังติดตาม</small><b>${x.orders.filter(o=>o.status!=='cancelled'&&window.ERPIntegrity.orderProgress(o).items.some(i=>i.remainingQty>0)).length}</b></div></div>
+      <div class="erp-c360-grid"><article><h3>ภาพรวมความสัมพันธ์</h3><div class="erp-c360-stats"><span>Quotation <b>${x.quotes.length}</b></span><span>Sales Order <b>${x.orders.length}</b></span><span>Invoice <b>${x.invoices.length}</b></span><span>ค้างชำระ <b>${invOpen.length}</b></span><span>Billing <b>${x.billings.length}</b></span><span>Receipt <b>${x.receipts.length}</b></span><span>ใบลดหนี้ <b>${x.creditNotes.length}</b></span>${x.debitNotes.length?`<span>ใบเพิ่มหนี้ <b>${x.debitNotes.length}</b></span>`:''}</div><div class="erp-c360-actions"><button data-c360-quote class="btn btn-primary">+ สร้างใบเสนอราคา</button><button data-c360-flow class="btn btn-secondary">เปิดศูนย์งานขาย</button></div></article>
       <article><h3>ข้อมูลลูกค้า</h3><dl><div><dt>ที่อยู่</dt><dd>${esc(x.c.address||'-')}</dd></div><div><dt>ผู้ติดต่อ</dt><dd>${esc(x.c.contactPerson||'-')}</dd></div><div><dt>เครดิต</dt><dd>${esc(String(x.c.creditDays??'-'))} วัน</dd></div><div><dt>กลุ่ม</dt><dd>${esc(x.c.agencyGroup||x.c.entityType||'-')}</dd></div></dl></article></div>
       <article class="erp-c360-timeline"><h3>Timeline ล่าสุด</h3>${x.timeline.length?x.timeline.slice(0,12).map(t=>`<div><time>${dateTh(t.date)}</time><span>${esc(t.label)}</span><b>${esc(t.no||'-')}</b><em>฿${money(t.amount)}</em></div>`).join(''):'<p>ยังไม่มี Transaction ของลูกค้านี้</p>'}</article>
     </section>`;
@@ -289,7 +298,8 @@ import { icon } from './erp-icons.js';
     dashboardViewButtons().forEach(tab=>{const selected=tab.dataset.dashboardView===view;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;});
     linkDashboardTabPanels(dash,view);
     if(view==='summary')scrollTargetChartToLatest();
-    const data=business();const hasDocuments=['quotes','invoices','receipts','productions'].some(key=>(data[key]||[]).length>0);
+    let data;try{data=business();}catch(error){if(!window.ERPIntegrity?.isReadError?.(error))throw error;data=null;}// r8fix#B9: unreadable month → banner, not an uncaught error
+    if(!data)return;const hasDocuments=['quotes','invoices','receipts','productions'].some(key=>(data[key]||[]).length>0);
     const empty=document.getElementById('erp-dashboard-empty');if(empty)empty.hidden=hasDocuments;
   }
 

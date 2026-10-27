@@ -20,7 +20,7 @@ import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
 
 (() => {
   'use strict';
-  const BRANCH_LABELS = branchLabelMap({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels, both data ids
+  const BRANCH_LABELS = branchLabelMap({ ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels, both data ids
   const STATE_TONE = Object.freeze({ overdue: 'red', dueToday: 'amber', soon: 'amber', normal: 'blue', none: 'gray' });
   // One banner per host page: the executive dashboard and the "งานของฉัน" home
   // (panel-work-home is created by erp-product-experience.js and may not exist yet).
@@ -164,17 +164,20 @@ import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
     return ` <button type="button" class="ar-aging-link" data-ar-action="open-invoice" data-ar-kind="${kind}" data-ar-branch="${escapeHtml(record.branch)}" data-ar-year="${escapeHtml(year)}" data-ar-month="${escapeHtml(month)}" data-ar-id="${escapeHtml(record.id)}">ดูบิล</button>`;
   }
 
+  // ADR-031: the open amount in the invoice currency (baht stays the aging basis).
+  const fxOf = invoice => window.ERPFx?.openFxOf?.(invoice) || null;
   function detailHtml(row) {
     const refundColumn = row.refundDue > 0;
+    const fxColumn = row.items.some(item => fxOf(item.source));
     const rows = row.items.map(item => `<tr>
         <td><b>${escapeHtml(item.no)}</b>${openInvoiceButton(item)}</td>
         <td>${escapeHtml(branchLabel(item.branch))}</td>
         <td>${escapeHtml(dateText(item.date))}</td>
         <td>${escapeHtml(dateText(item.dueDate))}<br><small>${escapeHtml(DUE_BASIS_LABELS[item.dueBasis] || '')}</small></td>
         <td><span class="badge b-${STATE_TONE[item.state] || 'gray'}">${escapeHtml(item.stateText)}</span></td>
-        <td class="num">${money(item.total)}</td>
+        <td class="num">${money(item.total)}${item.debited > 0 ? `<br><small>เพิ่มหนี้ ${money(item.debited)}</small>` : ''}</td>
         <td class="num">${money(item.paid)}${item.credited > 0 ? `<br><small>ลดหนี้ ${money(item.credited)}</small>` : ''}</td>
-        <td class="num"><b>${money(item.outstanding)}</b></td>
+        <td class="num"><b>${money(item.outstanding)}</b></td>${fxColumn ? `<td class="num">${(fx => (fx ? `<b>${escapeHtml(fx.currency)} ${escapeHtml(fx.openText)}</b>` : '-'))(fxOf(item.source))}</td>` : ''}
       </tr>`).join('');
     // Paid-then-credited invoices: money owed back to the customer, listed separately (not AR).
     const creditRows = (row.credits || []).map(credit => `<tr class="ar-aging-refund">
@@ -183,9 +186,9 @@ import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
         <td>${escapeHtml(dateText(credit.date))}</td>
         <td>-</td>
         <td><span class="badge b-purple">เครดิตค้างคืนลูกค้า</span></td>
-        <td class="num" colspan="3"><b>${money(credit.refundDue)}</b></td>
+        <td class="num" colspan="3"><b>${money(credit.refundDue)}</b></td>${fxColumn ? '<td></td>' : ''}
       </tr>`).join('');
-    return `<table class="ar-aging-invoices"><thead><tr><th>เลขที่บิล</th><th>สาขา</th><th>วันที่บิล</th><th>ครบกำหนด</th><th>สถานะ</th><th class="num">ยอดบิล (รวม VAT)</th><th class="num">รับแล้ว / ลดหนี้</th><th class="num">ค้างรับ${refundColumn ? ' / คืนลูกค้า' : ''}</th></tr></thead><tbody>${rows}${creditRows}</tbody></table>`;
+    return `<table class="ar-aging-invoices"><thead><tr><th>เลขที่บิล</th><th>สาขา</th><th>วันที่บิล</th><th>ครบกำหนด</th><th>สถานะ</th><th class="num">ยอดบิล (รวม VAT)</th><th class="num">รับแล้ว / ลดหนี้</th><th class="num">ค้างรับ${refundColumn ? ' / คืนลูกค้า' : ''}</th>${fxColumn ? '<th class="num">ค้างรับ (สกุลเงิน)</th>' : ''}</tr></thead><tbody>${rows}${creditRows}</tbody></table>`;
   }
 
   function reportHtml(snap) {
@@ -263,8 +266,8 @@ import { branchLabelMap, liveBranchAllLabel } from './erp-branches-core.js';
       window.notify?.('ส่งออก CSV ไม่ได้ในหน้านี้', 'error');
       return false;
     }
-    const rows = receivableAgingCsvRows(snap.aging, { formatDate: dateText, branchLabel });
-    window.downloadCsvText(`ar-aging-${snap.asOf}${snap.branch ? `-${snap.branch}` : ''}.csv`, rows);
+    const rows = receivableAgingCsvRows(snap.aging, { formatDate: dateText, branchLabel, fxOf });
+    window.downloadCsvText(`ar-aging-${snap.asOf}${snap.branch ? `-${snap.branch}` : ''}.csv`, window.ERPI18n?.exportRows?.(rows) ?? rows); // ADR-026: English headers in English
     return true;
   }
 

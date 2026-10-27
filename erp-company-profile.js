@@ -137,6 +137,20 @@ function formHtml() {
           <div class="cp-field-error" id="cp-vatFilingMode-error" hidden></div>
         </div>
       </fieldset>
+      <fieldset class="cp-section cp-abbreviated">
+        <legend>ใบกำกับภาษีอย่างย่อ (กิจการค้าปลีก)</legend>
+        <p class="cp-hint">ออกได้เฉพาะผู้ประกอบการจดทะเบียนที่ค้าปลีก (มาตรา 86/6) · การออกด้วยเครื่องบันทึกการเก็บเงินหรือคอมพิวเตอร์ต้องได้รับอนุมัติ ภ.พ.06 และต้องพิมพ์หมายเลขเครื่องบนทุกใบ (ประกาศอธิบดีฯ VAT ฉบับที่ 46) · ถ้ายังไม่ได้รับอนุมัติ ให้ออกใบกำกับภาษีเต็มรูป</p>
+        <div class="cp-grid">
+          <div class="ff cp-field">
+            <label for="cp-abbreviatedApproval">การอนุมัติให้ออกใบกำกับภาษีอย่างย่อ</label>
+            <select id="cp-abbreviatedApproval" data-cp-field="abbreviatedApproval" aria-describedby="cp-abbreviatedApproval-error"><option value="none">ไม่ได้ขออนุมัติ / ไม่ใช่กิจการค้าปลีก</option><option value="approved">ค้าปลีก — ได้รับอนุมัติ ภ.พ.06 แล้ว</option></select>
+            <div class="cp-field-error" id="cp-abbreviatedApproval-error" hidden></div>
+          </div>
+          ${fieldHtml({ field: 'abbreviatedApprovalNo', label: 'เลขที่หนังสืออนุมัติ ภ.พ.06', placeholder: 'ตามหนังสืออนุมัติของกรมสรรพากร', maxlength: FIELD_LIMITS.approvalNo })}
+          ${fieldHtml({ field: `branches.${COMPANY_BRANCHES[0].id}.posId`, label: 'หมายเลขเครื่อง (POS ID) สำนักงานใหญ่', placeholder: 'เช่น E05123456789', maxlength: FIELD_LIMITS.posId, hint: 'พิมพ์บนใบกำกับภาษีอย่างย่อทุกใบของสำนักงานใหญ่' })}
+          ${fieldHtml({ field: `branches.${COMPANY_BRANCHES[1].id}.posId`, label: 'หมายเลขเครื่อง (POS ID) สาขาที่ 2', placeholder: 'เว้นว่างถ้าสาขาไม่ออกใบอย่างย่อ', maxlength: FIELD_LIMITS.posId })}
+        </div>
+      </fieldset>
       <fieldset class="cp-section">
         <legend>สาขาที่พิมพ์บนเอกสาร</legend>
         <p class="cp-hint cp-branch-note">ใบกำกับภาษีต้องระบุ "สำนักงานใหญ่" หรือ "สาขาที่ xxxxx" — ระบบพิมพ์ให้ตามรหัสสาขา</p>
@@ -157,7 +171,7 @@ function formHtml() {
     </div>
     <aside class="cp-preview" aria-labelledby="cp-preview-title">
       <div class="cp-preview-title" id="cp-preview-title">${icon('preview')}ตัวอย่างหัวเอกสาร<small>เปลี่ยนตามที่พิมพ์ทันที · ใช้จริงเมื่อกด "บันทึก"</small></div>
-      <div class="cp-preview-paper" id="cp-preview"></div>
+      <div class="cp-preview-paper" id="cp-preview" data-no-i18n="doc"></div>
     </aside>
     <div class="cp-actions">
       <button type="submit" class="btn btn-primary" data-cp-action="save">${icon('save')}บันทึก</button>
@@ -694,6 +708,58 @@ function injectCustomLogoCss() {
   document.head.appendChild(style);
 }
 
+// ---------------------------------------------------------------- r8fix#B6: damaged saved profile = fail-closed
+// A saved profile / logo that cannot be read is NOT the sample company: a red banner says so on every page, the
+// JSON backup refuses (it would silently omit the customer's profile), and issuing tax documents (ใบกำกับภาษี,
+// ใบเสร็จ, ใบลดหนี้, ใบเพิ่มหนี้, 50 ทวิ) is refused — until the user resets to the sample or restores a backup.
+const DAMAGED_TEXT = Object.freeze({
+  banner: 'ข้อมูลบริษัทที่บันทึกไว้ (ชื่อ ที่อยู่ เลขผู้เสียภาษี หรือโลโก้) อ่านไม่ได้ — ระบบหยุดออกใบกำกับภาษี ใบเสร็จ ใบลดหนี้ ใบเพิ่มหนี้ และหนังสือรับรอง 50 ทวิ และหยุดสำรองข้อมูล เพื่อไม่ให้เอกสารออกในนามบริษัทตัวอย่าง (เลข 0000000000000)',
+  issue: 'ออกเอกสารภาษีไม่ได้ — ข้อมูลบริษัทที่บันทึกไว้อ่านไม่ได้ (เอกสารจะออกในนามบริษัทตัวอย่าง) กรุณากู้ข้อมูลจาก Backup หรือกด "รีเซ็ตเป็นค่าตัวอย่าง" แล้วกรอกข้อมูลบริษัทใหม่ที่ ตั้งค่าบริษัท',
+  backup: 'สำรองข้อมูลไม่ได้ — ข้อมูลบริษัทที่บันทึกไว้อ่านไม่ได้ (ไฟล์จะไม่มีข้อมูลบริษัทของท่าน) กู้ข้อมูลจาก Backup หรือรีเซ็ตเป็นค่าตัวอย่างก่อน',
+  reset: 'รีเซ็ตเป็นค่าตัวอย่าง',
+  restore: 'กู้จาก Backup',
+  resetConfirm: 'ลบข้อมูลบริษัทและโลโก้ที่อ่านไม่ได้ แล้วกลับไปใช้ข้อมูลบริษัทตัวอย่าง?\n\nหลังจากนั้นกรอกข้อมูลบริษัทใหม่ที่ ตั้งค่าบริษัท ก่อนออกเอกสาร (เอกสารที่ออกแล้วไม่เปลี่ยน)',
+  resetDone: 'กลับไปใช้ข้อมูลบริษัทตัวอย่างแล้ว — กรอกข้อมูลบริษัทใหม่ก่อนออกเอกสาร'
+});
+const DAMAGED_BANNER_ID = 'erp-company-profile-damaged';
+function damagedProfile() {
+  try { return readSaved().errors.length > 0; } catch (error) { console.warn('[CompanyProfile] profile unreadable', error); return true; }
+}
+function issueRefusal() { return damagedProfile() ? DAMAGED_TEXT.issue : ''; }
+function resetDamaged() {
+  if (!damagedProfile() || window.confirm(DAMAGED_TEXT.resetConfirm) !== true) return false;
+  const saved = (() => { try { return readSaved(); } catch { return { errors: ['profile', 'logo'], profile: null, logo: null }; } })();
+  const broken = kind => saved.errors.some(text => String(text).startsWith(`${kind}:`));
+  try {
+    writeCompanyProfileStorage(localStorage, keyFor, KEYS, { profile: broken('profile') ? null : undefined, logo: broken('logo') ? null : undefined });
+  } catch (error) { say(error?.message || String(error), 'error'); return false; }
+  notifyStorageWritten();
+  syncFromStorage({ force: true });
+  renderDamagedBanner();
+  say(DAMAGED_TEXT.resetDone, 'success');
+  return true;
+}
+function renderDamagedBanner() {
+  let banner = document.getElementById(DAMAGED_BANNER_ID);
+  if (!damagedProfile()) { banner?.remove(); return false; }
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = DAMAGED_BANNER_ID;
+    banner.className = 'erp-data-alert';
+    banner.setAttribute('role', 'alert');
+    banner.innerHTML = `<span class="erp-data-alert-text">${escapeHtml(DAMAGED_TEXT.banner)}</span><span class="erp-data-alert-actions"><button type="button" class="btn btn-secondary btn-sm" data-cp-damaged="restore">${icon('upload')}${escapeHtml(DAMAGED_TEXT.restore)}</button><button type="button" class="btn btn-danger btn-sm" data-cp-damaged="reset">${icon('refresh')}${escapeHtml(DAMAGED_TEXT.reset)}</button></span>`;
+    banner.addEventListener('click', event => {
+      const action = event.target.closest('[data-cp-damaged]')?.dataset.cpDamaged;
+      if (action === 'reset') resetDamaged();
+      if (action === 'restore') window.go?.('files', null);
+    });
+    const main = document.querySelector('.main');
+    if (main) main.prepend(banner); else document.body.prepend(banner);
+  }
+  return true;
+}
+window.addEventListener(STORAGE_WRITTEN_EVENT, () => renderDamagedBanner());
+
 // local-demo-mode.js already merged the saved profile at boot; this records it as "applied"
 // (re-applying is idempotent) so later writes are compared against it.
 applied = readSaved();
@@ -703,7 +769,10 @@ window.ERPCompanyProfile = Object.freeze({
   // { profile, logo } as saved (null = demo default) + branchCount (ADR-022; 2 when never chosen)
   read: () => { const saved = readSaved(); return { profile: saved.profile, logo: saved.logo, branchCount: saved.branch.count }; },
   // masterData.companyProfile of a JSON backup (undefined when nothing is saved)
-  exportBackup: () => { const saved = readSaved(); return companyProfileBackupPayload({ ...saved, branchSetting: saved.branch.record }); },
+  exportBackup: () => { const saved = readSaved(); if (saved.errors.length) throw new Error(DAMAGED_TEXT.backup); return companyProfileBackupPayload({ ...saved, branchSetting: saved.branch.record }); },
+  // r8fix#B6: '' or the Thai refusal every tax-document save asks first; the damaged-profile reset.
+  issueRefusal,
+  resetDamaged,
   // [key, value] writes for a backup restore (validated; [] for an old backup without it)
   backupWrites: (value, options = {}) => { const saved = readSaved(); return companyProfileBackupWrites(value, keyFor, KEYS, { ...saved, branchSetting: saved.branch.record }, options); },
   prepareLogo,
@@ -713,6 +782,7 @@ window.ERPCompanyProfile = Object.freeze({
 });
 
 function boot() {
+  renderDamagedBanner();
   injectCustomLogoCss();
   mount();
   installShortcuts();

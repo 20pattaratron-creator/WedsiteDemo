@@ -129,11 +129,18 @@ export function approvalRows(snapshot={}){
 //   order-flow centre (ศูนย์งานขาย & ลูกหนี้), which covers billing and payments too.
 export const NAV_SECTIONS = Object.freeze([
   Object.freeze({ id: 'home', label: 'หน้าหลัก', panels: Object.freeze(['work-home', 'dashboard', 'approval-center']) }),
-  Object.freeze({ id: 'sales', label: 'ขายและรับเงิน', panels: Object.freeze(['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'order-flow']) }),
-  Object.freeze({ id: 'operations', label: 'ซื้อ / ผลิต / คลัง', panels: Object.freeze(['production-list', 'purchase-order', 'goods-receipt', 'inventory']) }),
+  // ADR-024: ใบเพิ่มหนี้ (§86/9) next to ใบลดหนี้ — visible in โหมดง่าย like every sales document.
+  Object.freeze({ id: 'sales', label: 'ขายและรับเงิน', panels: Object.freeze(['quote-list', 'invoice-list', 'receipt-list', 'credit-note-list', 'debit-note-list', 'order-flow']) }),
+  // ADR-028: ต้นทุนและกำไรต่องาน (job cost sheets, profit per job, stock card, valuation / NRV) — the main selling point,
+  // so it is in โหมดง่าย too.
+  Object.freeze({ id: 'operations', label: 'ซื้อ / ผลิต / คลัง', panels: Object.freeze(['production-list', 'purchase-order', 'goods-receipt', 'inventory', 'job-costing']) }),
   Object.freeze({ id: 'expenses', label: 'ค่าใช้จ่าย', panels: Object.freeze(['expense-list']) }),
   // ADR-023: รายงานภาษี (รายงานภาษีขาย / ซื้อ / ภ.พ.30) — a report every customer files monthly, so it is in โหมดง่าย too.
-  Object.freeze({ id: 'data', label: 'ข้อมูลและรายงาน', panels: Object.freeze(['master-data', 'tax-reports', 'linked-flow', 'analytics', 'customer-portal']) }),
+  // ADR-027: วิเคราะห์และคาดการณ์ (comparisons, ABC, forecast, reorder points) — for the owner, also in โหมดง่าย.
+  // ADR-029: สมุดบัญชีและปิดเดือน (journal, ledger, trial balance, month-end pack for the accountant) — next to the tax
+  // reports, also in โหมดง่าย (every customer sends the month to an accountant).
+  // ADR-031: หลายสกุลเงิน (rate table, documents in a currency, payments abroad, month end) — next to the books, in โหมดง่าย.
+  Object.freeze({ id: 'data', label: 'ข้อมูลและรายงาน', panels: Object.freeze(['master-data', 'tax-reports', 'accounting', 'fx', 'analytics-forecast', 'linked-flow', 'analytics', 'customer-portal']) }),
   Object.freeze({ id: 'settings', label: 'ตั้งค่า', panels: Object.freeze(['business-rules', 'audit-log', 'saas-admin', 'files']) })
 ]);
 
@@ -145,6 +152,7 @@ export const NAV_ENTRY_FOR_PANEL = Object.freeze({
   'receipt-form': 'receipt-list',
   'issued-receipt-list': 'receipt-list',
   'credit-note-form': 'credit-note-list',
+  'debit-note-form': 'debit-note-list',
   'production-form': 'production-list',
   'expense-form': 'expense-list'
 });

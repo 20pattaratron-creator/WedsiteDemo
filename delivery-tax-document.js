@@ -3,8 +3,15 @@ import { liveBranchLabel, documentEditorDefaultBranch as startBranch, documentEd
 import { runDocumentAction, documentActionFeedback, assertIssuedDocumentMatchesCanonical, FinanceActionError, FINANCE_ACTION_ERROR_CODES } from './erp-document-finance-core.js';
 import { withDemoWriteLease } from './erp-demo-concurrency.js';
 import { icon } from './erp-icons.js';
-import { companyLogoUrl, documentCompany } from './erp-company-profile-core.js';
+import { companyLogoUrl, documentCompany, printableContactLine, printHtmlWithSingleLogo, abbreviatedInvoiceApproval } from './erp-company-profile-core.js';
 import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
+import { invoicePaymentTermLabel } from './erp-receivables-core.js';
+import { fxPrintInfo } from './erp-fx-core.js';
+// r8fix#C9: the printed payment term follows the invoice's credit term (the form default "เงินสด" used to print next
+// to a credit due date); a legacy invoice with a due date but no recorded term prints the term blank, not "เงินสด".
+const dtdPaymentTermOf = (inv = {}, fallback = 'เงินสด') => invoicePaymentTermLabel(inv.creditTerm) || (inv.creditTerm || (inv.dueDate && inv.dueDate !== inv.date) ? '' : fallback);
+// r8fix#C9: the sample company's placeholder number (000-000-0000) is never printed (like its TIN).
+const dtdContactText = phone => { const line = printableContactLine(phone); return !line ? '' : line.startsWith('Tel:') ? line : `Mobile : ${line}`; };
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
   return window.html2canvas(...args);
@@ -15,7 +22,14 @@ const DTD_STORAGE_KEY = 'comform_delivery_tax_document_draft_v1';
 const tenantStorageKey = key => window.ComformTenant?.storageKey?.(key) || key;
 const businessStorageKey = (branch,year,month) => tenantStorageKey(`biz2_${branch}_${year}_${String(Number(month)+1).padStart(2,'0')}`);
 const MAX_ITEMS = 60;
-const ITEM_UNITS_PER_PAGE = 8;
+// r8fix#C6: an A4 page holds 16 line units (≥ 15 single-line rows), each ITEM_UNIT_HEIGHT_EM em of the page font —
+// measured in Chromium print / PDF / preview so no row ever runs past the totals box. A name is estimated in lines
+// of ITEM_WRAP_CHARS characters of the description column only (the product code has its own column); a long name
+// wraps inside its cell and takes as many units as lines (up to a whole page).
+const ITEM_UNITS_PER_PAGE = 16;
+const ITEM_UNIT_HEIGHT_EM = 1.8;
+const ITEM_WRAP_CHARS = 46;
+const dtdRowUnits = item => itemRowUnits({ product: item?.product || '' }, ITEM_WRAP_CHARS, ITEM_UNITS_PER_PAGE);
 const BLUE = '#0868c9';
 // ADR-020: the customer's logo (data URL) once saved in ตั้งค่าบริษัท, else ./logo.png; updated on
 // COMPANY_PROFILE_CHANGED_EVENT (listener at the end of this file).
@@ -33,8 +47,8 @@ const BRANCH_DEFAULTS = {
     taxId: '0000000000000'
   },
   ubon: {
-    label: 'สาขาสำนักงานใหญ่',
-    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สาขาสำนักงานใหญ่)',
+    label: 'สำนักงานใหญ่',
+    companyNameTh: 'บริษัท ตัวอย่าง จำกัด (สำนักงานใหญ่)',
     companyNameEn: 'EXAMPLE CO., LTD. (HEAD OFFICE)',
     addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
     addressEn: '88/2 Example Rd. T.Nai-Muang A.Muang Ubonratchathani 34000',
@@ -78,14 +92,14 @@ const PAGE_TYPES = [
     tab: 'สำเนา/COPY',
     titleTh: 'ใบส่งสินค้า/ใบกำกับภาษี',
     titleEn: '(DELIVERY ORDER / TAX INVOICE)',
-    audience: 'สำหรับบัญชี/ACCOUNT',
+    audience: 'สำหรับบัญชี/ACCOUNTING',
     note: '(เอกสารออกเป็นชุด)'
   },
   {
     id: 'delivery-copy',
     tab: 'สำเนาใบส่งสินค้า/สำเนาใบกำกับภาษี',
     titleTh: 'ใบส่งสินค้า/สำเนาใบกำกับภาษี',
-    titleEn: '(DELIVERY ORDER COPY / TAX INVOICE)',
+    titleEn: '(DELIVERY ORDER / TAX INVOICE COPY)',
     audience: 'สำหรับพนักงานส่งภายใน',
     note: '(เอกสารออกภายใน)'
   }
@@ -95,12 +109,40 @@ const PAGE_TYPES = [
 const NO_VAT_PAGE_TITLES = Object.freeze({
   original: Object.freeze({ titleTh: 'ใบส่งสินค้า/ใบแจ้งหนี้', titleEn: '(DELIVERY ORDER / INVOICE)' }),
   copy: Object.freeze({ titleTh: 'ใบส่งสินค้า/ใบแจ้งหนี้', titleEn: '(DELIVERY ORDER / INVOICE)' }),
-  'delivery-copy': Object.freeze({ tab: 'สำเนาใบส่งสินค้า/สำเนาใบแจ้งหนี้', titleTh: 'ใบส่งสินค้า/สำเนาใบแจ้งหนี้', titleEn: '(DELIVERY ORDER COPY / INVOICE)' })
+  'delivery-copy': Object.freeze({ tab: 'สำเนาใบส่งสินค้า/สำเนาใบแจ้งหนี้', titleTh: 'ใบส่งสินค้า/สำเนาใบแจ้งหนี้', titleEn: '(DELIVERY ORDER / INVOICE COPY)' })
 });
-function printedPageType(pageType, vatNone) {
-  return vatNone ? { ...pageType, ...(NO_VAT_PAGE_TITLES[pageType.id] || {}) } : pageType;
+// r13#MED-6: a service invoice whose tax point is the payment (ม.78/1) is a ใบแจ้งหนี้ — the tax invoice is the receipt.
+const SERVICE_INVOICE_PAGE_TITLES = Object.freeze({
+  original: Object.freeze({ titleTh: 'ใบแจ้งหนี้', titleEn: '(INVOICE)' }),
+  copy: Object.freeze({ titleTh: 'ใบแจ้งหนี้', titleEn: '(INVOICE)' }),
+  'delivery-copy': Object.freeze({ tab: 'สำเนาใบแจ้งหนี้', titleTh: 'สำเนาใบแจ้งหนี้', titleEn: '(INVOICE COPY)' })
+});
+// Which title a document gets: 'tax' (a VAT tax invoice — incl. 0 % sales of a VAT registrant, r13#MED-4: ม.86 requires
+// a tax invoice that shows VAT 0 %), 'none' (exempt / no-VAT seller: ใบส่งสินค้า/ใบแจ้งหนี้) or 'service' (ม.78/1).
+function dtdTitleKind(source) {
+  if (source?.taxPoint === 'payment' && !source?.vatNone) return 'service';
+  return source?.vatNone && source?.vatCategory !== 'zero' ? 'none' : 'tax';
+}
+function printedPageType(pageType, kind) {
+  if (kind === 'service') return { ...pageType, ...(SERVICE_INVOICE_PAGE_TITLES[pageType.id] || {}) };
+  return kind === 'none' || kind === true ? { ...pageType, ...(NO_VAT_PAGE_TITLES[pageType.id] || {}) } : pageType;
 }
 
+// The tax-document fields of a stored invoice the print needs (r13).
+function dtdTaxFieldsOf(inv = {}) {
+  return { vatCategory: inv.vatCategory === 'zero' ? 'zero' : '', taxPoint: inv.taxPoint === 'payment' ? 'payment' : '', replacesNo: String(inv.replacesNo || ''), replacesDate: String(inv.replacesDate || ''), exportDeclarationNo: String(inv.exportDeclarationNo || ''), fx: fxPrintInfo(inv) };
+}
+// ADR-031: what a foreign-currency invoice prints besides its baht. mode 'thb' (no approval): the baht columns are the tax
+// invoice and the currency is a "ข้อมูลประกอบ" box; mode 'fx' (approved / export of goods): the currency columns with the
+// rate and the baht VAT. A baht invoice prints exactly as before (every block below is '' without state.fx).
+const dtdFxRate = fx => `${fx.rate} บาท ต่อ ${fx.per} ${fx.currency} (${fx.rateTypeTh} ของวันที่ ${formatDate(fx.rateDate)})`;
+function dtdFxNotesHtml(fx, sum) {
+  if (!fx) return '';
+  if (fx.mode !== 'fx') return `<div class="dtd-doc-fx-info" style="margin-top:4px;padding:3px 6px;border:1px dashed #94a3b8;font-size:.86em;line-height:1.35"><b>ข้อมูลประกอบ (ไม่ใช่ยอดตามใบกำกับภาษี)</b><br>มูลค่า ${escapeHtml(fx.currency)} ${escapeHtml(fx.subtotalFx)}${fx.vatFx !== '0.00' && fx.vatFx !== '0' ? ` · ภาษีมูลค่าเพิ่ม ${escapeHtml(fx.currency)} ${escapeHtml(fx.vatFx)}` : ''} · รวม ${escapeHtml(fx.currency)} ${escapeHtml(fx.totalFx)}<br>อัตราแลกเปลี่ยน ${escapeHtml(dtdFxRate(fx))}</div>`;
+  const approval = fx.approvalNo ? `<div>ได้รับอนุมัติให้ออกใบกำกับภาษีเป็นเงินตราต่างประเทศ เลขที่ ${escapeHtml(fx.approvalNo)}${fx.approvalDate ? ` ลงวันที่ ${formatDate(fx.approvalDate)}` : ''}</div>` : '';
+  const exportNote = fx.exportKind === 'goods' ? `<div>ใบกำกับสินค้าส่งออก ใช้แทนใบกำกับภาษีตาม ป.132/2548 ข้อ 6 · ภาษีมูลค่าเพิ่มอัตราร้อยละ 0${fx.exportDate ? ` · วันส่งออก ${formatDate(fx.exportDate)}` : ''}</div>` : '';
+  return `${approval}${exportNote}<div class="dtd-doc-fx-info" style="margin-top:4px;padding:3px 6px;border:1px dashed #94a3b8;font-size:.86em;line-height:1.35"><b>มูลค่าเป็นเงินบาท</b> ${fmt(sum.subtotal)} · ภาษีมูลค่าเพิ่ม (บาท) ${fmt(sum.vat)} · รวม (บาท) ${fmt(sum.grand)}<br>อัตราแลกเปลี่ยน ${escapeHtml(dtdFxRate(fx))}</div>`;
+}
 let state = createDefaultState();
 let productionOptionsCache = [];
 let productionOptionsLoadedKey = '';
@@ -137,6 +179,9 @@ function createDefaultState() {
     taxInvoiceForm: 'full',
     vatEnabled: true,
     vatNone: false,
+    vatCategory: '', // r13#MED-4: 'zero' = 0 % sale of a VAT registrant → still a tax invoice
+    taxPoint: '', // r13#MED-6: 'payment' = service invoice, tax invoice issued on the receipt
+    replacesNo: '', replacesDate: '', exportDeclarationNo: '', // r13#MED-3 / MED-4
     note: '',
     attachments: [],
     sourceProductionNo: '',
@@ -241,7 +286,7 @@ function renderAppShell() {
         <div class="dtd-brand-title">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้บริษัท">
           <div>
-            <div class="dtd-company-mini">${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
+            <div class="dtd-company-mini" data-no-i18n>${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</div>
             <h2>${isAbbreviatedTaxInvoice(state) ? 'ออกใบกำกับภาษีอย่างย่อ (มาตรา 86/6)' : 'ออกใบส่งสินค้า / ใบกำกับภาษี'}</h2>
           </div>
         </div>
@@ -269,7 +314,7 @@ function renderAppShell() {
           <div class="dtd-preview-heading">ตัวอย่างเอกสารแบบเรียลไทม์</div>
           <div class="dtd-preview-tabs" id="dtd-preview-tabs"></div>
           <div class="dtd-preview-scroll">
-            <div id="dtd-live-preview"></div>
+            <div id="dtd-live-preview" data-no-i18n="doc"></div>
           </div>
           <div id="dtd-template-preview" class="dtd-template-preview" hidden></div>
         </section>
@@ -382,9 +427,11 @@ function loadFromInvoice(inv = {}, ref = {}) {
   state.docNo = inv.no || state.docNo;
   state.date = inv.date || state.date;
   state.dueDate = inv.dueDate || state.dueDate;
+  state.paymentTerm = dtdPaymentTermOf(inv, state.paymentTerm); // r8fix#C9
   state.salesperson = inv.salesPerson || '';
   state.vatEnabled = Number(inv.useVat || 0) === 1;
   state.vatNone = inv.vatMode==='none'||Number(inv.useVat)===2;
+  Object.assign(state, dtdTaxFieldsOf(inv));
   state.note = inv.note || '';
   state.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
   state.sourceProductionNo = inv.sourceProductionNo || '';
@@ -460,7 +507,7 @@ function documentSectionHtml() {
         <label class="dtd-field">
           <span>เงื่อนไขการชำระเงิน</span>
           <select data-field="paymentTerm">
-            ${['เงินสด', 'เครดิต 7 วัน', 'เครดิต 15 วัน', 'เครดิต 30 วัน', 'เครดิต 45 วัน', 'เครดิต 60 วัน'].map(v => `<option ${state.paymentTerm === v ? 'selected' : ''}>${v}</option>`).join('')}
+            ${[...new Set(['เงินสด', 'เครดิต 7 วัน', 'เครดิต 15 วัน', 'เครดิต 30 วัน', 'เครดิต 45 วัน', 'เครดิต 60 วัน', state.paymentTerm].filter(Boolean))].map(v => `<option ${state.paymentTerm === v ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </label>
         ${inputHtml('shipTo', 'สถานที่ส่งของ', 'สถานที่จัดส่ง', 'dtd-span-2')}
@@ -510,7 +557,7 @@ function summarySectionHtml() {
             <option value="1" ${state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคายังไม่รวม VAT — บวกเพิ่ม</option>
             <option value="0" ${!state.vatEnabled&&!state.vatNone ? 'selected' : ''}>ราคารวม VAT แล้ว — แยกภาษี</option><option value="2" ${state.vatNone?'selected':''}>ไม่มี VAT</option>
           </select>
-          <small class="dtd-vat-help">รวม VAT 7% = รวมมูลค่าสินค้า + VAT 7% • ไม่รวม VAT 7% = ถอดฐานภาษีด้วย รวมมูลค่าสินค้า × 100 ÷ 107 แล้วบวก VAT 7%</small>
+          <small class="dtd-vat-help">ราคายังไม่รวม VAT = รวมมูลค่าสินค้า + VAT 7% • ราคารวม VAT แล้ว = ถอดฐานภาษีด้วย ยอดรวม × 100 ÷ 107 แล้วแยก VAT 7%</small>
         </label>
         <div class="dtd-summary-box"><span>รวมมูลค่าสินค้า</span><strong id="dtd-subtotal">0.00</strong><em>บาท</em></div>
         <div class="dtd-summary-box"><span>ภาษีมูลค่าเพิ่ม (7%)</span><strong id="dtd-vat">0.00</strong><em>บาท</em></div>
@@ -796,7 +843,7 @@ function updateComputedAndPreview() {
 }
 
 function documentPagesHtml(pageType, pdfMode = false) {
-  const chunks = paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE });
+  const chunks = paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE, rowUnits: dtdRowUnits });
   return chunks.map((chunk, index) => documentPageHtml(pageType, pdfMode, {
     chunk,
     pageNumber: index + 1,
@@ -813,21 +860,27 @@ function renderPreview() {
 }
 
 function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
-  const pageType = printedPageType(sourcePageType, state.vatNone);
-  const taxDocName = state.vatNone ? 'ใบแจ้งหนี้' : 'ใบกำกับภาษี';
+  const titleKind = dtdTitleKind(state);
+  const pageType = printedPageType(sourcePageType, titleKind);
+  const taxDocName = titleKind === 'tax' ? 'ใบกำกับภาษี' : 'ใบแจ้งหนี้';
+  const zeroRated = state.vatNone && state.vatCategory === 'zero';
   const sum = calculateDocumentTotals(state.items, { vatNone: state.vatNone, vatEnabled: state.vatEnabled });
-  const chunk = pageInfo.chunk || paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE })[0];
+  const chunk = pageInfo.chunk || paginateItems(printableItems(state.items), { unitsPerPage: ITEM_UNITS_PER_PAGE, rowUnits: dtdRowUnits })[0];
   const pageNumber = Number(pageInfo.pageNumber || 1);
   const totalPages = Number(pageInfo.totalPages || 1);
   const isFinalPage = pageInfo.isFinalPage !== false;
+  // ADR-031: in mode 'fx' the price / amount columns are the currency's (the same lines, in the stored order).
+  const fx = state.fx && Array.isArray(state.fx.lines) && state.fx.lines.length === state.items.length ? state.fx : null;
+  const fxMain = fx?.mode === 'fx';
+  const fxLine = item => (fxMain ? fx.lines[state.items.indexOf(item)] || null : null);
   const rowHtml = chunk.rows.map(({ item, units }) => `
-    <tr class="dtd-data-row" style="height:${(3.15 * units).toFixed(2)}em">
+    <tr class="dtd-data-row" style="height:${(ITEM_UNIT_HEIGHT_EM * units).toFixed(2)}em">
       <td>${escapeHtml(item.productCode)}</td>
       <td class="dtd-doc-desc">${escapeHtml(item.product).replace(/\n/g, '<br>')}</td>
       <td>${escapeHtml(item.unit)}</td>
       <td class="num">${fmt(item.qty)}</td>
-      <td class="num">${fmt(item.priceUnit)}</td>
-      <td class="num">${fmt(parseMoney(item.qty) * parseMoney(item.priceUnit))}</td>
+      <td class="num">${fxLine(item) ? escapeHtml(fxLine(item).priceFx) : fmt(item.priceUnit)}</td>
+      <td class="num">${fxLine(item) ? escapeHtml(fxLine(item).amountFx) : fmt(parseMoney(item.qty) * parseMoney(item.priceUnit))}</td>
     </tr>
   `).join('');
   const emptyUnits = Math.max(0, ITEM_UNITS_PER_PAGE - Number(chunk.usedUnits || 0));
@@ -835,10 +888,11 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
   const company = state.company || branchCompany(state.branch);
   const logoSrc = pdfMode && pdfLogoDataUrl ? pdfLogoDataUrl : COMPANY_LOGO_URL;
   const pageCounter = totalPages > 1 ? `<span class="dtd-doc-page-counter">หน้ารายการ ${pageNumber}/${totalPages}</span>` : '';
-  const subtotalText = isFinalPage ? fmt(sum.subtotal) : '';
-  const vatText = isFinalPage ? fmt(sum.vat) : '';
-  const grandText = isFinalPage ? fmt(sum.grand) : '';
-  const bahtTextValue = isFinalPage ? bahtText(sum.grand) : 'มีรายการต่อหน้าถัดไป';
+  const subtotalText = isFinalPage ? (fxMain ? fx.subtotalFx : fmt(sum.subtotal)) : '';
+  const vatText = isFinalPage ? (fxMain ? fx.vatFx : fmt(sum.vat)) : '';
+  const grandText = isFinalPage ? (fxMain ? fx.totalFx : fmt(sum.grand)) : '';
+  const bahtTextValue = isFinalPage ? (fxMain ? `${escapeHtml(fx.totalWordsTh)}<br><span lang="en">${escapeHtml(fx.totalWordsEn)}</span>` : bahtText(sum.grand)) : 'มีรายการต่อหน้าถัดไป';
+  const fxUnit = fxMain ? ` (${escapeHtml(fx.currency)})` : '';
 
   return `
     <article class="dtd-document-page ${pdfMode ? 'dtd-pdf-page' : ''} ${!isFinalPage ? 'dtd-continuation-page' : ''}" data-page-id="${pageType.id}" data-item-page="${pageNumber}">${state.cancellation ? documentCancelStampHtml(state.cancellation) : ''}
@@ -853,8 +907,8 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
             <div class="dtd-doc-company-en">${escapeHtml(company.companyNameEn)}</div>
             <div class="dtd-doc-contact">${escapeHtml(company.addressTh)}</div>
             <div class="dtd-doc-contact">${escapeHtml(company.addressEn)}</div>
-            <div class="dtd-doc-contact">${escapeHtml((company.phone || '').trim().startsWith('Tel:') ? company.phone : `Mobile : ${company.phone || ''}`)}</div>
-            <div class="dtd-doc-tax">เลขประจำตัวผู้เสียภาษี ${escapeHtml(company.taxId)}</div>
+            <div class="dtd-doc-contact">${escapeHtml(dtdContactText(company.phone))}</div>
+            <div class="dtd-doc-tax">เลขประจำตัวผู้เสียภาษีอากร ${escapeHtml(company.taxId)}</div>
           </div>
         </div>
         <div class="dtd-doc-title">
@@ -868,24 +922,24 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
 
       <section class="dtd-doc-party-grid">
         <div class="dtd-doc-party-box">
-          <div><b>นามลูกค้า/Customer name :</b> ${escapeHtml(state.customerName)}</div>
+          <div><b>ชื่อลูกค้า/Customer name :</b> ${escapeHtml(state.customerName)}</div>
           <div><b>ที่อยู่/Address :</b><br>${escapeHtml(state.customerAddress).replace(/\n/g, '<br>')}</div>
-          <div class="dtd-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษี</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="dtd-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
+          <div class="dtd-doc-party-bottom"><b>เลขประจำตัวผู้เสียภาษีอากร</b> ${escapeHtml(state.customerTaxId)}${buyerBranchLabel(state.customerBranchCode) ? `<span class="dtd-doc-buyer-branch" style="margin-left:1.4em"><b>${escapeHtml(buyerBranchLabel(state.customerBranchCode))}</b></span>` : ''}</div>
         </div>
         <div class="dtd-doc-party-box">
           <div><b>สถานที่ส่งของ/Ship to :</b><br>${escapeHtml(state.shipTo).replace(/\n/g, '<br>')}</div>
-          <div class="dtd-doc-party-bottom"><b>ชื่อผู้สั่งซื้อ/Buyer Name :</b> ${escapeHtml(state.buyerName || state.contact)}</div>
+          <div class="dtd-doc-party-bottom"><b>ชื่อผู้สั่งซื้อ/Ordered by :</b> ${escapeHtml(state.buyerName || state.contact)}</div>
         </div>
       </section>
 
       <table class="dtd-doc-meta-table">
         <thead><tr>
           <th>รหัสลูกค้า<br><span>Customer code</span></th>
-          <th>ใบสั่งซื้อเลขที่<br><span>P/O. No.</span></th>
-          <th>ใบส่งสินค้าเลขที่<br><span>D/O. No.</span></th>
-          <th>พนักงานขาย<br><span>Salesman</span></th>
-          <th>เงื่อนไขการชำระเงิน<br><span>Payment Term</span></th>
-          <th>วันครบกำหนด<br><span>Due Date</span></th>
+          <th>ใบสั่งซื้อเลขที่<br><span>P.O. No.</span></th>
+          <th>ใบส่งสินค้าเลขที่<br><span>D.O. No.</span></th>
+          <th>พนักงานขาย<br><span>Salesperson</span></th>
+          <th>เงื่อนไขการชำระเงิน<br><span>Payment terms</span></th>
+          <th>วันครบกำหนด<br><span>Due date</span></th>
           <th>วันที่<br><span>Date</span></th>
         </tr></thead>
         <tbody><tr>
@@ -906,8 +960,8 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
             <th>รายการ<br><span>Description</span></th>
             <th>หน่วยนับ<br><span>Unit</span></th>
             <th>จำนวน<br><span>Quantity</span></th>
-            <th>ราคาต่อหน่วย<br><span>Unit Price</span></th>
-            <th>จำนวนเงิน<br><span>Amount</span></th>
+            <th>ราคาต่อหน่วย${fxUnit}<br><span>Unit price${fxUnit}</span></th>
+            <th>จำนวนเงิน${fxUnit}<br><span>Amount${fxUnit}</span></th>
           </tr></thead>
           <tbody>${rowHtml}${emptyHtml}</tbody>
         </table>
@@ -917,16 +971,22 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
             <div>โปรดชำระเงินเข้าบัญชีของบริษัท <b>${escapeHtml(company.companyNameTh || window.CurrentUser?.tenantName || 'บริษัท')}</b></div>
             <div>• สินค้าตามรายการข้างต้นยังเป็นกรรมสิทธิ์ของบริษัทฯ จนกว่าจะได้รับชำระเงินครบถ้วน</div>
             ${state.note ? `<div>หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
+            ${state.replacesNo ? `<div class="dtd-doc-replaces">ออกแทนใบกำกับภาษีเลขที่ ${escapeHtml(state.replacesNo)}${state.replacesDate ? ` ลงวันที่ ${formatDate(state.replacesDate)}` : ''} (ฉบับเดิมยกเลิกแล้ว)</div>` : ''}
+            ${zeroRated && state.exportDeclarationNo ? `<div>ใบขนสินค้าขาออกเลขที่ ${escapeHtml(state.exportDeclarationNo)}</div>` : ''}
+            ${titleKind === 'service' ? '<div class="dtd-doc-taxpoint">ใบแจ้งหนี้นี้ยังไม่ใช่ใบกำกับภาษี — บริษัทจะออกใบเสร็จรับเงิน/ใบกำกับภาษีเมื่อได้รับชำระค่าบริการ (มาตรา 78/1)</div>' : ''}${isFinalPage ? dtdFxNotesHtml(fx, sum) : ''}
             ${!isFinalPage ? `<div class="dtd-doc-next-page-note">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>` : ''}
-            <div class="dtd-doc-baht"><b>บาท<br><span>Baht</span></b><strong>${bahtTextValue}</strong></div>
+            <div class="dtd-doc-baht"><b style="font-size:.74em;line-height:1.15;white-space:nowrap">จำนวนเงิน<br>(ตัวอักษร)<br><span>Amount in words</span></b><strong>${bahtTextValue}</strong></div>
           </div>
           <div class="dtd-doc-totals">
-            <div><span>รวมมูลค่าสินค้า<br><em>Total</em></span><strong>${subtotalText}</strong></div>
-            ${state.vatNone
+            <div><span>รวมมูลค่าสินค้า${fxUnit}<br><em>Subtotal${fxUnit}</em></span><strong>${subtotalText}</strong></div>
+            ${zeroRated
+              // r13#MED-4: a 0 % sale is a tax invoice of a VAT registrant — it shows VAT at 0 %.
+              ? `<div><span>ภาษีมูลค่าเพิ่ม 0%<br><em>VAT 0%</em></span><strong>${isFinalPage ? fmt(0) : ''}</strong></div>`
+              : state.vatNone
               // A no-VAT seller's invoice must not show a 7% VAT line (it is not a tax invoice).
               ? `<div><span>ไม่คิดภาษีมูลค่าเพิ่ม<br><em>No VAT</em></span><strong>${isFinalPage ? '-' : ''}</strong></div>`
-              : `<div><span>ภาษีมูลค่าเพิ่ม 7%<br><em>VAT 7%</em></span><strong>${vatText}</strong></div>`}
-            <div><span>ยอดรวม<br><em>Grand Total</em></span><strong>${grandText}</strong></div>
+              : `<div><span>ภาษีมูลค่าเพิ่ม 7%${fxUnit}<br><em>VAT 7%${fxUnit}</em></span><strong>${vatText}</strong></div>`}
+            <div><span>ยอดรวม${fxUnit}<br><em>Grand total${fxUnit}</em></span><strong>${grandText}</strong></div>
           </div>
         </div>
       </div>
@@ -936,7 +996,7 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
           <div>หากมีข้อผิดพลาดใด ๆ ของสินค้าหรือเอกสาร โปรดแจ้งภายใน 7 วัน นับจากวันที่ส่งสินค้า มิฉะนั้นทางบริษัทฯ จะไม่รับผิดชอบ</div>
           <div>กรณีชำระเงินเกินกำหนด บริษัทฯ ขอสงวนสิทธิ์คิดดอกเบี้ยในอัตรา 2% ต่อเดือน นับจากวันที่ครบกำหนด</div>
         </div>
-        <div class="dtd-doc-officer-label">สำหรับเจ้าหน้าที่/<span>For officer</span></div>
+        <div class="dtd-doc-officer-label">สำหรับเจ้าหน้าที่/<span>For office use</span></div>
       </div>
 
       <section class="dtd-doc-signatures">
@@ -950,10 +1010,10 @@ function documentPageHtml(sourcePageType, pdfMode = false, pageInfo = {}) {
           'วันที่/Date',
           true
         )}
-        ${signatureBox('ผู้อนุมัติ', 'Authorized signature')}
-        ${signatureBox('ผู้ออกเอกสาร', 'Prepared By')}
-        ${signatureBox('พนักงานขาย', 'Salesman')}
-        ${signatureBox('ผู้จัดส่ง', 'Deliverer')}
+        ${signatureBox('ผู้อนุมัติ', 'Approved by')}
+        ${signatureBox('ผู้ออกเอกสาร', 'Prepared by')}
+        ${signatureBox('พนักงานขาย', 'Salesperson')}
+        ${signatureBox('ผู้จัดส่ง', 'Delivered by')}
       </section>
     </article>
   `;
@@ -992,7 +1052,11 @@ function formPagesHtml(pageType, pdfMode = false) {
   // while the document really is VAT-inclusive; otherwise the full form prints
   // the stored VAT mode instead of re-reading the prices as VAT-inclusive.
   const abbreviated = isAbbreviatedTaxInvoice(state) && !state.vatEnabled && !state.vatNone;
-  return abbreviated ? abbreviatedPagesHtml(pageType, pdfMode) : documentPagesHtml(pageType, pdfMode);
+  const html = abbreviated ? abbreviatedPagesHtml(pageType, pdfMode) : documentPagesHtml(pageType, pdfMode);
+  // ADR-029: "สแกนจ่ายด้วยพร้อมเพย์" on the customer's original only; decorate() returns `html` itself when the QR is off.
+  if (pageType.id !== 'original' || !window.ERPPromptPay?.decorate) return html;
+  const sum = calculateDocumentTotals(state.items, { vatNone: state.vatNone, vatEnabled: state.vatEnabled });
+  return window.ERPPromptPay.decorate('invoice', html, { amount: sum.grand, docNo: state.docNo, cancelled: !!state.cancellation });
 }
 
 const ABBREVIATED_ITEM_UNITS_PER_PAGE = 16;
@@ -1051,6 +1115,8 @@ function abbreviatedPageHtml(pageType, pdfMode, pageInfo) {
   const { chunk, startIndex, pageNumber, totalPages, isFinalPage } = pageInfo;
   const copyLabel = pageType.id === 'original' ? 'ต้นฉบับ / ORIGINAL' : 'สำเนา / COPY';
   const buyerName = isGeneralCustomerName(state.customerName) ? '' : String(state.customerName || '').trim();
+  // r13#MED-5: ประกาศอธิบดีฯ VAT ฉบับที่ 46 — the approved machine number (POS ID) on every abbreviated tax invoice.
+  const approval = abbreviatedInvoiceApproval(window.CurrentUser, state.branch);
   const rowHtml = chunk.rows.map(({ item }, index) => `
     <tr>
       <td class="num">${startIndex + index + 1}</td>
@@ -1068,16 +1134,17 @@ function abbreviatedPageHtml(pageType, pdfMode, pageInfo) {
         <div class="dtd-abbr-seller">
           <b>${escapeHtml(company.companyNameTh)}</b>
           <div>${escapeHtml(company.addressTh)}</div>
-          <div class="dtd-abbr-tax">เลขประจำตัวผู้เสียภาษี ${escapeHtml(company.taxId)}</div>
+          <div class="dtd-abbr-tax">เลขประจำตัวผู้เสียภาษีอากร ${escapeHtml(company.taxId)}</div>
+          ${approval.posId ? `<div class="dtd-abbr-pos">POS ID ${escapeHtml(approval.posId)} · เลขที่อนุมัติ / Approval no. ${escapeHtml(approval.approvalNo)}</div>` : ''}
         </div>
       </header>
       <div class="dtd-abbr-title"><h2>ใบกำกับภาษีอย่างย่อ</h2><div>ABBREVIATED TAX INVOICE</div></div>
       <section class="dtd-abbr-meta">
         <div><span>เลขที่ / No.</span><b>${escapeHtml(state.docNo)}</b></div>
         <div><span>วันที่ / Date</span><b>${escapeHtml(formatDate(state.date))}</b></div>
-        <div><span>พนักงานขาย / Cashier</span><b>${escapeHtml(state.salesperson || '-')}</b></div>
+        <div><span>พนักงานขาย / Salesperson</span><b>${escapeHtml(state.salesperson || '-')}</b></div>
       </section>
-      ${buyerName ? `<div class="dtd-abbr-buyer"><b>ลูกค้า / Customer :</b> ${escapeHtml(buyerName)}${state.customerTaxId ? ` · เลขประจำตัวผู้เสียภาษี ${escapeHtml(state.customerTaxId)}` : ''}</div>` : ''}
+      ${buyerName ? `<div class="dtd-abbr-buyer"><b>ลูกค้า / Customer :</b> ${escapeHtml(buyerName)}${state.customerTaxId ? ` · เลขประจำตัวผู้เสียภาษีอากร ${escapeHtml(state.customerTaxId)}` : ''}</div>` : ''}
       <table class="dtd-abbr-items">
         <thead><tr><th>#</th><th>รายการ / Description</th><th class="num">จำนวน</th><th>หน่วย</th><th class="num">ราคา/หน่วย</th><th class="num">จำนวนเงิน</th></tr></thead>
         <tbody>${rowHtml}</tbody>
@@ -1089,7 +1156,7 @@ function abbreviatedPageHtml(pageType, pdfMode, pageInfo) {
         <div class="dtd-abbr-breakdown">มูลค่าสินค้า/บริการ ${fmt(sum.subtotal)} บาท · ภาษีมูลค่าเพิ่ม 7% ${fmt(sum.vat)} บาท</div>
         <div class="dtd-abbr-baht">(${escapeHtml(bahtText(sum.grand))})</div>
         ${state.note ? `<div class="dtd-abbr-note">หมายเหตุ: ${escapeHtml(state.note)}</div>` : ''}
-        <div class="dtd-abbr-foot"><div class="dtd-abbr-sign">ผู้รับเงิน / Cashier</div><div class="dtd-abbr-sign">วันที่ / Date</div></div>
+        <div class="dtd-abbr-foot"><div class="dtd-abbr-sign">ผู้รับเงิน / Received by</div><div class="dtd-abbr-sign">วันที่ / Date</div></div>
       </section>` : `<div class="dtd-abbr-next">รายการต่อหน้าถัดไป (${pageNumber + 1}/${totalPages})</div>`}
     </article>
   `;
@@ -1240,7 +1307,7 @@ function createOffscreenPages(mode = 'all') {
   container.setAttribute('aria-hidden', 'true');
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
   container.innerHTML = mode === 'current' ? formPagesHtml(selectedPage, true) : PAGE_TYPES.map(page => formPagesHtml(page, true)).join('');
-  document.body.appendChild(container);
+  document.body.appendChild(window.ERPI18n?.prepareDocumentStage?.(container) || container); // ADR-026: English → bilingual labels (erp-i18n-print.js); Thai → unchanged
   return container;
 }
 
@@ -1318,7 +1385,7 @@ function printDocuments(mode = 'all') {
   printWindow.opener = null;
   const cssUrl = new URL('./delivery-tax-document.css', import.meta.url).href;
   const selectedPage = PAGE_TYPES.find(page => page.id === activePage) || PAGE_TYPES[0];
-  const html = mode === 'current' ? formPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => formPagesHtml(page, false)).join('');
+  const html = (window.ERPI18n?.bilingualHtml || String)(printHtmlWithSingleLogo(mode === 'current' ? formPagesHtml(selectedPage, false) : PAGE_TYPES.map(page => formPagesHtml(page, false)).join(''), COMPANY_LOGO_URL)); // r8fix#C6 · ADR-026 bilingual in English
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(state.docNo)}</title><link rel="stylesheet" href="${cssUrl}"><style>body{margin:0;background:#fff}.dtd-document-page{page-break-after:always;margin:0 auto}.dtd-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -1365,9 +1432,11 @@ function buildStateFromInvoicePreview(inv = {}, ref = {}) {
   previewState.docNo = inv.no || previewState.docNo;
   previewState.date = inv.date || previewState.date;
   previewState.dueDate = inv.dueDate || previewState.dueDate;
+  previewState.paymentTerm = dtdPaymentTermOf(inv, previewState.paymentTerm); // r8fix#C9
   previewState.salesperson = inv.salesPerson || '';
   previewState.vatEnabled = Number(inv.useVat || 0) === 1;
   previewState.vatNone = inv.vatMode==='none'||Number(inv.useVat)===2;
+  Object.assign(previewState, dtdTaxFieldsOf(inv));
   previewState.note = inv.note || '';
   previewState.attachments = Array.isArray(inv.attachments) ? inv.attachments.map(item => ({ ...item })) : [];
   previewState.sourceProductionNo = inv.sourceProductionNo || '';

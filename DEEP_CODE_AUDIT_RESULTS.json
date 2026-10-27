@@ -1,139 +1,27 @@
 {
   "version": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-04T22:57:24.272Z",
-  "runtimeJsFiles": 52,
-  "runtimeLines": 28973,
+  "checkedAt": "2026-10-27T09:19:49.813Z",
+  "runtimeJsFiles": 85,
+  "runtimeLines": 53792,
   "issues": [],
   "notes": [
     {
       "code": "NORMALIZED_DUPLICATE_10_LINE_WINDOWS",
-      "count": 147,
+      "count": 153,
       "examples": [
         [
           {
             "file": "credit-note-document.js",
-            "line": 27
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 25
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 28
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 28
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 26
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 29
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 29
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 27
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 30
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 30
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 28
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 31
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 31
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 29
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 32
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 32
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 30
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 33
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 33
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 31
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 34
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 34
-          },
-          {
-            "file": "delivery-tax-document.js",
-            "line": 32
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 35
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
             "line": 35
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 33
+            "line": 39
           },
           {
             "file": "receipt-document.js",
-            "line": 36
+            "line": 39
           }
         ],
         [
@@ -143,11 +31,11 @@
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 34
+            "line": 40
           },
           {
             "file": "receipt-document.js",
-            "line": 37
+            "line": 40
           }
         ],
         [
@@ -157,27 +45,129 @@
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 35
+            "line": 41
           },
           {
             "file": "receipt-document.js",
+            "line": 41
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
             "line": 38
-          }
-        ],
-        [
-          {
-            "file": "credit-note-document.js",
-            "line": 55
           },
           {
-            "file": "quotation-document.js",
-            "line": 69
+            "file": "delivery-tax-document.js",
+            "line": 42
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 42
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 56
+            "line": 39
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 43
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 43
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 40
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 44
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 44
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 41
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 45
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 45
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 42
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 46
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 46
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 43
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 47
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 47
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 44
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 48
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 48
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 45
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 49
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 49
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 85
           },
           {
             "file": "quotation-document.js",
@@ -187,99 +177,109 @@
         [
           {
             "file": "credit-note-document.js",
-            "line": 57
+            "line": 86
           },
           {
-            "file": "delivery-tax-document.js",
-            "line": 51
-          },
-          {
-            "file": "receipt-document.js",
-            "line": 54
+            "file": "quotation-document.js",
+            "line": 71
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 58
+            "line": 87
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 52
+            "line": 65
           },
           {
             "file": "receipt-document.js",
-            "line": 55
+            "line": 65
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 59
+            "line": 88
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 53
+            "line": 66
           },
           {
             "file": "receipt-document.js",
-            "line": 56
+            "line": 66
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 60
+            "line": 89
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 54
+            "line": 67
           },
           {
             "file": "receipt-document.js",
-            "line": 57
+            "line": 67
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 61
+            "line": 90
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 55
+            "line": 68
           },
           {
             "file": "receipt-document.js",
-            "line": 58
+            "line": 68
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 62
+            "line": 91
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 56
+            "line": 69
           },
           {
             "file": "receipt-document.js",
-            "line": 59
+            "line": 69
           }
         ],
         [
           {
             "file": "credit-note-document.js",
-            "line": 63
+            "line": 92
           },
           {
             "file": "delivery-tax-document.js",
-            "line": 57
+            "line": 70
           },
           {
             "file": "receipt-document.js",
-            "line": 60
+            "line": 70
+          }
+        ],
+        [
+          {
+            "file": "credit-note-document.js",
+            "line": 93
+          },
+          {
+            "file": "delivery-tax-document.js",
+            "line": 71
+          },
+          {
+            "file": "receipt-document.js",
+            "line": 71
           }
         ]
       ]

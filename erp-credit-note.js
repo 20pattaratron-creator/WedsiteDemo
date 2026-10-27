@@ -10,7 +10,7 @@
 // credit note's OWN date, so they reduce sales/output VAT in their own month.
 // Buttons use data-cn-action delegation instead of inline onclick handlers.
 // ============================================================================
-import { CREDIT_NOTE_REASONS, CREDIT_NOTE_VAT_MODE_LABELS, calculateCreditNote, validateCreditNote, buildCreditNoteRecord, creditedByInvoice, creditNoteInvoiceBasis, creditNoteVatModeOf, creditNoteParseAmount, creditNoteProductKey, creditNoteStatusLabel, creditNoteTotals, summarizeOutputVat, isCreditNoteLive, isCreditNoteReturnReason, findCreditNoteInvoice, creditNoteRequiresBuyerName, applyCreditNoteEdit, creditNoteBuyerBranchLabel } from './erp-credit-note-core.js';
+import { CREDIT_NOTE_REASONS, CREDIT_NOTE_VAT_MODE_LABELS, calculateCreditNote, validateCreditNote, buildCreditNoteRecord, creditedByInvoice, creditNoteNetPrior, creditNoteInvoiceBasis, creditNoteVatModeOf, creditNoteParseAmount, creditNoteProductKey, creditNoteStatusLabel, creditNoteTotals, summarizeOutputVat, isCreditNoteLive, isCreditNoteReturnReason, findCreditNoteInvoice, creditNoteRequiresBuyerName, applyCreditNoteEdit, creditNoteBuyerBranchLabel } from './erp-credit-note-core.js';
 import { escapeHtml, fmt, bahtText, formatDate, localDateISO, roundMoneyValue, taxInvoiceLacksBuyer } from './erp-shared-core.js';
 import { runDocumentAction, documentActionFeedback, FinanceActionError, FINANCE_ACTION_ERROR_CODES } from './erp-document-finance-core.js';
 import { withThaiCalendarMeta } from './erp-date-core.js';
@@ -23,7 +23,7 @@ import { icon } from './erp-icons.js';
 (() => {
   'use strict';
   if (window.ERPCreditNotes) return;
-  const BRANCH_LABEL = branchLabelMap({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels
+  const BRANCH_LABEL = branchLabelMap({ ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' }); // ADR-022: live labels
   const MONTH_LABELS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
   const ALL_MONTHS = Array.from({ length: 12 }, (_, index) => index);
   const SAVE_LABEL = 'บันทึกใบลดหนี้'; // after the save line icon (ADR-017)
@@ -105,12 +105,17 @@ import { icon } from './erp-icons.js';
     // The invoice may have moved month (edited date) — fall back to a branch-wide lookup.
     return findCreditNoteInvoice({ invoiceId: ref.id, invoiceNo: ref.no, invoiceBranch: ref.branch }, scanRows('invoices', { branches: [ref.branch] }));
   }
+  // r8fix#A3: the earlier adjustments of an invoice = live credit notes − live debit notes (ใบเพิ่มหนี้ raise
+  // it), the SAME net figure validateCreditNote() uses — preview, totals, print and save agree.
+  function priorOf(invoice, creditNotes, debitNotes, exclude) {
+    return creditNoteNetPrior(invoice, creditNotes, debitNotes, { excludeCreditNoteId: exclude });
+  }
   function refreshContext() {
     const exclude = form.edit ? String(form.edit.id) : '';
-    const creditNotes = scanRows('creditNotes');
+    const creditNotes = scanRows('creditNotes'), debitNotes = scanRows('debitNotes');
     form.context = form.lines.map(line => {
       const invoice = locateInvoice(line.ref);
-      return { invoice, prior: invoice ? creditedByInvoice(invoice, creditNotes, { excludeCreditNoteId: exclude }) : { amount: 0, value: 0, total: 0, count: 0 } };
+      return { invoice, prior: invoice ? priorOf(invoice, creditNotes, debitNotes, exclude) : { amount: 0, value: 0, total: 0, count: 0 } };
     });
   }
   function selectedCustomer() {
@@ -137,7 +142,8 @@ import { icon } from './erp-icons.js';
       return;
     }
     select.disabled = false;
-    const yearInput = Number(value('cn-inv-filter-year'));
+    // r8fix#C9: the filter is shown in พ.ศ. (like every other date on screen); a ค.ศ. value typed by habit still works.
+    const typedYear = Number(value('cn-inv-filter-year')), yearInput = typedYear >= 2500 ? typedYear - 543 : typedYear;
     const years = Number.isFinite(yearInput) && yearInput >= 2020 && yearInput <= 2100 ? [yearInput] : knownYears();
     const monthValue = value('cn-inv-filter-month');
     const months = monthValue === '' ? ALL_MONTHS : [Number(monthValue)];
@@ -148,7 +154,7 @@ import { icon } from './erp-icons.js';
     // Runs on every keystroke: ONE payment context (business + order-flow store + index) for
     // all rows, instead of re-reading the store and scanning every receipt per invoice.
     const payment = !business ? {} : typeof window.ERPIntegrity?.paymentContext === 'function' ? window.ERPIntegrity.paymentContext(business) : { business };
-    const creditNotes = scanRows('creditNotes');
+    const creditNotes = scanRows('creditNotes'), debitNotes = scanRows('debitNotes');
     const exclude = form.edit ? String(form.edit.id) : '';
     let shown = 0;
     for (const year of years) for (const month of months) {
@@ -160,7 +166,8 @@ import { icon } from './erp-icons.js';
         if (search && !haystack.includes(search)) continue;
         const target = { ...inv, branch: form.branch };
         const basis = creditNoteInvoiceBasis(target);
-        const prior = creditedByInvoice(target, creditNotes, { excludeCreditNoteId: exclude });
+        const prior = priorOf(target, creditNotes, debitNotes, exclude);
+        const credited = creditedByInvoice(target, creditNotes, { excludeCreditNoteId: exclude }), debited = prior.debited?.total || 0;
         const remaining = roundMoneyValue(basis.amount - prior.amount);
         const summary = window.ERPIntegrity?.paymentSummary?.(target, payment);
         const reasons = [];
@@ -170,7 +177,7 @@ import { icon } from './erp-icons.js';
         const status = summary?.status === 'credited' ? 'ลดหนี้เต็มจำนวน' : summary?.status === 'paid' ? 'ชำระแล้ว' : summary?.status === 'partially_paid' ? 'ชำระบางส่วน' : 'รอชำระ';
         const option = document.createElement('option');
         option.value = JSON.stringify(ref);
-        option.textContent = `${inv.no || '-'} | ${inv.customer || '-'} | ${formatDate(inv.date)} | ยอด ฿${fmt(basis.total)}${prior.total > 0 ? ` | ลดหนี้แล้ว ฿${fmt(prior.total)}` : ''} | ${status}${reasons.length ? ` · ${reasons.join(' · ')}` : ''}`;
+        option.textContent = `${inv.no || '-'} | ${inv.customer || '-'} | ${formatDate(inv.date)} | ยอด ฿${fmt(basis.total)}${debited > 0 ? ` | เพิ่มหนี้ ฿${fmt(debited)}` : ''}${credited.total > 0 ? ` | ลดหนี้แล้ว ฿${fmt(credited.total)}` : ''} | ${status}${reasons.length ? ` · ${reasons.join(' · ')}` : ''}`;
         option.disabled = reasons.length > 0;
         select.appendChild(option);
         shown += 1;
@@ -255,6 +262,12 @@ import { icon } from './erp-icons.js';
       ? form.lines.map((line, index) => `<span class="cn-chip">🧾 ${escapeHtml(line.ref.no || String(line.ref.id))}<button type="button" data-cn-action="remove-line" data-index="${index}" aria-label="นำใบกำกับภาษี ${escapeHtml(line.ref.no || '')} ออก">×</button></span>`).join('')
       : '<span class="cn-chip-empty">ยังไม่ได้เลือกใบกำกับภาษีเดิม</span>';
   }
+  // Earlier notes of a line: "−฿credited" and/or "+฿debited" (net prior = credited − debited).
+  function priorCellHtml(prior = {}) {
+    const debited = roundMoneyValue(prior?.debited?.amount || 0), credited = roundMoneyValue(Number(prior?.amount || 0) + debited);
+    const parts = [credited > 0 ? `−฿${fmt(credited)}` : '', debited > 0 ? `<span class="cn-prior-debit" title="ใบเพิ่มหนี้ก่อนหน้า">+฿${fmt(debited)}</span>` : ''].filter(Boolean);
+    return parts.length ? parts.join('<br>') : '-';
+  }
   function renderLines(calc = computeForm()) {
     const body = $('cn-lines-body');
     if (!body) return;
@@ -270,7 +283,7 @@ import { icon } from './erp-icons.js';
         <td><b>${escapeHtml(row.invoiceNo)}</b></td>
         <td>${escapeHtml(formatDate(row.invoiceDate))}</td>
         <td class="tn">฿${fmt(row.invoiceAmount)}</td>
-        <td class="tn">${row.priorCreditedAmount > 0 ? `฿${fmt(row.priorCreditedAmount)}` : '-'}</td>
+        <td class="tn">${priorCellHtml(form.context[index]?.prior)}</td>
         <td class="tn"><b>฿${fmt(row.originalAmount)}</b></td>
         <td><input type="number" step="0.01" min="0" inputmode="decimal" data-cn-line-field="correct" data-index="${index}" value="${line.differenceAmount === null ? '' : moneyInput(row.correctAmount)}" aria-label="มูลค่าที่ถูกต้องของ ${escapeHtml(row.invoiceNo)}"></td>
         <td><input type="number" step="0.01" min="0" inputmode="decimal" data-cn-line-field="diff" data-index="${index}" value="${line.differenceAmount === null ? '' : moneyInput(line.differenceAmount)}" aria-label="ยอดที่ลดลงของ ${escapeHtml(row.invoiceNo)}"><small class="cn-line-note" data-cn-line-note="${index}"></small></td>
@@ -413,7 +426,7 @@ import { icon } from './erp-icons.js';
     form.branch = defaultBranch();
     ['cn-cust', 'cn-address', 'cn-tax-id', 'cn-buyer-branch', 'cn-reason', 'cn-reason-text', 'cn-note', 'cn-inv-filter-search'].forEach(id => setValue(id, ''));
     setValue('cn-date', localDateISO());
-    setValue('cn-inv-filter-year', String(new Date().getFullYear()));
+    setValue('cn-inv-filter-year', String(new Date().getFullYear() + 543));
     setValue('cn-inv-filter-month', '');
     const noEl = $('cn-no');
     if (noEl) { noEl.dataset.manualNumber = '0'; noEl.dataset.autoNumber = '1'; noEl.classList.remove('document-number-manual'); }
@@ -478,6 +491,8 @@ import { icon } from './erp-icons.js';
         }
         const period = periodOf(draft.date);
         if (!period) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'กรุณาระบุวันที่ใบลดหนี้ให้ถูกต้อง');
+        const profileRefusal = window.ERPCompanyProfile?.issueRefusal?.(); // r8fix#B6: never issued in the sample company's name
+        if (profileRefusal) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.PERMISSION, profileRefusal);
         window.ERPGovernance?.assertPeriodOpen?.({ branch, date: draft.date, scope: 'sales', action: 'credit_note_create' });
         const original = null;
         const invoices = scanRows('invoices', { strict: true, branches: [branch] });
@@ -485,6 +500,7 @@ import { icon } from './erp-icons.js';
         const business = window.ERPIntegrity?.business?.();
         const validation = validateCreditNote(draft, invoices, existing, [], {
           original,
+          debitNotes: scanRows('debitNotes', { strict: true, branches: ['ubon', 'khonkaen'] }),
           paidByInvoice: invoice => window.ERPIntegrity?.paymentSummary?.(invoice, business ? { business } : {})?.paid || 0
         });
         if (!validation.ok) {
@@ -686,7 +702,7 @@ import { icon } from './erp-icons.js';
     if (!form.lines.length) { notifyUser('กรุณาเลือกใบกำกับภาษีเดิมอย่างน้อย 1 ใบก่อนดูตัวอย่าง'); return; }
     const branch = lockedBranch() || form.branch;
     const draft = { ...collectDraft(), branch };
-    const validation = validateCreditNote(draft, scanRows('invoices', { branches: [branch] }), scanRows('creditNotes', { branches: ['ubon', 'khonkaen'] }), []);
+    const validation = validateCreditNote(draft, scanRows('invoices', { branches: [branch] }), scanRows('creditNotes', { branches: ['ubon', 'khonkaen'] }), [], { debitNotes: scanRows('debitNotes', { branches: ['ubon', 'khonkaen'] }) });
     if (!validation.ok) { showFeedback(validation.errors, validation.warnings); notifyUser(`ยังเปิดตัวอย่างไม่ได้:\n${validation.errors.join('\n')}`); return; }
     showFeedback([], validation.warnings);
     openDocument(buildCreditNoteRecord(draft, validation, { id: 'preview-credit-note' }), { previewOnly: true });
@@ -742,7 +758,7 @@ import { icon } from './erp-icons.js';
         <td><span class="badge b-purple">${escapeHtml(row.no || '-')}</span></td>
         <td>${escapeHtml(BRANCH_LABEL[row._branch] || row._branch)}</td>
         <td>${escapeHtml(formatDate(row.date))}</td>
-        <td>${escapeHtml(row.customer || '-')}</td>
+        <td data-no-i18n>${escapeHtml(row.customer || '-')}</td>
         <td>${(row.invoiceNos || []).map(no => `<span class="cn-mini-chip">${escapeHtml(no)}</span>`).join(' ') || '-'}</td>
         <td title="${escapeHtml(row.reasonText || '')}">${escapeHtml(row.reasonLabel || '-')}${row.reasonText ? `<small class="cn-list-reason">${escapeHtml(row.reasonText)}</small>` : ''}</td>
         <td class="tn">฿${fmt(row.subtotal)}</td>
@@ -766,7 +782,7 @@ import { icon } from './erp-icons.js';
     resetForm();
     form.branch = lockedBranch() || branch;
     if (form.branch !== branch) { notifyUser('บัญชีนี้ออกใบลดหนี้ได้เฉพาะสาขาที่ผูกไว้'); renderAll(); return false; }
-    setValue('cn-inv-filter-year', String(year));
+    setValue('cn-inv-filter-year', String(Number(year) + 543));
     form.lines = [{ ref: { branch, year: Number(year), month: Number(month), id: invoice.id ?? '', no: invoice.no || '' }, differenceAmount: null }];
     refreshContext();
     applyCustomerFromInvoice(form.context[0]?.invoice || null);

@@ -1,6 +1,7 @@
 import { localDateISO, escapeHtml, fmt, thaiIntegerText, bahtText } from './erp-shared-core.js';
+import { fxPrintInfo } from './erp-fx-core.js';
 import { icon } from './erp-icons.js';
-import { companyLogoUrl, documentCompany, customLogoStyleTag } from './erp-company-profile-core.js';
+import { companyLogoUrl, documentCompany, customLogoStyleTag, printableContactLine } from './erp-company-profile-core.js';
 import { COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 const html2canvas = (...args) => {
   if (typeof window.html2canvas !== 'function') return Promise.reject(new Error('ยังโหลด html2canvas ไม่สำเร็จ'));
@@ -29,7 +30,7 @@ const BRANCH_DEFAULTS = {
     taxId: '0000000000000'
   },
   ubon: {
-    label: 'สาขาสำนักงานใหญ่',
+    label: 'สำนักงานใหญ่',
     companyNameTh: 'บริษัท ตัวอย่าง จำกัด',
     companyNameEn: 'EXAMPLE CO., LTD.',
     addressTh: '88/2 ถนนตัวอย่าง ตำบลในเมือง อำเภอเมือง จังหวัดอุบลราชธานี 34000',
@@ -92,12 +93,15 @@ function agencyLabel(quote) {
 
 function safeItems(quote) {
   const items = Array.isArray(quote?.items) ? quote.items : [];
-  return items.map(item => ({
+  // ADR-031: a quotation / proforma in a currency prints its prices and amounts in that currency.
+  const fx = fxPrintInfo(quote);
+  return items.map((item, index) => ({
     product: item.product || '',
     qty: Number(item.qty || 0),
     unit: item.unit || '',
     priceUnit: Number(item.priceUnit || 0),
-    total: Number(item.total ?? (Number(item.qty || 0) * Number(item.priceUnit || 0)))
+    total: Number(item.total ?? (Number(item.qty || 0) * Number(item.priceUnit || 0))),
+    ...(fx && fx.lines[index] ? { currency: fx.currency, priceText: fx.lines[index].priceFx, totalText: fx.lines[index].amountFx } : {})
   }));
 }
 
@@ -119,7 +123,7 @@ function headerHtml(quote, pageNo, totalPages, copyType = QUOTE_COPY_TYPES[0]) {
           <div class="qdoc-company-en">${escapeHtml(branch.companyNameEn)}</div>
           <div class="qdoc-branch-pill">${escapeHtml(branch.label)}</div>
           <div class="qdoc-company-meta">${escapeHtml(branch.addressTh)}</div>
-          <div class="qdoc-company-meta">เลขประจำตัวผู้เสียภาษี ${escapeHtml(branch.taxId)} · โทร. ${escapeHtml(branch.phone)}</div>
+          <div class="qdoc-company-meta">เลขประจำตัวผู้เสียภาษีอากร ${escapeHtml(branch.taxId)}${printableContactLine(branch.phone) ? ` · โทร. ${escapeHtml(printableContactLine(branch.phone))}` : ''}</div>
         </div>
       </div>
       <div class="qdoc-title-block">
@@ -140,13 +144,13 @@ function infoHtml(quote) {
         <dl class="qdoc-data-list">
           <div><dt>ชื่อลูกค้า</dt><dd>${escapeHtml(quote.customer || '-')}</dd></div>
           <div><dt>ที่อยู่</dt><dd>${escapeHtml(quote.customerAddress || quote.address || '-').replace(/\n/g,'<br>')}</dd></div>
-          <div><dt>เลขผู้เสียภาษี</dt><dd>${escapeHtml(quote.customerTaxId || '-')}</dd></div>
+          <div><dt>เลขประจำตัวผู้เสียภาษีอากร</dt><dd>${escapeHtml(quote.customerTaxId || '-')}</dd></div>
           <div><dt>ผู้ติดต่อ</dt><dd>${escapeHtml(quote.contact || '-')}${quote.phone?` · ${escapeHtml(quote.phone)}`:''}</dd></div>
           <div><dt>ประเภทหน่วยงาน</dt><dd>${escapeHtml(agencyLabel(quote))}</dd></div>
         </dl>
       </div>
       <div class="qdoc-info-card qdoc-doc-info">
-        <div class="qdoc-card-title qdoc-card-title-blue"><span>◆</span> ข้อมูลเอกสาร / Document Info</div>
+        <div class="qdoc-card-title qdoc-card-title-blue"><span>◆</span> ข้อมูลเอกสาร / Document info</div>
         <dl class="qdoc-data-list">
           <div><dt>เลขที่ใบเสนอราคา</dt><dd><b>${escapeHtml(quote.no || '-')}</b></dd></div>
           <div><dt>วันที่เสนอราคา</dt><dd>${escapeHtml(formatThaiDate(quote.date))}</dd></div>
@@ -165,8 +169,8 @@ function itemsTableHtml(items, pageNo) {
       <td class="qdoc-product">${escapeHtml(item.product || '-')}</td>
       <td class="qdoc-center">${fmt(item.qty)}</td>
       <td class="qdoc-center">${escapeHtml(item.unit || '-')}</td>
-      <td class="qdoc-money">${fmt(item.priceUnit)}</td>
-      <td class="qdoc-money"><b>${fmt(item.total)}</b></td>
+      <td class="qdoc-money">${item.priceText !== undefined ? escapeHtml(item.priceText) : fmt(item.priceUnit)}</td>
+      <td class="qdoc-money"><b>${item.totalText !== undefined ? escapeHtml(item.totalText) : fmt(item.total)}</b></td>
     </tr>`).join('');
   const blanks = Array.from({ length: fillRows }, () => `
     <tr class="qdoc-empty-row"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
@@ -178,8 +182,8 @@ function itemsTableHtml(items, pageNo) {
           <th>รายการสินค้า / บริการ<br><small>Description</small></th>
           <th>จำนวน<br><small>Qty</small></th>
           <th>หน่วย<br><small>Unit</small></th>
-          <th>ราคาต่อหน่วย<br><small>Unit Price</small></th>
-          <th>จำนวนเงิน<br><small>Amount</small></th>
+          <th>ราคาต่อหน่วย${items[0]?.currency ? ` (${escapeHtml(items[0].currency)})` : ''}<br><small>Unit price${items[0]?.currency ? ` (${escapeHtml(items[0].currency)})` : ''}</small></th>
+          <th>จำนวนเงิน${items[0]?.currency ? ` (${escapeHtml(items[0].currency)})` : ''}<br><small>Amount${items[0]?.currency ? ` (${escapeHtml(items[0].currency)})` : ''}</small></th>
         </tr></thead>
         <tbody>${rows}${blanks}</tbody>
       </table>
@@ -190,6 +194,8 @@ function summaryHtml(quote) {
   const subtotal = Number(quote.subtotal || 0);
   const vat = Number(quote.vatAmt || 0);
   const grand = Number(quote.total || subtotal + vat);
+  const fx = fxPrintInfo(quote);
+  if (fx) return fxSummaryHtml(quote, fx, grand);
   return `
     <section class="qdoc-bottom-grid">
       <div class="qdoc-remark-card">
@@ -202,6 +208,39 @@ function summaryHtml(quote) {
         <div class="qdoc-summary-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong>${Number(quote.vatAmt)>0 ? fmt(vat) : '0.00'}</strong></div>
         <div class="qdoc-summary-row qdoc-grand"><span>ยอดรวมทั้งสิ้น</span><strong>${fmt(grand)}</strong></div>
         <div class="qdoc-baht-text">( ${escapeHtml(bahtText(grand))} )</div>
+      </div>
+    </section>
+    <section class="qdoc-signatures">
+      <div class="qdoc-sign-box">
+        <div class="qdoc-sign-label">ผู้เสนอราคา / Prepared by</div>
+        <div class="qdoc-sign-line"></div>
+        <div class="qdoc-sign-name">${escapeHtml(quote.salesPerson || '................................................')}</div>
+        <div class="qdoc-sign-date">วันที่ ${escapeHtml(formatThaiDate(quote.date))}</div>
+      </div>
+      <div class="qdoc-sign-box">
+        <div class="qdoc-sign-label">ผู้อนุมัติ / Approved by</div>
+        <div class="qdoc-sign-line"></div>
+        <div class="qdoc-sign-name">................................................</div>
+        <div class="qdoc-sign-date">วันที่ ................................................</div>
+      </div>
+    </section>`;
+}
+
+// ADR-031: the totals of a quotation / proforma in a currency, with the baht equivalent as an estimate.
+function fxSummaryHtml(quote, fx, grand) {
+  const cur = escapeHtml(fx.currency);
+  return `
+    <section class="qdoc-bottom-grid">
+      <div class="qdoc-remark-card">
+        <div class="qdoc-card-title"><span>✦</span> หมายเหตุ / Remark</div>
+        <div class="qdoc-remark-text">${escapeHtml(quote.note || 'ไม่มีหมายเหตุเพิ่มเติม')}</div>
+        <div class="qdoc-vat-note">ราคาเป็นสกุล ${cur} · ประมาณเป็นเงินบาท ${fmt(grand)} บาท ตามอัตรา ${escapeHtml(fx.rate)} บาท ต่อ ${escapeHtml(fx.per)} ${cur} (${escapeHtml(fx.rateTypeTh)} ของวันที่ ${escapeHtml(formatThaiDate(fx.rateDate))}) — ยอดเงินบาทในใบกำกับภาษีคำนวณจากอัตราของวันที่ออกใบกำกับภาษี</div>
+      </div>
+      <div class="qdoc-summary-card">
+        <div class="qdoc-summary-row"><span>ยอดรวมก่อนภาษี (${cur})</span><strong>${escapeHtml(fx.subtotalFx)}</strong></div>
+        <div class="qdoc-summary-row"><span>ภาษีมูลค่าเพิ่ม 7% (${cur})</span><strong>${escapeHtml(fx.vatFx)}</strong></div>
+        <div class="qdoc-summary-row qdoc-grand"><span>ยอดรวมทั้งสิ้น (${cur})</span><strong>${escapeHtml(fx.totalFx)}</strong></div>
+        <div class="qdoc-baht-text">( ${escapeHtml(fx.totalWordsTh)} )<br><span lang="en">${escapeHtml(fx.totalWordsEn)}</span></div>
       </div>
     </section>
     <section class="qdoc-signatures">
@@ -270,7 +309,7 @@ function mountFeature() {
       <div class="qdoc-toolbar">
         <div class="qdoc-toolbar-brand">
           <img src="${COMPANY_LOGO_URL}" alt="โลโก้">
-          <div><small>${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</small><h2>ใบเสนอราคา / Quotation</h2><p>ใช้ข้อมูลเดิมจากฟอร์มใบเสนอราคา โดยไม่เพิ่มขั้นตอนการกรอก</p></div>
+          <div><small data-no-i18n>${escapeHtml(window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท')}</small><h2>ใบเสนอราคา / Quotation</h2><p>ใช้ข้อมูลเดิมจากฟอร์มใบเสนอราคา โดยไม่เพิ่มขั้นตอนการกรอก</p></div>
         </div>
         <div class="qdoc-toolbar-actions">
           <button type="button" class="qdoc-btn" data-qdoc-action="back">${icon('back')}กลับใบเสนอราคา</button>
@@ -281,7 +320,7 @@ function mountFeature() {
         </div>
       </div>
       <div class="qdoc-preview-tabs" id="qdoc-preview-tabs"></div>
-      <div class="qdoc-preview-wrap"><div id="qdoc-preview"></div></div>
+      <div class="qdoc-preview-wrap"><div id="qdoc-preview" data-no-i18n="doc"></div></div>
     </div>`;
   main.appendChild(panel);
   panel.addEventListener('click', event => {
@@ -394,7 +433,7 @@ async function downloadQuotePdf(button, mode = 'all') {
   const stage = document.createElement('div');
   stage.className = 'qdoc-pdf-stage';
   stage.innerHTML = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
-  document.body.appendChild(stage);
+  document.body.appendChild(window.ERPI18n?.prepareDocumentStage?.(stage) || stage); // ADR-026: English → bilingual labels (erp-i18n-print.js); Thai → unchanged
   try {
     await waitForAssets(stage);
     const pages = [...stage.querySelectorAll('.qdoc-document-page')];
@@ -432,7 +471,7 @@ function printQuote(mode = 'all') {
   // Keep the parent handle for document.write; remove child access to the opener.
   printWindow.opener = null;
   const cssUrl = QUOTE_CSS_URL;
-  const html = mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote);
+  const html = (window.ERPI18n?.bilingualHtml || String)(mode === 'current' ? documentPagesHtml(currentQuote) : allQuoteCopiesHtml(currentQuote)); // ADR-026: English → bilingual labels (erp-i18n-print.js); Thai → unchanged
   printWindow.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${escapeHtml(currentQuote.no || 'Quotation')}</title><link rel="stylesheet" href="${cssUrl}">${customLogoStyleTag(COMPANY_LOGO_URL)}<style>body{margin:0;background:#fff}.qdoc-document-page{page-break-after:always;margin:0 auto}.qdoc-document-page:last-child{page-break-after:auto}@page{size:A4 portrait;margin:0}</style></head><body>${html}<script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script></body></html>`);
   printWindow.document.close();
 }
@@ -449,6 +488,8 @@ function buildInlineQuote(record = {}, ref = {}, copyId = 'original') {
     customerAgencyTypeLabel: record.customerAgencyTypeLabel || record.customerAgencyType || '',
     salesPerson: record.salesPerson || '',
     items: Array.isArray(record.items) && record.items.length ? record.items : [{ product:'', qty:0, unit:'ชิ้น', priceUnit:0, total:0 }],
+    // ADR-031: a quotation in a currency keeps its currency fields (it prints in that currency).
+    ...Object.fromEntries(['currency', 'fxRate', 'fxPer', 'fxRateType', 'fxRateDate', 'fxRateId', 'fxSource', 'fxSubtotal', 'fxVat', 'amountFx', 'amountThb', 'fxPrintMode'].filter(key => record[key] !== undefined).map(key => [key, record[key]])),
     subtotal: Number(record.subtotal || 0),
     useVat: Number(record.useVat || 0),
     vatMode:record.vatMode,

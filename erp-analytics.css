@@ -1,0 +1,143 @@
+/* ============================================================================
+   erp-analytics.css — page "วิเคราะห์และคาดการณ์" (ADR-027), its cards on งานของฉัน / dashboard / วิเคราะห์ธุรกิจ.
+   Controls use the ADR-019 tokens (≥ 42 px; 44 px on touch screens). Tables scroll inside their card on phones;
+   the page itself never scrolls sideways (checked at 1,280 / 1,440 and 390 px).
+   ============================================================================ */
+.afc-root{min-width:0}
+.afc-head .card-title svg{width:22px;height:22px;margin-right:8px;vertical-align:-4px}
+.afc-head p{margin:-.6rem 0 1rem;color:#475569;font-size:15px;line-height:1.6;max-width:1100px}
+.afc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:0;border-bottom:1px solid #dbe4ef}
+.afc-tab{min-height:var(--erp-control-height);padding:0 16px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;background:transparent;color:#334155;font-size:var(--erp-btn-font-size);font-weight:700;cursor:pointer}
+.afc-tab:hover{background:#eef6fb}
+.afc-tab.active{background:#fff;border-color:#dbe4ef;color:#155886;box-shadow:0 -2px 0 #155886 inset}
+.afc-tab:focus-visible,.afc-help:focus-visible,.afc-linklike:focus-visible,.afc-scroll:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.afc-filters,.afc-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
+.afc-filters>div,.afc-controls>div{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1 1 170px;max-width:320px}
+.afc-filters label,.afc-controls label{font-size:14px;font-weight:700;color:#475569}
+.afc-root select,.afc-root input[type="search"]{min-height:var(--erp-control-height)!important;font-size:var(--erp-control-font-size);width:100%;box-sizing:border-box}
+.afc-asof{justify-content:flex-end;padding-bottom:6px}
+.afc-asof span{font-size:14px;font-weight:700;color:#475569}
+.afc-asof b{font-size:15px;color:#155886}
+.afc-content:focus{outline:none}
+.afc-card{border:1px solid #dbe4ef;border-radius:14px;padding:14px 16px;margin:0 0 14px;background:#fff;min-width:0}
+.afc-card-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:10px}
+.afc-card-head h3{margin:0;font-size:18px;color:#0f172a;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.afc-export{display:flex;gap:8px;flex-wrap:wrap}
+.afc-export .btn,.afc-row-actions .btn,.afc-work-card .btn,.afc-embed-card .btn{min-height:var(--erp-control-height-sm)}
+.afc-help{width:var(--erp-icon-btn-size);height:var(--erp-icon-btn-size);min-width:var(--erp-icon-btn-size);border-radius:50%;border:1px solid #9ebdd4;background:#fff;color:#155886;font-weight:800;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.afc-help:hover{background:#eef6fb}
+.afc-help-popover{position:fixed;z-index:99995;background:#fff;border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.2);padding:12px 14px;max-height:min(70vh,560px);overflow:auto;font-size:14px;line-height:1.6;color:#1f2937}
+.afc-help-popover p{margin:6px 0}
+.afc-help-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:6px}
+.afc-help-head h3{margin:0;font-size:16px;color:#0f172a}
+.afc-help-close{width:var(--erp-icon-btn-size);height:var(--erp-icon-btn-size);border-radius:50%;border:1px solid #e2e8f0;background:#fff;font-size:20px;line-height:1;cursor:pointer}
+.afc-periods{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 8px}
+.afc-periods div{display:flex;gap:6px;align-items:baseline}
+.afc-periods dt{font-size:13px;color:#64748b}
+.afc-periods dd{margin:0;font-weight:700;color:#0f172a}
+.afc-note,.afc-source{margin:6px 0;color:#475569;font-size:14px;line-height:1.55}
+.afc-source{color:#334155}
+.afc-muted{color:#64748b;font-size:14px}
+.afc-box{border-radius:12px;padding:10px 14px;margin:8px 0;font-size:14px;line-height:1.55}
+.afc-box ul{margin:4px 0 0;padding-left:20px}
+.afc-box-warn{background:#fffbeb;border:1px solid #fde68a;color:#78350f}
+.afc-box-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.afc-box-error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.afc-empty{padding:16px;border:1px dashed #cbd5e1;border-radius:12px;color:#64748b;background:#f8fafc;font-size:14px}
+.afc-movers-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:8px 0 12px}
+.afc-movers-grid h4,.afc-subtitle{margin:4px 0 6px;font-size:15px;color:#0f172a}
+.afc-movers{margin:0;padding-left:22px;display:grid;gap:6px;font-size:14px;line-height:1.5}
+.afc-movers li.afc-up::marker{color:#15803d;font-weight:700}
+.afc-movers li.afc-down::marker{color:#b91c1c;font-weight:700}
+.afc-scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;margin:8px 0}
+.afc-table{width:100%;border-collapse:collapse;background:#fff;min-width:720px}
+.afc-table-narrow{min-width:0;max-width:760px}
+/* Round 11: 1040 px (was 1240) so the whole table, its actions column included, fits the content width of a 1440 px
+   screen; the two row actions stack in their cell instead of widening the table. */
+.afc-table-reorder{min-width:1040px}
+.afc-table-reorder .afc-row-actions{flex-direction:column;align-items:stretch}
+.afc-table-levels{min-width:640px}
+.afc-table caption{caption-side:top;text-align:left;font-weight:700;color:#0f172a;padding:4px 0 6px}
+.afc-table th,.afc-table td{border:1px solid #d7e0ea;padding:8px 10px;vertical-align:top;font-size:14px;line-height:1.45;white-space:normal;position:static!important;box-shadow:none!important}
+/* The app's global th rules (style.css) paint every th navy with !important and colour .num dark; the column headers
+   keep that navy look (white text, also on .num), the row headers and the footer are body cells. */
+.afc-table thead th,.afc-table thead th.num{color:#fff!important;font-size:12px;text-align:left;text-transform:none;letter-spacing:normal}
+.afc-table thead th.num{text-align:right!important}
+.afc-table th[scope="row"],.afc-table tfoot th{font-weight:600;text-align:left;background:#fff!important;background-image:none!important;color:#0f172a!important;font-size:14px;text-transform:none;letter-spacing:normal;min-width:180px}
+.afc-table .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.afc-table td small{display:block;color:#64748b;font-size:12px;margin-top:2px;white-space:normal}
+.afc-table tfoot th,.afc-table tfoot td{background:#f8fafc!important;font-weight:700}
+.afc-empty-cell{color:#64748b;text-align:center}
+.afc-code{display:block;color:#64748b;font-size:12px;font-weight:600}
+.afc-pos{color:#15803d}
+.afc-neg{color:#b91c1c}
+.afc-row-active th,.afc-row-active td{background:#f0f9ff}
+.afc-linklike{background:none;border:0;padding:0;margin:0;font:inherit;color:#155886;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:2px;min-height:auto}
+.afc-gp-note{margin-top:10px}
+.afc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0 10px}
+.afc-stat{border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;background:#f8fbff;min-width:0}
+.afc-stat small{display:flex;align-items:center;gap:6px;color:#475569;font-size:13px;font-weight:700}
+.afc-stat b{display:block;font-size:18px;color:#0f172a;margin:4px 0;overflow-wrap:anywhere}
+.afc-stat span{display:block;color:#64748b;font-size:13px;line-height:1.45}
+.afc-class-A{border-color:#bbf7d0;background:#f0fdf4}
+.afc-class-B{border-color:#bfdbfe;background:#eff6ff}
+.afc-class-C{border-color:#e2e8f0}
+.afc-class-none{border-color:#fde68a;background:#fffbeb}
+.afc-badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid transparent;white-space:nowrap}
+.afc-badge.afc-class-A{color:#166534}
+.afc-badge.afc-class-B{color:#1e3a8a}
+.afc-badge.afc-class-C{color:#334155;background:#f1f5f9}
+.afc-badge.afc-class-none{color:#92400e}
+.afc-acc-good{background:#dcfce7;color:#166534}
+.afc-acc-fair{background:#fef3c7;color:#92400e}
+.afc-acc-caution{background:#fee2e2;color:#991b1b}
+.afc-acc-none{background:#f1f5f9;color:#475569}
+.afc-chart{margin:8px 0 4px}
+.afc-svg{display:block;width:100%;height:auto;background:#fff}
+.afc-grid{stroke:#e2e8f0;stroke-width:1}
+.afc-axis{font:12px system-ui,-apple-system,"Segoe UI",sans-serif;fill:#475569}
+.afc-line-actual{fill:none;stroke:#155886;stroke-width:2.5;stroke-linejoin:round}
+.afc-dot{fill:#155886}
+.afc-line-forecast{fill:none;stroke:#c2410c;stroke-width:2.5;stroke-dasharray:7 5;stroke-linejoin:round}
+.afc-dot-forecast{fill:#fff;stroke:#c2410c;stroke-width:2}
+.afc-band{fill:#fed7aa;fill-opacity:.55;stroke:none}
+.afc-dot-current{fill:#fff;stroke:#155886;stroke-width:2;stroke-dasharray:3 2}
+.afc-asof-line{stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:4 4}
+.afc-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:#475569;margin-top:4px}
+.afc-legend span{display:inline-flex;align-items:center;gap:6px}
+.afc-legend i{display:inline-block;width:22px;height:0;border-top:3px solid #155886}
+.afc-legend .afc-key-forecast{border-top:3px dashed #c2410c}
+.afc-legend .afc-key-band{height:10px;border:0;background:#fed7aa;border-radius:3px}
+.afc-legend .afc-key-current{width:10px;height:10px;border:2px dashed #155886;border-radius:50%}
+.afc-alerts{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.afc-alert{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-left:5px solid #f59e0b;border-radius:10px;padding:8px 12px;background:#fff;font-size:14px;line-height:1.5}
+.afc-alert>span{flex:1 1 320px;min-width:0}
+.afc-alert.afc-sev-high{border-left-color:#dc2626}
+.afc-alert.afc-sev-critical{border-left-color:#7f1d1d;background:#fef2f2}
+.afc-row-actions{display:flex;flex-wrap:wrap;gap:6px}
+.afc-sev-row-high th[scope="row"]{box-shadow:inset 4px 0 0 #dc2626!important}
+.afc-sev-row-medium th[scope="row"]{box-shadow:inset 4px 0 0 #f59e0b!important}
+.afc-sev-row-critical th[scope="row"]{box-shadow:inset 4px 0 0 #7f1d1d!important}
+.afc-work-card .afc-alerts{margin-top:8px}
+.afc-work-more{margin-top:6px}
+.afc-embed-card{display:grid;gap:6px}
+.afc-embed-card .afc-table{min-width:0}
+@media (max-width:900px){
+  .afc-movers-grid{grid-template-columns:1fr}
+  .afc-help{width:var(--erp-touch-target);height:var(--erp-touch-target);min-width:var(--erp-touch-target)}
+}
+@media (max-width:560px){
+  .afc-card{padding:12px}
+  .afc-filters>div,.afc-controls>div{flex:1 1 100%;max-width:none}
+  .afc-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .afc-tab{flex:0 0 auto}
+  .afc-table{min-width:560px}
+  .afc-table-narrow{min-width:0}
+  .afc-table-reorder{min-width:960px}
+  .afc-stat b{font-size:16px}
+}
+/* Round 11: at 1440 px the reorder table (14 columns) is still wider than the content area — the last column (status
+   and the "create PO / stock card" actions) stays pinned at the right edge while the middle scrolls, so it is never cut. */
+.afc-table.afc-table-reorder th,.afc-table.afc-table-reorder td{padding:6px 8px;font-size:13px}
+.afc-table.afc-table-reorder tr>:last-child{position:sticky!important;right:0;z-index:1;box-shadow:-8px 0 8px -8px rgba(15,23,42,.35)!important}
+.afc-table.afc-table-reorder tbody td:last-child{background:#fff}

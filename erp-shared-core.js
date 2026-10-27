@@ -6,6 +6,33 @@
 export const SHARED_CORE_VERSION = '1.6.0';
 export const DEFAULT_VAT_RATE = 0.07;
 export const DEFAULT_VAT_DIVISOR = 1 + DEFAULT_VAT_RATE;
+// r13#LOW-2 — the VAT rate in force on the tax-point date (a config table like TAX_DEADLINES: add a row when a new
+// decree is published). 7 % (6.3 % + 0.7 % local tax) applies until 30 ก.ย. 2570 under พระราชกฤษฎีกา (ฉบับที่ 807)
+// พ.ศ. 2569 (ราชกิจจานุเบกษา 23 ส.ค. 2569). After that date the rate is NOT known to this app (the Revenue Code rate is
+// 10 % unless another decree extends 7 %): every calculation still uses DEFAULT_VAT_RATE, and vatRateNotice() makes
+// the document plans and the tax pages warn instead of guessing a rate.
+export const VAT_RATE_SCHEDULE = Object.freeze([
+  Object.freeze({ from: '', until: '2027-09-30', rate: DEFAULT_VAT_RATE, source: 'พ.ร.ฎ. (ฉบับที่ 807) พ.ศ. 2569' })
+]);
+// → { rate, known, source, until } of an ISO date ('' / invalid → the first row, known).
+export function vatRateOn(date, schedule = VAT_RATE_SCHEDULE) {
+  const day = String(date ?? '').slice(0, 10);
+  const rows = Array.isArray(schedule) ? schedule : VAT_RATE_SCHEDULE;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { rate: rows[0]?.rate ?? DEFAULT_VAT_RATE, known: true, source: rows[0]?.source || '', until: rows[0]?.until || '' };
+  const row = rows.find(item => (!item.from || day >= item.from) && (!item.until || day <= item.until));
+  if (row) return { rate: row.rate, known: true, source: row.source || '', until: row.until || '' };
+  const last = rows[rows.length - 1] || {};
+  return { rate: DEFAULT_VAT_RATE, known: false, source: last.source || '', until: last.until || '' };
+}
+// The warning of a document dated where the schedule has no rate, or whose scheduled rate is not the one the app
+// calculates with ('' = nothing to say).
+export function vatRateNotice(date, schedule = VAT_RATE_SCHEDULE) {
+  const info = vatRateOn(date, schedule);
+  const thai = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${Number(m[3])}/${Number(m[2])}/${Number(m[1]) + 543}` : ''; };
+  if (!info.known) return `อัตรา VAT 7% ใช้ได้ถึงวันที่ ${thai(info.until)} (${info.source}) — เอกสารวันที่ ${thai(String(date).slice(0, 10))} อยู่หลังวันนั้น ระบบยังคิด 7% ตรวจพระราชกฤษฎีกาฉบับใหม่ก่อนออกเอกสาร`;
+  if (Math.abs(info.rate - DEFAULT_VAT_RATE) > 1e-9) return `อัตรา VAT ในวันที่ ${thai(String(date).slice(0, 10))} คือ ${Math.round(info.rate * 10000) / 100}% แต่ระบบเดโมคำนวณที่ 7% — ห้ามใช้เอกสารนี้จนกว่าจะปรับระบบ`;
+  return '';
+}
 // Reconciliation tolerance shared by invoice/receipt/billing matching:
 // small rounding drift (a satang or two) between independently-rounded
 // documents should be treated as settled, not flagged as an exception.
@@ -51,7 +78,9 @@ export function formatDate(value) {
   return y && m && d ? `${d}-${m}-${Number(y) + 543}` : value;
 }
 
-export function thaiIntegerText(num) {
+// Royal Institute reading: a units digit 1 is "เอ็ด" whenever a higher digit precedes it in the WHOLE number —
+// 11 สิบเอ็ด, 101 หนึ่งร้อยเอ็ด, 1,000,001 หนึ่งล้านเอ็ด (r8fix#A5: the group after ล้าน used to restart at "หนึ่ง").
+export function thaiIntegerText(num, afterHigherGroup = false) {
   const digits = ['', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
   const positions = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน'];
   const n = Math.floor(Math.abs(Number(num) || 0));
@@ -59,7 +88,7 @@ export function thaiIntegerText(num) {
   if (n >= 1000000) {
     const high = Math.floor(n / 1000000);
     const low = n % 1000000;
-    return `${thaiIntegerText(high)}ล้าน${low ? thaiIntegerText(low) : ''}`;
+    return `${thaiIntegerText(high, afterHigherGroup)}ล้าน${low ? thaiIntegerText(low, true) : ''}`;
   }
   const text = String(n).padStart(6, '0');
   let out = '';
@@ -69,7 +98,7 @@ export function thaiIntegerText(num) {
     const pos = 5 - i;
     if (pos === 1 && digit === 1) out += '';
     else if (pos === 1 && digit === 2) out += 'ยี่';
-    else if (pos === 0 && digit === 1 && n > 10) out += 'เอ็ด';
+    else if (pos === 0 && digit === 1 && (n > 10 || afterHigherGroup === true)) out += 'เอ็ด';
     else out += digits[digit];
     out += positions[pos];
   }

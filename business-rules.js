@@ -190,7 +190,7 @@ function calculateLab(){
 }
 function renderPresets(){const wrap=document.getElementById('br-preset-grid');if(!wrap)return;wrap.innerHTML=Object.entries(PRESETS).map(([key,p])=>`<button type="button" class="brules-preset" data-br-preset="${esc(key)}"><b>${esc(p.name)}</b><small>${esc(p.description)}</small><span>${esc(p.tag)}</span></button>`).join('');wrap.querySelectorAll('[data-br-preset]').forEach(btn=>btn.addEventListener('click',()=>loadPreset(btn.dataset.brPreset)));}
 function populateMasterOptions(){
-  const prod=document.getElementById('br-product-list'),cust=document.getElementById('br-customer-list');if(prod){const rows=window.productMasterRows?.()||[];prod.innerHTML=rows.map(r=>`<option value="${esc(r.code||r.name)}">${esc((r.code||'')+' · '+(r.name||''))}</option>`).join('')}if(cust){const rows=(window.contactMasterRows?.()||[]).filter(r=>['customer','both'].includes(r.role));cust.innerHTML=rows.map(r=>`<option value="${esc(r.name)}"></option>`).join('')}
+  const prod=document.getElementById('br-product-list'),cust=document.getElementById('br-customer-list');if(prod){const rows=window.productMasterRows?.()||[];prod.innerHTML=rows.map(r=>`<option value="${esc(r.code||r.name)}" data-no-i18n>${esc((r.code||'')+' · '+(r.name||''))}</option>`).join('')}if(cust){const rows=(window.contactMasterRows?.()||[]).filter(r=>['customer','both'].includes(r.role));cust.innerHTML=rows.map(r=>`<option value="${esc(r.name)}"></option>`).join('')}
 }
 // `draft` = the table shows an unsaved preset (loadPreset), not the saved rules: its rows cannot be
 // deleted one by one (delete works on the SAVED rules by key); a note says how to proceed.

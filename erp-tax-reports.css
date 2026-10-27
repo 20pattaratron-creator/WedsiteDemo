@@ -15,6 +15,7 @@
 .tax-rpt-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px}
 .tax-rpt-filters>div{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1 1 170px;max-width:320px}
 .tax-rpt-filters label{font-size:14px;font-weight:700;color:#475569}
+.tax-rpt-period-note{margin:-6px 0 12px}
 .tax-rpt-root select,.tax-rpt-root input{min-height:var(--erp-control-height)!important;font-size:var(--erp-control-font-size)}
 .tax-rpt-actions{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px}
 .tax-rpt-actions .btn,.tax-history .btn,.tax-pp30 .btn{min-height:var(--erp-control-height)}
@@ -60,6 +61,8 @@
 .tax-form-checks{gap:18px!important}
 .tax-form-note{margin-top:8px;font-size:13px;color:#475569}
 .tax-form-note-warn{color:#b91c1c;font-weight:700}
+/* D3 item 4: the untouched sample company profile is a calm notice, not an alarm */
+.tax-form-note-sample{display:inline-block;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:4px 10px;font-weight:600}
 
 /* ---------- warning / info boxes */
 .tax-rpt-box{border-radius:12px;padding:10px 14px;margin:8px 0;font-size:14px;line-height:1.55}
@@ -114,14 +117,98 @@
 /* hidden controls stay hidden even where a family rule sets display */
 #e-tax-section[hidden],#i-vat-category-field[hidden],.tax-exp [hidden],.tax-exp-grid>[hidden]{display:none!important}
 
+/* ---------- ADR-024: ภ.ง.ด.3 / 53 tabs, 50 ทวิ register, expense form › หัก ณ ที่จ่าย */
+.wht-exp{border-color:#c7d2fe;background:#f8f9ff}
+.wht-exp .wht-toggle b{color:#3730a3}
+.wht-exp>.tax-help{display:block;margin:2px 0 8px}
+.tax-badge-wht{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+.tax-wht-cover{border:1px solid #c7d2fe;background:#f8f9ff;border-radius:12px;padding:10px 14px;margin:10px 0}
+.tax-wht-cover dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px;margin:8px 0}
+.tax-wht-cover dt{font-size:13px;color:#475569}
+.tax-wht-cover dd{margin:0;font-size:18px;font-weight:800;color:#1e1b4b;font-variant-numeric:tabular-nums}
+.tax-wht-cover small{color:#475569;font-size:13px}
+.tax-wht-register td small.tax-cell-sub{display:block;color:#64748b;font-size:12.5px}
+.tax-wht-register .tax-row-voided td{color:#64748b;text-decoration:line-through}
+.tax-wht-register .tax-row-voided td:last-child,.tax-wht-register .tax-row-voided td:nth-last-child(2){text-decoration:none}
+.tax-wht-actions{white-space:nowrap}
+.tax-wht-actions .btn{min-height:var(--erp-control-height,42px)} /* r8fix#C8: the register's actions are full-size buttons (ADR-019 42 px; 44 px on phones) */
+/* the 50 ทวิ on screen (the print window has its own CSS in erp-payer-wht.js) */
+.wht-cert-screen .wht-cert-page{background:#fff;border:1.5px solid #222;padding:14px 16px;max-width:794px;margin:0 auto 14px;position:relative;font-size:14px;color:#111}
+.wht-cert-screen .wht-cert-copy{text-align:right;font-size:13px;font-weight:700}
+.wht-cert-screen .wht-cert-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wht-cert-screen .wht-cert-head h1{margin:0;font-size:20px}
+.wht-cert-screen .wht-cert-no{display:grid;grid-template-columns:auto auto;gap:2px 8px}
+.wht-cert-screen .wht-cert-party{border:1px solid #94a3b8;padding:6px 8px;margin:6px 0}
+.wht-cert-screen .wht-cert-party-title{font-weight:700}
+.wht-cert-screen .wht-cert-line,.wht-cert-screen .wht-cert-forms,.wht-cert-screen .wht-cert-conditions{display:flex;flex-wrap:wrap;gap:4px 12px;margin:3px 0}
+.wht-cert-screen .wht-cert-tin{letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.wht-cert-screen .wht-cert-table{width:100%;border-collapse:collapse;margin:6px 0}
+.wht-cert-screen .wht-cert-table th,.wht-cert-screen .wht-cert-table td{border:1px solid #94a3b8;padding:4px 6px;position:static;white-space:normal}
+.wht-cert-screen .wht-cert-table td.tn{text-align:right;white-space:nowrap}
+.wht-cert-screen .wht-cert-mine td{font-weight:700;background:#f8fafc}
+.wht-cert-screen .wht-cert-sign{text-align:center;margin-top:10px}
+.wht-cert-screen .wht-cert-seal{display:inline-block;border:1px dashed #64748b;border-radius:50%;padding:14px 12px;font-size:12px;color:#475569}
+.wht-cert-screen .wht-cert-foot{font-size:12px;color:#64748b;margin-top:8px}
+.wht-cert-screen .wht-cert-void{position:absolute;top:38%;left:10%;right:10%;text-align:center;font-size:40px;font-weight:800;color:rgba(180,35,24,.35);border:4px solid rgba(180,35,24,.35);transform:rotate(-12deg);pointer-events:none}
+.wht-cert-screen .wht-cert-void small{display:block;font-size:14px}
+.wht-cert-screen .wht-cert-notice{border:1px solid #d97706;background:#fffbeb;color:#92400e;padding:4px 8px;font-size:12.5px;margin-bottom:4px;border-radius:6px}
+.wht-cert-screen .wht-cert-notice-invalid{border-color:#b42318;background:#fef3f2;color:#b42318}
+
+/* ---------- D3 item 3: a cancelled tax invoice is one normal row — "ยกเลิก – reason" in the name column, at most two
+   lines on screen (the whole reason in the tooltip and in print / Excel), muted like other cancelled rows. */
+.tax-row-cancelled td{color:#64748b}
+.tax-row-cancelled .tax-clamp{display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ---------- D3 item 2: every column of the official reports fits a ≥ 1,280 px screen (no sideways scroll):
+   fixed layout, per-column shares, a tighter font; long names wrap. Narrower screens keep the min-width and
+   scroll inside the card (phones). */
+@media(min-width:1240px){
+  .tax-rpt-scroll .tax-rpt-table{min-width:0;table-layout:fixed}
+  .tax-rpt-scroll .tax-rpt-table th{font-size:12px;padding:6px 5px}
+  .tax-rpt-scroll .tax-rpt-table td{font-size:13px;padding:6px 6px;overflow-wrap:anywhere}
+  .tax-rpt-scroll .tax-rpt-table td.tn{overflow-wrap:normal}
+  /* dates, numbers and IDs: one line each, a touch smaller (they never wrap mid-number) */
+  .tax-rpt-scroll .tax-rpt-table td.col-date,.tax-rpt-scroll .tax-rpt-table td.col-taxId,.tax-rpt-scroll .tax-rpt-table td.col-payeeTaxId,.tax-rpt-scroll .tax-rpt-table td.col-payeeBranchCode{font-size:12px;padding:6px 4px;white-space:nowrap;overflow-wrap:normal;font-variant-numeric:tabular-nums}
+  .tax-rpt-scroll .tax-rpt-table td.col-no{font-size:12px;padding:6px 4px}
+  .tax-rpt-scroll .tax-rpt-table tfoot td.col-seq{white-space:nowrap;padding:6px 2px}
+  .tax-rpt-scroll .tax-rpt-table th.col-headOffice,.tax-rpt-scroll .tax-rpt-table th.col-branchNo,.tax-rpt-scroll .tax-rpt-table th.col-seq{padding:6px 2px}
+  .tax-rpt-scroll .tax-rpt-table .col-seq{width:3.6%}
+  .tax-rpt-scroll .tax-rpt-table .col-date{width:8.8%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-no{width:10.6%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-party{width:15.2%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-taxId{width:11.4%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-headOffice{width:6.2%}
+  .tax-rpt-scroll .tax-rpt-table .col-branchNo{width:5.6%}
+  .tax-rpt-scroll .tax-rpt-table .col-value,.tax-rpt-scroll .tax-rpt-table .col-total{width:9.2%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-vat{width:8%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-note{width:12.2%;min-width:0}
+  .tax-rpt-scroll .tax-rpt-table .col-payeeTaxId{width:11%}
+  .tax-rpt-scroll .tax-rpt-table .col-payeeBranchCode{width:6.4%}
+  .tax-rpt-scroll .tax-rpt-table .col-nameAddress{width:23%}
+  .tax-rpt-scroll .tax-rpt-table .col-incomeLabel{width:13%}
+  .tax-rpt-scroll .tax-rpt-table .col-rate{width:6%}
+  .tax-rpt-scroll .tax-rpt-table .col-amountPaid,.tax-rpt-scroll .tax-rpt-table .col-taxWithheld{width:10.4%}
+  .tax-rpt-scroll .tax-rpt-table .col-condition{width:6.4%}
+  .tax-rpt-scroll .tax-wht-register{min-width:0;table-layout:auto}
+}
+
 @media(max-width:900px){
   .tax-rpt-filters>div{max-width:none;flex:1 1 140px}
   .tax-form-grid{grid-template-columns:1fr}
   .tax-pp30-row{grid-template-columns:1fr}
-  .tax-tab{flex:1 1 auto;padding:0 10px}
+  /* seven tabs (ADR-024): one row that scrolls sideways (each tab keeps a full-size touch target) */
+  .tax-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:2px}
+  .tax-tab{flex:0 0 auto;padding:0 12px;white-space:nowrap}
   .tax-pp30-table td:last-child{width:auto}
+  .tax-wht-cover dl{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:420px){
   .tax-rpt-filters>div{flex:1 1 100%;min-width:0}
   .tax-rpt-actions .btn{flex:1 1 auto}
 }
+/* r13 (ADR-030): abbreviated tax invoice without approval (MED-5), goods-receipt tax-invoice dialog (HIGH-2) */
+.tax-note-danger{background:#fef2f2;border:2px solid #dc2626;color:#7f1d1d;font-weight:700;margin:6px 0}
+.tax-note-danger[hidden],#grd-error:empty{display:none!important}
+.gr-tax-modal{width:min(620px,100%);background:#fff}
+.gr-tax-modal .doc-preview-modal-title{font-size:15px}
+.gr-tax-modal .form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}

@@ -1,7 +1,7 @@
 {
   "release": "4.3.1",
   "packageVersion": "2.3.1",
-  "checkedAt": "2026-10-04T22:54:06.920Z",
+  "checkedAt": "2026-10-27T09:02:42.613Z",
   "status": "PASS",
   "baseline": "DOCUMENT_RENDER_GOLDEN_BASELINE.json",
   "checks": [
@@ -26,38 +26,38 @@
     {
       "id": "deliveryTax:css",
       "ok": true,
-      "expected": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10",
-      "actual": "d96cd8d630161c296c918166642d43c77bd65189ec421ea0ef24646dc315da10"
+      "expected": "37cc94b2076a9cf8446109980362ba0b61ffb932f6e00d4e53f03362f4cbdbb7",
+      "actual": "37cc94b2076a9cf8446109980362ba0b61ffb932f6e00d4e53f03362f4cbdbb7"
     },
     {
       "id": "deliveryTax:documentPagesHtml",
       "ok": true,
-      "expected": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-      "actual": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05"
+      "expected": "e08a3af55ef239b55e6e21a1caacbb3aaf75f3bb7977a54102c3b225c3230258",
+      "actual": "e08a3af55ef239b55e6e21a1caacbb3aaf75f3bb7977a54102c3b225c3230258"
     },
     {
       "id": "deliveryTax:documentPageHtml",
       "ok": true,
-      "expected": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617",
-      "actual": "2a8e412b8d1e5c56d31f5bd71b58e65855b23dccf6c09fb1dfec926eed950617"
+      "expected": "7277190d21f12475203a15bbcb0a2da9a0087885f66f5daf2c0f28d0064c4bc6",
+      "actual": "7277190d21f12475203a15bbcb0a2da9a0087885f66f5daf2c0f28d0064c4bc6"
     },
     {
       "id": "receipt:css",
       "ok": true,
-      "expected": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078",
-      "actual": "64bb23ceb7028e6dc606b08c3e06ab7e3c6b9780b0a104567dd47d548913c078"
+      "expected": "c1a96ee7b97d9d1ab051aa7a6ed161594f137ba46dfcd03b1d4e93f56cafa207",
+      "actual": "c1a96ee7b97d9d1ab051aa7a6ed161594f137ba46dfcd03b1d4e93f56cafa207"
     },
     {
       "id": "receipt:documentPagesHtml",
       "ok": true,
-      "expected": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05",
-      "actual": "568b3de6105ef8ecdd655bf4ad0d4c8fa1a8e21aedd210db15063e1187ed6c05"
+      "expected": "861afad0eae964ed30c3d1f0d889275dd5fa727fc95a5667ec90a19b32ce5663",
+      "actual": "861afad0eae964ed30c3d1f0d889275dd5fa727fc95a5667ec90a19b32ce5663"
     },
     {
       "id": "receipt:documentPageHtml",
       "ok": true,
-      "expected": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7",
-      "actual": "595585e36234c9de1d08f92ab2fd6237741f9e7f83d75f82b9f0280a77bf61d7"
+      "expected": "fbb86623d0b8f8435f60d106965706a8eb3a89a21534721998a8575eb3cef21e",
+      "actual": "fbb86623d0b8f8435f60d106965706a8eb3a89a21534721998a8575eb3cef21e"
     }
   ],
   "issues": [],

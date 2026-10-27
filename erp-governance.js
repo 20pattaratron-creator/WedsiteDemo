@@ -1,9 +1,10 @@
-import {activePeriodLocks,assertPeriodOpen as assertPeriodOpenCore,buildArAging,buildApAging,buildPeriodCloseChecklist,buildProductionReadiness,compactPeriodLockEvents,evaluateApprovalPolicy,normalizeApprovalDecision,normalizeOutboxOperation,normalizePeriodLockEvent,shouldDeadLetter,stableOperationFingerprint,DEMO_APPROVAL_POLICY} from './erp-governance-core.js';
+import {activePeriodLocks,mergePeriodLockEvents,normalizePeriodLockBackup,assertPeriodOpen as assertPeriodOpenCore,buildArAging,buildApAging,buildPeriodCloseChecklist,buildProductionReadiness,compactPeriodLockEvents,evaluateApprovalPolicy,normalizeApprovalDecision,normalizeOutboxOperation,normalizePeriodLockEvent,shouldDeadLetter,stableOperationFingerprint,DEMO_APPROVAL_POLICY} from './erp-governance-core.js';
 import { localDateISO, escapeHtml } from './erp-shared-core.js';
 import { documentActionFeedback, normalizeDocumentActionError } from './erp-document-finance-core.js';
 import { icon } from './erp-icons.js';
 import { invoiceDueDate } from './erp-receivables-core.js';
-import {GOVERNANCE_PERIOD_LOCKS_KEY,GOVERNANCE_AUDIT_KEY,GOVERNANCE_OUTBOX_KEY,GOVERNANCE_APPROVALS_KEY} from './erp-storage-contracts.js';
+import {GOVERNANCE_PERIOD_LOCKS_KEY,GOVERNANCE_AUDIT_KEY,GOVERNANCE_OUTBOX_KEY,GOVERNANCE_APPROVALS_KEY,VAT_RETURNS_KEY} from './erp-storage-contracts.js';
+import { parseVatReturnsStore, taxPeriodOfDate, taxPeriodLabel } from './erp-tax-reports-core.js';
 
 // ============================================================================
 // ERP Governance Runtime — Local Demo control boundary.
@@ -47,11 +48,18 @@ import {GOVERNANCE_PERIOD_LOCKS_KEY,GOVERNANCE_AUDIT_KEY,GOVERNANCE_OUTBOX_KEY,G
     const events=periodEvents(),event=normalizePeriodLockEvent({id:uid('lockevt'),lockId:active.lockId,action:'unlock',branch:active.branch,scope:active.scope,throughDate:active.throughDate,reason:String(reason).trim(),actor:actor(),at:nowIso(),operationId:uid('period')});events.push(event);commitWithAudit([[GOVERNANCE_PERIOD_LOCKS_KEY,compactPeriodLockEvents(events,1000)]],{operationId:event.operationId,action:'period_unlock',entityType:'accounting_period',entityId:active.lockId,branch:active.branch,reason:event.reason,before:active,after:event});renderGovernance();return event;
   }
   function assertPeriodOpen(input={}){return assertPeriodOpenCore(periodEvents(),input);}
+  // r8fix#B8: period locks travel in the JSON backup (masterData.periodLocks). Export reads strictly (a damaged
+  // store fails the backup instead of dropping the locks); a restore only ADDS locks (merge and replace alike).
+  function exportBackup(){return normalizePeriodLockBackup(periodEvents()).map(event=>({...event}));}
+  function backupWrites(value){
+    if(value===undefined||value===null)return [];
+    return [[key(GOVERNANCE_PERIOD_LOCKS_KEY),compactPeriodLockEvents(mergePeriodLockEvents(periodEvents(),value),1000)]];
+  }
   // Delete / void paths of financial documents (ADR-018) ask this BEFORE their confirmation dialog:
   // '' when the period is open, else the SAME Thai text a save refused by assertPeriodOpen shows
   // (documentActionFeedback of the 'period_locked' error). With no lock covering the branch + scope it
   // is always ''; once one does, an unreadable lock store or a record without a usable date is refused.
-  const DOCUMENT_LOCK_SCOPE=Object.freeze({invoices:'sales',issuedInvoices:'sales',receipts:'sales',issuedReceipts:'sales',creditNotes:'sales',payments:'sales',expenses:'purchase'});
+  const DOCUMENT_LOCK_SCOPE=Object.freeze({invoices:'sales',issuedInvoices:'sales',receipts:'sales',issuedReceipts:'sales',creditNotes:'sales',debitNotes:'sales',payments:'sales',expenses:'purchase',whtCertificates:'purchase'});// ADR-024: ใบเพิ่มหนี้ = sales; 50 ทวิ = purchase (the payment)
   function periodLockRefusal(input={}){
     const scope=DOCUMENT_LOCK_SCOPE[input.type]||input.scope||'';
     if(!scope)return ''; // quotes / production orders: not posted to a period (their saves are not locked either)
@@ -61,6 +69,58 @@ import {GOVERNANCE_PERIOD_LOCKS_KEY,GOVERNANCE_AUDIT_KEY,GOVERNANCE_OUTBOX_KEY,G
       if(!covering)return '';
       assertPeriodOpen(transaction);return '';
     }catch(error){return documentActionFeedback(normalizeDocumentActionError(error,{stage:'validate',action:transaction.action})).text;}
+  }
+
+  // r8fix#B1 + B7 — editing an issued invoice / receipt (app.js saveInvoiceUnlocked / saveReceiptUnlocked ask this
+  // BEFORE anything else): the ORIGINAL date and branch and the NEW date are each checked against the period locks
+  // (a document may not be moved out of — or into — a closed period; the same Thai text as every lock refusal),
+  // then a past tax month or a month whose ภ.พ.30 is recorded as filed asks the confirmation the cancel flow asks.
+  // input: { type:'invoices'|'receipts', title, no, original:{branch,date,vatAmt}, branch, date, notify, confirm }
+  // → true (go on) | false (refused or declined; the message was shown). An unreadable ภ.พ.30 store refuses.
+  const EDIT_TEXT=Object.freeze({
+    vatUnreadable:'แก้ไขไม่ได้ — อ่านข้อมูล ภ.พ.30 ที่บันทึกไว้ไม่ได้ จึงตรวจไม่ได้ว่าเดือนของเอกสารยื่นแล้วหรือยัง (กู้ข้อมูลจาก Backup ก่อน)',
+    pastMonth:(title,no,months,filed,vat)=>`⚠️ แก้ไข${title} ${no} — เดือนภาษี ${months} ผ่านไปแล้ว${filed.length?` และ ภ.พ.30 เดือน ${filed.join(', ')} บันทึกว่ายื่นแล้ว`:''}\n\nถ้าการแก้ไขเปลี่ยนยอดขาย${vat?` หรือภาษีขาย (เดิม ${money(vat)} บาท)`:''} หรือย้ายเดือน ต้องยื่นแบบ ภ.พ.30 เพิ่มเติมของเดือนนั้น (ปรึกษาผู้ทำบัญชี)\n\nต้องการบันทึกการแก้ไขต่อหรือไม่?`
+  });
+  function issuedEditGate(input={}){
+    const say=typeof input.notify==='function'?input.notify:(message=>window.notify?.(message,'error')),ask=typeof input.confirm==='function'?input.confirm:(message=>window.confirm(message));
+    const type=input.type==='receipts'?'receipts':'invoices',original=input.original||{};
+    const checks=[[String(original.branch||input.branch||''),original.date],[String(input.branch||''),input.date]].filter(([,date])=>!!String(date||'').trim());
+    for(const [branch,date] of checks){const refusal=periodLockRefusal({type,branch,date,action:`${type}_edit`});if(refusal){say(refusal,'error');return false;}}
+    const today=taxPeriodOfDate(localDateISO()),periods=[...new Set(checks.map(([,date])=>taxPeriodOfDate(date)).filter(Boolean))].filter(period=>period<today);
+    if(!periods.length)return true;
+    let returns;try{returns=parseVatReturnsStore(localStorage.getItem(key(VAT_RETURNS_KEY))).returns;}catch(error){console.warn('[Governance] vat returns unreadable — edit refused',error);say(EDIT_TEXT.vatUnreadable,'error');return false;}
+    const branches=new Set(checks.map(([branch])=>branch));
+    const filed=periods.filter(period=>returns.some(row=>row.period===period&&row.branches.some(branch=>branches.has(branch)))).map(taxPeriodLabel);
+    return ask(EDIT_TEXT.pastMonth(String(input.title||'เอกสาร'),String(input.no||''),periods.map(taxPeriodLabel).join(', '),filed,Number(original.vatAmt)||0))===true;
+  }
+
+  // r8fix#B5 — Recycle Bin restore = creating the document again: the same checks as create, asked BEFORE the
+  // confirmation. Closed period of its date (sales / purchase by type); a sales document in a month whose ภ.พ.30
+  // is recorded as filed; an expense whose purchase-VAT claim month is closed or filed, that duplicates a live
+  // supplier tax invoice (TIN + number), or that carried withholding (its 50 ทวิ was cancelled — record it again).
+  // → '' or the Thai refusal. An unreadable ภ.พ.30 store refuses.
+  const RESTORE_TEXT=Object.freeze({
+    vatFiled:(period,label)=>`กู้คืนไม่ได้ — ${label} อยู่ในเดือนภาษี ${period} ซึ่ง ภ.พ.30 บันทึกว่ายื่นแล้ว (ตัวเลขในแบบที่ยื่นต้องตรงกับเอกสาร) — ถ้าต้องแก้ ให้ปรึกษาผู้ทำบัญชีเรื่องการยื่นเพิ่มเติม`,
+    claimFiled:period=>`กู้คืนไม่ได้ — ค่าใช้จ่ายนี้ใช้สิทธิ์ภาษีซื้อเดือน ${period} ซึ่ง ภ.พ.30 บันทึกว่ายื่นแล้ว`,
+    duplicateTaxInvoice:(no,taxId)=>`กู้คืนไม่ได้ — ใบกำกับภาษีเลขที่ ${no} ของผู้ขาย ${taxId} ถูกบันทึกเป็นค่าใช้จ่ายอื่นแล้ว (ใช้สิทธิ์ภาษีซื้อซ้ำไม่ได้)`,
+    withholding:'กู้คืนไม่ได้ — ค่าใช้จ่ายนี้มีภาษีหัก ณ ที่จ่ายและหนังสือรับรอง 50 ทวิ ที่ยกเลิกไปแล้ว ให้บันทึกค่าใช้จ่ายใหม่เพื่อออก 50 ทวิ ฉบับใหม่',
+    vatUnreadable:'กู้คืนไม่ได้ — อ่านข้อมูล ภ.พ.30 ที่บันทึกไว้ไม่ได้ (กู้ข้อมูลจาก Backup ก่อน)'
+  });
+  function vatFiledFor(branch,period){return parseVatReturnsStore(localStorage.getItem(key(VAT_RETURNS_KEY))).returns.some(row=>row.period===period&&row.branches.includes(branch));}
+  function restoreRefusal(input={}){
+    const type=String(input.type||''),record=input.record||{},branch=String(input.branch||record.branch||'');
+    const lock=periodLockRefusal({type,branch,date:record.date,action:'trash_restore'});if(lock)return lock;
+    try{
+      if(['invoices','issuedInvoices','receipts','issuedReceipts'].includes(type)){const period=taxPeriodOfDate(record.date);if(period&&vatFiledFor(branch,period))return RESTORE_TEXT.vatFiled(taxPeriodLabel(period),`${record.no||''}`.trim()||'เอกสารนี้');}
+      if(type==='expenses'){
+        if(Number(record.whtAmount)>0||record.whtCertId)return RESTORE_TEXT.withholding;
+        const claim=record.inputVatClaimable===true&&/^\d{4}-\d{2}$/.test(String(record.claimPeriod||''))?record.claimPeriod:'';
+        if(claim){const claimLock=periodLockRefusal({type:'expenses',branch,date:`${claim}-01`,action:'trash_restore'});if(claimLock)return claimLock;if(vatFiledFor(branch,claim))return RESTORE_TEXT.claimFiled(taxPeriodLabel(claim));}
+        const taxKey=window.ERPTaxForms?.taxInvoiceKey?.(record.vendorTaxId,record.taxInvoiceNo||(record.vatMode?record.docNo:''))||'';
+        if(taxKey&&(window.ERPIntegrity?.business?.().expenses||[]).some(row=>String(row.id)!==String(record.id)&&window.ERPTaxForms.taxInvoiceKey(row.vendorTaxId,row.taxInvoiceNo||row.docNo)===taxKey))return RESTORE_TEXT.duplicateTaxInvoice(record.taxInvoiceNo||record.docNo||'-',record.vendorTaxId||'-');
+      }
+    }catch(error){console.warn('[Governance] restore check failed — refused',error);return error?.code==='pack_unreadable'?error.message:RESTORE_TEXT.vatUnreadable;}
+    return '';
   }
 
   const syncInflight=new Map();
@@ -114,16 +174,20 @@ import {GOVERNANCE_PERIOD_LOCKS_KEY,GOVERNANCE_AUDIT_KEY,GOVERNANCE_OUTBOX_KEY,G
     const rows=approvalRows();rows.unshift({...decision});commitWithAudit([[GOVERNANCE_APPROVALS_KEY,rows.slice(0,MAX_APPROVALS)]],{operationId:op,action:`approval_${decision.decision}`,entityType:decision.entityType,entityId:decision.entityId,entityNo:decision.entityNo,reason:decision.reason,after:decision});renderGovernance();return decision;
   }
 
-  function businessSnapshot(){try{return window.ERPIntegrity?.business?.()||{};}catch(error){console.error('[Governance] business snapshot failed',error);return{};}}
+  // r8fix#B9: an unreadable month is NOT an empty business (that showed AR ฿0 and READY) — the error propagates.
+  function businessSnapshot(){return window.ERPIntegrity?.business?.()||{};}
   function flowSnapshot(){try{return window.ERPOrderFlow?.getStore?.()||{};}catch(error){console.warn('[Governance] flow snapshot failed',error);return{};}}
   function agingSnapshot(today){const business=businessSnapshot(),context=window.ERPIntegrity?.paymentContext?.(business)||{business},invoices=(business.invoices||[]).map(row=>{let outstanding=row.outstandingAmount??row.outstanding;try{outstanding=window.ERPIntegrity?.paymentSummary?.(row,context)?.outstanding??outstanding;}catch(error){console.warn('[Governance] payment summary fallback',error);}return{...row,outstanding};});return{ar:buildArAging(invoices,{today,dueDateOf:invoiceDueDate,undated:true}),ap:buildApAging(business.productions||[],{today})};}
   function closeChecklist(throughDate){return buildPeriodCloseChecklist({business:businessSnapshot(),flow:flowSnapshot(),outbox:outboxRows(),throughDate});}
 
   const money=v=>Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
   function ensureGovernancePanel(){const panel=document.getElementById('panel-audit-log');if(!panel||document.getElementById('governance-controls'))return;const box=document.createElement('div');box.id='governance-controls';box.className='card';box.innerHTML=`<div class="card-title"><span>Financial Governance · Local Demo Controls</span><span class="analytics-mini-label">Period Lock · Sync Outbox · Aging · Close Checklist</span></div><div id="governance-summary"></div><div class="filter-bar" style="margin-top:12px"><div><label>สาขา</label><select id="gov-lock-branch"><option value="all">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขา 00001</option></select></div><div><label>ขอบเขต</label><select id="gov-lock-scope"><option value="all">บัญชีทั้งหมด</option><option value="sales">ขาย / VAT ขาย</option><option value="purchase">ซื้อ / VAT ซื้อ</option></select></div><div><label>ปิดถึงวันที่</label><input id="gov-lock-date" type="date"></div><div><label>เหตุผล</label><input id="gov-lock-reason" placeholder="เช่น ปิดงวดเดือน 09/2569"></div><div style="align-self:end"><button type="button" class="btn btn-primary" id="gov-lock-btn">${icon('lock')}ปิดงวด</button></div><div style="align-self:end"><button type="button" class="btn btn-secondary" id="gov-sync-retry">${icon('refresh')}Retry Sync</button></div></div><div id="governance-locks" style="margin-top:12px"></div><div id="governance-checklist" style="margin-top:12px"></div>`;panel.insertBefore(box,panel.children[1]||null);box.querySelector('#gov-lock-btn')?.addEventListener('click',()=>{try{lockPeriod({branch:document.getElementById('gov-lock-branch')?.value,scope:document.getElementById('gov-lock-scope')?.value,throughDate:document.getElementById('gov-lock-date')?.value,reason:document.getElementById('gov-lock-reason')?.value});window.notify?.('ปิดงวดใน Local Demo แล้ว');}catch(error){window.notify?.(error?.message||String(error),'error');}});box.querySelector('#gov-sync-retry')?.addEventListener('click',async()=>{const r=await retryPending();window.notify?.(`Retry Sync ${r.filter(x=>x.ok).length}/${r.length} รายการ`);});}
-  function renderGovernance(){ensureGovernancePanel();const summary=document.getElementById('governance-summary');if(!summary)return;const aging=agingSnapshot(),out=outboxRows(),pending=out.filter(x=>x.status!=='synced'),locks=listPeriodLocks(),today=localDateISO(),check=closeChecklist(today),prod=buildProductionReadiness({serverRbac:false,tenantIsolation:false,atomicNumbering:false,serverTransactions:false,secureAudit:false,etaxSubmission:false,whtSubmission:false});summary.innerHTML=`<div class="metrics"><div class="metric"><span>AR คงค้าง</span><strong>฿${money(aging.ar.total)}</strong><small>90+ วัน ฿${money(aging.ar.buckets.over_90)}</small></div><div class="metric"><span>AP ผู้ผลิต</span><strong>฿${money(aging.ap.total)}</strong><small>90+ วัน ฿${money(aging.ap.buckets.over_90)}</small></div><div class="metric"><span>Sync ค้าง</span><strong>${pending.length}</strong><small>Dead-letter ${pending.filter(x=>x.status==='dead_letter').length} · Uncertain ${pending.filter(x=>x.status==='uncertain').length}</small></div><div class="metric"><span>Close readiness</span><strong>${check.ready?'READY':'CHECK'}</strong><small>${check.issues.length} ประเด็น</small></div></div><div class="prodcore-control-note"><b>Production Gate:</b> Local Demo ยังไม่ผ่าน ${prod.gaps.length} control(s): ${prod.gaps.join(', ')} — ห้ามใช้ client-side role/lock/outbox แทน Server RBAC/DB transaction</div>`;const lockEl=document.getElementById('governance-locks');if(lockEl)lockEl.innerHTML=locks.length?`<b>Period Locks ที่ใช้งาน</b>${locks.map(l=>`<div class="prodcore-control-note"><b>${escapeHtml(l.branch==='all'?(window.ERPBranches?.allLabel?.('ทุกสาขา')||'ทุกสาขา'):(window.ERPBranches?.label?.(l.branch)||l.branch))}</b> · ${l.scope} · ถึง ${l.throughDate} · ${String(l.reason||'-').replace(/[<>]/g,'')} <button type="button" class="btn btn-ghost btn-sm" data-unlock="${l.lockId}">ปลดล็อก</button></div>`).join('')}`:'<div class="prodcore-control-note">ยังไม่มี Period Lock</div>';lockEl?.querySelectorAll('[data-unlock]').forEach(btn=>btn.addEventListener('click',()=>{const reason=prompt('เหตุผลในการปลดล็อกงวด');if(reason===null)return;try{unlockPeriod(btn.dataset.unlock,reason);window.notify?.('ปลดล็อกงวดแล้ว');}catch(error){window.notify?.(error?.message||String(error),'error');}}));const chk=document.getElementById('governance-checklist');if(chk)chk.innerHTML=`<b>Period Close Checklist · ถึง ${check.throughDate}</b>${check.issues.length?check.issues.map(i=>`<div class="prodcore-control-note"><b>${i.severity.toUpperCase()}</b> · ${i.detail} (${i.count})</div>`).join(''):'<div class="prodcore-control-note">ไม่พบ Critical/High จากกฎตรวจ Local Demo ปัจจุบัน</div>'}`;}
+  // r8fix#B9/B10: unreadable documents or lock store → a clear state (no figures, no READY), never an uncaught error.
+  function renderGovernanceUnreadable(summary,error){summary.innerHTML=window.ERPIntegrity?.isReadError?.(error)?window.ERPIntegrity.readErrorHtml(error):`<div class="erp-read-error" role="alert"><b>${escapeHtml(error?.message||String(error))}</b><span>ระบบไม่แสดงตัวเลขและถือว่างวดปิดไว้ทั้งหมดจนกว่าจะกู้ข้อมูลจาก Backup</span></div>`;['governance-locks','governance-checklist'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});}
+  function renderGovernance(){ensureGovernancePanel();const summary=document.getElementById('governance-summary');if(!summary)return;try{renderGovernanceFigures(summary);}catch(error){console.warn('[Governance] data unreadable',error?.message||error);renderGovernanceUnreadable(summary,error);}}
+  function renderGovernanceFigures(summary){const aging=agingSnapshot(),out=outboxRows(),pending=out.filter(x=>x.status!=='synced'),locks=listPeriodLocks(),today=localDateISO(),check=closeChecklist(today),prod=buildProductionReadiness({serverRbac:false,tenantIsolation:false,atomicNumbering:false,serverTransactions:false,secureAudit:false,etaxSubmission:false,whtSubmission:false});summary.innerHTML=`<div class="metrics"><div class="metric"><span>AR คงค้าง</span><strong>฿${money(aging.ar.total)}</strong><small>90+ วัน ฿${money(aging.ar.buckets.over_90)}</small></div><div class="metric"><span>AP ผู้ผลิต</span><strong>฿${money(aging.ap.total)}</strong><small>90+ วัน ฿${money(aging.ap.buckets.over_90)}</small></div><div class="metric"><span>Sync ค้าง</span><strong>${pending.length}</strong><small>Dead-letter ${pending.filter(x=>x.status==='dead_letter').length} · Uncertain ${pending.filter(x=>x.status==='uncertain').length}</small></div><div class="metric"><span>Close readiness</span><strong>${check.ready?'READY':'CHECK'}</strong><small>${check.issues.length} ประเด็น</small></div></div><div class="prodcore-control-note"><b>Production Gate:</b> Local Demo ยังไม่ผ่าน ${prod.gaps.length} control(s): ${prod.gaps.join(', ')} — ห้ามใช้ client-side role/lock/outbox แทน Server RBAC/DB transaction</div>`;const lockEl=document.getElementById('governance-locks');if(lockEl)lockEl.innerHTML=locks.length?`<b>Period Locks ที่ใช้งาน</b>${locks.map(l=>`<div class="prodcore-control-note"><b>${escapeHtml(l.branch==='all'?(window.ERPBranches?.allLabel?.('ทุกสาขา')||'ทุกสาขา'):(window.ERPBranches?.label?.(l.branch)||l.branch))}</b> · ${l.scope} · ถึง ${l.throughDate} · ${String(l.reason||'-').replace(/[<>]/g,'')} <button type="button" class="btn btn-ghost btn-sm" data-unlock="${l.lockId}">ปลดล็อก</button></div>`).join('')}`:'<div class="prodcore-control-note">ยังไม่มี Period Lock</div>';lockEl?.querySelectorAll('[data-unlock]').forEach(btn=>btn.addEventListener('click',()=>{const reason=prompt('เหตุผลในการปลดล็อกงวด');if(reason===null)return;try{unlockPeriod(btn.dataset.unlock,reason);window.notify?.('ปลดล็อกงวดแล้ว');}catch(error){window.notify?.(error?.message||String(error),'error');}}));const chk=document.getElementById('governance-checklist');if(chk)chk.innerHTML=`<b>Period Close Checklist · ถึง ${check.throughDate}</b>${check.issues.length?check.issues.map(i=>`<div class="prodcore-control-note"><b>${i.severity.toUpperCase()}</b> · ${i.detail} (${i.count})</div>`).join(''):'<div class="prodcore-control-note">ไม่พบ Critical/High จากกฎตรวจ Local Demo ปัจจุบัน</div>'}`;}
 
   function boot(){try{recoverInterruptedSyncs();}catch(error){console.error('[Governance] interrupted sync recovery failed',error);}ensureGovernancePanel();const date=document.getElementById('gov-lock-date');if(date&&!date.value)date.value=localDateISO();renderGovernance();window.addEventListener('erp-flow:changed',()=>renderGovernance());window.addEventListener('erp:navigation',e=>{if(e.detail?.panel==='audit-log')setTimeout(renderGovernance,0);});}
-  window.ERPGovernance=Object.freeze({operationId,appendAudit,listPeriodLocks,lockPeriod,unlockPeriod,assertPeriodOpen,periodLockRefusal,queueSync,listOutbox,markSyncSuccess,markSyncFailure,recoverInterruptedSyncs,runSync,retrySync,retryPending,recordApprovalDecision,approvalRows,agingSnapshot,closeChecklist,evaluateApprovalPolicy:(input,policy)=>evaluateApprovalPolicy(input,policy||DEMO_APPROVAL_POLICY),render:renderGovernance});
+  window.ERPGovernance=Object.freeze({operationId,appendAudit,listPeriodLocks,lockPeriod,unlockPeriod,assertPeriodOpen,periodLockRefusal,issuedEditGate,restoreRefusal,exportBackup,backupWrites,queueSync,listOutbox,markSyncSuccess,markSyncFailure,recoverInterruptedSyncs,runSync,retrySync,retryPending,recordApprovalDecision,approvalRows,agingSnapshot,closeChecklist,evaluateApprovalPolicy:(input,policy)=>evaluateApprovalPolicy(input,policy||DEMO_APPROVAL_POLICY),render:renderGovernance});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

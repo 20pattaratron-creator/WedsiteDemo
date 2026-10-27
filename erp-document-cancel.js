@@ -45,6 +45,7 @@ import { documentCancelKind, cancelReasonText, cancelBlockers, applyDocumentCanc
       receipts: (data.receipts || []).filter(r => I.live(r) && I.receiptMatches(r, inv)),
       payments: (store.payments || []).filter(p => I.live(p) && (p.allocations || []).some(a => I.matchesAllocation(a, inv, p))),
       creditNotes: (data.creditNotes || []).filter(cn => isCreditNoteLive(cn) && (cn.lines || []).some(line => I.creditNoteMatches(line, cn, inv))),
+      debitNotes: (data.debitNotes || []).filter(dn => isCreditNoteLive(dn) && (dn.lines || []).some(line => I.creditNoteMatches(line, dn, inv))),
       billingNotes: (store.billingNotes || []).filter(b => billingLive(b) && (b.lines || []).some(line => I.matchesAllocation(line, inv, b)))
     };
   }
@@ -167,6 +168,7 @@ import { documentCancelKind, cancelReasonText, cancelBlockers, applyDocumentCanc
       <h2 id="${titleId}">${escapeHtml(meta.action)} ${escapeHtml(record.no || '')}</h2>
       <p class="erp-cancel-summary">${escapeHtml(record.customer || '-')} · วันที่ ${escapeHtml(formatDate(record.date))} · ยอดรวม ${fmt(record.total)} บาท</p>
       <p class="erp-cancel-rule">เอกสารจะ<b>ไม่ถูกลบ</b>: เก็บไว้พร้อมตรา “ยกเลิก / CANCELLED” และเหตุผล เลขที่ยังอยู่ในลำดับเดิมและจะไม่ถูกนำกลับมาใช้ ถ้าต้องออกใหม่ ให้สร้างฉบับใหม่ (ใช้เลขที่ถัดไป) — ควรเรียกต้นฉบับคืนจากลูกค้ามาเก็บรวมกับสำเนา</p>
+      ${kind === 'invoices' ? '<p class="erp-cancel-rule erp-cancel-advice">ยกเลิกใบกำกับภาษีเมื่อออกผิด แล้วออกฉบับใหม่แทน (เมนู ⋯ › ออกฉบับใหม่แทน — อ้างอิงเลขที่และวันที่เดิม ตาม ป.86/2542 และข้อหารือ 0702/1041) · ถ้าลูกค้าคืนสินค้าหรือยกเลิกการซื้อหลังส่งมอบ ให้ออกใบลดหนี้แทนการยกเลิก · ยกเลิกข้ามเดือน: บัญชีและรายงานภาษีขายกลับรายการในเดือนของใบกำกับภาษี — ปรึกษานักบัญชีเรื่องยื่น ภ.พ.30 เพิ่มเติม</p>' : ''}
       <fieldset class="erp-cancel-reasons"><legend>เหตุผลการยกเลิก <span aria-hidden="true">*</span></legend>
         ${meta.reasons.map((row, index) => `<label><input type="radio" name="erp-cancel-reason" value="${row.code}"${index === 0 ? ' data-first="1"' : ''}> ${escapeHtml(row.label)}</label>`).join('')}
       </fieldset>

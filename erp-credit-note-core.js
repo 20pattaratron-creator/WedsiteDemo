@@ -35,6 +35,8 @@
 // so that the per-invoice rows always sum exactly to the document totals.
 // ============================================================================
 import { roundMoneyValue, calculateVatSummary, parseBusinessDate, compareBusinessDates, fmt, RECONCILE_TOLERANCE, taxInvoiceLacksBuyer, isGeneralCustomerName } from './erp-shared-core.js';
+import { translateKey } from './erp-i18n-core.js';
+import { FX_KEYS } from './i18n/en-fx.js';
 
 export const CREDIT_NOTE_CORE_VERSION = '1.0.0';
 export const CREDIT_NOTE_NUMBER_PREFIX = 'CN';
@@ -47,8 +49,41 @@ export const CREDIT_NOTE_REASONS = Object.freeze([
   Object.freeze({ code: 'price_overcharge', label: 'คำนวณราคาสินค้าหรือค่าบริการผิดพลาดสูงกว่าที่เป็นจริง' }),
   Object.freeze({ code: CREDIT_NOTE_RETURN_REASON, label: 'รับคืนสินค้าตามข้อตกลงทางการค้า' }),
   Object.freeze({ code: 'service_cancelled', label: 'ยกเลิกสัญญาบริการ / ลดค่าบริการเนื่องจากบริการบกพร่องหรือไม่ครบถ้วน' }),
-  Object.freeze({ code: CREDIT_NOTE_OTHER_REASON, label: 'เหตุอื่น (โปรดระบุรายละเอียด)' })
+  Object.freeze({ code: CREDIT_NOTE_OTHER_REASON, label: 'เหตุอื่นตามที่อธิบดีกำหนด (โปรดระบุรายละเอียด)' })
 ]);
+// r13#MED-9 — มาตรา 82/9 (ใบเพิ่มหนี้) and 82/10 (ใบลดหนี้) allow only the causes listed in the law plus "เหตุอื่นตามที่
+// อธิบดีกำหนด". The fixed reasons above / in DEBIT_NOTE_TEXT are the statutory ones; "เหตุอื่น" needs a real explanation
+// (at least ADJUSTMENT_OTHER_MIN_CHARS characters) and always carries a warning to check it with an accountant. A
+// trade discount or promotion given after the sale is flagged: it is usually NOT a cause of ม.82/10 (the note may not
+// reduce output VAT). The list of the Director-General's causes is [unconfirmed] in this demo.
+export const ADJUSTMENT_OTHER_MIN_CHARS = 15;
+export const ADJUSTMENT_REASON_TEXT = Object.freeze({
+  errShort: (kind, min) => `กรุณาอธิบายสาเหตุ${kind === 'debit' ? 'การเพิ่มหนี้' : 'การลดหนี้'} (เหตุอื่น) ให้ชัดเจนอย่างน้อย ${min} ตัวอักษร — ต้องเป็นเหตุตามที่อธิบดีกรมสรรพากรกำหนด`,
+  warnOther: kind => `เลือก "เหตุอื่น" — ${kind === 'debit' ? 'ใบเพิ่มหนี้ (มาตรา 82/9)' : 'ใบลดหนี้ (มาตรา 82/10)'} ออกได้เฉพาะเหตุที่กฎหมายระบุหรือที่อธิบดีกำหนด ตรวจกับนักบัญชีก่อนส่งให้ลูกค้า`,
+  warnDiscount: 'คำอธิบายเป็นส่วนลดการค้า / โปรโมชันภายหลังการขาย — โดยทั่วไปไม่ใช่เหตุออกใบลดหนี้ตามมาตรา 82/10 (อาจใช้ลดภาษีขายไม่ได้) ปรึกษานักบัญชีก่อนออก',
+  errTaxPointInvoice: no => `${no} เป็นใบแจ้งหนี้ค่าบริการที่ออกใบกำกับภาษีเมื่อรับเงิน (ม.78/1) ยังไม่ใช่ใบกำกับภาษี — ออกใบลดหนี้/ใบเพิ่มหนี้อ้างอิงไม่ได้ ให้แก้ไขใบแจ้งหนี้ก่อนรับเงิน`
+});
+// ADR-031: a credit / debit note is in the currency of the invoice it adjusts — a foreign-currency invoice is adjusted
+// only by a note in the same currency (made on the multi-currency page, converted at the invoice's own rate) and a baht
+// invoice only by a baht note; a foreign note adjusts ONE invoice. '' when the pair is fine, else the Thai message.
+const adjustmentFxCode = row => { const code = creditNoteText(row?.currency).toUpperCase(); return code && code !== 'THB' ? code : ''; };
+export function adjustmentCurrencyError(invoice = {}, note = {}) {
+  const invoiceCode = adjustmentFxCode(invoice), noteCode = adjustmentFxCode(note);
+  if (invoiceCode === noteCode) return '';
+  if (invoiceCode) return translateKey(FX_KEYS, 'th', 'adjust.fx', { no: creditNoteText(invoice.no), currency: invoiceCode });
+  return translateKey(FX_KEYS, 'th', 'adjust.notFx', { no: creditNoteText(invoice.no) });
+}
+export function adjustmentFxSingleError(note = {}, lineCount = 0) {
+  return adjustmentFxCode(note) && lineCount > 1 ? translateKey(FX_KEYS, 'th', 'adjust.fxSingle', {}) : '';
+}
+// → { error: '' | text, warnings: [text] } for the explanation of a "เหตุอื่น" reason.
+export function adjustmentOtherReasonCheck(text, kind = 'credit') {
+  const clean = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (clean.length < ADJUSTMENT_OTHER_MIN_CHARS) return { error: ADJUSTMENT_REASON_TEXT.errShort(kind, ADJUSTMENT_OTHER_MIN_CHARS), warnings: [] };
+  const warnings = [ADJUSTMENT_REASON_TEXT.warnOther(kind)];
+  if (kind !== 'debit' && /ส่วนลดการค้า|ส่วนลดย้อนหลัง|ส่วนลดพิเศษ|โปรโมชั่น|โปรโมชัน|ลดราคาพิเศษ|rebate|promotion/i.test(clean)) warnings.push(ADJUSTMENT_REASON_TEXT.warnDiscount);
+  return { error: '', warnings };
+}
 
 export const CREDIT_NOTE_VAT_MODE_LABELS = Object.freeze({
   extract: 'ราคารวม VAT แล้ว — แยกภาษี',
@@ -184,6 +219,20 @@ export function creditedByInvoice(invoice = {}, creditNotes = [], options = {}) 
   return { amount: creditNoteMoney(amount), value: creditNoteMoney(value), vat: creditNoteMoney(vat), total: creditNoteMoney(total), count: documents.length, creditNotes: documents };
 }
 
+// What the earlier adjustment notes already did to one invoice, as ONE "prior credited" figure for
+// calculateCreditNote(): live credit notes minus live debit notes (ใบเพิ่มหนี้, §86/9 — they raise the
+// invoice). Without debit notes this is exactly creditedByInvoice(). A negative figure means the invoice
+// was raised more than it was reduced: the next credit note then starts from invoice + debit − credit.
+// Debit-note lines carry the same line fields (differenceAmount / difference / vatOnDifference / total,
+// positive amounts), so creditedByInvoice() sums them too.
+export function creditNoteNetPrior(invoice = {}, creditNotes = [], debitNotes = [], options = {}) {
+  const credited = creditedByInvoice(invoice, creditNotes, { excludeCreditNoteId: options.excludeCreditNoteId, matches: options.matches });
+  const debited = creditedByInvoice(invoice, debitNotes, { excludeCreditNoteId: options.excludeDebitNoteId, matches: options.matches });
+  if (!debited.count) return credited;
+  const net = key => creditNoteMoney(credited[key] - debited[key]);
+  return { amount: net('amount'), value: net('value'), vat: net('vat'), total: net('total'), count: credited.count, creditNotes: credited.creditNotes, debited };
+}
+
 // Over-credit rule shared by validateCreditNote() (one new note) and
 // creditNoteLedgerIssues() (the whole ledger after a backup import).
 // Amounts are the user's own 2-decimal figures, so the basis check is exact;
@@ -195,8 +244,9 @@ function creditNoteOverInvoice(cumulative, invoice) {
 }
 
 // Largest-remainder allocation of a document total (in satang) across rows so
-// the rows always add up to the document figure exactly.
-function creditNoteAllocate(total, weights) {
+// the rows always add up to the document figure exactly. Exported for the debit note
+// (erp-debit-note-core.js), which shares the same "VAT once on the document, then split" rule.
+export function creditNoteAllocate(total, weights) {
   const count = weights.length;
   if (!count) return [];
   // An all-negative draft (user typed a correct value above the original) is shown
@@ -271,6 +321,9 @@ export function calculateCreditNote(input = {}) {
       originalAmount,
       originalValue,
       originalVat,
+      // r8fix#A3: earlier live debit notes inside the net prior (kept only when there were some, so a credit
+      // note without one stays byte-identical) — the print shows invoice + debited − credited.
+      ...(prior.debited?.count ? { priorDebitedValue: creditNoteMoney(prior.debited.value) } : {}),
       differenceAmount,
       correctAmount: missing ? null : creditNoteMoney(originalAmount - differenceAmount),
       missing
@@ -405,7 +458,8 @@ export function creditNoteRequiresBuyerName(invoices = []) {
 //   invoices: every invoice (with branch/_year/_month) that may be referenced
 //   existingCreditNotes: every stored credit note (the edited one is excluded by id)
 //   receipts: optional, only used for the "customer already paid" warning
-//   options: { paidByInvoice(invoice) → number, matches(line, cn, invoice) }
+//   options: { paidByInvoice(invoice) → number, matches(line, cn, invoice),
+//              debitNotes: every stored debit note (§86/9) — they raise the invoice the note may reduce }
 export function validateCreditNote(creditNote = {}, invoices = [], existingCreditNotes = [], receipts = [], options = {}) {
   const errors = [];
   const warnings = [];
@@ -426,6 +480,7 @@ export function validateCreditNote(creditNote = {}, invoices = [], existingCredi
   if (!reasonCode) errors.push('กรุณาเลือกสาเหตุการลดหนี้');
   else if (!creditNoteReasonLabel(reasonCode)) errors.push('สาเหตุการลดหนี้ไม่ถูกต้อง');
   else if (reasonCode === CREDIT_NOTE_OTHER_REASON && !creditNoteText(cn.reasonText)) errors.push('กรุณาอธิบายสาเหตุการลดหนี้ (กรณีเหตุอื่น)');
+  else if (reasonCode === CREDIT_NOTE_OTHER_REASON) { const check = adjustmentOtherReasonCheck(cn.reasonText, 'credit'); if (check.error) errors.push(check.error); warnings.push(...check.warnings); }
 
   const lines = Array.isArray(cn.lines) ? cn.lines : [];
   if (!lines.length) errors.push('กรุณาเลือกใบกำกับภาษีที่ต้องการลดหนี้อย่างน้อย 1 ใบ');
@@ -439,8 +494,12 @@ export function validateCreditNote(creditNote = {}, invoices = [], existingCredi
     if (seen.has(key)) { errors.push(`อ้างอิงใบกำกับภาษี ${invoice.no || label} ซ้ำในใบลดหนี้เดียวกัน`); continue; }
     seen.add(key);
     if (!creditNoteInvoiceLive(invoice)) { errors.push(`ใบกำกับภาษี ${invoice.no || label} ถูกยกเลิกแล้ว ไม่สามารถออกใบลดหนี้อ้างอิงได้`); continue; }
+    if (invoice.taxPoint === 'payment') { errors.push(ADJUSTMENT_REASON_TEXT.errTaxPointInvoice(invoice.no || label)); continue; }
+    const fxError = adjustmentCurrencyError(invoice, cn);
+    if (fxError) { errors.push(fxError); continue; }
     resolved.push({ line, invoice });
   }
+  { const single = adjustmentFxSingleError(cn, lines.length); if (single) errors.push(single); }
 
   let calculation = calculateCreditNote({ lines: [] });
   if (resolved.length) {
@@ -472,7 +531,7 @@ export function validateCreditNote(creditNote = {}, invoices = [], existingCredi
         invoice,
         differenceAmount: line?.differenceAmount,
         correctAmount: line?.correctAmount,
-        priorCredited: creditedByInvoice(invoice, existing, { excludeCreditNoteId: excludeId, matches })
+        priorCredited: creditNoteNetPrior(invoice, existing, options.debitNotes, { excludeCreditNoteId: excludeId, matches })
       }))
     });
     calculation.lines.forEach((row, index) => {
@@ -495,7 +554,8 @@ export function validateCreditNote(creditNote = {}, invoices = [], existingCredi
       if (row.priorCreditedAmount > 0) {
         errors.push(`ยอดลดหนี้สะสมของใบกำกับภาษี ${invoiceNo} (${fmt(cumulativeAmount)} บาท) เกินมูลค่าใบกำกับภาษี (${fmt(row.invoiceAmount)} บาท) — ออกใบลดหนี้ไปแล้ว ${fmt(row.priorCreditedAmount)} บาท ลดได้อีกไม่เกิน ${fmt(Math.max(0, row.originalAmount))} บาท`);
       } else {
-        errors.push(`มูลค่าที่ถูกต้องของใบกำกับภาษี ${invoiceNo} ต้องไม่ติดลบ (ยอดที่ลด ${fmt(row.differenceAmount)} บาท เกินมูลค่าใบกำกับภาษี ${fmt(row.invoiceAmount)} บาท)`);
+        // originalAmount = the invoice + earlier debit notes (equal to invoiceAmount when there are none)
+        errors.push(`มูลค่าที่ถูกต้องของใบกำกับภาษี ${invoiceNo} ต้องไม่ติดลบ (ยอดที่ลด ${fmt(row.differenceAmount)} บาท เกินมูลค่าใบกำกับภาษี ${fmt(row.originalAmount)} บาท)`);
       }
     });
 
@@ -612,9 +672,10 @@ export function creditNoteBuyerBranchLabel(source = {}) {
 export const CREDIT_NOTE_PRINT_LAYOUT = Object.freeze({ linesPerPage: 8, pageUnits: 15, lineHeaderUnits: 2, returnHeaderUnits: 2, priorLineUnits: 3, returnCharsPerLine: 28 });
 
 // A line showing "ตามใบกำกับภาษี … หักลดหนี้ก่อนหน้า …" wraps in its narrow column
-// (measured ≈ 84 px, i.e. 2.5 units; counted as 3).
+// (measured ≈ 84 px, i.e. 2.5 units; counted as 3). ADR-024: so does the note of an earlier debit note
+// (a debit-note line's priorDebitedValue, or a credit note's negative net prior after a debit note).
 export function creditNoteLinePrintUnits(line = {}, layout = CREDIT_NOTE_PRINT_LAYOUT) {
-  return Number(line?.priorCreditedValue) > 0 ? layout.priorLineUnits : 1;
+  return Number(line?.priorCreditedValue || 0) !== 0 || Number(line?.priorDebitedValue || 0) !== 0 ? layout.priorLineUnits : 1;
 }
 // A long product name wraps inside the first column of the returned-goods table
 // (Thai combining marks count as characters, so the estimate errs on the tall side).
@@ -738,7 +799,8 @@ export function creditNotesMissingFrom(currentRows = [], incomingRows = []) {
 // belongs to exactly one stored document (voided ones included), and the live
 // credit notes of every invoice stay within that invoice's value, VAT and total —
 // the same cumulative rule validateCreditNote() applies to a single new note.
-// `options.matches(line, creditNote, invoice)` = the reconciliation matcher.
+// `options.matches(line, creditNote, invoice)` = the reconciliation matcher; `options.debitNotes` = the
+// stored debit notes, which raise the ceiling of each invoice by what they added (§86/9).
 // Returns [{ type: 'duplicate_number' | 'over_credit', message, ... }].
 export function creditNoteLedgerIssues(invoices = [], creditNotes = [], options = {}) {
   const notes = Array.isArray(creditNotes) ? creditNotes : [];
@@ -759,7 +821,9 @@ export function creditNoteLedgerIssues(invoices = [], creditNotes = [], options 
   for (const invoice of Array.isArray(invoices) ? invoices : []) {
     const credited = creditedByInvoice(invoice, notes, { matches: options.matches });
     if (!credited.count) continue;
-    const basis = creditNoteInvoiceBasis(invoice);
+    const debited = creditedByInvoice(invoice, options.debitNotes, { matches: options.matches });
+    const raw = creditNoteInvoiceBasis(invoice);
+    const basis = debited.count ? { ...raw, amount: creditNoteMoney(raw.amount + debited.amount), value: creditNoteMoney(raw.value + debited.value), vat: creditNoteMoney(raw.vat + debited.vat), total: creditNoteMoney(raw.total + debited.total) } : raw;
     const over = creditNoteOverInvoice(credited, basis);
     if (!over.amount && !over.total && !over.value && !over.vat) continue;
     const invoiceNo = creditNoteText(invoice.no) || creditNoteText(invoice.id) || '-';

@@ -55,7 +55,10 @@ const ROW_ICON = Object.freeze({
   edit: 'edit',
   receipt: 'receipt',
   creditNote: 'credit-note',
+  debitNote: 'debit-note',
+  certificate: 'certificate',
   production: 'factory',
+  cost: 'chart',
   delivery: 'truck',
   receive: 'box',
   print: 'print',
@@ -101,6 +104,10 @@ const ROW_LISTS = {
       { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', title: 'แก้ไขข้อมูล', when: !f.cancelled, call: rowCall('editInvoice', f.b, f.y, f.m, String(f.id)) },
       { id: 'receipt', group: 'create', icon: ROW_ICON.receipt, label: 'ออกใบเสร็จ', primaryLabel: 'รับชำระ', title: 'ออกใบเสร็จจากบิลนี้', when: !f.cancelled, call: rowCall('issueReceiptFromInvoice', f.b, f.y, f.m, String(f.id)) },
       { id: 'credit-note', group: 'create', icon: ROW_ICON.creditNote, label: 'ลดหนี้', title: 'ออกใบลดหนี้อ้างอิงบิลนี้ (มาตรา 86/10)', when: !f.cancelled, call: rowCall('ERPCreditNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)) },
+      // ADR-024: ใบเพิ่มหนี้ (§86/9) — a full tax invoice only (the buyer's name / address must be printed).
+      { id: 'debit-note', group: 'create', icon: ROW_ICON.debitNote, label: 'ออกใบเพิ่มหนี้', title: 'ออกใบเพิ่มหนี้อ้างอิงบิลนี้ (มาตรา 86/9)', when: !f.cancelled && !f.abbreviated, call: rowCall('ERPDebitNotes.startFromInvoice', f.b, f.y, f.m, String(f.id)) },
+      // r13#MED-3: "ออกฉบับใหม่แทน" on a cancelled invoice — a new number, the original date as default, "ออกแทน … ลงวันที่ …".
+      { id: 'replace', group: 'create', icon: ROW_ICON.edit, label: 'ออกฉบับใหม่แทน', title: 'ออกใบกำกับภาษีฉบับใหม่แทนฉบับที่ยกเลิก (อ้างอิงเลขที่และวันที่เดิม)', when: !!f.cancelled, call: rowCall('ERPTaxForms.prepareReplacement', f.b, f.y, f.m, String(f.id)) },
       { id: 'cancel', group: 'danger', icon: ROW_ICON.cancel, label: f.vatNone ? 'ยกเลิกใบแจ้งหนี้' : 'ยกเลิกใบกำกับภาษี', title: 'เก็บเอกสารและเลขที่ไว้พร้อมตรา “ยกเลิก” (ไม่ลบ)', when: !f.cancelled, call: rowCall('ERPDocumentCancel.open', 'invoices', f.b, f.y, f.m, String(f.id)) }
     ]
   },
@@ -142,6 +149,9 @@ const ROW_LISTS = {
     primary: () => ['detail'],
     actions: f => [
       { id: 'detail', group: 'view', icon: ROW_ICON.view, label: 'ดูหลักฐาน', primaryLabel: 'ดู', title: 'ดูรายละเอียดและไฟล์หลักฐาน', call: rowCall('showDetailById', 'expense', f.b, f.y, f.m, String(f.id)) },
+      // ADR-024: the withholding-tax certificate (50 ทวิ) issued with this payment.
+      { id: 'wht-cert', group: 'view', icon: ROW_ICON.certificate, label: 'หนังสือรับรอง 50 ทวิ', title: 'ดู / พิมพ์หนังสือรับรองการหักภาษี ณ ที่จ่าย (ฉบับที่ 1 และ 2)', when: !!f.wht, call: rowCall('ERPPayerWht.openForExpense', f.b, f.y, f.m, String(f.id)) },
+      { id: 'wht-void', group: 'danger', icon: ROW_ICON.cancel, label: 'ยกเลิก 50 ทวิ', title: 'ยกเลิกหนังสือรับรอง (เก็บเลขที่ไว้พร้อมเหตุผล)', when: !!f.wht, call: rowCall('ERPPayerWht.voidForExpense', f.b, f.y, f.m, String(f.id)) },
       { id: 'delete', group: 'danger', icon: ROW_ICON.delete, label: 'ลบ', call: rowCall('delDoc', f.b, f.y, f.m, 'expenses', String(f.id)) }
     ]
   },
@@ -155,6 +165,8 @@ const ROW_LISTS = {
       { id: 'detail', group: 'view', icon: ROW_ICON.view, label: 'ดู', call: rowCall('showDetailById', 'production', f.b, f.y, f.m, String(f.id)) },
       { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', title: 'แก้ไขรายการสั่งผลิต', when: !f.historical, call: rowCall('editProduction', f.b, f.y, f.m, String(f.id)) },
       { id: 'invoice', group: 'create', icon: ROW_ICON.delivery, label: 'สร้างใบส่ง/ภาษี', when: !f.linked && !f.historical, call: rowCall('useProductionForInvoice', f.b, f.y, f.m, String(f.id)) },
+      // ADR-028: the job cost sheet of this production order (page ต้นทุนและกำไรต่องาน).
+      { id: 'job-cost', group: 'other', icon: ROW_ICON.cost, label: 'ใบต้นทุนงาน', title: 'ดูต้นทุนและกำไรของงานนี้ / บันทึกเบิกวัสดุ ชั่วโมงแรงงาน ค่าใช้จ่ายอื่น', call: rowCall('ERPCosting.openJobSheet', f.b, String(f.id)) },
       { id: 'delete', group: 'danger', icon: ROW_ICON.delete, label: 'ลบ', call: rowCall('delDoc', f.b, f.y, f.m, 'productions', f.id) }
     ]
   },
@@ -169,6 +181,19 @@ const ROW_LISTS = {
         { id: 'doc', group: 'view', icon: ROW_ICON.document, label: 'เอกสาร / PDF', title: 'ตัวอย่าง / พิมพ์ / PDF', dataset: { cnAction: 'preview-saved', ...ids } },
         { id: 'edit', group: 'edit', icon: ROW_ICON.edit, label: 'แก้ไข', when: !!f.live, dataset: { cnAction: 'edit', ...ids } },
         { id: 'void', group: 'danger', icon: ROW_ICON.cancel, label: 'ยกเลิกใบลดหนี้', when: !!f.live, dataset: { cnAction: 'void', ...ids } }
+      ];
+    }
+  },
+
+  // erp-debit-note.js renderList — ใบเพิ่มหนี้ (data-dn-action, handled by erp-debit-note.js; no edit: void and reissue)
+  debitNote: {
+    name: f => f.no,
+    primary: () => ['doc'],
+    actions: f => {
+      const ids = { branch: f.b, year: f.y, month: f.m, id: f.id };
+      return [
+        { id: 'doc', group: 'view', icon: ROW_ICON.document, label: 'เอกสาร / PDF', title: 'ตัวอย่าง / พิมพ์ / PDF', dataset: { dnAction: 'preview-saved', ...ids } },
+        { id: 'void', group: 'danger', icon: ROW_ICON.cancel, label: 'ยกเลิกใบเพิ่มหนี้', when: !!f.live, dataset: { dnAction: 'void', ...ids } }
       ];
     }
   },
@@ -188,6 +213,7 @@ const ROW_LISTS = {
     name: f => f.no,
     primary: () => [],
     actions: f => [
+      { id: 'record-tax', group: 'edit', icon: ROW_ICON.edit, label: 'บันทึกใบกำกับภาษีที่ได้รับ', title: 'ผู้ขายส่งใบกำกับภาษีมาแล้ว — ใช้สิทธิ์ภาษีซื้อ (r13 HIGH-2)', when: !!f.taxPending, dataset: { prodcoreAction: 'record-gr-tax', recordId: f.id } },
       { id: 'reverse', group: 'danger', icon: ROW_ICON.cancel, label: 'กลับรายการรับสินค้า', when: !f.reversed, dataset: { prodcoreAction: 'reverse-gr', recordId: f.id } }
     ]
   },

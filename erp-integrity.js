@@ -2,6 +2,7 @@ import { ORDER_FLOW_STORE_KEY, notifyStorageWritten } from './erp-storage-contra
 import { buildPaymentReceiptDrafts, assertIdempotentPaymentReceipts, parseFinancialDocumentPackForWrite } from './erp-document-finance-core.js';
 import { roundMoneyValue } from './erp-shared-core.js';
 import { creditedByInvoice } from './erp-credit-note-core.js';
+import { isFxDocument, fxText } from './erp-fx-core.js';
 /* Shared local business rules. Browser-only; not a multi-user transaction engine. */
 (() => {
   'use strict';
@@ -24,16 +25,74 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
   const amount = r => round(r?.total ?? r?.saleTotal ?? r?.subtotal ?? 0);
   const productKey = r => norm(r?.productCode || r?.code || r?.product || r?.name);
   function flow() { const r = JSON.parse(localStorage.getItem(key(FLOW_KEY)) || '{}'); return {salesOrders:[],billingNotes:[],payments:[],reservations:[],...r}; }
-  function packs() {
-    const out = [];
+  // r8fix#B9: a month pack that does not parse (or is not an object) is never read as "no documents": every
+  // reader gets ONE typed error naming the month(s), the screens show "อ่านข้อมูลเดือน … ไม่ได้" (readErrorHtml,
+  // the banner below) instead of zeros / READY, and nothing reaches the console as an uncaught error.
+  const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const packLabel = (b, year, month) => `${MONTHS_TH[month] || month + 1} ${year + 543} (${window.ERPBranches?.label?.(b) || b})`;
+  const READ_TEXT = Object.freeze({
+    message: labels => `อ่านข้อมูลเดือน ${labels.join(', ')} ไม่ได้ — ข้อมูลในเครื่องเสียหาย ระบบจึงหยุดแสดงยอดเงินที่ใช้ข้อมูลนั้น (ไม่แสดงเป็น 0) และหยุดบันทึกเพื่อไม่ให้ทับข้อมูลเดิม`,
+    action: 'กู้ข้อมูลจากไฟล์ Backup ที่ “สำรอง / นำเข้าข้อมูล” หรือดูรายละเอียดที่ Demo › ตรวจสถานะ Demo'
+  });
+  function scanPacks() {
+    const out = [], unreadable = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i), raw = window.ComformTenant?.unwrapStorageKey?.(k) ?? k;
       const m = /^biz2_(ubon|khonkaen)_(\d{4})_(\d{2})$/.exec(raw || '');
       if (!m) continue;
-      const data = JSON.parse(localStorage.getItem(k) || '{}');
-      out.push({key:k, branch:m[1], year:Number(m[2]), month:Number(m[3])-1, data});
+      const meta = {key:k, branch:m[1], year:Number(m[2]), month:Number(m[3])-1};
+      let data;
+      try { data = JSON.parse(localStorage.getItem(k) || '{}'); } catch { data = null; }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) { unreadable.push({...meta, label: packLabel(meta.branch, meta.year, meta.month)}); continue; }
+      out.push({...meta, data});
     }
+    return { out, unreadable };
+  }
+  function readError(unreadable) {
+    const error = new Error(READ_TEXT.message(unreadable.map(row => row.label)));
+    error.code = 'pack_unreadable'; error.unreadable = unreadable;
+    return error;
+  }
+  function packs() {
+    const { out, unreadable } = scanPacks();
+    if (unreadable.length) throw readError(unreadable);
     return out;
+  }
+  function unreadablePacks() { return scanPacks().unreadable; }
+  const isReadError = error => error?.code === 'pack_unreadable' || /Unexpected (end|token)|JSON/i.test(String(error?.name === 'SyntaxError' ? error.message : ''));
+  function readErrorHtml(error) {
+    const rows = unreadablePacks();
+    const text = rows.length ? READ_TEXT.message(rows.map(row => row.label)) : String(error?.message || error || '');
+    const esc = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+    return `<div class="erp-read-error" role="alert"><b>${esc(text)}</b><span>${esc(READ_TEXT.action)}</span></div>`;
+  }
+  // Runs one screen renderer; a read error replaces the screen's content with the state above (other errors rethrow).
+  function safeRender(panelId, render) {
+    const panel = document.getElementById(`panel-${panelId}`);
+    try { const result = render(); panel?.querySelector(':scope > .erp-read-error')?.remove(); return result; }
+    catch (error) {
+      if (!isReadError(error)) throw error;
+      console.warn(`[ERPIntegrity] ${panelId}: data unreadable`, error.message);
+      if (panel) { panel.querySelector(':scope > .erp-read-error')?.remove(); panel.insertAdjacentHTML('afterbegin', readErrorHtml(error)); }
+      renderHealthBanner();
+      return undefined;
+    }
+  }
+  function renderHealthBanner() {
+    const rows = unreadablePacks();
+    let banner = document.getElementById('erp-data-health-banner');
+    if (!rows.length) { banner?.remove(); return rows; }
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'erp-data-health-banner';
+      banner.className = 'erp-data-alert';
+      banner.setAttribute('role', 'alert');
+      const main = document.querySelector('.main');
+      if (main) main.prepend(banner); else document.body.prepend(banner);
+    }
+    const text = `⛔ ${READ_TEXT.message(rows.map(row => row.label))} · ${READ_TEXT.action}`;
+    if (banner.textContent !== text) banner.textContent = text;
+    return rows;
   }
   function aliases(r, type = 'Invoice') { return [...new Set([r.id,r.firebaseId,r.no,r[`source${type}Id`],r[`source${type}No`],r[`issuedDocumentId`],r[`issuedDocumentNo`]].filter(v=>v!==undefined&&v!==null&&v!=='').map(String))]; }
   function sameDoc(a, b, type = 'Invoice') {
@@ -65,7 +124,7 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     });
   }
   function business() {
-    const out = {quotes:[],productions:[],invoices:[],issuedInvoices:[],receipts:[],issuedReceipts:[],expenses:[],creditNotes:[]};
+    const out = {quotes:[],productions:[],invoices:[],issuedInvoices:[],receipts:[],issuedReceipts:[],expenses:[],creditNotes:[],debitNotes:[]};
     packs().forEach(p=>Object.keys(out).forEach(type=>(p.data[type]||[]).forEach(r=>out[type].push({...r,branch:p.branch,_branch:p.branch,_year:p.year,_month:p.month,_type:type}))));
     out.invoices=dedupe([...out.invoices,...out.issuedInvoices]);
     out.receipts=dedupe([...out.receipts,...out.issuedReceipts],'Receipt');
@@ -82,7 +141,7 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     return byNo.length===1?byNo[0]:null;
   }
   // Optional lookup for bulk callers (reports, reconciliation): buckets invoices, receipts, payment
-  // allocations and credit-note lines under every invoice reference they carry, so paymentSummary()
+  // allocations and credit-/debit-note lines under every invoice reference they carry, so paymentSummary()
   // only examines rows that CAN match. Candidates are re-checked with the same matchers and kept in
   // their original order, so every figure is identical to the unindexed scan.
   function paymentIndex(data = business(), store = flow()) {
@@ -92,12 +151,13 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
       if (list[list.length - 1] !== i) list.push(i);
       map.set(String(k), list);
     };
-    const invoices = new Map(), receipts = new Map(), payments = new Map(), creditNotes = new Map();
+    const invoices = new Map(), receipts = new Map(), payments = new Map(), creditNotes = new Map(), debitNotes = new Map();
     (data.invoices || []).forEach((inv, i) => aliases(inv).forEach(k => put(invoices, k, i)));
     (data.receipts || []).forEach((r, i) => { put(receipts, r.invoiceId || r.sourceInvoiceId, i); put(receipts, r.invNo || r.sourceInvoiceNo || r.invoiceNo, i); });
     (store.payments || []).forEach((p, i) => (p.allocations || []).forEach(a => { put(payments, a.invoiceId, i); put(payments, a.invoiceNo, i); }));
     (data.creditNotes || []).forEach((cn, i) => (cn.lines || []).forEach(l => { put(creditNotes, l.invoiceId, i); put(creditNotes, l.invoiceNo, i); }));
-    return { data, store, invoices, receipts, payments, creditNotes, paymentIds: new Set((store.payments || []).map(p => String(p.id))) };
+    (data.debitNotes || []).forEach((dn, i) => (dn.lines || []).forEach(l => { put(debitNotes, l.invoiceId, i); put(debitNotes, l.invoiceNo, i); }));
+    return { data, store, invoices, receipts, payments, creditNotes, debitNotes, paymentIds: new Set((store.payments || []).map(p => String(p.id))) };
   }
   // {business, store, index} to pass as paymentSummary() options when summarising many invoices.
   function paymentContext(data = business(), store = flow()) { return { business: data, store, index: paymentIndex(data, store) }; }
@@ -117,6 +177,11 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
   function creditedTotal(inv, data = business()) {
     return creditedByInvoice(inv,data.creditNotes||[],{matches:creditNoteMatches}).total;
   }
+  // ADR-024: VAT-inclusive total of live debit notes (ใบเพิ่มหนี้, §86/9) against one invoice — the same
+  // line fields and the same matcher as credit notes (one summation, creditedByInvoice).
+  function debitedTotal(inv, data = business()) {
+    return creditedByInvoice(inv,data.debitNotes||[],{matches:creditNoteMatches}).total;
+  }
   function paymentSummary(input, options = {}) {
     const data=options.business||business(), store=options.store||flow();
     // A prebuilt paymentIndex is only trusted for the exact business/store it was built from.
@@ -124,7 +189,7 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     const inv=resolveInvoice(input,data,index)||input;
     const keys=aliases(inv);
     const candidates=(map,list)=>index?[...new Set(keys.flatMap(k=>map.get(k)||[]))].sort((a,b)=>a-b).map(i=>list[i]):list;
-    const payments=candidates(index?.payments,store.payments||[]), receipts=candidates(index?.receipts,data.receipts), creditNotes=candidates(index?.creditNotes,data.creditNotes||[]);
+    const payments=candidates(index?.payments,store.payments||[]), receipts=candidates(index?.receipts,data.receipts), creditNotes=candidates(index?.creditNotes,data.creditNotes||[]), debitNotes=candidates(index?.debitNotes,data.debitNotes||[]);
     const knownPayment=id=>index?index.paymentIds.has(String(id)):(store.payments||[]).some(p=>String(p.id)===String(id));
     const excluded=String(options.excludeReceiptId||'');
     let paid=0, evidence=false;
@@ -142,11 +207,13 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
       paid+=amount(r);
     });
     const total=amount(inv);
-    // Credit notes reduce what the customer owes: effective = invoice total − credited
-    // (both VAT-inclusive). Without credit notes effective===total, so every figure
-    // below is exactly what it was before credit notes existed.
+    // Credit notes reduce what the customer owes, debit notes (ADR-024) raise it: effective = invoice
+    // total + debited − credited (all VAT-inclusive). The debit note's amount is collected on the invoice
+    // itself (receipts / billing / payments reference the invoice; aging uses the invoice's due date).
+    // Without notes effective===total, so every figure below is exactly what it was before they existed.
     const credited=creditedTotal(inv,{creditNotes});
-    const effective=round(Math.max(0,total-credited));
+    const debited=debitedTotal(inv,{debitNotes});
+    const effective=round(Math.max(0,total+debited-credited));
     // `legacyPaid` is the persisted legacy "paid without receipt" FACT; paid/isPaid/paymentStatus
     // are derived and become 'credited' after a full credit note, so they alone must not decide it.
     const legacy=!evidence&&!inv.paymentManaged&&inv.paymentSource!=='receipt'&&(inv.legacyPaid===true||inv.paid||inv.isPaid||inv.paymentStatus==='paid');
@@ -159,7 +226,7 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     const fullyCredited=credited>0&&effective<=RECONCILE_TOLERANCE;
     const settled=!fullyCredited&&effective>0&&rawOutstanding<=RECONCILE_TOLERANCE;
     const outstanding=settled||fullyCredited?0:rawOutstanding;
-    const rawOverpaid=round(Math.max(0,paid-total));
+    const rawOverpaid=round(Math.max(0,paid-round(total+debited)));
     const overpaid=rawOverpaid>RECONCILE_TOLERANCE?rawOverpaid:0;
     // Money the seller owes back to the customer because a credit note was issued
     // after payment (never shown as a negative outstanding). Includes any
@@ -169,8 +236,8 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     // ADR-021: a cancelled (voided) invoice is kept for the number sequence but owes nothing: every AR /
     // aging / dashboard / billing figure built on paymentSummary() then excludes it, like ERPIntegrity.live().
     // Cancelling is refused while live receipts / payments / credit notes exist, so `paid` / `credited` are 0.
-    if(!live(inv))return {total,paid,outstanding:0,overpaid:0,status:'cancelled',evidence,legacy:false,credited,effectiveTotal:0,refundDue:0,cancelled:true};
-    return {total,paid,outstanding,overpaid,status:fullyCredited?'credited':settled?'paid':paid>0?'partially_paid':'pending',evidence,legacy,credited,effectiveTotal:effective,refundDue};
+    if(!live(inv))return {total,paid,outstanding:0,overpaid:0,status:'cancelled',evidence,legacy:false,credited,debited,effectiveTotal:0,refundDue:0,cancelled:true};
+    return {total,paid,outstanding,overpaid,status:fullyCredited?'credited':settled?'paid':paid>0?'partially_paid':'pending',evidence,legacy,credited,debited,effectiveTotal:effective,refundDue};
   }
   function reconcilePayments() {
     const data=business(),store=flow(),writes=[],index=paymentIndex(data,store);
@@ -249,6 +316,7 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
     if(!live(inv))throw new Error('บิลอ้างอิงถูกยกเลิกแล้ว');
     if((r.invNo||r.sourceInvoiceNo)&&!aliases(inv).includes(String(r.invNo||r.sourceInvoiceNo)))throw new Error('เลขบิลไม่ตรงกับบิลที่เลือกอ้างอิง');
     if(norm(inv.customer)!==norm(r.customer))throw new Error('ลูกค้าในใบเสร็จไม่ตรงกับบิลอ้างอิง');
+    if(isFxDocument(inv)&&String(r.currency||'').trim().toUpperCase()!==String(inv.currency).trim().toUpperCase())throw new Error(fxText('receipt.noFx',{no:inv.no||'',currency:String(inv.currency).trim().toUpperCase()}));// ADR-031: paid in its currency (multi-currency page)
     const s=paymentSummary(inv,{excludeReceiptId});
     if(amount(r)>s.outstanding+RECONCILE_TOLERANCE)throw new Error(`ยอดรับเงินเกินยอดค้างรับ ${s.outstanding.toFixed(2)} บาท — เกินกว่าค่าความคลาดเคลื่อนที่ยอมรับได้ (±${RECONCILE_TOLERANCE.toFixed(2)} บาท) กรุณาตรวจสอบยอดรับเงินหรือบิลอ้างอิงอีกครั้ง`);
     return inv;
@@ -378,7 +446,9 @@ import { creditedByInvoice } from './erp-credit-note-core.js';
   let refreshQueued=false;
   function changed() {
     if(refreshQueued)return;refreshQueued=true;
-    queueMicrotask(()=>{refreshQueued=false;try{reconcilePayments();window.dispatchEvent(new CustomEvent('erp-flow:changed'));}catch(e){console.error(e);window.notify?.('ตรวจยอดเชื่อมเอกสารไม่สำเร็จ: '+e.message,'error');}});
+    queueMicrotask(()=>{refreshQueued=false;try{reconcilePayments();window.dispatchEvent(new CustomEvent('erp-flow:changed'));}catch(e){if(isReadError(e)){console.warn('[ERPIntegrity] reconcile skipped: data unreadable',e.message);renderHealthBanner();return;}console.error(e);window.notify?.('ตรวจยอดเชื่อมเอกสารไม่สำเร็จ: '+e.message,'error');}});
   }
-  window.ERPIntegrity={flow,paymentIndex,paymentContext,creditedTotal,creditNoteMatches,receiptPaidAmount,salesOrderCost,assertEditable,reconcileBillings,round,amount,branch,live,productKey,packs,business,dedupe,sameDoc,resolveInvoice,matchesAllocation,receiptMatches,paymentSummary,reconcilePayments,validateReceipt,orderInvoices,orderProgress,reservedQty,availableStock,validateDelivery,validateItems,mergeRows,transaction,createPaymentReceipts,changed,RECONCILE_TOLERANCE};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>renderHealthBanner(),{once:true});else queueMicrotask(()=>renderHealthBanner());
+  window.addEventListener('erp-flow:changed',()=>renderHealthBanner());
+  window.ERPIntegrity={flow,paymentIndex,paymentContext,creditedTotal,debitedTotal,creditNoteMatches,receiptPaidAmount,salesOrderCost,assertEditable,reconcileBillings,round,amount,branch,live,productKey,packs,unreadablePacks,isReadError,readErrorHtml,safeRender,renderHealthBanner,business,dedupe,sameDoc,resolveInvoice,matchesAllocation,receiptMatches,paymentSummary,reconcilePayments,validateReceipt,orderInvoices,orderProgress,reservedQty,availableStock,validateDelivery,validateItems,mergeRows,transaction,createPaymentReceipts,changed,RECONCILE_TOLERANCE};
 })();

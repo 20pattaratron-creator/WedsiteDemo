@@ -19,7 +19,7 @@
 // time (no module state: the jsdom harness gives every importer its own copy of a module). The census
 // is cached for one synchronous task only (queueMicrotask) and dropped by invalidateBranchState().
 // ============================================================================
-import { COMPANY_BRANCH_SETTING_KEY, ORDER_FLOW_STORE_KEY, PRODUCT_MASTER_KEY } from './erp-storage-contracts.js';
+import { COMPANY_BRANCH_SETTING_KEY, ORDER_FLOW_STORE_KEY, PRODUCT_MASTER_KEY, VAT_RETURNS_KEY, WHT_FILINGS_KEY, GOVERNANCE_PERIOD_LOCKS_KEY } from './erp-storage-contracts.js';
 import { escapeHtml } from './erp-shared-core.js';
 
 export const BRANCH_SETTING_SCHEMA_VERSION = 1;
@@ -30,7 +30,7 @@ export const BRANCH_IDS = Object.freeze([HEAD_OFFICE_BRANCH_ID, SECOND_BRANCH_ID
 // the customer chooses otherwise in ตั้งค่าบริษัท.
 export const DEFAULT_BRANCH_COUNT = 2;
 // The on-screen labels used while no company profile is saved (unchanged from before ADR-022).
-export const DEFAULT_BRANCH_LABELS = Object.freeze({ ubon: 'สาขาสำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' });
+export const DEFAULT_BRANCH_LABELS = Object.freeze({ ubon: 'สำนักงานใหญ่', khonkaen: 'สาขาที่ 00001' });
 // "All branches" wording in single-branch mode: there is only the company.
 export const SINGLE_BRANCH_SCOPE_LABEL = 'ทั้งบริษัท';
 const BRANCH_CORE_PACK_KEY_RE = /^biz2_(ubon|khonkaen)_(\d{4})_(\d{2})$/;
@@ -118,7 +118,9 @@ export const BRANCH_DATA_KINDS = Object.freeze([
   Object.freeze({ kind: 'invoices', label: 'ใบส่งสินค้า/ใบกำกับภาษี' }),
   Object.freeze({ kind: 'receipts', label: 'ใบเสร็จรับเงิน' }),
   Object.freeze({ kind: 'creditNotes', label: 'ใบลดหนี้' }),
+  Object.freeze({ kind: 'debitNotes', label: 'ใบเพิ่มหนี้' }),
   Object.freeze({ kind: 'expenses', label: 'ค่าใช้จ่าย' }),
+  Object.freeze({ kind: 'whtCertificates', label: 'หนังสือรับรองการหักภาษี ณ ที่จ่าย' }),
   Object.freeze({ kind: 'salesOrders', label: 'ใบสั่งขาย' }),
   Object.freeze({ kind: 'billingNotes', label: 'ใบวางบิล' }),
   Object.freeze({ kind: 'payments', label: 'รายการรับชำระ' }),
@@ -127,10 +129,14 @@ export const BRANCH_DATA_KINDS = Object.freeze([
   Object.freeze({ kind: 'goodsReceipts', label: 'ใบรับสินค้า (GR)' }),
   Object.freeze({ kind: 'inventoryMovements', label: 'รายการเคลื่อนไหวสต็อก' }),
   Object.freeze({ kind: 'openingStock', label: 'สินค้าที่มียอดตั้งต้นของสาขานี้' }),
+  // r8fix#B10: filed returns and closed periods of branch 2 are its records too.
+  Object.freeze({ kind: 'vatReturns', label: 'การยื่น ภ.พ.30 ที่บันทึกไว้' }),
+  Object.freeze({ kind: 'whtFilings', label: 'การยื่น ภ.ง.ด.3/53 ที่บันทึกไว้' }),
+  Object.freeze({ kind: 'periodLocks', label: 'การปิดงวดของสาขานี้' }),
   Object.freeze({ kind: 'unreadable', label: 'ชุดข้อมูลที่อ่านไม่ได้' })
 ]);
 // Printed copies (issuedInvoices / issuedReceipts) count with their document, once per id / number.
-const BRANCH_CORE_PACK_KIND = Object.freeze({ quotes: 'quotes', productions: 'productions', invoices: 'invoices', issuedInvoices: 'invoices', receipts: 'receipts', issuedReceipts: 'receipts', creditNotes: 'creditNotes', expenses: 'expenses' });
+const BRANCH_CORE_PACK_KIND = Object.freeze({ quotes: 'quotes', productions: 'productions', invoices: 'invoices', issuedInvoices: 'invoices', receipts: 'receipts', issuedReceipts: 'receipts', creditNotes: 'creditNotes', debitNotes: 'debitNotes', expenses: 'expenses', whtCertificates: 'whtCertificates' });
 
 // Every branch a record names: its own field, or (billing notes / payments) the invoices it covers.
 function branchCoreRecordBranches(row) {
@@ -146,7 +152,7 @@ function branchCoreRecordBranches(row) {
 //   flow: { salesOrders, billingNotes, payments, reservations } · production: { purchaseOrders,
 //   goodsReceipts, inventoryMovements } · products: product master rows · unreadable: extra count
 // → { branch, total, counts: { kind: n }, items: [{ kind, label, count }] } (items: only counts > 0).
-export function branchDataCensus({ packs = [], flow = {}, production = {}, products = [], unreadable = 0 } = {}, branchId = SECOND_BRANCH_ID) {
+export function branchDataCensus({ packs = [], flow = {}, production = {}, products = [], unreadable = 0, vatReturns = [], whtFilings = [], periodLocks = [] } = {}, branchId = SECOND_BRANCH_ID) {
   const counts = Object.fromEntries(BRANCH_DATA_KINDS.map(({ kind }) => [kind, 0]));
   const seen = Object.fromEntries(Object.values(BRANCH_CORE_PACK_KIND).map(kind => [kind, new Set()]));
   counts.unreadable += Math.max(0, Math.trunc(Number(unreadable) || 0));
@@ -168,6 +174,16 @@ export function branchDataCensus({ packs = [], flow = {}, production = {}, produ
   for (const kind of ['purchaseOrders', 'goodsReceipts', 'inventoryMovements']) counts[kind] += own(production?.[kind]);
   const openingField = branchId === SECOND_BRANCH_ID ? 'openingStockKhonkaen' : 'openingStockUbon';
   counts.openingStock = (Array.isArray(products) ? products : []).filter(product => branchCoreIsObject(product) && Number(product[openingField] || 0) !== 0).length;
+  counts.vatReturns = (Array.isArray(vatReturns) ? vatReturns : []).filter(row => branchCoreIsObject(row) && (row.branchKey === branchId || (Array.isArray(row.branches) && row.branches.includes(branchId)))).length;
+  counts.whtFilings = (Array.isArray(whtFilings) ? whtFilings : []).filter(row => branchCoreIsObject(row) && row.branch === branchId).length;
+  // Active locks of the branch (a later `unlock` of the same lockId closes one); 'all' locks are company-wide.
+  const active = new Map();
+  for (const event of Array.isArray(periodLocks) ? periodLocks : []) {
+    if (!branchCoreIsObject(event)) continue;
+    const lockId = String(event.lockId || event.id || '');
+    if (event.action === 'unlock') active.delete(lockId); else if (event.branch === branchId) active.set(lockId, event);
+  }
+  counts.periodLocks = active.size;
   const items = BRANCH_DATA_KINDS.filter(({ kind }) => counts[kind] > 0).map(({ kind, label }) => ({ kind, label, count: counts[kind] }));
   return { branch: branchId, total: items.reduce((sum, item) => sum + item.count, 0), counts, items };
 }
@@ -204,7 +220,8 @@ export function readBranchDataCensus(storage, keyFor = key => key, unwrapKey = k
   const list = baseKey => { const value = readJson(baseKey, []); if (Array.isArray(value)) return value; unreadable += 1; return []; };
   let production = {};
   try { production = readProduction() || {}; } catch { unreadable += 1; production = {}; }
-  return branchDataCensus({ packs, flow, production, products: list(PRODUCT_MASTER_KEY), unreadable }, branchId);
+  const store = (baseKey, field) => { const value = readJson(baseKey, { [field]: [] }); if (branchCoreIsObject(value) && Array.isArray(value[field])) return value[field]; unreadable += 1; return []; };
+  return branchDataCensus({ packs, flow, production, products: list(PRODUCT_MASTER_KEY), unreadable, vatReturns: store(VAT_RETURNS_KEY, 'returns'), whtFilings: store(WHT_FILINGS_KEY, 'filings'), periodLocks: list(GOVERNANCE_PERIOD_LOCKS_KEY) }, branchId);
 }
 
 // The branch ids the UI shows: 1 only when the setting is 1 AND branch 2 holds nothing.

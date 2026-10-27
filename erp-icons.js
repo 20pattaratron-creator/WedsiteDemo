@@ -65,6 +65,9 @@ const ICON_PATHS = Object.freeze({
   truck: '<path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   receipt: '<path d="M5 2h14v20l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
   'credit-note': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/>',
+  // ADR-024: ใบเพิ่มหนี้ (the credit-note sheet with a plus) and หนังสือรับรอง 50 ทวิ (a sheet with a seal)
+  'debit-note': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M12 12v6"/>',
+  certificate: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h7"/><path d="M14 2l6 6v3"/><path d="M8 9h5M8 13h3"/><circle cx="18" cy="17" r="3"/><path d="M16.5 19.6 16 23l2-1 2 1-.5-3.4"/>',
   // ADR-023: รายงานภาษี (VAT reports / ภ.พ.30) — a sheet with a percent sign
   tax: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 18l6-6"/><circle cx="9.5" cy="12.5" r="1"/><circle cx="14.5" cy="17.5" r="1"/>',
   factory: '<path d="M3 21h18"/><path d="M5 21V7l8 4V7l8 4v10"/><path d="M9 17h1M14 17h1M19 17h1"/>',
@@ -89,7 +92,9 @@ const ICON_PATHS = Object.freeze({
   guide: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   health: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
   // part A: "โหลดข้อมูลตัวอย่างสำหรับสาธิต"
-  chart: '<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-6"/>'
+  chart: '<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-6"/>',
+  // ADR-026: the TH / EN language item of the Demo menu
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>'
 });
 
 export const ICON_NAMES = Object.freeze(Object.keys(ICON_PATHS));

@@ -123,3 +123,23 @@
 @media(max-width:700px){
   .cn-list-summary b{font-size:17px}
 }
+
+/* ADR-024: ใบเพิ่มหนี้ form / list (erp-debit-note.js) reuse the credit-note classes above */
+.dn-branch-label{font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px}
+.dn-branch-label span{color:var(--red)}
+.dn-filter-bar{margin-bottom:.75rem}
+#dn-list-root .empty[hidden]{display:none}
+
+/* r8fix#C8 (ADR-019 tokens): the document viewers (ใบลดหนี้ / ใบเพิ่มหนี้ here, 50 ทวิ in erp-payer-wht.js, same
+   classes) are modal dialogs — their actions and copy tabs use the full control height like the cancel dialog
+   (42 px; 44 px on phones), not the 36 px small size of list rows. */
+.doc-preview-modal .cn-doc-preview-actions .btn,
+.doc-preview-modal .cn-doc-preview-actions .doc-preview-modal-close,
+.doc-preview-modal.cn-doc-modal .doc-preview-modal-tabs button,
+.wht-cert-overlay .doc-preview-modal-tabs button,
+.cn-doc-preview-overlay .doc-preview-modal-tabs button { min-height: var(--erp-control-height); }
+/* The debit-note and credit-note lists (round-8 review): toolbar, filters and row actions at the full control height. */
+#panel-debit-note-list :is(.btn, select, input:not([type=checkbox]):not([type=radio]), .erp-rowact-more),
+#panel-credit-note-list :is(.btn, select, input:not([type=checkbox]):not([type=radio]), .erp-rowact-more) { min-height: var(--erp-control-height); }
+#panel-debit-note-list .erp-rowact-more,
+#panel-credit-note-list .erp-rowact-more { min-width: var(--erp-control-height); }

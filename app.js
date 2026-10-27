@@ -2,13 +2,14 @@ import { roundMoneyValue, calculateVatSummary, calculateWhtSummary, localDateISO
 import { toCEYear, toBEYear, yearLabelBE, yearLabelDual, parseFlexibleBusinessDate, isoDateCEFromValue, formatThaiDate, makeThaiCalendarMeta, withThaiCalendarMeta } from './erp-date-core.js';
 import { normalizeProductKey, defaultProductFlowType, defaultProductFulfillment, mergeMasterRows, buildProductMasterRows, productMasterMetaFromRows, selectContactRows, contactHasRole, findContactRow, upsertContactRows, archiveContactRows, validateProductMasterRecord, customerCreditDaysFromTerm, customerCreditTermFromDays, normalizeSupplierLeadDays, ensureSupplierSeedRows, mergeContactImportRows, upsertProductRows, archiveProductRows, mergeProductImportRows, normalizeProductDefaultPrice, productMasterValidationMessage, PRODUCT_DEFAULT_PRICE_CSV_ALIASES, findProductDefaultPriceCsvColumn, planProductCsvDefaultPrice } from './erp-master-data-core.js';
 import { createMasterDataStore, createMasterDataCloudBridge, MasterDataStorageError } from './erp-master-data-store.js';
-import { CONTACT_MASTER_KEY, PRODUCT_MASTER_KEY, BUSINESS_RULES_KEY, ORDER_FLOW_PREFERENCES_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten } from './erp-storage-contracts.js';
+import { CONTACT_MASTER_KEY, PRODUCT_MASTER_KEY, BUSINESS_RULES_KEY, ORDER_FLOW_PREFERENCES_KEY, SALES_TARGETS_KEY, DELIVERY_TARGETS_KEY, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY, UI_LANGUAGE_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten } from './erp-storage-contracts.js';
 import { safeAttachmentUrl, safeAttachmentKind } from './erp-detail-security.js';
 import { withDemoWriteLease, SALES_LEDGER_WRITE_LEASE } from './erp-demo-concurrency.js';
-import { planQuoteDocumentAction, planProductionDocumentAction, planInvoiceDocumentAction, planReceiptDocumentAction, planExpenseDocumentAction, parseFinancialDocumentPackForWrite, normalizeInvoiceTaxFormsInPack, runDocumentAction, documentActionFeedback, FinanceActionError, FINANCE_ACTION_ERROR_CODES, DOCUMENT_PACK_COLLECTIONS } from './erp-document-finance-core.js';
+import { planQuoteDocumentAction, planProductionDocumentAction, planInvoiceDocumentAction, planReceiptDocumentAction, planExpenseDocumentAction, parseFinancialDocumentPackForWrite, normalizeInvoiceTaxFormsInPack, runDocumentAction, documentActionFeedback, FinanceActionError, FINANCE_ACTION_ERROR_CODES, DOCUMENT_PACK_COLLECTIONS, ISSUED_TAX_DOCUMENT_COLLECTIONS, planBackupPackImport } from './erp-document-finance-core.js';
 import { creditNoteReturnedQty, creditNoteExportRows, CREDIT_NOTE_EXPORT_HEADER, mergeCreditNoteCopies, creditNotesMissingFrom, creditNoteLedgerIssues } from './erp-credit-note-core.js';
 import { rowActionsHtml } from './erp-row-actions.js';
 import { invoiceTermDueDate, invoiceDueDate, isWalkInCustomerName, buildReceivableItems, buildCreditNoteSalesAdjustments, itemSharesForRow, creditRowsOnProductionSales, salesItemValue, branchProfitSummary, formatMarginPercent } from './erp-receivables-core.js';
+import { resolveVatMode, invoiceNetSales, productionNetSalesValue, sameBusinessDoc, mergeBusinessDoc, dedupeRecords, salesRowValue as analyticsSalesValue, primarySalesRows, packSalesRows } from './erp-analytics-core.js';
 import { icon } from './erp-icons.js';
 import { companyLogoUrl } from './erp-company-profile-core.js';
 import { branchLabelMap, isMultiBranchUi, liveBranchAllLabel, liveBranchCode } from './erp-branches-core.js';
@@ -78,11 +79,6 @@ function escapeHtml(str=''){
   }[ch]));
 }
 
-function resolveVatMode(doc={}){
-  if(doc.vatMode==='add'||doc.vatMode==='extract'||doc.vatMode==='none')return doc.vatMode;
-  if(Number(doc.vatAmt||0)>0)return Number(doc.useVat||0)===1?'add':'extract';
-  return 'none';
-}
 function vatModeLabel(doc={}){
   const mode=resolveVatMode(doc);
   if(mode==='add')return 'ราคายังไม่รวม VAT — บวกเพิ่ม 7%';
@@ -90,36 +86,16 @@ function vatModeLabel(doc={}){
   return 'ไม่มี VAT';
 }
 
-function invoiceNetSales(doc={}){
-  // Dashboard must use sales value excluding VAT, matching the invoice report.
-  const hasNumber=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
-  if(hasNumber(doc.subtotal))return roundMoneyValue(Number(doc.subtotal));
-
-  const itemSale=hasNumber(doc.itemSaleTotal)?Number(doc.itemSaleTotal):null;
-  const rawSale=hasNumber(doc.saleTotal)?Number(doc.saleTotal):null;
-  const grandTotal=hasNumber(doc.total)?Number(doc.total):null;
-  const mode=resolveVatMode(doc);
-
-  if(mode==='extract'){
-    const gross=itemSale??rawSale??grandTotal??0;
-    return roundMoneyValue(gross/DEFAULT_VAT_DIVISOR);
-  }
-  if(mode==='add'){
-    if(itemSale!==null)return roundMoneyValue(itemSale);
-    if(rawSale!==null)return roundMoneyValue(rawSale);
-    if(grandTotal!==null)return roundMoneyValue(grandTotal/DEFAULT_VAT_DIVISOR);
-  }
-  if(itemSale!==null)return roundMoneyValue(itemSale);
-  if(rawSale!==null)return roundMoneyValue(rawSale);
-  return roundMoneyValue(grandTotal??0);
-}
+// ADR-027: resolveVatMode / invoiceNetSales / productionNetSalesValue / sameBusinessDoc / mergeBusinessDoc / dedupeRecords /
+// analyticsSalesValue (salesRowValue) moved unchanged to erp-analytics-core.js — the ONE sales measure of the dashboard KPIs
+// and of "วิเคราะห์และคาดการณ์" (imported above).
 
 // ============================================================
 // CONSTANTS & GLOBALS
 // ============================================================
 const MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const UNITS=['กล่อง','ชุด','เครื่อง','ดวง','ม้วน','ตลับ','อัน','แผ่น','ขวด','ถุง','เล่ม','ซอง','ชิ้น','ตัว','งาน','ครั้ง','อื่น ๆ'];
-const BRANCH_TH=branchLabelMap({khonkaen:'สาขาที่ 00001',ubon:'สาขาสำนักงานใหญ่'}); // ADR-022: live labels (company profile), ids stay the 2 data keys
+const BRANCH_TH=branchLabelMap({khonkaen:'สาขาที่ 00001',ubon:'สำนักงานใหญ่'}); // ADR-022: live labels (company profile), ids stay the 2 data keys
 function tenantLocalKey(base){return window.ComformTenant?.storageKey?.(base)||String(base||'');}
 
 // ============================================================
@@ -141,8 +117,8 @@ const PRODUCT_MASTER=[
   {code:'NW-003',name:'Wireless Access Point',category:'ระบบเครือข่าย',unit:'เครื่อง',defaultPrice:4200},
   {code:'NW-004',name:'สาย LAN / อุปกรณ์ Network',category:'ระบบเครือข่าย',unit:'ม้วน',defaultPrice:3200},
   {code:'PW-001',name:'เครื่องสำรองไฟ UPS',category:'ไฟฟ้าและสำรองไฟ',unit:'เครื่อง',defaultPrice:3990},
-  {code:'AV-001',name:'โปรเจคเตอร์',category:'ภาพและเสียง',unit:'เครื่อง',defaultPrice:16900},
-  {code:'AV-002',name:'จอรับภาพโปรเจคเตอร์',category:'ภาพและเสียง',unit:'ชุด',defaultPrice:3500},
+  {code:'AV-001',name:'โปรเจกเตอร์',category:'ภาพและเสียง',unit:'เครื่อง',defaultPrice:16900},
+  {code:'AV-002',name:'จอรับภาพโปรเจกเตอร์',category:'ภาพและเสียง',unit:'ชุด',defaultPrice:3500},
   {code:'AV-003',name:'ชุดไมโครโฟน / ระบบเสียง',category:'ภาพและเสียง',unit:'ชุด',defaultPrice:8900},
   {code:'SEC-001',name:'กล้องวงจรปิด CCTV',category:'ระบบรักษาความปลอดภัย',unit:'ตัว',defaultPrice:2450},
   {code:'SEC-002',name:'เครื่องบันทึก NVR / DVR',category:'ระบบรักษาความปลอดภัย',unit:'เครื่อง',defaultPrice:5900},
@@ -251,7 +227,7 @@ function populateAnalyticsProductFilter(observed=[]){
   const el=document.getElementById('analytics-product');if(!el)return;
   const cur=el.value;
   const names=[...new Set([...productMasterRows().map(x=>x.name),...observed.filter(Boolean)])].sort((a,b)=>String(a).localeCompare(String(b),'th'));
-  el.innerHTML='<option value="">สินค้าทั้งหมด</option>'+names.map(name=>{const m=productMasterMeta(name);return `<option value="${escapeHtml(name)}">${escapeHtml(name)}${m.productCode?' · '+escapeHtml(m.productCode):''}</option>`;}).join('');
+  el.innerHTML='<option value="">สินค้าทั้งหมด</option>'+names.map(name=>{const m=productMasterMeta(name);return `<option value="${escapeHtml(name)}" data-no-i18n>${escapeHtml(name)}${m.productCode?' · '+escapeHtml(m.productCode):''}</option>`;}).join('');
   if(names.includes(cur))el.value=cur;else if(cur)el.value='';
 }
 function contactMasterRows(options={}){
@@ -346,7 +322,7 @@ function switchMasterTab(name,button){
 }
 function masterTableHtml(columns,rows){
   if(!rows.length)return'<div class="empty">ยังไม่มีข้อมูลที่บันทึกไว้ในเครื่องนี้</div>';
-  return `<div class="tbl-wrap master-table-wrap"><table class="master-table"><thead><tr>${columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${columns.map(c=>`<td class="${c.cls||''}">${c.html?c.html(r):escapeHtml(r[c.key]??'-')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return `<div class="tbl-wrap master-table-wrap"><table class="master-table"><thead><tr>${columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${columns.map(c=>`<td class="${c.cls||''}"${c.data?' data-no-i18n':''}>${c.html?c.html(r):escapeHtml(r[c.key]??'-')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function renderMasterData(){
   const customers=contactMasterRows().filter(r=>contactHasRole(r,'customer'));
@@ -356,13 +332,13 @@ function renderMasterData(){
   const sc=document.getElementById('master-supplier-count');if(sc)sc.textContent=`${suppliers.length} ราย`;
   const pc=document.getElementById('master-product-count');if(pc)pc.textContent=`${products.length} รายการ`;
   const ct=document.getElementById('master-customer-table');if(ct)ct.innerHTML=masterTableHtml([
-    {label:'ลูกค้า',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เลขผู้เสียภาษี',html:r=>escapeHtml(r.taxId||'-')},{label:'โทร / อีเมล',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('contact',{id:r.id,role:'customer',name:r.name})}
+    {label:'ลูกค้า',data:1,html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',data:1,html:r=>escapeHtml(r.address||'-')},{label:'เลขผู้เสียภาษี',data:1,html:r=>escapeHtml(r.taxId||'-')},{label:'โทร / อีเมล',data:1,html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('contact',{id:r.id,role:'customer',name:r.name})}
   ],customers);
   const st=document.getElementById('master-supplier-table');if(st)st.innerHTML=masterTableHtml([
-    {label:'ผู้จำหน่าย / ผู้ผลิต',html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',html:r=>escapeHtml(r.address||'-')},{label:'เครดิต',html:r=>escapeHtml(r.supplierCreditTerm||'-')},{label:'ระยะส่ง',html:r=>(r.supplierLeadDays||[]).length?escapeHtml(r.supplierLeadDays.join(', ')+' วัน'):'-'},{label:'ติดต่อ',html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('contact',{id:r.id,role:'supplier',name:r.name})}
+    {label:'ผู้จำหน่าย / ผู้ผลิต',data:1,html:r=>`<b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.contactPerson||'')}</small>`},{label:'ที่อยู่',data:1,html:r=>escapeHtml(r.address||'-')},{label:'เครดิต',html:r=>escapeHtml(r.supplierCreditTerm||'-')},{label:'ระยะส่ง',html:r=>(r.supplierLeadDays||[]).length?escapeHtml(r.supplierLeadDays.join(', ')+' วัน'):'-'},{label:'ติดต่อ',data:1,html:r=>`${escapeHtml(r.phone||'-')}<br><small>${escapeHtml(r.email||'')}</small>`},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('contact',{id:r.id,role:'supplier',name:r.name})}
   ],suppliers);
   const pt=document.getElementById('master-product-table');if(pt)pt.innerHTML=masterTableHtml([
-    {label:'SKU / สินค้า',html:r=>`<b>${escapeHtml(r.code||'-')}</b><br>${escapeHtml(r.name||'-')}<small>${escapeHtml(r.category||'')}</small>`},{label:'ประเภท',html:r=>productFlowTypeBadge(r.flowType)},{label:'รูปแบบงาน',html:r=>productFulfillmentBadge(r.fulfillmentType)},{label:'Opening HQ',html:r=>fmt(r.openingStockUbon||0),cls:'tn'},...(isMultiBranchUi()?[{label:`Opening ${liveBranchCode('khonkaen')}`,html:r=>fmt(r.openingStockKhonkaen||0),cls:'tn'}]:[]),{label:'ขายออก',html:r=>fmt(productSoldQty(r)),cls:'tn'},{label:'คงเหลือ',html:r=>{const q=productEstimatedStock(r);const cls=q<=safeNum(r.reorderPoint)?'neg':'pos';return r.fulfillmentType==='stock'?`<b class="${cls}">${fmt(q)}</b>`:'—';},cls:'tn'},{label:'ต้นทุนมาตรฐาน',html:r=>r.standardCost?`฿${fmt(r.standardCost)}`:'-',cls:'tn'},{label:'ราคาขายมาตรฐาน (ก่อน VAT)',html:r=>r.defaultPrice===null||r.defaultPrice===undefined?'-':`฿${fmt(r.defaultPrice)}`,cls:'tn'},{label:'ผู้จำหน่ายหลัก',html:r=>escapeHtml(r.defaultSupplier||'-')},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('product',{key:r.code||r.name||'',name:r.name||r.code||'',seed:!!r.isSeed})}
+    {label:'SKU / สินค้า',data:1,html:r=>`<b>${escapeHtml(r.code||'-')}</b><br>${escapeHtml(r.name||'-')}<small>${escapeHtml(r.category||'')}</small>`},{label:'ประเภท',html:r=>productFlowTypeBadge(r.flowType)},{label:'รูปแบบงาน',html:r=>productFulfillmentBadge(r.fulfillmentType)},{label:'Opening HQ',html:r=>fmt(r.openingStockUbon||0),cls:'tn'},...(isMultiBranchUi()?[{label:`Opening ${liveBranchCode('khonkaen')}`,html:r=>fmt(r.openingStockKhonkaen||0),cls:'tn'}]:[]),{label:'ขายออก',html:r=>fmt(productSoldQty(r)),cls:'tn'},{label:'คงเหลือ',html:r=>{const q=productEstimatedStock(r);const cls=q<=safeNum(r.reorderPoint)?'neg':'pos';return r.fulfillmentType==='stock'?`<b class="${cls}">${fmt(q)}</b>`:'—';},cls:'tn'},{label:'ต้นทุนมาตรฐาน',html:r=>r.standardCost?`฿${fmt(r.standardCost)}`:'-',cls:'tn'},{label:'ราคาขายมาตรฐาน (ก่อน VAT)',html:r=>r.defaultPrice===null||r.defaultPrice===undefined?'-':`฿${fmt(r.defaultPrice)}`,cls:'tn'},{label:'ผู้จำหน่ายหลัก',html:r=>escapeHtml(r.defaultSupplier||'-')},{label:'จัดการ',cls:'erp-rowact-cell',html:r=>rowActionsHtml('product',{key:r.code||r.name||'',name:r.name||r.code||'',seed:!!r.isSeed})}
   ],products);
 }
 function productFlowTypeLabel(v){return{inventory:'Inventory · นับสต็อก',non_inventory:'Non-Inventory · ไม่นับสต็อก',service:'Service · บริการ'}[v]||v||'-';}
@@ -389,9 +365,9 @@ function productEstimatedStock(product,branch=''){
 function syncProductFulfillmentFromFlowType(){const flow=document.getElementById('md-p-flow-type')?.value;const f=document.getElementById('md-p-fulfillment');if(!f)return;if(flow==='service')f.value='service';else if(flow==='inventory'&&f.value==='service')f.value='stock';else if(flow==='non_inventory'&&f.value==='service')f.value='made_to_order';}
 function resetCustomerMasterForm(){masterEditState.customer='';['md-c-name','md-c-tax','md-c-branch-name','md-c-branch-code','md-c-address','md-c-postal','md-c-contact','md-c-phone','md-c-email','md-c-credit','md-c-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-c-entity','company');setInputValue('md-c-role','customer');}
 function resetSupplierMasterForm(){masterEditState.supplier='';['md-s-name','md-s-tax','md-s-address','md-s-contact','md-s-phone','md-s-email','md-s-lead','md-s-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-s-entity','company');setInputValue('md-s-role','supplier');setInputValue('md-s-credit','cash');window.ERPTaxForms?.resetSupplierBranch?.();}
-function resetProductMasterForm(){masterEditState.product='';['md-p-code','md-p-name','md-p-category','md-p-opening','md-p-opening-ub','md-p-opening-kk','md-p-standard-cost','md-p-default-price','md-p-reorder','md-p-supplier'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-p-flow-type','inventory');setInputValue('md-p-fulfillment','stock');setInputValue('md-p-unit','กล่อง');}
+function resetProductMasterForm(){masterEditState.product='';['md-p-code','md-p-name','md-p-category','md-p-opening','md-p-opening-ub','md-p-opening-kk','md-p-standard-cost','md-p-default-price','md-p-reorder','md-p-supplier','md-p-lead'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});setInputValue('md-p-flow-type','inventory');setInputValue('md-p-fulfillment','stock');setInputValue('md-p-unit','กล่อง');}
 function saveCustomerMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-c-name');if(!name)return notify('กรุณากรอกชื่อลูกค้า');upsertContactMaster({id:masterEditState.customer||'',name,role:document.getElementById('md-c-role')?.value||'customer',entityType:document.getElementById('md-c-entity')?.value||'company',taxId:v('md-c-tax'),branchName:v('md-c-branch-name'),branchCode:v('md-c-branch-code'),address:v('md-c-address'),postalCode:v('md-c-postal'),contactPerson:v('md-c-contact'),phone:v('md-c-phone'),email:v('md-c-email'),creditDays:safeNum(v('md-c-credit')),note:v('md-c-note')});resetCustomerMasterForm();notify('บันทึกลูกค้าแล้วใน Browser เครื่องนี้ (Local Demo)','success');}
-function saveSupplierMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-s-name');if(!name)return notify('กรุณากรอกชื่อผู้จำหน่าย / ผู้ผลิต');const tax=window.ERPTaxForms?.supplierTaxFromForm?.()||{ok:true,branchCode:'',branchName:'',warnings:[]};if(!tax.ok)return notify(tax.error,'error');const lead=normalizeSupplierLeadDays(v('md-s-lead'));upsertContactMaster({id:masterEditState.supplier||'',name,role:document.getElementById('md-s-role')?.value||'supplier',entityType:document.getElementById('md-s-entity')?.value||'company',taxId:v('md-s-tax'),branchCode:tax.branchCode,branchName:tax.branchName,address:v('md-s-address'),contactPerson:v('md-s-contact'),phone:v('md-s-phone'),email:v('md-s-email'),supplierCreditTerm:document.getElementById('md-s-credit')?.value||'cash',supplierLeadDays:lead,note:v('md-s-note')});resetSupplierMasterForm();notify('บันทึกผู้จำหน่าย / ผู้ผลิตแล้วใน Browser เครื่องนี้ (Local Demo)'+tax.warnings.map(w=>'\n⚠️ '+w).join(''),tax.warnings.length?'info':'success');}// ADR-023 G5: สำนักงานใหญ่ / สาขาที่ + TIN check
+function saveSupplierMaster(){const v=id=>document.getElementById(id)?.value?.trim?.()||'';const name=v('md-s-name');if(!name)return notify('กรุณากรอกชื่อผู้จำหน่าย / ผู้ผลิต');const tax=window.ERPTaxForms?.supplierTaxFromForm?.()||{ok:true,branchCode:'',branchName:'',warnings:[]};if(!tax.ok)return notify(tax.error,'error');const lead=normalizeSupplierLeadDays(v('md-s-lead'));upsertContactMaster({id:masterEditState.supplier||'',name,role:document.getElementById('md-s-role')?.value||'supplier',entityType:document.getElementById('md-s-entity')?.value||'company',taxId:v('md-s-tax'),branchCode:tax.branchCode,branchName:tax.branchName,whtIncomeType:tax.whtIncomeType||'',vatRegistered:tax.vatRegistered||'',whtContractTotal:tax.whtContractTotal||0,address:v('md-s-address'),contactPerson:v('md-s-contact'),phone:v('md-s-phone'),email:v('md-s-email'),supplierCreditTerm:document.getElementById('md-s-credit')?.value||'cash',supplierLeadDays:lead,note:v('md-s-note')});resetSupplierMasterForm();notify('บันทึกผู้จำหน่าย / ผู้ผลิตแล้วใน Browser เครื่องนี้ (Local Demo)'+tax.warnings.map(w=>'\n⚠️ '+w).join(''),tax.warnings.length?'info':'success');}// ADR-023 G5: สำนักงานใหญ่ / สาขาที่ + TIN check
 function saveProductMasterLocal(){
   const v=id=>document.getElementById(id)?.value?.trim?.()||'';
   const code=v('md-p-code'),name=v('md-p-name');
@@ -400,7 +376,7 @@ function saveProductMasterLocal(){
     code,name,category:v('md-p-category')||'อื่น ๆ',unit:document.getElementById('md-p-unit')?.value||'ชิ้น',
     flowType:document.getElementById('md-p-flow-type')?.value||'inventory',fulfillmentType:document.getElementById('md-p-fulfillment')?.value||'stock',
     openingStockUbon,openingStockKhonkaen,openingStock:openingStockUbon+openingStockKhonkaen,
-    reorderPoint:safeNum(v('md-p-reorder')),standardCost:safeNum(v('md-p-standard-cost')),defaultPrice:v('md-p-default-price')===''?null:v('md-p-default-price'),defaultSupplier:v('md-p-supplier')
+    reorderPoint:safeNum(v('md-p-reorder')),standardCost:safeNum(v('md-p-standard-cost')),defaultPrice:v('md-p-default-price')===''?null:v('md-p-default-price'),defaultSupplier:v('md-p-supplier'),leadTimeDays:v('md-p-lead')===''?null:Number(v('md-p-lead'))// ADR-027: optional lead time (blank = 7 days)
   };
   const validation=validateProductMasterRecord(record);if(!validation.valid)return notify(productMasterValidationMessage(validation.errors));record.defaultPrice=normalizeProductDefaultPrice(record.defaultPrice);
   const rows=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),key=normalizeProductKey(masterEditState.product||code);
@@ -421,7 +397,7 @@ function archiveContactMaster(id,role){
   notify('ปิดใช้งานข้อมูลแล้ว · ประวัติเอกสารยังคงอยู่','success');
 }
 function deleteContactMaster(id){return archiveContactMaster(id,'customer');}
-function editProductMasterLocal(code){const row=productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));if(!row)return;masterEditState.product=row.code||row.name;setInputValue('md-p-code',row.code);setInputValue('md-p-name',row.name);setInputValue('md-p-category',row.category);setInputValue('md-p-unit',row.unit||'ชิ้น');setInputValue('md-p-flow-type',row.flowType);setInputValue('md-p-fulfillment',row.fulfillmentType);setInputValue('md-p-opening-ub',row.openingStockUbon??row.openingStock);setInputValue('md-p-opening-kk',row.openingStockKhonkaen||0);setInputValue('md-p-standard-cost',row.standardCost||0);setInputValue('md-p-default-price',row.defaultPrice??'');setInputValue('md-p-reorder',row.reorderPoint);setInputValue('md-p-supplier',row.defaultSupplier);}
+function editProductMasterLocal(code){const row=productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));if(!row)return;masterEditState.product=row.code||row.name;setInputValue('md-p-code',row.code);setInputValue('md-p-name',row.name);setInputValue('md-p-category',row.category);setInputValue('md-p-unit',row.unit||'ชิ้น');setInputValue('md-p-flow-type',row.flowType);setInputValue('md-p-fulfillment',row.fulfillmentType);setInputValue('md-p-opening-ub',row.openingStockUbon??row.openingStock);setInputValue('md-p-opening-kk',row.openingStockKhonkaen||0);setInputValue('md-p-standard-cost',row.standardCost||0);setInputValue('md-p-default-price',row.defaultPrice??'');setInputValue('md-p-reorder',row.reorderPoint);setInputValue('md-p-supplier',row.defaultSupplier);setInputValue('md-p-lead',row.leadTimeDays??'');}
 function archiveProductMasterLocal(code){
   if(!confirm('ปิดใช้งาน Product Master นี้หรือไม่? เอกสารและประวัติเดิมจะไม่ถูกลบ'))return;
   const local=readLocalMaster(PRODUCT_MASTER_LOCAL_KEY,[]),fallback=productMasterRows().find(r=>normalizeProductKey(r.code||r.name)===normalizeProductKey(code));
@@ -583,7 +559,7 @@ function customerDemoOptionsHtml(){
   return CUSTOMER_AGENCY_GROUPS.filter(g=>g.value!=='other').map(group=>{
     const rows=CUSTOMER_DEMO_MASTER.filter(item=>item.group===group.value);
     if(!rows.length)return'';
-    return `<optgroup label="${escapeHtml(group.label)}">${rows.map((item,index)=>`<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join('')}</optgroup>`;
+    return `<optgroup label="${escapeHtml(group.label)}">${rows.map((item,index)=>`<option value="${escapeHtml(item.name)}" data-no-i18n>${escapeHtml(item.name)}</option>`).join('')}</optgroup>`;
   }).join('');
 }
 function applyCustomerDemo(prefix,name=''){
@@ -607,7 +583,7 @@ function initCustomerDemoMaster(){
   if(!list){
     list=document.createElement('datalist');
     list.id='customer-demo-master-list';
-    list.innerHTML=CUSTOMER_DEMO_MASTER.map(item=>`<option value="${escapeHtml(item.name)}">${escapeHtml(customerDemoOptionLabel(item))}</option>`).join('');
+    list.innerHTML=CUSTOMER_DEMO_MASTER.map(item=>`<option value="${escapeHtml(item.name)}" data-no-i18n>${escapeHtml(customerDemoOptionLabel(item))}</option>`).join('');
     document.body.appendChild(list);
   }
   ['q','i','r','p'].forEach(prefix=>{
@@ -1116,44 +1092,6 @@ function normalizeCloudMonth(doc){
   return 0;
 }
 
-function sameBusinessDoc(a, b){
-  if (!a || !b) return false;
-
-  if (a.firebaseId && b.firebaseId && String(a.firebaseId) === String(b.firebaseId)) return true;
-  if (a.id !== undefined && b.id !== undefined && String(a.id) === String(b.id)) return true;
-
-  const aNo = a.no || a.invNo || '';
-  const bNo = b.no || b.invNo || '';
-  if (aNo && bNo && a.date && b.date && String(aNo) === String(bNo) && String(a.date) === String(b.date)) {
-    const aBranch = a.branch || '';
-    const bBranch = b.branch || '';
-    return !aBranch || !bBranch || aBranch === bBranch;
-  }
-
-  return false;
-}
-
-function mergeBusinessDoc(oldDoc, newDoc){
-  // ใช้รวมรายการ localStorage กับรายการเดียวกันที่ sync กลับมาจาก Firebase
-  // เครื่องที่กรอกข้อมูลจะมี local row ก่อน แล้ว cloud row ตามมา จึงต้องรวมให้เหลือแถวเดียว
-  const merged = { ...oldDoc, ...newDoc };
-  merged.firebaseId = newDoc.firebaseId || oldDoc.firebaseId || merged.firebaseId;
-  merged.branch = newDoc.branch || oldDoc.branch || merged.branch;
-  merged._m = Number.isFinite(Number(newDoc._m)) ? Number(newDoc._m) : oldDoc._m;
-  merged._y = Number.isFinite(Number(newDoc._y)) ? Number(newDoc._y) : oldDoc._y;
-  return merged;
-}
-
-function dedupeRecords(rows){
-  const result = [];
-  (rows || []).forEach(row => {
-    const idx = result.findIndex(existing => sameBusinessDoc(existing, row));
-    if (idx >= 0) result[idx] = mergeBusinessDoc(result[idx], row);
-    else result.push(row);
-  });
-  return result;
-}
-
 function dedupeForListDisplay(rows){
   // กันแถวซ้ำเฉพาะเครื่องที่เป็นคนบันทึก: local row + cloud row
   // ไม่ลบข้อมูล Firebase และไม่กระทบเครื่องอื่น แค่รวมรายการเดียวกันก่อนแสดงผล
@@ -1202,7 +1140,7 @@ function dedupeLocalYear(year = getCurrentSelectedYear()){
     const months = Array.from({ length: 12 }, () => createEmptyBusinessStore());
 
     types.forEach(type => {
-      (type === 'creditNotes' ? mergeCreditNoteCopies([], collected[type]) : dedupeRecords(collected[type])).forEach(row => { // credit notes = tax documents: as mergeBackupPack, keep the first copy's figures; void is one-way (never revived)
+      (ISSUED_TAX_DOCUMENT_COLLECTIONS.includes(type) ? mergeCreditNoteCopies([], collected[type]) : dedupeRecords(collected[type])).forEach(row => { // credit/debit notes, 50 ทวิ = tax documents: as mergeBackupPack, keep the first copy's figures; void is one-way (never revived)
         const targetMonth = targetMonthForLocalRecord(row, row._sourceMonth);
         const clean = { ...row };
         delete clean._sourceMonth;
@@ -1406,7 +1344,7 @@ function initDropdowns(){
     const el=document.getElementById(id);if(el)el.value='';
   });
   ['p-quote-filter-month','i-prod-filter-month','r-inv-filter-month'].forEach(id=>populateMonthSel(id,false));
-  ['i-prod-filter-year','r-inv-filter-year'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=now.getFullYear();});
+  ['i-prod-filter-year','r-inv-filter-year','p-quote-filter-year'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=now.getFullYear();}); // R9.1: no year typed into index.html (was 2026)
   document.getElementById('dash-month').value=-1;
 }
 
@@ -1456,7 +1394,7 @@ function go(id,el){
     try { el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); } catch (_) { /* best-effort UI enhancement */ }
   }
   const m={dashboard:renderDash,analytics:renderDataAnalytics,'master-data':renderMasterData,'quote-list':renderQLList,'invoice-list':renderIList,'receipt-list':()=>{populateInvRefs();renderRList();},'issued-invoice-list':renderIssuedInvoiceList,'issued-receipt-list':renderIssuedReceiptList,'expense-list':renderEList,'production-list':renderPList,'linked-flow':renderLinkedFlow,'receipt-form':populateInvRefs,'invoice-form':()=>populateProductionRefs(),'production-form':()=>populateQuoteRefs('p')};
-  if(m[id])m[id]();
+  if(m[id])window.ERPIntegrity.safeRender(id,m[id]);// r8fix#B9: an unreadable month → "อ่านข้อมูลเดือน … ไม่ได้" in the panel, never a crash
   if(id==='quote-form')refreshAutoDocumentNumber('quote');
   if(id==='invoice-form')refreshAutoDocumentNumber('invoice');
   if(id==='receipt-form')refreshAutoDocumentNumber('receipt');
@@ -1547,13 +1485,13 @@ function switchDashTab(t){
 // Credit notes (ใบลดหนี้) count in their OWN period as negative sales rows (value, returned-goods cost) — see erp-receivables-core.js.
 function renderBusiness(){/* business() parsed once per synchronous render; saveFor() and every STORAGE_WRITTEN_EVENT (ERPIntegrity.transaction, ERPBackup.restore, write-session rollback) drop the cache */return renderBusiness.cache||=(queueMicrotask(()=>{renderBusiness.cache=null;}),window.ERPIntegrity.business());}
 window.addEventListener(STORAGE_WRITTEN_EVENT,()=>{renderBusiness.cache=null;});
-function creditAdjustmentRows(creditNotes,meta={},business=null){
+function adjustmentNotes(d){return [...(d?.creditNotes||[]),...(d?.debitNotes||[])];}/* ADR-024: ใบลดหนี้ (−) and ใบเพิ่มหนี้ (+) of a pack / business() */function creditAdjustmentRows(creditNotes,meta={},business=null){
   const period=Object.fromEntries(Object.entries(meta).filter(([,v])=>v!==undefined&&v!==null&&v!==''));let biz=business;
   return buildCreditNoteSalesAdjustments((Array.isArray(creditNotes)?creditNotes:[]).map(cn=>({...cn,...period})),ref=>window.ERPIntegrity.resolveInvoice(ref,biz||=renderBusiness()));
 }
 function branchStats(branch,year,monthVal){
   const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];let st=0,ct=0,cm=0,ex=0,qc=0,ic=0,pc=0;
-  months.forEach(m=>{const d=loadFor(branch,year,m),rows=[...analyticsPrimarySalesRows({productions:dedupeRecords(d.productions||[]).map(r=>({...r,branch})),invoices:(d.invoices||[]).map(r=>({...r,branch}))}),...creditAdjustmentRows(d.creditNotes,{branch,_branch:branch,_year:year,_month:m})];
+  months.forEach(m=>{const d=loadFor(branch,year,m),rows=packSalesRows(d,{branch,year,month:m},salesMeasureOptions());/* ADR-027: the one measure of erp-analytics-core.js */
     st+=rows.reduce((s,r)=>s+analyticsSalesValue(r),0);ct+=rows.reduce((s,r)=>s+analyticsCostValue(r),0);cm+=rows.reduce((s,r)=>s+safeNum(r.commAmt),0);ex+=(d.expenses||[]).reduce((s,r)=>s+safeNum(r.amount),0);qc+=(d.quotes||[]).length;ic+=(d.invoices||[]).filter(window.ERPIntegrity.live).length;pc+=(d.productions||[]).length;});
   const p=branchProfitSummary({sales:st,cost:ct,commission:cm,expenses:ex});return {st:p.sales,ct:p.cost,cm:p.commission,ex:p.expenses,gp:p.grossProfit,gm:p.grossMargin,net:p.net,nm:p.netMargin,qc,ic,pc};
 }
@@ -1581,7 +1519,7 @@ function renderDash(){
     document.getElementById('metrics-total').innerHTML=
       mc(isMultiBranchUi()?'ยอดขายรวมก่อน VAT 2 สาขา (ข้อมูลหลัก)':'ยอดขายรวมก่อน VAT (ข้อมูลหลัก)',fmt(tSt),'บาท','var(--blue)')+
       mc('ต้นทุนรวม',fmt(tCt),'บาท','var(--amber)')+
-      mc('ค่าคอมมิสชัน',fmt(tCm),'บาท','var(--g2)')+
+      mc('ค่าคอมมิชชัน',fmt(tCm),'บาท','var(--g2)')+
       mc('ค่าใช้จ่าย',fmt(tEx),'บาท','var(--red)')+
       mc('กำไรสุทธิรวม',fmt(tNet),'บาท',tNet>=0?'var(--green)':'var(--red)',tNet>=0?'var(--green-bd)':'var(--red-bd)');
     document.getElementById('dash-kk-rows').innerHTML=bRows(kk);
@@ -1594,7 +1532,7 @@ function renderDash(){
     document.getElementById('metrics-single').innerHTML=
       mc(label+' — ยอดขายก่อน VAT (ข้อมูลหลัก)',fmt(s.st),'บาท','var(--blue)')+
       mc('ต้นทุน',fmt(s.ct),'บาท','var(--amber)')+
-      mc('ค่าคอมมิสชัน',fmt(s.cm),'บาท','var(--g2)')+
+      mc('ค่าคอมมิชชัน',fmt(s.cm),'บาท','var(--g2)')+
       mc('ค่าใช้จ่าย',fmt(s.ex),'บาท','var(--red)')+
       mc('กำไรสุทธิ',fmt(s.net),'บาท',s.net>=0?'var(--green)':'var(--red)',s.net>=0?'var(--green-bd)':'var(--red-bd)');
   }
@@ -1638,7 +1576,7 @@ function bRows(s){return`
   <div class="brow"><span>ยอดขายก่อน VAT (หักใบลดหนี้)</span><span style="color:var(--blue);font-weight:600">฿${fmt(s.st)}</span></div>
   <div class="brow"><span>ต้นทุนขาย</span><span style="color:var(--amber)">฿${fmt(s.ct)}</span></div>
   <div class="brow brow-gross"><span>กำไรขั้นต้น · อัตรากำไรขั้นต้น</span><span class="${s.gp>=0?'pos':'neg'}">฿${fmt(s.gp)} · ${formatMarginPercent(s.gm)}</span></div>
-  <div class="brow"><span>ค่าคอมมิสชัน · ค่าใช้จ่าย</span><span style="color:var(--red)">฿${fmt(s.cm)} · ฿${fmt(s.ex)}</span></div>
+  <div class="brow"><span>ค่าคอมมิชชัน · ค่าใช้จ่าย</span><span style="color:var(--red)">฿${fmt(s.cm)} · ฿${fmt(s.ex)}</span></div>
   <div class="brow"><span>กำไรสุทธิ · อัตรากำไรสุทธิ</span><span class="${s.net>=0?'pos':'neg'}">฿${fmt(s.net)} · ${formatMarginPercent(s.nm)}</span></div>`;}
 function bbr(b){return b?`<span class="badge ${b==='khonkaen'?'b-kk':'b-ub'}">${escapeHtml(BRANCH_TH[b==='khonkaen'?'khonkaen':'ubon'])}</span>`:'';}
 
@@ -2030,12 +1968,6 @@ function saveSalesTarget(){
     notify('บันทึกเป้าหมายยอดขายไม่สำเร็จ: '+(error?.message||error));
   }
 }
-function productionNetSalesValue(record={}){
-  const subtotal=safeNum(record.subtotal);
-  if(subtotal)return subtotal;
-  if(record.schemaVersion===2)return 0;
-  return safeNum(record.total||record.saleTotal||record.itemSaleTotal);
-}
 function targetProductionsForPeriod(year,month,branches=dashBranches()){
   const rows=[];
   branches.forEach(branch=>{
@@ -2049,7 +1981,7 @@ function buildSalesTargetDashboard(){
   const scope=currentTargetScope();
   const target=currentSalesTarget();
   const businessDays=businessDaysInMonth(year,month);
-  const productions=targetProductionsForPeriod(year,month),credits=creditRowsOnProductionSales(dashBranches().flatMap(branch=>creditAdjustmentRows(loadFor(branch,year,month).creditNotes,{branch,_branch:branch,_year:year,_month:month})),window.ERPIntegrity.business().productions);// only notes on production-backed sales
+  const productions=targetProductionsForPeriod(year,month),credits=creditRowsOnProductionSales(dashBranches().flatMap(branch=>creditAdjustmentRows(adjustmentNotes(loadFor(branch,year,month)),{branch,_branch:branch,_year:year,_month:month})),window.ERPIntegrity.business().productions);// only notes on production-backed sales
   const dailyMap=new Map();
   let undated=0;
   [...productions,...credits].forEach(row=>{// credit notes (ใบลดหนี้) reduce the achieved sales on their own date
@@ -2152,15 +2084,14 @@ function renderSalesTargetDashboard(){
 }
 
 // ============================================================
-// SALES FORECAST — มาตรฐาน Time-series Forecasting
-// Auto เลือกโมเดลจาก Rolling-origin Cross-validation โดยใช้ RMSE ต่ำสุด
+// SALES FORECAST — ADR-027: ONE engine (erp-forecast-core.js) on ONE series (the measure of erp-analytics-core.js +
+// the demo history), drawn by erp-analytics.js here (คาดการณ์ tab), on วิเคราะห์ธุรกิจ and on "วิเคราะห์และคาดการณ์". The
+// former in-file models (naive / moving average / SES / damped Holt / Holt-Winters / linear chosen by rolling-origin
+// RMSE, with their own residual scenarios) were retired so the app never shows two different forecasts of one thing.
 // ============================================================
 function forecastMonthKey(year,month){return year*12+month;}
 function forecastMonthFromKey(key){return{year:Math.floor(key/12),month:key%12};}
 function forecastMonthLabel(year,month){return `${MONTHS[month]} พ.ศ. ${yearLabelDual(year)}`;}
-function forecastSalesForMonth(year,month,branches=dashBranches()){
-  return branches.reduce((sum,br)=>sum+metricFromData(loadFor(br,year,month),'sales',year,month,br),0);
-}
 function forecastStoredHistory(rows=[],branches=[]){
   // A missing/corrupt month pack is unknown, not a zero-sale month.
   // Stored empty packs represent zero recorded sales; completeness still needs review.
@@ -2176,28 +2107,6 @@ function forecastStoredHistory(rows=[],branches=[]){
   const first=checked.findIndex(row=>row.observed);
   return first<0?[]:checked.slice(first);
 }
-function forecastQuotePipeline(year,month,branches=dashBranches()){
-  let total=0,count=0;
-  branches.forEach(br=>{
-    const d=loadFor(br,year,month);
-    (d.quotes||[]).forEach(q=>{
-      if(!q.approved){total+=safeNum(q.subtotal||q.total);count+=1;}
-    });
-  });
-  const history=quantHistoricalQuoteApproval(year,month,branches,24);
-  const probability=history.probability;
-  return{total,count,probability,weighted:roundMoneyValue(total*probability),history};
-}
-function forecastReferencePeriod(){
-  const selectedYear=parseInt(document.getElementById('dash-year')?.value||now.getFullYear());
-  const selectedMonth=parseInt(document.getElementById('dash-month')?.value??-1);
-  if(selectedMonth>=0)return{year:selectedYear,month:selectedMonth,explicit:true};
-  if(selectedYear===now.getFullYear()){
-    const key=forecastMonthKey(selectedYear,now.getMonth())-1;
-    return{...forecastMonthFromKey(key),explicit:false};
-  }
-  return{year:selectedYear,month:11,explicit:false};
-}
 function forecastActiveSeries(values=[]){
   // Preserve calendar positions, including leading/trailing zero months.
   // Invalid/missing values invalidate the series instead of becoming zero.
@@ -2205,331 +2114,14 @@ function forecastActiveSeries(values=[]){
 }
 
 function forecastMean(values=[]){return values.length?values.reduce((s,v)=>s+safeNum(v),0)/values.length:0;}
-function forecastRmse(actual=[],pred=[]){
-  if(!actual.length)return Infinity;
-  return Math.sqrt(actual.reduce((s,a,i)=>s+Math.pow(safeNum(a)-safeNum(pred[i]),2),0)/actual.length);
-}
-function forecastMae(actual=[],pred=[]){
-  if(!actual.length)return Infinity;
-  return actual.reduce((s,a,i)=>s+Math.abs(safeNum(a)-safeNum(pred[i])),0)/actual.length;
-}
-function forecastSmape(actual=[],pred=[]){
-  if(!actual.length)return Infinity;
-  let total=0,count=0;
-  actual.forEach((a,i)=>{
-    const av=Math.abs(safeNum(a)),pv=Math.abs(safeNum(pred[i]));
-    const denom=(av+pv)/2;
-    if(denom>0)total+=Math.abs(av-pv)/denom*100;
-    count++;
-  });
-  return count?total/count:0;
-}
-function forecastMaseScale(values=[]){
-  const v=forecastActiveSeries(values);
-  if(v.length<2)return 0;
-  return v.slice(1).reduce((s,x,i)=>s+Math.abs(x-v[i]),0)/(v.length-1);
-}
-function forecastMase(actual=[],pred=[],training=[]){
-  if(!actual.length)return Infinity;
-  const scale=forecastMaseScale(training);
-  if(!scale)return Infinity;
-  return forecastMae(actual,pred)/scale;
-}
-function forecastWape(actual=[],pred=[]){
-  if(!actual.length)return Infinity;
-  const denom=actual.reduce((s,a)=>s+Math.abs(safeNum(a)),0);
-  if(!denom)return Infinity;
-  return actual.reduce((s,a,i)=>s+Math.abs(safeNum(a)-safeNum(pred[i])),0)/denom*100;
-}
-function forecastBias(actual=[],pred=[]){
-  if(!actual.length)return{mean:0,pct:0,cumulative:0};
-  const errors=actual.map((a,i)=>safeNum(a)-safeNum(pred[i]));
-  const cumulative=errors.reduce((s,e)=>s+e,0);
-  const denom=actual.reduce((s,a)=>s+Math.abs(safeNum(a)),0);
-  return{mean:cumulative/actual.length,pct:denom?cumulative/denom*100:0,cumulative};
-}
-function forecastTrackingSignal(actual=[],pred=[]){
-  if(!actual.length)return 0;
-  const errors=actual.map((a,i)=>safeNum(a)-safeNum(pred[i]));
-  const cumulative=errors.reduce((s,e)=>s+e,0);
-  const mad=errors.reduce((s,e)=>s+Math.abs(e),0)/errors.length;
-  return mad?cumulative/mad:0;
-}
-function forecastBiasDiagnostic(row={}){
-  if(!row.eligible)return{label:'ข้อมูลไม่พอ',cls:'muted',detail:row.reason||''};
-  const ts=safeNum(row.trackingSignal),bias=safeNum(row.biasPct),wape=safeNum(row.wape);
-  if(Math.abs(ts)>=4)return{label:ts>0?'Under-forecast ต่อเนื่อง':'Over-forecast ต่อเนื่อง',cls:'danger',detail:`Tracking Signal ${ts.toFixed(2)} เกินกรอบ ±4`};
-  if(Math.abs(bias)>=10)return{label:bias>0?'Bias ต่ำกว่าจริง':'Bias สูงกว่าจริง',cls:'warn',detail:`Bias ${bias>=0?'+':''}${bias.toFixed(1)}%`};
-  if(wape<=20)return{label:'สมดุลดี',cls:'good',detail:`WAPE ${wape.toFixed(1)}% · Bias อยู่ในกรอบ`};
-  return{label:'ควรติดตาม',cls:'neutral',detail:`WAPE ${wape.toFixed(1)}% · TS ${ts.toFixed(2)}`};
-}
-function forecastSma(values=[],horizon=1,windowSize=3){
-  const v=forecastActiveSeries(values);
-  if(!v.length)return Array.from({length:horizon},()=>0);
-  const avg=forecastMean(v.slice(-Math.min(windowSize,v.length)));
-  return Array.from({length:horizon},()=>Math.max(0,avg));
-}
-function forecastSesFit(values=[],horizon=1){
-  const v=forecastActiveSeries(values);
-  if(!v.length)return{forecast:Array.from({length:horizon},()=>0),alpha:.2,sse:0};
-  if(v.length===1)return{forecast:Array.from({length:horizon},()=>v[0]),alpha:.2,sse:0};
-  let best=null;
-  for(let ai=1;ai<=19;ai++){
-    const alpha=ai*.05;
-    let level=v[0],sse=0;
-    for(let t=1;t<v.length;t++){
-      const pred=level,err=v[t]-pred;sse+=err*err;
-      level=alpha*v[t]+(1-alpha)*level;
-    }
-    if(!best||sse<best.sse)best={alpha,level,sse};
-  }
-  return{forecast:Array.from({length:horizon},()=>Math.max(0,best.level)),alpha:best.alpha,sse:best.sse};
-}
-function forecastHoltFit(values=[],horizon=1){
-  const v=forecastActiveSeries(values);
-  if(!v.length)return{forecast:Array.from({length:horizon},()=>0),alpha:.3,beta:.1,phi:.9,sse:0};
-  if(v.length<2)return{forecast:Array.from({length:horizon},()=>v[0]),alpha:.3,beta:.1,phi:.9,sse:0};
-  let best=null;
-  const params=[.1,.2,.3,.4,.5,.6,.7,.8,.9],phis=[.8,.9,.95,.98];
-  for(const alpha of params)for(const beta of params)for(const phi of phis){
-    let level=v[0],trend=v[1]-v[0],sse=0;
-    for(let t=1;t<v.length;t++){
-      const pred=level+phi*trend,err=v[t]-pred;sse+=err*err;
-      const newLevel=alpha*v[t]+(1-alpha)*(level+phi*trend);
-      const newTrend=beta*(newLevel-level)+(1-beta)*phi*trend;
-      level=newLevel;trend=newTrend;
-    }
-    if(!best||sse<best.sse)best={alpha,beta,phi,level,trend,sse};
-  }
-  const future=[];
-  for(let h=1;h<=horizon;h++){
-    let damp=0;
-    for(let i=1;i<=h;i++)damp+=Math.pow(best.phi,i);
-    future.push(Math.max(0,best.level+damp*best.trend));
-  }
-  return{forecast:future,alpha:best.alpha,beta:best.beta,phi:best.phi,sse:best.sse};
-}
-function forecastHoltWintersFit(values=[],horizon=1,seasonLength=12){
-  const v=forecastActiveSeries(values);
-  if(v.length<seasonLength*2)return{forecast:[],alpha:null,beta:null,gamma:null,sse:Infinity,eligible:false};
-  const firstAvg=forecastMean(v.slice(0,seasonLength));
-  const secondAvg=forecastMean(v.slice(seasonLength,seasonLength*2));
-  const initialTrend=(secondAvg-firstAvg)/seasonLength;
-  const initialSeason=Array.from({length:seasonLength},(_,i)=>v[i]-firstAvg);
-  const grid=[.2,.4,.6,.8];
-  let best=null;
-  for(const alpha of grid)for(const beta of grid)for(const gamma of grid){
-    let level=firstAvg,trend=initialTrend,sse=0;
-    const seasonal=initialSeason.slice();
-    for(let t=seasonLength;t<v.length;t++){
-      const idx=t%seasonLength,s=seasonal[idx]||0;
-      const pred=level+trend+s,err=v[t]-pred;sse+=err*err;
-      const newLevel=alpha*(v[t]-s)+(1-alpha)*(level+trend);
-      const newTrend=beta*(newLevel-level)+(1-beta)*trend;
-      const newSeason=gamma*(v[t]-newLevel)+(1-gamma)*s;
-      level=newLevel;trend=newTrend;seasonal[idx]=newSeason;
-    }
-    if(!best||sse<best.sse)best={alpha,beta,gamma,level,trend,seasonal,sse};
-  }
-  const future=[];
-  for(let h=1;h<=horizon;h++){
-    const idx=(v.length+h-1)%seasonLength;
-    future.push(Math.max(0,best.level+h*best.trend+(best.seasonal[idx]||0)));
-  }
-  return{forecast:future,alpha:best.alpha,beta:best.beta,gamma:best.gamma,sse:best.sse,eligible:true};
-}
-function forecastLinearFit(values=[],horizon=1){
-  const v=forecastActiveSeries(values);
-  if(!v.length)return{forecast:Array.from({length:horizon},()=>0),slope:0,r2:0};
-  if(v.length===1)return{forecast:Array.from({length:horizon},()=>v[0]),slope:0,r2:0};
-  const n=v.length,xMean=(n-1)/2,yMean=forecastMean(v);
-  let num=0,den=0;
-  v.forEach((y,x)=>{num+=(x-xMean)*(y-yMean);den+=(x-xMean)**2;});
-  const slope=den?num/den:0,intercept=yMean-slope*xMean;
-  const ssTot=v.reduce((s,y)=>s+Math.pow(y-yMean,2),0);
-  const ssRes=v.reduce((s,y,x)=>s+Math.pow(y-(intercept+slope*x),2),0);
-  const r2=ssTot?Math.max(0,Math.min(1,1-ssRes/ssTot)):0;
-  return{forecast:Array.from({length:horizon},(_,i)=>Math.max(0,intercept+slope*(n+i))),slope,r2:r2*100};
-}
-function forecastModelLabel(id){return({naive:'ยอดเดือนล่าสุด (Naive baseline)',sma:'Moving Average 3 เดือน',ses:'Simple Exponential Smoothing',holt:'Holt Trend (Damped)',hw:'Holt-Winters Additive (12 เดือน)',linear:'Linear Regression (Benchmark)'})[id]||id;}
-function forecastModelMinHistory(id){return id==='naive'?1:id==='hw'?24:id==='holt'?6:id==='linear'?4:3;}
-function forecastModelRun(id,values,horizon=1){
-  if(id==='naive')return{forecast:Array(horizon).fill(values.at(-1)??0),params:'last observed month'};
-  if(id==='sma')return{forecast:forecastSma(values,horizon,3),params:'window=3'};
-  if(id==='ses'){
-    const fit=forecastSesFit(values,horizon);return{forecast:fit.forecast,params:`α=${fit.alpha?.toFixed(2)}`};
-  }
-  if(id==='holt'){
-    const fit=forecastHoltFit(values,horizon);return{forecast:fit.forecast,params:`α=${fit.alpha?.toFixed(2)}, β=${fit.beta?.toFixed(2)}, φ=${fit.phi?.toFixed(2)}`};
-  }
-  if(id==='hw'){
-    const fit=forecastHoltWintersFit(values,horizon,12);return{forecast:fit.forecast,params:fit.eligible?`α=${fit.alpha?.toFixed(2)}, β=${fit.beta?.toFixed(2)}, γ=${fit.gamma?.toFixed(2)}`:'ต้องมีข้อมูลอย่างน้อย 24 เดือน'};
-  }
-  if(id==='linear'){
-    const fit=forecastLinearFit(values,horizon);return{forecast:fit.forecast,params:`R²=${fit.r2.toFixed(1)}%`};
-  }
-  return{forecast:forecastSma(values,horizon,3),params:'window=3'};
-}
-function forecastRollingCv(values=[],id='sma',start=null){
-  const v=forecastActiveSeries(values),minTrain=forecastModelMinHistory(id);
-  const origin=Math.max(minTrain,start??minTrain);
-  const unavailable={id,label:forecastModelLabel(id),eligible:false,rmse:Infinity,mae:Infinity,smape:Infinity,mase:Infinity,wape:Infinity,bias:0,biasPct:0,trackingSignal:0,n:0,origins:[],errors:[],reason:'ต้องมีข้อมูลฝึกและช่วงทดสอบร่วมอย่างน้อย 3 เดือน'};
-  if(v.length-origin<3)return unavailable;
-  const actual=[],pred=[],scaled=[],origins=[];
-  for(let i=origin;i<v.length;i++){
-    const training=v.slice(0,i),out=forecastModelRun(id,training,1).forecast[0];
-    if(!Number.isFinite(out))return unavailable;
-    actual.push(v[i]);pred.push(out);origins.push(i);
-    const scale=forecastMaseScale(training);
-    scaled.push(scale>0?Math.abs(v[i]-out)/scale:Infinity);
-  }
-  const bias=forecastBias(actual,pred);
-  return{id,label:forecastModelLabel(id),eligible:true,rmse:forecastRmse(actual,pred),mae:forecastMae(actual,pred),smape:forecastSmape(actual,pred),mase:scaled.every(Number.isFinite)?forecastMean(scaled):Infinity,wape:forecastWape(actual,pred),bias:bias.mean,biasPct:bias.pct,trackingSignal:forecastTrackingSignal(actual,pred),n:actual.length,origins,errors:actual.map((v,i)=>v-pred[i]),reason:''};
-}
-
-function buildStandardForecastModel(values=[],requested='auto',horizon=6){
-  const active=forecastActiveSeries(values),ids=['naive','sma','ses','holt','hw','linear'];
-  const valid=active.length>0;
-  const pool=ids.filter(id=>active.length>=forecastModelMinHistory(id)+3);
-  const commonStart=pool.length?Math.max(...pool.map(forecastModelMinHistory)):active.length;
-  const candidates=ids.map(id=>forecastRollingCv(active,id,pool.includes(id)?commonStart:active.length));
-  const eligible=candidates.filter(x=>x.eligible).sort((a,b)=>a.rmse-b.rmse);
-  let selectedId=requested,fallbackReason='';
-  if(requested==='auto')selectedId=eligible[0]?.id||'naive';
-  else if(!ids.includes(requested)||active.length<forecastModelMinHistory(requested)){
-    selectedId=eligible[0]?.id||'naive';fallbackReason='ข้อมูลไม่พอสำหรับโมเดลที่เลือก ใช้ยอดเดือนล่าสุดเป็นฐานชั่วคราว';
-  }
-  const run=valid?forecastModelRun(selectedId,active,horizon):{forecast:Array(horizon).fill(null),params:'ข้อมูลขาดหายหรือไม่มีข้อมูลที่ใช้ได้'};
-  const cv=candidates.find(x=>x.id===selectedId);
-  const future=run.forecast.map(v=>Number.isFinite(v)?roundMoneyValue(Math.max(0,v)):null);
-  // Forecast errors differ by horizon. Never extrapolate one-step RMSE with sqrt(h).
-  // One-step empirical residual quantiles are descriptive scenarios, not calibrated coverage.
-  const errors=cv.errors.slice().sort((a,b)=>a-b);
-  const quantile=p=>{const x=(errors.length-1)*p,i=Math.floor(x);return errors[i]+(errors[Math.ceil(x)]-errors[i])*(x-i);};
-  const intervals=future.map((value,index)=>{
-    const available=index===0&&Number.isFinite(value)&&errors.length>=8;
-    const lower=available?roundMoneyValue(Math.max(0,value+quantile(.1))):null;
-    const upper=available?roundMoneyValue(Math.max(0,value+quantile(.9))):null;
-    return{lower,upper,p10:lower,p50:null,p90:upper,available,n:available?errors.length:0};
-  });
-  const readiness=cv.eligible?`ทดสอบย้อนหลัง ${cv.n} เดือน · ยังไม่ได้ยืนยันความแม่นยำนอกชุดทดสอบ`:'ข้อมูลไม่พอสำหรับเปรียบเทียบโมเดล';
-  return{selectedId,label:forecastModelLabel(selectedId),params:run.params,future,forecast:future[0]??null,intervals,candidates,cv,historyCount:active.length,readiness,fallbackReason,requested,commonStart,valid};
-}
-
-function recentMeanVolatility(values){
-  const vals=(values||[]).filter(v=>Number.isFinite(Number(v))).map(Number);
-  if(vals.length<2)return 0;
-  const mean=forecastMean(vals);if(!mean)return 0;
-  const variance=vals.reduce((s,v)=>s+(v-mean)**2,0)/vals.length;
-  return Math.sqrt(variance)/mean*100;
-}
-function buildSalesForecast(){
-  const historyMonths=Math.max(6,parseInt(document.getElementById('forecast-history')?.value||12));
-  const method=document.getElementById('forecast-method')?.value||'auto';
-  const branches=dashBranches();
-  const ref=forecastReferencePeriod(),refKey=forecastMonthKey(ref.year,ref.month);
-  const history=[];
-  for(let offset=historyMonths-1;offset>=0;offset--){
-    const d=forecastMonthFromKey(refKey-offset);
-    history.push({...d,value:forecastSalesForMonth(d.year,d.month,branches)});
-  }
-  const observedHistory=forecastStoredHistory(history,branches);
-  const model=buildStandardForecastModel(observedHistory.map(x=>x.value),method,24);
-  const future=model.future.map((value,index)=>{
-    const d=forecastMonthFromKey(refKey+index+1),band=model.intervals[index]||{lower:value,upper:value};
-    return{...d,value,lower:band.lower,upper:band.upper,p10:band.p10??band.lower,p50:band.p50??value,p90:band.p90??band.upper};
-  });
-  const next=future[0]?.value??null,current=observedHistory.at(-1)?.value??null;
-  const nextRef=future[0]||forecastMonthFromKey(refKey+1);
-  const pipeline=forecastQuotePipeline(nextRef.year,nextRef.month,branches);
-  const yoy=forecastSalesForMonth(nextRef.year-1,nextRef.month,branches);
-  const changeCurrent=Number.isFinite(next)&&current?((next-current)/current)*100:null;
-  const changeYoy=Number.isFinite(next)&&yoy?((next-yoy)/yoy)*100:null;
-  const recent=forecastActiveSeries(observedHistory.map(x=>x.value)).slice(-6);
-  return{history:observedHistory,future,next,current,yoy,changeCurrent,changeYoy,readiness:model.readiness,volatility:recentMeanVolatility(recent),pipeline,ref,branches,model,scenarioNext:Number.isFinite(next)?roundMoneyValue(next+pipeline.weighted):null};
-}
+// The forecast the Quant views simulate — the page's own numbers (erp-analytics.js quantForecast); empty when unavailable.
+function buildSalesForecast(branches=dashBranches()){return window.ERPAnalytics?.quantForecast?.(branches)||{ref:{year:now.getFullYear(),month:now.getMonth()},branches,history:[],future:[],next:null,current:null,band:null,model:{valid:false,selectedId:'',label:'',params:'',historyCount:0,candidates:[],cv:{eligible:false,n:0}}};}
 function forecastMoney(value){return Number.isFinite(value)?chartMoney(value):'—';}
 function forecastPercent(value){
   if(value===null||!Number.isFinite(value))return 'ยังเทียบไม่ได้';
   return `${value>=0?'+':''}${value.toFixed(1)}%`;
 }
-function forecastKpi(label,value,detail,cls=''){
-  return `<div class="forecast-kpi ${cls}"><div class="fk-label">${label}</div><div class="fk-value">${value}</div><div class="fk-detail">${detail}</div></div>`;
-}
-function forecastAccuracyTableHtml(model){
-  const rows=model.candidates||[];
-  return `<div class="forecast-table-wrap"><table class="forecast-data-table forecast-governance-table"><thead><tr><th>โมเดล</th><th>สถานะ</th><th>ความคลาดเคลื่อน</th><th>WAPE / sMAPE</th><th>Bias / Tracking</th><th>MASE</th><th>Quant View</th><th>รอบทดสอบ</th></tr></thead><tbody>${rows.map(row=>{
-    const selected=row.id===model.selectedId;
-    const diag=forecastBiasDiagnostic(row);
-    const biasText=row.eligible?`${row.biasPct>=0?'+':''}${row.biasPct.toFixed(1)}%`:'—';
-    const biasDir=row.biasPct>0?'พยากรณ์ต่ำกว่าจริง':row.biasPct<0?'พยากรณ์สูงกว่าจริง':'สมดุล';
-    return `<tr class="${selected?'is-model-selected':''}"><td><b>${escapeHtml(row.label)}</b>${selected?'<span class="model-selected-badge">เลือกใช้</span>':''}<small>${selected?escapeHtml(model.params||''):''}</small></td><td>${row.eligible?'<span class="status-pill good">พร้อมใช้</span>':`<span class="status-pill muted">${escapeHtml(row.reason)}</span>`}</td><td class="num"><b>${row.eligible?forecastMoney(row.rmse):'—'}</b><small>MAE ${row.eligible?forecastMoney(row.mae):'—'}</small></td><td class="num"><b>${row.eligible&&Number.isFinite(row.wape)?row.wape.toFixed(1)+'%':'—'}</b><small>sMAPE ${row.eligible?row.smape.toFixed(1)+'%':'—'}</small></td><td class="num"><b class="${Math.abs(safeNum(row.trackingSignal))>=4?'risk-text-danger':Math.abs(safeNum(row.biasPct))>=10?'risk-text-warn':'risk-text-good'}">${biasText}</b><small>${escapeHtml(biasDir)} · TS ${row.eligible?safeNum(row.trackingSignal).toFixed(2):'—'}</small></td><td class="num">${row.eligible&&Number.isFinite(row.mase)?row.mase.toFixed(2):'—'}</td><td><span class="quant-diagnostic-pill ${diag.cls}">${escapeHtml(diag.label)}</span><small>${escapeHtml(diag.detail)}</small></td><td class="num">${row.n||0}</td></tr>`;
-  }).join('')}</tbody></table></div>`;
-}
-function forecastDiagnosticSummaryHtml(model){
-  const selected=model?.candidates?.find(row=>row.id===model.selectedId)||model?.cv||null;
-  if(!selected||!selected.eligible)return '<div class="forecast-diagnostic-card muted"><b>Model Governance</b><span>ข้อมูลย้อนหลังยังไม่พอสำหรับตรวจ Bias และ Tracking Signal</span></div>';
-  const diag=forecastBiasDiagnostic(selected);
-  const wape=selected.wape,ts=safeNum(selected.trackingSignal),bias=safeNum(selected.biasPct);
-  const accuracyLabel=!Number.isFinite(wape)?'คำนวณ WAPE ไม่ได้เมื่อยอดจริงรวมเป็นศูนย์':wape<=15?'แม่นยำสูง':wape<=25?'ใช้งานได้ดี':wape<=40?'ปานกลาง':'ความคลาดเคลื่อนสูง';
-  return `<div class="forecast-diagnostic-grid"><div class="forecast-diagnostic-card"><small>Forecast Accuracy</small><b>${Number.isFinite(wape)?wape.toFixed(1)+'%':'—'} WAPE</b><span>${accuracyLabel} · MASE ${Number.isFinite(selected.mase)?selected.mase.toFixed(2):'—'}</span></div><div class="forecast-diagnostic-card ${diag.cls}"><small>Bias Check</small><b>${bias>=0?'+':''}${bias.toFixed(1)}%</b><span>${bias>0?'โมเดลมีแนวโน้มพยากรณ์ต่ำกว่ายอดจริง':bias<0?'โมเดลมีแนวโน้มพยากรณ์สูงกว่ายอดจริง':'Bias ใกล้ศูนย์'}</span></div><div class="forecast-diagnostic-card ${Math.abs(ts)>=4?'danger':'good'}"><small>Tracking Signal</small><b>${ts.toFixed(2)}</b><span>${Math.abs(ts)>=4?'เกินกรอบเฝ้าระวัง ±4 ควรตรวจโมเดล':'อยู่ในกรอบเฝ้าระวัง ±4'}</span></div><div class="forecast-diagnostic-card"><small>Model Governance</small><b>${escapeHtml(model.label)}</b><span>${escapeHtml(diag.label)} · ทดสอบย้อนหลัง ${selected.n||0} รอบ</span></div></div>`;
-}
-function forecastFutureTableHtml(f){
-  const rows=f.future.slice(0,6);
-  return `<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>สถานการณ์ต่ำ*</th><th>Base Forecast</th><th>สถานการณ์สูง*</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${forecastMoney(row.p10??row.lower)}</td><td class="num"><b>${forecastMoney(row.p50??row.value)}</b></td><td class="num">${forecastMoney(row.p90??row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
-}
-function renderSalesForecast(){
-  const host=document.getElementById('forecast-metrics');if(!host)return;
-  const f=buildSalesForecast(),trendClass=(f.changeCurrent??0)>=0?'positive':'negative';
-  const banner=document.getElementById('forecast-model-banner');
-  if(banner)banner.innerHTML=`<div><span class="forecast-model-dot"></span><b>${escapeHtml(f.model.label)}</b><span>${escapeHtml(f.model.params||'')}</span></div><div>CV RMSE ${Number.isFinite(f.model.cv.rmse)?forecastMoney(f.model.cv.rmse):'—'} · sMAPE ${Number.isFinite(f.model.cv.smape)?f.model.cv.smape.toFixed(1)+'%':'—'} · ข้อมูลต่อเนื่องที่ใช้ได้ ${f.model.historyCount} เดือน</div>${f.model.fallbackReason?`<small>${escapeHtml(f.model.fallbackReason)}</small>`:''}`;
-  const nextRef=f.future[0]||forecastMonthFromKey(forecastMonthKey(f.ref.year,f.ref.month)+1);
-  host.innerHTML=
-    forecastKpi('Base Forecast เดือนถัดไป',forecastMoney(f.next),`${forecastMonthLabel(nextRef.year,nextRef.month)} · ${f.readiness}`,trendClass)+
-    forecastKpi('เทียบเดือนล่าสุด',forecastPercent(f.changeCurrent),`ยอดล่าสุด ${forecastMoney(f.current)}`,trendClass)+
-    forecastKpi('เทียบเดือนเดียวกันปีก่อน',forecastPercent(f.changeYoy),f.yoy?`ปีก่อน ${forecastMoney(f.yoy)}`:'ยังไม่มีข้อมูลปีก่อน',(f.changeYoy??0)>=0?'positive':'negative')+
-    forecastKpi('Upside Scenario จาก Pipeline',forecastMoney(f.scenarioNext),`${f.pipeline.count} ใบเสนอราคารออนุมัติ · Approval proxy ${(f.pipeline.probability*100).toFixed(1)}%`,'pipeline');
-
-  const chartRows=[...f.history.slice(-6).map(x=>({...x,future:false})),...f.future.slice(0,6).map(x=>({...x,future:true}))];
-  const max=Math.max(...chartRows.map(x=>safeNum(x.value)),1);
-  const chart=document.getElementById('forecast-chart');
-  if(chart)chart.innerHTML=chartRows.map(x=>`<div class="forecast-row">
-    <div class="forecast-label">${MONTHS[x.month].slice(0,3)} ${String(yearLabelBE(x.year)).slice(-2)}${x.future?' *':''}</div>
-    <div class="forecast-track"><div class="forecast-fill ${x.future?'future':''}" style="width:${Number.isFinite(x.value)?Math.max(0,x.value/max*100):0}%"></div></div>
-    <div class="forecast-value">${forecastMoney(x.value)}</div>
-  </div>`).join('');
-  const note=document.getElementById('forecast-note');
-  if(note)note.innerHTML=`ยอดจริง = แถบทึบ · Base Forecast = แถบลาย · ใช้ข้อมูลถึง ${forecastMonthLabel(f.ref.year,f.ref.month)} · * ต่ำ/สูง = Base บวกเปอร์เซ็นไทล์ 10/90 ของข้อผิดพลาดทดสอบ 1 เดือน เมื่อมีอย่างน้อย 8 รอบ · ไม่ใช่ช่วงรับประกัน 80% · — หมายถึงข้อมูลไม่พอหรือยังไม่ประเมินระยะนั้น · เดือนที่มีชุดข้อมูลว่างนับเป็น 0 · เดือนที่ยังไม่มีชุดข้อมูลหรือข้อมูลเสียเป็นข้อมูลขาดหาย ระบบงดพยากรณ์เมื่อมีช่องว่าง · ตรวจความครบถ้วนทุกสาขาก่อนใช้ผล`;
-  const futureTable=document.getElementById('forecast-future-table');if(futureTable)futureTable.innerHTML=forecastFutureTableHtml(f);
-  const accuracy=document.getElementById('forecast-accuracy-table');if(accuracy)accuracy.innerHTML=forecastAccuracyTableHtml(f.model);
-  const diagSummary=document.getElementById('forecast-diagnostic-summary');if(diagSummary)diagSummary.innerHTML=forecastDiagnosticSummaryHtml(f.model);
-  const methodNote=document.getElementById('forecast-method-note');if(methodNote)methodNote.innerHTML=`Auto จะเลือกโมเดลที่มี <b>RMSE ต่ำสุดจาก Rolling-origin Cross-validation</b> บนเดือนทดสอบเดียวกันอย่างน้อย 3 รอบ รวม Naive baseline · MASE ใช้สเกลจากข้อมูลฝึกของแต่ละรอบเท่านั้น · Holt-Winters ต้องมีอย่างน้อย 27 เดือนเพื่อเข้าเปรียบเทียบ · Pipeline ใช้ Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% (${f.pipeline.history?.source==='history'?'อัตราอนุมัติเอกสารย้อนหลัง ไม่ใช่อัตราชนะงาน':'สมมติฐาน DEMO 35% ไม่ได้เรียนรู้จากข้อมูล'}) แยกจาก Base Forecast`;
-
-  const nextYear=f.ref.year+1,annualRows=f.future.filter(x=>x.year===nextYear),annualTotal=annualRows.length&&annualRows.every(x=>Number.isFinite(x.value))?annualRows.reduce((s,x)=>s+x.value,0):null;
-  const currentYearTotal=Array.from({length:12},(_,m)=>forecastSalesForMonth(f.ref.year,m,f.branches)).reduce((a,b)=>a+b,0);
-  const annualGrowth=Number.isFinite(annualTotal)&&currentYearTotal?((annualTotal-currentYearTotal)/currentYearTotal)*100:null;
-  const best=f.future.slice(0,12).filter(x=>Number.isFinite(x.value)).sort((a,b)=>b.value-a.value)[0],low=f.future.slice(0,12).filter(x=>Number.isFinite(x.value)).sort((a,b)=>a.value-b.value)[0];
-  const yearSummary=document.getElementById('forecast-year-summary');
-  if(yearSummary)yearSummary.innerHTML=`
-    <div class="forecast-year-total">${forecastMoney(annualTotal)}</div>
-    <div class="forecast-year-caption">ยอดขายรวมที่คาดการณ์สำหรับปี พ.ศ. ${yearLabelDual(nextYear)}${annualRows.length<12?' (เฉพาะเดือนที่อยู่ใน Forecast Horizon)':''}</div>
-    <div class="forecast-year-grid">
-      <div class="forecast-mini"><span>เติบโตเทียบปีที่เลือก</span><b>${forecastPercent(annualGrowth)}</b></div>
-      <div class="forecast-mini"><span>เดือนคาดการณ์สูงสุด</span><b>${best?MONTHS[best.month]:'-'}</b></div>
-      <div class="forecast-mini"><span>เดือนคาดการณ์ต่ำสุด</span><b>${low?MONTHS[low.month]:'-'}</b></div>
-      <div class="forecast-mini"><span>ความผันผวน 6 เดือน</span><b>${f.volatility.toFixed(1)}%</b></div>
-    </div>`;
-
-  const alerts=[];
-  if(f.model.historyCount<6)alerts.push({cls:'danger',text:'ข้อมูลย้อนหลังยังน้อยกว่า 6 เดือน ผลพยากรณ์ควรใช้เพื่อดูทิศทางเบื้องต้นเท่านั้น'});
-  if(f.model.selectedId==='hw')alerts.push({cls:'good',text:'เลือก Holt-Winters จากข้อมูลที่มี ยังต้องตรวจผลกับข้อมูลใหม่เพื่อยืนยันฤดูกาล'});
-  if((f.changeCurrent??0)<-10)alerts.push({cls:'danger',text:`Base Forecast เดือนถัดไปลดลง ${Math.abs(f.changeCurrent).toFixed(1)}% จากเดือนล่าสุด ควรตรวจ Pipeline และลูกค้ารายใหญ่`});
-  else if((f.changeCurrent??0)>10)alerts.push({cls:'good',text:`Base Forecast เดือนถัดไปเพิ่มขึ้น ${f.changeCurrent.toFixed(1)}% ควรเตรียมกำลังผลิต สต็อก และกระแสเงินสด`});
-  else if(f.model.valid)alerts.push({cls:'',text:'แนวโน้มเดือนถัดไปค่อนข้างทรงตัวเมื่อเทียบเดือนล่าสุด'});
-  if(f.pipeline.count>0)alerts.push({cls:'warn',text:`มี Pipeline ${f.pipeline.count} รายการ มูลค่า ${forecastMoney(f.pipeline.total)}; Historical Approval Proxy ${(f.pipeline.probability*100).toFixed(1)}% ให้ Expected Pipeline ${forecastMoney(f.pipeline.weighted)} และ Upside Scenario ${forecastMoney(f.scenarioNext)}`});
-  if(f.volatility>35)alerts.push({cls:'warn',text:'ยอดขายย้อนหลังผันผวนสูง ควรพิจารณาช่วงคาดการณ์ต่ำ–สูงควบคู่กับค่ากลาง'});
-  const alertsEl=document.getElementById('forecast-alerts');if(alertsEl)alertsEl.innerHTML=alerts.map(a=>`<div class="forecast-alert ${a.cls}">${a.text}</div>`).join('');
-}
+function renderSalesForecast(){window.ERPAnalytics?.renderEmbeddedForecast?.(document.getElementById('forecast-unified'),{branches:dashBranches()});}
 
 // ============================================================
 // PRODUCTION VS DELIVERY — ยอดสั่งผลิตเทียบยอดส่งสินค้า
@@ -2649,7 +2241,7 @@ function metricFromData(d,metric,year,month,branch){
   const expenses=d.expenses||[];
   const productions=dedupeRecords(d.productions||[]).map(r=>({...r,branch:branch||r.branch||r._branch}));
   const invoices=dedupeRecords(d.invoices||[]).map(r=>({...r,branch:branch||r.branch||r._branch}));
-  const salesRows=[...analyticsPrimarySalesRows({productions,invoices}),...creditAdjustmentRows(d.creditNotes,{branch,_branch:branch,_year:year,_month:month})];
+  const salesRows=packSalesRows(d,{branch,year,month},salesMeasureOptions());// ADR-027: the one measure (erp-analytics-core.js), also used by วิเคราะห์และคาดการณ์
   if(metric==='sales')return roundMoneyValue(salesRows.reduce((sum,r)=>sum+analyticsSalesValue(r),0));
   if(metric==='delivery')return invoices.filter(window.ERPIntegrity.live).reduce((sum,r)=>sum+invoiceNetSales(r),0);
   if(metric==='production')return productions.filter(window.ERPIntegrity.live).reduce((sum,r)=>sum+productionNetSalesValue(r),0);
@@ -2683,7 +2275,7 @@ function renderBarRows(containerId,rows,opt={}){
     const v=safeNum(r.value),w=Math.max(2,Math.round(Math.abs(v)/max*100));
     const valText=opt.mode==='count'?chartCount(v):chartMoney(v);
     return `<div class="chart-bar-row" title="${escapeHtml(r.sub||r.label)}">
-      <div><div class="chart-label">${escapeHtml(r.label)}</div>${r.sub?`<div class="chart-note">${escapeHtml(r.sub)}</div>`:''}</div>
+      <div><div class="chart-label"${opt.dataLabel?' data-no-i18n':''}>${escapeHtml(r.label)}</div>${r.sub?`<div class="chart-note">${escapeHtml(r.sub)}</div>`:''}</div>
       <div class="chart-track"><div class="chart-fill ${v<0?'red':cls}" style="width:${w}%"></div></div>
       <div class="chart-value">${valText}</div>
     </div>`;
@@ -2720,7 +2312,7 @@ function customerRows(year,monthVal,branches,source,mode){
     const productions=dedupeRecords(d.productions||[]);
     if(source==='all'||source==='invoices'){
       if(shouldMirrorHistoricalSalesAsDelivery(year,m))productions.forEach(x=>add(x.customer,productionNetSalesValue(x),'invoice'));
-      else [...(d.invoices||[]).filter(window.ERPIntegrity.live),...creditAdjustmentRows(d.creditNotes,{branch:br,_branch:br,_year:year,_month:m})].forEach(x=>add(x.customer,x._creditAdjustment?analyticsSalesValue(x):invoiceNetSales(x),'invoice'));
+      else [...(d.invoices||[]).filter(window.ERPIntegrity.live),...creditAdjustmentRows(adjustmentNotes(d),{branch:br,_branch:br,_year:year,_month:m})].forEach(x=>add(x.customer,x._creditAdjustment?analyticsSalesValue(x):invoiceNetSales(x),'invoice'));
     }
     if(source==='all'||source==='productions'){
       productions.forEach(x=>add(x.customer,productionNetSalesValue(x),'production'));
@@ -2738,7 +2330,7 @@ function renderCustomerChart(){
   const source=document.getElementById('dash-customer-source')?.value||'all';
   const mode=document.getElementById('dash-customer-mode')?.value||'value';
   const rows=customerRows(year,mVal,dashBranches(),source,mode);
-  renderBarRows('dash-customer-chart',rows,{fillClass:'green',mode});
+  renderBarRows('dash-customer-chart',rows,{fillClass:'green',mode,dataLabel:1});
   const total=rows.reduce((s,r)=>s+safeNum(r.value),0);
   const srcLabel={all:'ยอดขายก่อน VAT (ไม่นับเอกสารที่เชื่อมกันซ้ำ)',invoices:'ใบส่งสินค้า / ใบกำกับภาษี',productions:'ใบสั่งผลิต'}[source];
   const monthText=mVal===-1?'ทั้งปี':MONTHS[mVal];
@@ -2854,11 +2446,11 @@ function saveMonthlyTargetPlanner(){
 function executiveSeriesBarSvg(rows,series,opt={}){
   if(!rows?.length||!series?.length)return '<div class="exec-chart-empty">ยังไม่มีข้อมูลสำหรับแสดงกราฟ</div>';
   const width=Math.max(780,rows.length*(opt.groupWidth||68)+90),height=300,pad={l:58,r:18,t:24,b:52};
-  const all=rows.flatMap(row=>series.map(s=>Math.max(0,safeNum(row[s.key]))));const max=Math.max(...all,1)*1.08,plotW=width-pad.l-pad.r,plotH=height-pad.t-pad.b,y=v=>height-pad.b-(safeNum(v)/max)*plotH;
+  const all=rows.flatMap(row=>series.map(s=>Math.max(0,safeNum(row[s.key]))));if(!all.some(v=>v>0))return `<div class="exec-chart-empty">${escapeHtml(opt.emptyText||'ยังไม่มียอดหรือเป้าหมายในช่วงที่เลือก')}</div>`;/* r8fix#C9: whole-number ticks; all-zero → empty state */const tickStep=(v=>{const p=10**Math.floor(Math.log10(Math.max(v,1)));return [1,2,5,10].map(m=>m*p).find(s=>s>=v);})(Math.max(...all)*1.08/4),max=tickStep*4,plotW=width-pad.l-pad.r,plotH=height-pad.t-pad.b,y=v=>height-pad.b-(safeNum(v)/max)*plotH;
   const ticks=[0,.25,.5,.75,1].map(p=>{const value=max*p,yy=y(value);return `<line x1="${pad.l}" y1="${yy.toFixed(1)}" x2="${width-pad.r}" y2="${yy.toFixed(1)}" class="exec-axis"/><text x="${pad.l-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" class="exec-axis-label">${escapeHtml(executiveCompactMoney(value).replace('฿',''))}</text>`;}).join('');
   const slot=plotW/rows.length,groupW=Math.min(slot*.78,54),barW=Math.max(4,groupW/series.length-2);let bars='',labels='';
   rows.forEach((row,i)=>{const center=pad.l+slot*i+slot/2,totalW=series.length*barW+(series.length-1)*2,start=center-totalW/2;series.forEach((sr,j)=>{const value=Math.max(0,safeNum(row[sr.key])),yy=y(value),h=Math.max(0,height-pad.b-yy),x=start+j*(barW+2),detail=typeof opt.detailFor==='function'?opt.detailFor(row,sr,j):{title:`${row.label} · ${sr.label}`,primary:chartMoney(value),rows:[{label:'มูลค่า',value:chartMoney(value)}]};bars+=`<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="exec-series-${j%5} exec-interactive-mark" ${executiveDetailAttrs(detail)}><title>${escapeHtml(row.label)} · ${escapeHtml(sr.label)} · ${chartMoney(value)}</title></rect>`;});labels+=`<text x="${center.toFixed(1)}" y="${height-25}" text-anchor="middle" class="exec-axis-label">${escapeHtml(opt.shortLabels?String(row.label).slice(0,3):row.label)}</text>`;});
-  const legend=series.map((sr,i)=>`<span><i class="s${i%5}"></i>${escapeHtml(sr.label)}</span>`).join('');return `<div class="exec-chart-scroll"><svg class="exec-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(opt.ariaLabel||'กราฟเปรียบเทียบ')}">${ticks}${bars}${labels}</svg></div><div class="exec-chart-legend">${legend}</div>`;
+  const legend=series.map((sr,i)=>`<span${opt.dataLegend?' data-no-i18n':''}><i class="s${i%5}"></i>${escapeHtml(sr.label)}</span>`).join('');return `<div class="exec-chart-scroll"><svg class="exec-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(opt.ariaLabel||'กราฟเปรียบเทียบ')}">${ticks}${bars}${labels}</svg></div><div class="exec-chart-legend">${legend}</div>`;
 }
 function executivePieArc(cx,cy,r,startAngle,endAngle){const polar=a=>{const rad=(a-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}};const start=polar(endAngle),end=polar(startAngle),large=endAngle-startAngle<=180?0:1;return `M ${cx} ${cy} L ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 0 ${end.x.toFixed(3)} ${end.y.toFixed(3)} Z`;}
 function executiveDonutChart(rows){
@@ -2884,8 +2476,8 @@ function renderExecutiveComparisonCharts(){
   const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear(),10),month=parseInt(document.getElementById('dash-month')?.value??-1,10),branches=dashBranches(),scope=dashTab==='all'?liveBranchAllLabel('รวมทั้ง 2 สาขา'):BRANCH_TH[dashTab],period=month===-1?'ทั้งปี':MONTHS[month];const periodEl=document.getElementById('executive-visual-period');if(periodEl)periodEl.textContent=`${period} พ.ศ. ${yearLabelDual(year)} · ${scope}`;
   const products=buildExecutiveProductMonthly(year,branches),agency=buildExecutiveAgencyComparison(year,month,branches),salesTarget=executiveMonthlyTargetRows(year,'sales'),deliveryTarget=executiveMonthlyTargetRows(year,'delivery'),gov=agency.government,priv=agency.privateCompany,delta=priv.value>0?(gov.value-priv.value)/priv.value*100:null,salesCurrent=month>=0?salesTarget[month]:salesTarget.reduce((s,r)=>s+r.actual,0),deliveryCurrent=month>=0?deliveryTarget[month]:deliveryTarget.reduce((s,r)=>s+r.actual,0);
   host.innerHTML=executiveKpi('สินค้าขายดีอันดับ 1',products.top[0]?.label||'ยังไม่มีข้อมูล',products.top[0]?`ทั้งปี ${chartMoney(products.top[0].value)}`:'')+executiveKpi('ราชการ / หน่วยงานรัฐ',chartMoney(gov.value),`${fmt(gov.customerCount)} ลูกค้า`)+executiveKpi('บริษัทเอกชน',chartMoney(priv.value),`${fmt(priv.customerCount)} ลูกค้า`)+executiveKpi('ยอดขาย / ยอดส่งในมุมมอง',`${chartMoney(salesCurrent.actual??salesCurrent)} / ${chartMoney(deliveryCurrent.actual??deliveryCurrent)}`,month>=0?'เดือนที่เลือก':'รวมทั้งปี');
-  document.getElementById('exec-product-monthly-chart').innerHTML=executiveSeriesBarSvg(products.rows,products.series,{shortLabels:true,ariaLabel:'กราฟแท่งสินค้าขายดี Top 3 เปรียบเทียบรายเดือน',detailFor:(row,sr)=>{const d=row.details?.[sr.key]||{},value=safeNum(d.value),qty=safeNum(d.qty);return{kicker:'สินค้าขายดีรายเดือน',title:`${sr.label} · ${row.label}`,primary:chartMoney(value),secondary:`${safeNum(d.share).toFixed(1)}% ของยอดขายเดือนนี้`,rows:[{label:'จำนวนขาย',value:qty>0?`${fmt(qty)} ${d.unit&&d.unit!=='-'?d.unit:''}`.trim():'ไม่ระบุจำนวน'},{label:'ยอดขายรวม',value:chartMoney(value)},{label:'ราคาเฉลี่ย/หน่วย',value:qty>0?chartMoney(d.avgPrice):'-'},{label:'สัดส่วนของเดือน',value:`${safeNum(d.share).toFixed(1)}%`},{label:'ลูกค้าไม่ซ้ำ',value:`${fmt(d.customerCount||0)} ราย`}],note:'ยอดขายก่อน VAT จากรายการสินค้าในเอกสารขายของเดือนและสาขาที่เลือก'};}});
-  const productSummary=document.getElementById('exec-product-monthly-summary');if(productSummary)productSummary.innerHTML=products.top.length?`Top 3 ของปีนี้คือ ${products.top.map((p,i)=>`<b>${i+1}. ${escapeHtml(p.label)}</b> ${chartMoney(p.value)}`).join(' · ')} · <b>แตะหรือคลิกแท่งกราฟ</b> เพื่อดูจำนวนขาย ยอดรวม ราคาเฉลี่ย และ % ของเดือน`:'ยังไม่มีข้อมูลสินค้าในปีที่เลือก';
+  document.getElementById('exec-product-monthly-chart').innerHTML=executiveSeriesBarSvg(products.rows,products.series,{shortLabels:true,dataLegend:1,ariaLabel:'กราฟแท่งสินค้าขายดี Top 3 เปรียบเทียบรายเดือน',detailFor:(row,sr)=>{const d=row.details?.[sr.key]||{},value=safeNum(d.value),qty=safeNum(d.qty);return{kicker:'สินค้าขายดีรายเดือน',title:`${sr.label} · ${row.label}`,primary:chartMoney(value),secondary:`${safeNum(d.share).toFixed(1)}% ของยอดขายเดือนนี้`,rows:[{label:'จำนวนขาย',value:qty>0?`${fmt(qty)} ${d.unit&&d.unit!=='-'?d.unit:''}`.trim():'ไม่ระบุจำนวน'},{label:'ยอดขายรวม',value:chartMoney(value)},{label:'ราคาเฉลี่ย/หน่วย',value:qty>0?chartMoney(d.avgPrice):'-'},{label:'สัดส่วนของเดือน',value:`${safeNum(d.share).toFixed(1)}%`},{label:'ลูกค้าไม่ซ้ำ',value:`${fmt(d.customerCount||0)} ราย`}],note:'ยอดขายก่อน VAT จากรายการสินค้าในเอกสารขายของเดือนและสาขาที่เลือก'};}});
+  const productSummary=document.getElementById('exec-product-monthly-summary');if(productSummary)productSummary.innerHTML=products.top.length?`Top 3 ของปีนี้คือ ${products.top.map((p,i)=>`<b data-no-i18n>${i+1}. ${escapeHtml(p.label)}</b> ${chartMoney(p.value)}`).join(' · ')} · <b>แตะหรือคลิกแท่งกราฟ</b> เพื่อดูจำนวนขาย ยอดรวม ราคาเฉลี่ย และ % ของเดือน`:'ยังไม่มีข้อมูลสินค้าในปีที่เลือก';
   document.getElementById('exec-agency-pie-chart').innerHTML=executiveDonutChart(agency.rows);const agencySummary=document.getElementById('exec-agency-pie-summary');if(agencySummary)agencySummary.innerHTML=agency.rows.length?`กลุ่มที่สร้างยอดสูงสุดคือ <b>${escapeHtml(agency.rows[0].label)}</b> ${chartMoney(agency.rows[0].value)} · แตะชิ้นกราฟเพื่อดูยอด ลูกค้า เอกสาร และสัดส่วน %`:'ยังไม่มีข้อมูลกลุ่มลูกค้า';
   document.getElementById('exec-gov-private-chart').innerHTML=executiveGovPrivateBars(agency);const gpSummary=document.getElementById('exec-gov-private-summary');if(gpSummary){if(!gov.value&&!priv.value)gpSummary.textContent='ยังไม่มีข้อมูลราชการหรือบริษัทเอกชนในช่วงที่เลือก';else if(delta===null)gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐมียอด <b>${chartMoney(gov.value)}</b> ขณะที่ยังไม่มียอดจากบริษัทเอกชนในช่วงนี้`;else if(Math.abs(delta)<.01)gpSummary.innerHTML='ยอดราชการ/หน่วยงานรัฐและบริษัทเอกชนใกล้เคียงกัน';else gpSummary.innerHTML=`ราชการ/หน่วยงานรัฐ${delta>0?'มากกว่า':'น้อยกว่า'}บริษัทเอกชน <b>${Math.abs(delta).toFixed(1)}%</b> (${chartMoney(gov.value)} vs ${chartMoney(priv.value)})`;}
   document.getElementById('exec-sales-target-chart').innerHTML=executiveSeriesBarSvg(salesTarget,[{key:'actual',label:'ยอดขายจริง'},{key:'target',label:'เป้าหมายยอดขาย'}],{shortLabels:true,ariaLabel:'กราฟแท่งยอดขายจริงเทียบเป้าหมายรายเดือน',detailFor:row=>targetDetail(row,'sales')});const st=document.getElementById('exec-sales-target-summary');if(st)st.innerHTML=executiveTargetSummary(salesTarget,'เป้าหมายยอดขาย')+' · แตะแท่งเพื่อดู % ทำได้และยอดที่ยังขาด/เกิน';
@@ -2906,7 +2498,7 @@ function renderDashCharts(){
 function collectDashboardSalesRows(year,monthVal,branches){
   const business=window.ERPIntegrity.business();
   const inScope=r=>branches.includes(r._branch)&&Number(r._year)===Number(year)&&(Number(monthVal)===-1||Number(r._month)===Number(monthVal));
-  return [...analyticsPrimarySalesRows({productions:business.productions.filter(inScope),invoices:business.invoices.filter(inScope)}),...creditAdjustmentRows((business.creditNotes||[]).filter(inScope),{},business)];
+  return [...analyticsPrimarySalesRows({productions:business.productions.filter(inScope),invoices:business.invoices.filter(inScope)}),...creditAdjustmentRows(adjustmentNotes(business).filter(inScope),{},business)];
 }
 function collectDashboardProductionRows(year,monthVal,branches){
   const months=monthVal===-1?Array.from({length:12},(_,i)=>i):[monthVal];
@@ -3020,7 +2612,7 @@ function renderDashboardProductCompareChart(){
   const result=buildDashboardProductCompare(year,monthVal,branches);
   const labelEl=document.getElementById('dash-product-compare-label');
   if(labelEl)labelEl.textContent=`${dashTab==='all'?liveBranchAllLabel('รวมทั้ง 2 สาขา'):BRANCH_TH[dashTab]} · ${monthVal===-1?'ทั้งปี':MONTHS[monthVal]}`;
-  renderBarRows('dash-product-compare-chart',result.rows.slice(0,10).map(row=>({label:row.label,value:row.value,sub:`${fmt(row.qty)} ${row.units||''} · ลูกค้า ${row.customerCount} ราย · สัดส่วน ${percentText(row.share)}`})),{fillClass:'purple'});
+  renderBarRows('dash-product-compare-chart',result.rows.slice(0,10).map(row=>({label:row.label,value:row.value,sub:`${fmt(row.qty)} ${row.units||''} · ลูกค้า ${row.customerCount} ราย · สัดส่วน ${percentText(row.share)}`})),{fillClass:'purple',dataLabel:1});
   const summary=document.getElementById('dash-product-compare-summary');
   if(summary)summary.innerHTML=result.top?`สินค้าขายดีที่สุดคือ <b>${escapeHtml(result.top.label)}</b> มูลค่า ${chartMoney(result.top.value)} · จากยอดขายสินค้าในช่วงที่เลือกทั้งหมด ${chartMoney(result.total)} · ช่วยดูได้ว่าสินค้าใดควรเร่งขายและติดตามสต็อก`:'ยังไม่มีข้อมูลสินค้าในช่วงที่เลือก';
 }
@@ -3047,7 +2639,7 @@ function renderDashboardSupplierCompareChart(){
   const year=parseInt(document.getElementById('dash-year')?.value||now.getFullYear());
   const monthVal=parseInt(document.getElementById('dash-month')?.value??-1);
   const rows=buildSupplierOpportunityRowsFromProductions(collectDashboardProductionRows(year,monthVal,dashBranches()));
-  renderBarRows('dash-supplier-compare-chart',rows.slice(0,10).map(row=>({label:row.label,value:row.spend,sub:`สัดส่วน ${percentText(row.spendShare)} · เครดิต ${row.creditTerm} · ${row.opportunityLevel}`})),{fillClass:'green'});
+  renderBarRows('dash-supplier-compare-chart',rows.slice(0,10).map(row=>({label:row.label,value:row.spend,sub:`สัดส่วน ${percentText(row.spendShare)} · เครดิต ${row.creditTerm} · ${row.opportunityLevel}`})),{fillClass:'green',dataLabel:1});
   const summary=document.getElementById('dash-supplier-compare-summary');
   const top=rows[0];
   if(summary)summary.innerHTML=top?`สั่งซื้อกับ <b>${escapeHtml(top.label)}</b> มากที่สุด มูลค่า ${chartMoney(top.spend)} · คิดเป็น ${percentText(top.spendShare)} ของยอดจัดซื้อในช่วงนี้ · ${escapeHtml(top.recommendation)}`:'ยังไม่มีข้อมูลต้นทุน/ผู้ผลิตในช่วงที่เลือก';
@@ -3129,7 +2721,7 @@ function analyticsBranchList(branch){return branch?[branch]:tenantActiveBranchId
 function analyticsMonthList(month){return month===''?Array.from({length:12},(_,i)=>i):[Number(month)];}
 function normalizeAnalyticsDoc(row,meta){const enriched=withCustomerAgencyMeta(row||{});return{...enriched,branch:row?.branch||meta.branch,_year:meta.year,_month:meta.month,_type:meta.type};}
 function collectAnalyticsData(filter=analyticsFilters()){
-  const out={quotes:[],productions:[],invoices:[],receipts:[],issuedInvoices:[],issuedReceipts:[],expenses:[],creditNotes:[]};
+  const out={quotes:[],productions:[],invoices:[],receipts:[],issuedInvoices:[],issuedReceipts:[],expenses:[],creditNotes:[],debitNotes:[]};
   analyticsBranchList(filter.branch).forEach(branch=>analyticsMonthList(filter.month).forEach(month=>{
     const data=loadFor(branch,filter.year,month);
     Object.keys(out).forEach(type=>{
@@ -3151,21 +2743,11 @@ function collectAnalyticsData(filter=analyticsFilters()){
   return out;
 }
 function analyticsArOf(inv){return inv?._ar||window.ERPIntegrity.paymentSummary(inv);}
-function analyticsCreditRows(data){return data._creditRows||(data._creditRows=creditAdjustmentRows(data.creditNotes));}
+function analyticsCreditRows(data){return data._creditRows||(data._creditRows=creditAdjustmentRows(adjustmentNotes(data)));}
 function analyticsSalesRowsWithCredits(data){return [...analyticsPrimarySalesRows(data),...analyticsCreditRows(data)];}
-function analyticsPrimarySalesRows(data){
-  // New SO production is work in progress; count its invoices when delivered.
-  // Keep legacy production-only sales for historical imports.
-  const prods=(data.productions||[]).filter(window.ERPIntegrity.live).filter(p=>!p.sourceSalesOrderId);
-  const allProds=renderBusiness().productions.filter(window.ERPIntegrity.live).filter(p=>!p.sourceSalesOrderId);
-  const direct=(data.invoices||[]).filter(window.ERPIntegrity.live).filter(i=>!allProds.some(p=>p._branch===(i.branch||i._branch)&&((i.sourceProductionId&&String(i.sourceProductionId)===String(p.id))||(i.sourceProductionNo&&i.sourceProductionNo===p.no))));
-  return [...prods,...direct.map(i=>({...i,_type:'invoices'}))];
-}
-function analyticsSalesValue(row){
-  if(row?._type==='invoices'||row?._type==='receipts'||row?._type==='issuedInvoices'||row?._type==='issuedReceipts')return invoiceNetSales(row);
-  if(row?._type==='quotes'||row?._type==='creditNotes')return safeNum(row.subtotal||row.saleTotal||row.total);
-  return productionNetSalesValue(row);
-}
+// The sales measure (ADR-027, erp-analytics-core.js): legacy production orders + invoices not delivering one, live only.
+function salesMeasureOptions(){return{live:window.ERPIntegrity.live,legacyProductions:renderBusiness().productions,resolveInvoice:ref=>window.ERPIntegrity.resolveInvoice(ref,renderBusiness())};}
+function analyticsPrimarySalesRows(data){return primarySalesRows(data,salesMeasureOptions());}
 function analyticsCostValue(row){return safeNum(row.costTotal??row.costSubtotal??row.costGrandTotal);}
 function analyticsCommissionValue(row){return safeNum(row.commAmt??row.commission??row.commissionAmount);}
 function analyticsProfitValue(row){
@@ -3332,31 +2914,8 @@ function movingAverage(values,windowSize=3){
   const slice=clean.slice(-Math.min(windowSize,clean.length));
   return forecastMean(slice);
 }
-function linearRegressionForecast(values){
-  const fit=forecastLinearFit(values,1);
-  const active=forecastActiveSeries(values);
-  let trend='ข้อมูลยังน้อย';
-  if(active.length>=2)trend=fit.slope>0?'แนวโน้มเพิ่มขึ้น':fit.slope<0?'แนวโน้มลดลง':'ทรงตัว';
-  return{forecast:roundMoneyValue(fit.forecast[0]||0),slope:roundMoneyValue(fit.slope||0),r2:roundMoneyValue(fit.r2||0),trend};
-}
-function buildForecastModel(values,method='auto'){
-  const active=forecastActiveSeries(values);
-  const standard=buildStandardForecastModel(active,method,6);
-  const linear=linearRegressionForecast(active);
-  const sma=forecastModelRun('sma',active,1).forecast[0]||0;
-  const ses=forecastModelRun('ses',active,1);
-  const holt=forecastModelRun('holt',active,1);
-  const hw=forecastModelRun('hw',active,1);
-  return{
-    ...standard,
-    ma3:active.length>=3?roundMoneyValue(sma):null,
-    exp:active.length>=3?roundMoneyValue(ses.forecast[0]||0):null,
-    holt:active.length>=6?roundMoneyValue(holt.forecast[0]||0):null,
-    hw:active.length>=24?roundMoneyValue(hw.forecast[0]||0):null,
-    linear,
-    count:active.length
-  };
-}
+// Descriptive trend of the analytics page (latest month, change, trailing 3-month average, volatility). No forecast:
+// the page's forecast card is the one engine of ADR-027 (renderEmbeddedForecast).
 function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',historyRows=null){
   const series=selectedMonth===''?rows.filter(r=>!Number.isFinite(r.year)||forecastMonthKey(r.year,r.month)<forecastMonthKey(now.getFullYear(),now.getMonth())):rows.slice(0,Number(selectedMonth)+1);
   const values=series.map(r=>r[metric]??r.value);
@@ -3367,7 +2926,6 @@ function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',h
   const modelValues=modelRows.map(r=>r[metric]??r.value);
   const avg3=movingAverage(modelValues,3);
   const mom=prev&&safeNum(prev[metric]??prev.value)>0?(safeNum(current?.[metric]??current?.value)-safeNum(prev[metric]??prev.value))/safeNum(prev[metric]??prev.value)*100:0;
-  const forecastModel=buildForecastModel(modelValues,method);
   const active=forecastActiveSeries(modelValues);
   const mean=forecastMean(active);
   const variance=active.length?active.reduce((s,v)=>s+Math.pow(v-mean,2),0)/active.length:0;
@@ -3375,7 +2933,7 @@ function analyticsTrendSummary(rows,selectedMonth,metric='value',method='auto',h
   const best=series.slice().sort((a,b)=>safeNum(b[metric]??b.value)-safeNum(a[metric]??a.value))[0];
   const worst=series.slice().sort((a,b)=>safeNum(a[metric]??a.value)-safeNum(b[metric]??b.value))[0];
   const forecastBase=modelRows.at(-1)||null;
-  return{current,prev,avg3,mom,forecast:forecastModel.forecast,forecastModel,volatility:roundMoneyValue(volatility),best,worst,total:modelValues.reduce((s,v)=>s+safeNum(v),0),mean:roundMoneyValue(mean),lastIndex,forecastBase};
+  return{current,prev,avg3,mom,volatility:roundMoneyValue(volatility),best,worst,total:modelValues.reduce((s,v)=>s+safeNum(v),0),mean:roundMoneyValue(mean),lastIndex,forecastBase};
 }
 function buildCustomerDeepRows(data){
   const map=new Map();
@@ -3618,7 +3176,7 @@ function renderAnalyticsExplainPanel(){
     <div><b>5) ระยะเวลาส่งสินค้า</b><p>ใช้วันที่สั่งผลิตบวกจำนวนวันส่งสินค้า เช่น 45 วัน เพื่อหางานที่ใกล้ส่งหรือเลยกำหนด ช่วยลดปัญหาส่งสินค้าไม่ทัน</p></div>
     <div><b>6) เครดิตผู้ผลิต</b><p>ค่าเริ่มต้นอิงระยะเวลาส่งสินค้า เช่น เลือกส่ง 30 วัน ระบบจะตั้งวันครบกำหนดชำระผู้ผลิตเป็น 30 วันหลังวันที่สั่งผลิต</p></div>
     <div><b>7) Data Quality</b><p>ตรวจเลขเอกสารซ้ำ วันที่หาย ลูกค้าหาย ยอดเป็นศูนย์ VAT ไม่ชัดเจน และเอกสารไม่เชื่อมกัน ก่อนนำตัวเลขไปตัดสินใจ</p></div>
-    <div><b>8) Forecast</b><p>ใช้ Moving Average, Simple Exponential Smoothing, Holt Trend, Holt-Winters และ Linear Regression เป็น Benchmark โดยโหมด Auto เลือกโมเดลจาก Rolling-origin Cross-validation ที่มี RMSE ต่ำสุด และแสดงช่วงคาดการณ์เพื่อใช้ประกอบการตัดสินใจ</p></div>
+    <div><b>8) Forecast</b><p>ใช้วิธีเดียวกับหน้า "วิเคราะห์และคาดการณ์": น้อยกว่า 6 เดือนไม่คาดการณ์ · 6–26 เดือนใช้ Holt (แนวโน้ม) หรือ SES เมื่อแนวโน้มทำให้ผลทดสอบย้อนหลังแย่ลง · ตั้งแต่ 27 เดือนเทียบกับ Holt-Winters (ฤดูกาล 12 เดือน) แล้วเลือกวิธีที่ MAPE/sMAPE ย้อนหลังต่ำกว่า พร้อมช่วงที่น่าจะเป็น ~80%</p></div>
   </div>`;
 }
 function buildAnalyticsInsights(kpis,quality,trend,abcRows,filter){
@@ -3697,9 +3255,9 @@ function renderDataAnalytics(){
   const trendLabel=document.getElementById('analytics-trend-label');
   if(trendLabel)trendLabel.textContent=`${branchText} · พ.ศ. ${yearLabelDual(filter.year)}`;
   const trendSummary=document.getElementById('analytics-trend-summary');
-  if(trendSummary)trendSummary.innerHTML=`ยอดล่าสุดที่พบ: <b>${viewTrend.current?.label||'-'}</b> ${chartMoney((viewTrend.current?.[metric]??viewTrend.current?.value) || 0)} · เปลี่ยนจากเดือนก่อน ${percentText(viewTrend.mom)} · ค่าเฉลี่ยย้อนหลัง 3 เดือน ${chartMoney(viewTrend.avg3)}${metric==='value'?` · Sales Forecast เดือนถัดไป ${forecastMoney(forecastTrend.forecast)} (${escapeHtml(forecastTrend.forecastModel.label)})`:''}`;
+  if(trendSummary)trendSummary.innerHTML=`ยอดล่าสุดที่พบ: <b>${viewTrend.current?.label||'-'}</b> ${chartMoney((viewTrend.current?.[metric]??viewTrend.current?.value) || 0)} · เปลี่ยนจากเดือนก่อน ${percentText(viewTrend.mom)} · ค่าเฉลี่ยย้อนหลัง 3 เดือน ${chartMoney(viewTrend.avg3)}`;
 
-  renderBarRows('analytics-customer-chart',customerGroups.slice(0,10).map(row=>({label:`${row.label} (${row.abc})`,value:row.sales,sub:`${row.count} เอกสาร · สัดส่วน ${percentText(row.contributionPercent)} · ${row.walkIn?'ขายหน้าร้าน (ไม่จัดอันดับ ABC)':`สะสม ${percentText(row.cumulativePercent)}`}`})),{fillClass:'green'});
+  renderBarRows('analytics-customer-chart',customerGroups.slice(0,10).map(row=>({label:`${row.label} (${row.abc})`,value:row.sales,sub:`${row.count} เอกสาร · สัดส่วน ${percentText(row.contributionPercent)} · ${row.walkIn?'ขายหน้าร้าน (ไม่จัดอันดับ ABC)':`สะสม ${percentText(row.cumulativePercent)}`}`})),{fillClass:'green',dataLabel:1});
   const customerSummary=document.getElementById('analytics-customer-summary');
   const aCount=customerGroups.filter(row=>row.abc==='A').length;
   if(customerSummary)customerSummary.innerHTML=`ลูกค้า Class A จำนวน <b>${aCount}</b> ราย สร้างยอดหลักประมาณ 80% แรกของช่วงที่เลือก · ลูกค้าทั้งหมด <b>${kpis.customerCount}</b> ราย`;
@@ -3708,7 +3266,7 @@ function renderDataAnalytics(){
   const agencySummary=document.getElementById('analytics-agency-summary');
   if(agencySummary)agencySummary.innerHTML=agencyRows.length?`กลุ่มที่สร้างยอดสูงสุดคือ <b>${escapeHtml(agencyRows[0].typeLabel)}</b> (${escapeHtml(agencyRows[0].groupLabel)}) มูลค่า ${chartMoney(agencyRows[0].sales)} · ใช้ดูว่าธุรกิจพึ่งพาลูกค้ากลุ่มใดมากที่สุด`:'ยังไม่มีข้อมูลประเภทหน่วยงานในช่วงที่เลือก';
 
-  renderBarRows('analytics-product-chart',productGroups.slice(0,10).map(row=>({label:row.label,value:row.value,sub:`จำนวนรวม ${fmt(row.qty)} ${row.units||''} · ลูกค้า ${row.customerCount} ราย · สัดส่วน ${percentText(row.contributionPercent)}`})),{fillClass:'purple'});
+  renderBarRows('analytics-product-chart',productGroups.slice(0,10).map(row=>({label:row.label,value:row.value,sub:`จำนวนรวม ${fmt(row.qty)} ${row.units||''} · ลูกค้า ${row.customerCount} ราย · สัดส่วน ${percentText(row.contributionPercent)}`})),{fillClass:'purple',dataLabel:1});
   const productSummary=document.getElementById('analytics-product-summary');
   if(productSummary)productSummary.innerHTML=productGroups.length?`สินค้าที่สร้างยอดสูงสุดคือ <b>${escapeHtml(productGroups[0].label)}</b> มูลค่า ${chartMoney(productGroups[0].value)} · ราคาเฉลี่ย ${chartMoney(productGroups[0].avgPrice)}/${escapeHtml(productGroups[0].units||'หน่วย')}`:'ยังไม่มีรายการสินค้าในช่วงที่เลือก';
   renderProductSeasonality(filter,filter.product);
@@ -3729,27 +3287,8 @@ function renderDataAnalytics(){
   const qualitySummary=document.getElementById('analytics-quality-summary');
   if(qualitySummary)qualitySummary.innerHTML=`ตรวจเอกสารทั้งหมด <b>${quality.total}</b> รายการ · คะแนนคุณภาพข้อมูล <b>${quality.total?quality.score+'/100':'ยังไม่มีเอกสารให้ประเมิน'}</b> · ยิ่งคะแนนสูง ยิ่งเหมาะกับการใช้ทำ Dashboard และ Forecast`;
 
-  const forecastEl=document.getElementById('analytics-forecast-summary');
-  if(forecastEl)forecastEl.innerHTML=`<div class="analytics-formula-grid">
-    <div class="${forecastTrend.forecastModel.selectedId==='sma'?'is-selected':''}"><span>Moving Average 3 เดือน</span><b>${forecastMoney(forecastTrend.forecastModel.ma3)}</b><small>เหมาะกับข้อมูลค่อนข้างทรงตัว</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='ses'?'is-selected':''}"><span>Simple Exponential Smoothing</span><b>${forecastMoney(forecastTrend.forecastModel.exp)}</b><small>ให้น้ำหนักข้อมูลใหม่มากกว่าข้อมูลเก่า</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='holt'?'is-selected':''}"><span>Holt Trend (Damped)</span><b>${forecastMoney(forecastTrend.forecastModel.holt)}</b><small>รองรับแนวโน้มขึ้น/ลง</small></div>
-    <div class="${forecastTrend.forecastModel.selectedId==='hw'?'is-selected':''}"><span>Holt-Winters Additive</span><b>${forecastTrend.forecastModel.count>=24?forecastMoney(forecastTrend.forecastModel.hw):'ต้องมี ≥ 24 เดือน'}</b><small>รองรับ Trend + Seasonality ราย 12 เดือน</small></div>
-  </div>`;
-  const methodSummary=document.getElementById('analytics-method-summary');
-  const selectedDiag=forecastTrend.forecastModel.candidates?.find(r=>r.id===forecastTrend.forecastModel.selectedId)||forecastTrend.forecastModel.cv||{};
-  if(methodSummary)methodSummary.innerHTML=`ระบบใช้ <b>${escapeHtml(forecastTrend.forecastModel.label)}</b> เป็นค่าคาดการณ์หลัก เพราะ ${filter.forecastMethod==='auto'?'เปรียบเทียบ RMSE บนเดือนทดสอบเดียวกันเมื่อข้อมูลพอ มิฉะนั้นใช้ฐานชั่วคราว':'ผู้ใช้เลือกโมเดลนี้'} · CV RMSE ${Number.isFinite(forecastTrend.forecastModel.cv.rmse)?chartMoney(forecastTrend.forecastModel.cv.rmse):'—'} · WAPE ${Number.isFinite(selectedDiag.wape)?selectedDiag.wape.toFixed(1)+'%':'—'} · Bias ${Number.isFinite(selectedDiag.biasPct)?`${selectedDiag.biasPct>=0?'+':''}${selectedDiag.biasPct.toFixed(1)}%`:'—'} · Tracking ${Number.isFinite(selectedDiag.trackingSignal)?selectedDiag.trackingSignal.toFixed(2):'—'} · ความผันผวน ${percentText(forecastTrend.volatility)} · ชุดข้อมูลว่างนับเป็น 0 แต่เดือนที่ขาดชุดข้อมูลจะงดพยากรณ์ ต้องตรวจความครบถ้วนทุกสาขา · ช่วงต่ำ/สูงแสดงเฉพาะ 1 เดือนเมื่อมีข้อผิดพลาดทดสอบ ≥ 8 รอบ เป็นสถานการณ์จาก residual ไม่ใช่ช่วงรับประกัน 80%`;
-  const forecastAccuracyEl=document.getElementById('analytics-forecast-accuracy-table');
-  if(forecastAccuracyEl)forecastAccuracyEl.innerHTML=forecastAccuracyTableHtml(forecastTrend.forecastModel);
-  const analyticsDiag=document.getElementById('analytics-forecast-diagnostic-summary');if(analyticsDiag)analyticsDiag.innerHTML=forecastDiagnosticSummaryHtml(forecastTrend.forecastModel);
-  const forecastFutureEl=document.getElementById('analytics-forecast-future-table');
-  if(forecastFutureEl){
-    const baseMonth=Number(forecastTrend.forecastBase?.month??forecastTrend.current?.month??0);
-    const baseYear=Number(forecastTrend.forecastBase?.year??filter.year);
-    const baseKey=forecastMonthKey(baseYear,baseMonth);
-    const rows=forecastTrend.forecastModel.future.slice(0,6).map((value,index)=>{const d=forecastMonthFromKey(baseKey+index+1),band=forecastTrend.forecastModel.intervals[index]||{lower:value,upper:value};return{...d,value,lower:band.lower,upper:band.upper,p10:band.p10??band.lower,p50:band.p50??value,p90:band.p90??band.upper};});
-    forecastFutureEl.innerHTML=`<div class="forecast-table-wrap"><table class="forecast-data-table"><thead><tr><th>เดือน</th><th>สถานการณ์ต่ำ*</th><th>Base Forecast</th><th>สถานการณ์สูง*</th></tr></thead><tbody>${rows.map(row=>`<tr><td><b>${escapeHtml(forecastMonthLabel(row.year,row.month))}</b></td><td class="num">${forecastMoney(row.lower)}</td><td class="num"><b>${forecastMoney(row.value)}</b></td><td class="num">${forecastMoney(row.upper)}</td></tr>`).join('')}</tbody></table></div>`;
-  }
+  // ADR-027: the one forecast (same engine and series as วิเคราะห์และคาดการณ์) for the branch chosen here, as of the latest closed month.
+  window.ERPAnalytics?.renderEmbeddedForecast?.(document.getElementById('analytics-forecast-summary'),{branches:filter.branch?[filter.branch]:null});
   renderAnalyticsFunnel('analytics-funnel-chart',buildAnalyticsFunnel(kpis));
   const funnelSummary=document.getElementById('analytics-funnel-summary');
   if(funnelSummary)funnelSummary.innerHTML=`ช่องว่างค้างส่ง <b>${chartMoney(Math.max(0,kpis.deliveryGap))}</b> และค้างรับเงิน <b>${chartMoney(Math.max(0,kpis.uncollected))}</b> ใช้จัดลำดับการติดตามงานและเอกสารได้ทันที`;
@@ -3938,22 +3477,17 @@ function quantHhi(rows=[],valueKey='sales'){
   let label='กระจายตัวดี',cls='good';if(hhi>1800){label='กระจุกตัวสูง';cls='danger';}else if(hhi>=1000){label='กระจุกตัวปานกลาง';cls='warn';}
   return{hhi,top1:shares[0]||0,top5,total,label,cls};
 }
+// Least-squares slope per month of a short descriptive series (the regime's trend; not a forecast). 0 with < 2 usable months.
+function trendSlope(values=[]){const v=forecastActiveSeries(values);if(v.length<2)return 0;const n=v.length,xMean=(n-1)/2,yMean=forecastMean(v);let num=0,den=0;v.forEach((y,x)=>{num+=(x-xMean)*(y-yMean);den+=(x-xMean)**2;});return den?num/den:0;}
 function quantBusinessRegime(series=[]){
   const vals=(series||[]).map(r=>r.value).filter(v=>Number.isFinite(v)&&v>=0);if(vals.length<4)return{label:'ข้อมูลไม่พอ',cls:'muted',momentum:0,slope:0,detail:'ควรมีอย่างน้อย 4 เดือน'};
   const recent=vals.slice(-Math.min(3,vals.length));const prior=vals.slice(-Math.min(6,vals.length),-3);const r=quantMean(recent),p=prior.length?quantMean(prior):vals.at(-2);
-  const momentum=p?((r-p)/p)*100:0;const lr=forecastLinearFit(vals.slice(-Math.min(6,vals.length)),1);const slopePct=r?lr.slope/r*100:0;
+  const momentum=p?((r-p)/p)*100:0;const lrSlope=trendSlope(vals.slice(-Math.min(6,vals.length)));const slopePct=r?lrSlope/r*100:0;
   if(momentum>=10&&slopePct>0)return{label:'Strong Growth',cls:'good',momentum,slope:slopePct,detail:'ยอดเฉลี่ย 3 เดือนล่าสุดเร่งตัวชัดเจน'};
   if(momentum>=2)return{label:'Growth',cls:'good',momentum,slope:slopePct,detail:'ยอดเฉลี่ยระยะสั้นสูงกว่าช่วงก่อน'};
   if(momentum<=-10)return{label:'Contraction',cls:'danger',momentum,slope:slopePct,detail:'ยอดเฉลี่ยระยะสั้นหดตัวมากกว่า 10%'};
   if(momentum<=-2)return{label:'Slowdown',cls:'warn',momentum,slope:slopePct,detail:'ยอดเฉลี่ยระยะสั้นเริ่มชะลอลง'};
   return{label:'Stable',cls:'neutral',momentum,slope:slopePct,detail:'ยอดระยะสั้นยังอยู่ในช่วงค่อนข้างทรงตัว'};
-}
-function quantHistoricalQuoteApproval(year,month,branches=dashBranches(),lookback=24){
-  const targetKey=forecastMonthKey(Number(year),Number(month));let approved=0,total=0;
-  for(let offset=lookback;offset>=1;offset--){const d=forecastMonthFromKey(targetKey-offset);branches.forEach(br=>{const data=loadFor(br,d.year,d.month);(data.quotes||[]).forEach(q=>{total+=1;if(q.approved)approved+=1;});});}
-  // Add-one/Laplace smoothing only when history is sufficiently populated. Otherwise retain the former conservative fallback.
-  const probability=total>=5?(approved+1)/(total+2):.35;
-  return{approved,total,probability,source:total>=5?'history':'fallback'};
 }
 function quantQuoteProbabilityModel(filter={}){
   const endMonth=filter.month===''?11:Number(filter.month||0),branches=analyticsBranchList(filter.branch),endKey=forecastMonthKey(filter.year,endMonth);const stats={overall:{wins:0,n:0},groups:new Map()};
@@ -4023,9 +3557,7 @@ function quantDashboardData(){
 }
 function renderQuantDashboard(){
   const host=document.getElementById('quant-dashboard-kpis');if(!host)return;
-  const f=buildSalesForecast(),qd=quantDashboardData();
-  const series=[];const refKey=forecastMonthKey(f.ref.year,f.ref.month);
-  for(let off=11;off>=0;off--){const d=forecastMonthFromKey(refKey-off);series.push({...d,value:forecastSalesForMonth(d.year,d.month,f.branches)});}
+  const f=buildSalesForecast(),qd=quantDashboardData();// ADR-027: the page's forecast; f.history = its last 12 closed months
   const active=f.history.every(r=>Number.isFinite(r.value))?f.history:[],cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),conc=quantHhi(qd.customers,'sales'),draw=quantMaxDrawdown(active.map(r=>r.value));
   const arTotal=qd.ar.reduce((s,r)=>s+r.outstanding,0),overdue=qd.ar.filter(r=>r.state==='overdue').reduce((s,r)=>s+r.outstanding,0),overdueRate=ratioPercent(overdue,arTotal),anomalies=quantRevenueAnomalies(active);
   const selected=f.model?.candidates?.find(r=>r.id===f.model.selectedId)||f.model?.cv||{};
@@ -4040,11 +3572,11 @@ function renderQuantDashboard(){
     quantKpi('Overdue Exposure',`${overdueRate.toFixed(1)}%`,`ค้างเกินกำหนด ${chartMoney(overdue)} / AR ${chartMoney(arTotal)}`,overdueRate>30?'danger':overdueRate>10?'warn':'good')+
     quantKpi('Robust Anomaly',`${anomalies.length} เดือน`,`Modified Z-score |M| > 3.5`,anomalies.length?'warn':'good');
 
-  const target=currentSalesTarget(),sigma=Number.isFinite(f.model.cv.rmse)?f.model.cv.rmse:null,mc=quantMonteCarlo(f.next,sigma,target,5000,`${f.ref.year}-${f.ref.month}-${f.model.selectedId}-${f.next}`);
+  const target=currentSalesTarget(),sigma=Number.isFinite(f.model.cv.rmse)?f.model.cv.rmse:null,mc=Object.assign(quantMonteCarlo(f.next,sigma,target,5000,`${f.ref.year}-${f.ref.month}-${f.model.selectedId}-${f.next}`),f.band||{});// P10/P50/P90 = the page's ~80% band (one forecast); the simulation only adds probabilities
   const monte=document.getElementById('quant-dashboard-montecarlo');
   const simulationLabel=document.getElementById('quant-simulation-count');
   if(simulationLabel)simulationLabel.textContent=mc.n?`${mc.n.toLocaleString('th-TH')} สถานการณ์`:'ข้อมูลยังไม่พอสำหรับจำลอง';
-  if(monte)monte.innerHTML=`<div class="quant-mc-main"><div><small>P50 / Median Scenario</small><strong>${forecastMoney(mc.p50)}</strong><span>${escapeHtml(forecastMonthLabel(f.future[0]?.year||f.ref.year,f.future[0]?.month??f.ref.month))}</span></div><div class="quant-prob-ring ${mc.targetProbability===null?'muted':mc.targetProbability>=70?'good':mc.targetProbability>=40?'warn':'danger'}"><b>${mc.targetProbability===null?'—':mc.targetProbability.toFixed(1)+'%'}</b><span>โอกาสถึงเป้า</span></div></div><div class="quant-quantiles"><div><span>P10</span><b>${forecastMoney(mc.p10)}</b></div><div><span>P50</span><b>${forecastMoney(mc.p50)}</b></div><div><span>P90</span><b>${forecastMoney(mc.p90)}</b></div></div><p class="quant-help">จำลอง ${mc.n.toLocaleString('th-TH')} สถานการณ์จาก Base Forecast และ CV RMSE · สมมติ error แบบ Normal อิสระและตัดยอดติดลบเป็น 0 · ความน่าจะเป็นตามสมมติฐานเท่านั้น · 0 รอบ = ข้อมูลไม่พอ${target>0?` · เป้าหมาย ${chartMoney(target)}`:' · ยังไม่ได้ตั้งเป้ายอดขายสำหรับมุมมองนี้'}</p>`;
+  if(monte)monte.innerHTML=`<div class="quant-mc-main"><div><small>P50 / Median Scenario</small><strong>${forecastMoney(mc.p50)}</strong><span>${escapeHtml(forecastMonthLabel(f.future[0]?.year||f.ref.year,f.future[0]?.month??f.ref.month))}</span></div><div class="quant-prob-ring ${mc.targetProbability===null?'muted':mc.targetProbability>=70?'good':mc.targetProbability>=40?'warn':'danger'}"><b>${mc.targetProbability===null?'—':mc.targetProbability.toFixed(1)+'%'}</b><span>โอกาสถึงเป้า</span></div></div><div class="quant-quantiles"><div><span>P10</span><b>${forecastMoney(mc.p10)}</b></div><div><span>P50</span><b>${forecastMoney(mc.p50)}</b></div><div><span>P90</span><b>${forecastMoney(mc.p90)}</b></div></div><p class="quant-help">จำลอง ${mc.n.toLocaleString('th-TH')} สถานการณ์จากค่าคาดการณ์และ σ ความคลาดเคลื่อนย้อนหลัง (P10/P50/P90 = ช่วง ~80% ของหน้าวิเคราะห์และคาดการณ์) · สมมติ error แบบ Normal อิสระและตัดยอดติดลบเป็น 0 · ความน่าจะเป็นตามสมมติฐานเท่านั้น · 0 รอบ = ข้อมูลไม่พอ${target>0?` · เป้าหมาย ${chartMoney(target)}`:' · ยังไม่ได้ตั้งเป้ายอดขายสำหรับมุมมองนี้'}</p>`;
   const tail=document.getElementById('quant-dashboard-tailrisk');
   if(tail)tail.innerHTML=`<div class="quant-tail-grid"><div><small>Revenue-at-Risk (P10)</small><b>${forecastMoney(mc.revenueAtRisk)}</b><span>ส่วนต่าง Base ถึง P10</span></div><div><small>Downside Tail Mean</small><b>${forecastMoney(mc.downsideTailMean)}</b><span>ค่าเฉลี่ย 10% สถานการณ์แย่สุด</span></div><div><small>Target Shortfall</small><b>${mc.targetShortfallProbability===null?'—':mc.targetShortfallProbability.toFixed(1)+'%'}</b><span>${target>0?'ความน่าจะเป็นที่ต่ำกว่าเป้า':'ยังไม่ได้ตั้งเป้า'}</span></div><div><small>Expected Target Gap</small><b>${mc.expectedTargetGap===null?'—':forecastMoney(mc.expectedTargetGap)}</b><span>ส่วนขาดเป้าเฉลี่ยจากทุก Scenario</span></div></div>`;
 
@@ -4070,7 +3602,7 @@ function renderQuantBusinessAnalytics(filter,data,kpis,customerGroups,productGro
   const hist=analyticsForecastHistorySeries(filter.year,filter.branch,filter.agencyGroup,filter.agencyType,filter.month);
   const active=hist.every(r=>Number.isFinite(r.value))?hist:[],cv=quantCv(active.map(r=>r.value)),regime=quantBusinessRegime(active),cHhi=quantHhi(customerGroups,'sales'),pHhi=quantHhi(productGroups,'value'),draw=quantMaxDrawdown(active.map(r=>r.value)),anomalies=quantRevenueAnomalies(active);
   const arTotal=arRows.reduce((s,r)=>s+r.outstanding,0),overdue=arRows.filter(r=>r.state==='overdue').reduce((s,r)=>s+r.outstanding,0),overdueRate=ratioPercent(overdue,arTotal);
-  const selected=forecastTrend.forecastModel?.candidates?.find(r=>r.id===forecastTrend.forecastModel.selectedId)||forecastTrend.forecastModel?.cv||{};
+  const uf=buildSalesForecast(filter.branch?[filter.branch]:tenantActiveBranchIds()),selected=uf.model?.cv||{};// ADR-027: the one forecast of the branch chosen
   const riskScore=quantCompositeRiskScore({cv,hhi:cHhi.hhi,drawdown:draw.percent,overdueRate,wape:selected.wape,trackingSignal:safeNum(selected.trackingSignal)});
   host.innerHTML=
     quantKpi('Composite Risk',`${riskScore.score}/100`,`${riskScore.label} · Internal heuristic`,riskScore.cls)+
@@ -4131,13 +3663,13 @@ function renderQuantBusinessAnalytics(filter,data,kpis,customerGroups,productGro
   const contribution=kpis.sales-kpis.cost-kpis.commission,contributionRate=kpis.sales>0?contribution/kpis.sales:0,breakEvenSales=contributionRate>0?kpis.expenses/contributionRate:null,safetyMargin=breakEvenSales!==null&&kpis.sales>0?(kpis.sales-breakEvenSales)/kpis.sales*100:null;
   const stress=document.getElementById('quant-stress-output');if(stress)stress.innerHTML=`<div class="quant-stress-result"><div><small>กำไรฐาน</small><b>${chartMoney(kpis.profit)}</b></div><div class="${stressedProfit<0?'danger':''}"><small>กำไร Stress</small><b>${chartMoney(stressedProfit)}</b></div><div><small>ผลกระทบกำไร</small><b>${forecastPercent(profitImpact)}</b></div><div><small>Expected Pipeline หลัง Stress</small><b>${chartMoney(stressedPipeline)}</b></div><div><small>Break-even Sales</small><b>${breakEvenSales===null?'—':chartMoney(breakEvenSales)}</b></div><div class="${safetyMargin!==null&&safetyMargin<15?'danger':''}"><small>Margin of Safety</small><b>${safetyMargin===null?'—':`${safetyMargin.toFixed(1)}%`}</b></div></div><p class="quant-help">Scenario: Sales ${salesShock>=0?'+':''}${salesShock}% · Cost ${costShock>=0?'+':''}${costShock}% · Pipeline conversion ${conversionShock>=0?'+':''}${conversionShock}% · Break-even คำนวณจาก Contribution Margin ปัจจุบัน</p>`;
 
-  const sigma=Number.isFinite(forecastTrend.forecastModel?.cv?.rmse)?forecastTrend.forecastModel.cv.rmse:null;
-  const mc=quantMonteCarlo(forecastTrend.forecast, sigma, 0, 5000, `analytics-${filter.year}-${filter.month}-${forecastTrend.forecastModel?.selectedId||'auto'}`);
+  const sigma=Number.isFinite(uf.model?.cv?.rmse)?uf.model.cv.rmse:null;
+  const mc=Object.assign(quantMonteCarlo(uf.next, sigma, 0, 5000, `analytics-${filter.year}-${filter.month}-${uf.model?.selectedId||'auto'}`),uf.band||{});
   const decisionRows=quantDecisionTableRows({selected,cv,hhi:cHhi.hhi,drawdown:draw.percent,overdueRate,mc,target:0});
   const decision=document.getElementById('quant-decision-table');if(decision)decision.innerHTML=quantDecisionTableHtml(decisionRows);
   const ds=document.getElementById('quant-decision-summary');if(ds)ds.innerHTML=`Composite Risk <b>${riskScore.score}/100 (${riskScore.label})</b> · Forecast Governance: ${escapeHtml(quantForecastDecision(selected).label)} · Revenue-at-Risk จาก P10 ประมาณ <b>${forecastMoney(mc.revenueAtRisk)}</b> · Score เป็น Internal Heuristic เพื่อจัดลำดับประเด็น ไม่ใช่คะแนนมาตรฐานสากล`;
 
-  const note=document.getElementById('quant-methodology-note');if(note)note.innerHTML=`<b>วิธีอ่าน Quant Layer:</b> Forecast ใช้ Rolling-origin Cross-validation และอ่านร่วมกันทั้ง RMSE, WAPE, MASE, Bias และ Tracking Signal · CV ใช้ Sample SD/Mean เพื่อวัดความผันผวนสัมพัทธ์ · HHI = ผลรวมกำลังสองของสัดส่วนยอดขาย · Monte Carlo ใช้ CV RMSE เป็น error scale โดยสมมติ Normal อิสระและตัดยอดติดลบเป็น 0 ความน่าจะเป็นจึงขึ้นกับสมมติฐานนี้ งดจำลองเมื่อไม่มีผล CV · Anomaly ใช้ Modified Z-score จาก Median/MAD · Composite Risk Score เป็น Internal Heuristic 0–100 ที่ให้น้ำหนักเท่ากัน 5 ด้าน: Volatility, Concentration, Drawdown, Collection และ Forecast Risk · Quote Probability เป็นอัตราอนุมัติเอกสารย้อนหลัง ไม่ใช่ความน่าจะเป็นชนะงานหรือโมเดล ML และจะใช้ fallback 35% เมื่อข้อมูลย้อนหลังน้อยกว่า 5 ใบ`;
+  const note=document.getElementById('quant-methodology-note');if(note)note.innerHTML=`<b>วิธีอ่าน Quant Layer:</b> Forecast เป็นค่าเดียวกับหน้าวิเคราะห์และคาดการณ์ · WAPE, Bias และ Tracking Signal มาจากการทดสอบย้อนหลัง 3–6 เดือนของวิธีที่เลือก · CV ใช้ Sample SD/Mean เพื่อวัดความผันผวนสัมพัทธ์ · HHI = ผลรวมกำลังสองของสัดส่วนยอดขาย · Monte Carlo ใช้ σ ความคลาดเคลื่อนย้อนหลัง 1 เดือนของวิธีที่เลือกเป็น error scale โดยสมมติ Normal อิสระและตัดยอดติดลบเป็น 0 ความน่าจะเป็นจึงขึ้นกับสมมติฐานนี้ งดจำลองเมื่อข้อมูลไม่พอคาดการณ์ · Anomaly ใช้ Modified Z-score จาก Median/MAD · Composite Risk Score เป็น Internal Heuristic 0–100 ที่ให้น้ำหนักเท่ากัน 5 ด้าน: Volatility, Concentration, Drawdown, Collection และ Forecast Risk · Quote Probability เป็นอัตราอนุมัติเอกสารย้อนหลัง ไม่ใช่ความน่าจะเป็นชนะงานหรือโมเดล ML และจะใช้ fallback 35% เมื่อข้อมูลย้อนหลังน้อยกว่า 5 ใบ`;
 }
 
 // ============================================================
@@ -4620,7 +4152,7 @@ function toggleCommMode(prefix){
   if(manual && amount.value){amount.value=String(amount.value).replace(/,/g,'');}
 }
 function commLabel(doc){
-  return doc.commMode==='manual'?'ค่าคอมมิสชัน (กรอกเอง)':'ค่าคอมมิสชัน ('+(doc.commRate||0)+'%)';
+  return doc.commMode==='manual'?'ค่าคอมมิชชัน (กรอกเอง)':'ค่าคอมมิชชัน ('+(doc.commRate||0)+'%)';
 }
 
 // ============================================================
@@ -5248,7 +4780,7 @@ async function saveProductionUnlocked(){
     action:state?'production_edit':'production_create',context:{},
     validate:()=>{
       if(state&&b!==state.branch)throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT,'ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขรายการสั่งผลิตได้');
-      if(!no||!date||!maker||!cust||!job||!items.length)throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION,'กรุณากรอกเลขที่ วันที่ ผู้รับผลิต/ผู้สั่งผลิต ลูกค้า ชื่องาน และรายการสินค้าที่สั่งผลิต');
+      if(!no||!date||!maker||!cust||!job||!items.length)throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION,'กรุณากรอกเลขที่ วันที่ ผู้รับผลิต ลูกค้า ชื่องาน และรายการสินค้าที่สั่งผลิต');
       try{window.ERPIntegrity.validateItems(items);}catch(error){throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION,error?.message||'รายการสินค้าที่สั่งผลิตไม่ถูกต้อง');}
       if(makerPreset&&deliveryLeadDays&&!makerPreset.leadDays.includes(deliveryLeadDays))throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION,`ระยะเวลาส่งสินค้าไม่ตรงกับผู้ผลิต ${makerPreset.name} กรุณาเลือกจากตัวเลือก: ${makerPreset.leadDays.map(day=>day+' วัน').join(', ')}`);
       if(items.some(x=>!x.product||!x.qty||!x.costEntered||!x.saleEntered||x.saleValue<=0))throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION,'กรุณากรอกชื่อสินค้า จำนวน ราคาต้นทุน และราคาขายที่มากกว่า 0 ให้ครบทุกแถว');
@@ -5331,7 +4863,7 @@ function renderPList(){
     const grand=safeNum(p.total)||saleNet;
     const dueInfo=productionSupplierDueInfo(p);
     return `<tr class="${dueInfo.rowClass}">
-      <td><span class="badge b-blue">${escapeHtml(p.no||'-')}</span></td><td>${bbr(p.branch)}</td><td>${escapeHtml(formatThaiDate(p.date))}</td><td><b>${escapeHtml(p.maker||'-')}</b>${p.makerAddress?`<small style="display:block;margin-top:3px;color:var(--g3);max-width:220px;white-space:normal">${escapeHtml(p.makerAddress)}</small>`:''}</td><td>${escapeHtml(p.customer||'-')}</td><td>${escapeHtml(p.job||'-')}</td><td>${escapeHtml(productionDeliveryLeadLabel(p.deliveryLeadDays||p.shippingLeadDays))}</td><td>${escapeHtml(formatThaiDate(getProductionDeliveryDueDate(p))||'-')}</td>
+      <td><span class="badge b-blue">${escapeHtml(p.no||'-')}</span></td><td>${bbr(p.branch)}</td><td>${escapeHtml(formatThaiDate(p.date))}</td><td><b>${escapeHtml(p.maker||'-')}</b>${p.makerAddress?`<small style="display:block;margin-top:3px;color:var(--g3);max-width:220px;white-space:normal">${escapeHtml(p.makerAddress)}</small>`:''}</td><td data-no-i18n>${escapeHtml(p.customer||'-')}</td><td>${escapeHtml(p.job||'-')}</td><td>${escapeHtml(productionDeliveryLeadLabel(p.deliveryLeadDays||p.shippingLeadDays))}</td><td>${escapeHtml(formatThaiDate(getProductionDeliveryDueDate(p))||'-')}</td>
       <td class="tn">฿${fmt(costTotal)}</td><td class="tn">฿${fmt(costGrand)}</td><td>${escapeHtml(productionSupplierCreditLabel(p.supplierCreditTerm,p))}</td><td>${productionSupplierDueBadge(p)}</td><td>${productionSupplierPaymentStatusSelect(p)}</td><td class="tn">฿${fmt(saleNet)}</td><td class="tn">฿${fmt(p.vatAmt)}</td><td class="tn"><b>฿${fmt(grand)}</b></td><td class="tn">฿${fmt(p.commAmt)}</td><td class="tn ${safeNum(p.profit)>=0?'pos':'neg'}">฿${fmt(p.profit)}</td>
       <td>${vatModeLabel(p)}</td>
       <td>${linked?`<span class="badge b-green">✅ ออกใบส่งสินค้าแล้ว ${escapeHtml(linked.no||'')}</span>`:'<span class="badge b-amber">⏳ ยังไม่ออกใบส่งสินค้า</span>'}</td>
@@ -5444,7 +4976,7 @@ const AUTO_DOCUMENT_NUMBER_SPECS={
   quote:{prefix:'QT',collections:['quotes'],inputId:'q-no',dateId:'q-date'},
   invoice:{prefix:'INV',collections:['invoices'],inputId:'i-no',dateId:'i-date'},
   receipt:{prefix:'REC',collections:['receipts'],inputId:'r-no',dateId:'r-date'},
-  creditNote:{prefix:'CN',collections:['creditNotes'],inputId:'cn-no',dateId:'cn-date',allPeriods:true}// a CN number is never reissued: scan every period (voided notes included)
+  creditNote:{prefix:'CN',collections:['creditNotes'],inputId:'cn-no',dateId:'cn-date',allPeriods:true},debitNote:{prefix:'DN',collections:['debitNotes'],inputId:'dn-no',dateId:'dn-date',allPeriods:true}// a CN / DN (ADR-024) number is never reissued: scan every period (voided notes included)
 };
 let autoDocumentNumberWrite=false;
 function documentNumberPrefix(type,dateValue){
@@ -5601,9 +5133,9 @@ async function linkProductionToInvoice(source,invoiceRecord){
   return true;
 }
 async function saveInvoiceUnlocked(){
-  const b=getBr('i');if(!b)return;
+  const b=getBr('i');if(!b)return;{const cp=window.ERPCompanyProfile?.issueRefusal?.();if(cp){notify(cp,'error');return;}}// r8fix#B6: damaged company profile → no tax document
   const state=editState.invoice;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
-  if(state){try{window.ERPIntegrity.assertEditable('invoice',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
+  if(state){try{window.ERPIntegrity.assertEditable('invoice',{...state.original,branch:b});}catch(e){notify(e.message);return;}if(window.ERPGovernance?.issuedEditGate?.({type:'invoices',title:'ใบกำกับภาษี',no:state.no,original:{...state.original,branch:state.branch},branch:b,date:document.getElementById('i-date').value})===false)return;}// r8fix#B1/B7: original + new date vs locks, past/filed month confirm
   let no=document.getElementById('i-no').value.trim();const date=document.getElementById('i-date').value,taxInvoiceForm=normalizeTaxInvoiceForm(document.getElementById('i-tax-form')?.value),cust=invoiceCustomerName(taxInvoiceForm,document.getElementById('i-cust').value);
   if(!no)no=refreshAutoDocumentNumber('invoice',true);
   if(!no||!date||!cust){notify('กรุณากรอกเลขที่บิล, วันที่ และชื่อลูกค้า');return;}const buyerBranch=window.ERPSalesFormAssist?.buyerBranchFromForm?.('i',{taxInvoiceForm})||{};if(buyerBranch.error){notify(buyerBranch.error);return;}// ADR-021 buyer สำนักงานใหญ่/สาขาที่
@@ -5618,7 +5150,7 @@ async function saveInvoiceUnlocked(){
   const result=await runDocumentAction({
     action:state?'invoice_edit':'invoice_create',context:{},
     validate:()=>{
-      window.ERPGovernance?.assertPeriodOpen?.({branch:b,date,scope:'sales',action:state?'invoice_edit':'invoice_create'});
+      window.ERPGovernance?.assertPeriodOpen?.({branch:b,date,scope:'sales',action:state?'invoice_edit':'invoice_create'});if(state)window.ERPGovernance?.assertPeriodOpen?.({branch:state.branch,date:state.original?.date,scope:'sales',action:'invoice_edit'});
       let writeSession=null,d=null,sourceProductionDoc=null,sourceQuote=null,sourceQuoteDoc=null;
       if(!state){writeSession=window.ERP_LOCAL_DEMO?createFinancialDocumentWriteSession():null;d=writeSession?writeSession.get(b,year,month):loadForFinancialDocumentWrite(b,year,month);}
       if(sourceProduction){
@@ -5635,7 +5167,7 @@ async function saveInvoiceUnlocked(){
       return{writeSession,d,sourceProductionDoc,sourceQuote,sourceQuoteDoc};
     },
     plan:ctx=>{
-      let invoiceRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),taxInvoiceForm,customer:cust,customerAddress:document.getElementById('i-address')?.value.trim()||'',customerTaxId:document.getElementById('i-tax-id')?.value.trim()||'',contact:document.getElementById('i-contact')?.value.trim()||'',phone:document.getElementById('i-phone')?.value.trim()||'',email:document.getElementById('i-email')?.value.trim()||'',...getCustomerAgencyFromForm('i'),customerBranchCode:buyerBranch.customerBranchCode||'',customerBranchName:buyerBranch.customerBranchName||'',salesPerson:document.getElementById('i-sales').value.trim(),creditTerm,dueDate,items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,vatCategory:window.ERPTaxForms?.invoiceVatCategory?.()||'',vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,
+      let invoiceRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),taxInvoiceForm,customer:cust,customerAddress:document.getElementById('i-address')?.value.trim()||'',customerTaxId:document.getElementById('i-tax-id')?.value.trim()||'',contact:document.getElementById('i-contact')?.value.trim()||'',phone:document.getElementById('i-phone')?.value.trim()||'',email:document.getElementById('i-email')?.value.trim()||'',...getCustomerAgencyFromForm('i'),customerBranchCode:buyerBranch.customerBranchCode||'',customerBranchName:buyerBranch.customerBranchName||'',salesPerson:document.getElementById('i-sales').value.trim(),creditTerm,dueDate,items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,...(window.ERPTaxForms?.invoiceTaxFields?.()||{}),vatCategory:window.ERPTaxForms?.invoiceVatCategory?.()||'',vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,
         sourceProductionId:sourceProduction?.id||'',sourceProductionNo:sourceProduction?.no||'',sourceProductionBranch:sourceProduction?.b||'',sourceProductionYear:sourceProduction?.y??'',sourceProductionMonth:sourceProduction?.m??'',sourceProductionRawCostTotal:safeNum(ctx.sourceProductionDoc?.costTotal ?? ctx.sourceProductionDoc?.costRawTotal),
         sourceQuoteId:ctx.sourceQuote?.id||'',sourceQuoteNo:ctx.sourceQuote?.no||'',sourceQuoteBranch:ctx.sourceQuote?.b||'',sourceQuoteYear:ctx.sourceQuote?.y??'',sourceQuoteMonth:ctx.sourceQuote?.m??'',sourceQuoteFirebaseId:ctx.sourceQuoteDoc?.firebaseId||ctx.sourceQuote?.firebaseId||'',note:document.getElementById('i-note').value.trim(),attachments:attachedFiles['i-att']||[]};
       invoiceRecord.costReviewRequired=items.some(i=>i.costAllocation&&i.costAllocation.basis!=='production_actual');
@@ -5715,9 +5247,9 @@ async function markInvoicePaidByReceipt(branch,invNo,selectedRef,receiptRecord){
   return {found:true,cloudOk:true,collection:found.collection,fullyPaid:summary.status==='paid',outstanding:summary.outstanding};
 }
 async function saveReceiptUnlocked(){
-  const b=getBr('r');if(!b)return;
+  const b=getBr('r');if(!b)return;{const cp=window.ERPCompanyProfile?.issueRefusal?.();if(cp){notify(cp,'error');return;}}// r8fix#B6
   const state=editState.receipt;if(state&&b!==state.branch){notify('ไม่สามารถเปลี่ยนสาขาระหว่างแก้ไขเอกสารได้');return;}
-  if(state){try{window.ERPIntegrity.assertEditable('receipt',{...state.original,branch:b});}catch(e){notify(e.message);return;}}
+  if(state){try{window.ERPIntegrity.assertEditable('receipt',{...state.original,branch:b});}catch(e){notify(e.message);return;}if(window.ERPGovernance?.issuedEditGate?.({type:'receipts',title:'ใบเสร็จรับเงิน',no:state.no,original:{...state.original,branch:state.branch},branch:b,date:document.getElementById('r-date').value})===false)return;}// r8fix#B1/B7
   let no=document.getElementById('r-no').value.trim();const date=document.getElementById('r-date').value,cust=document.getElementById('r-cust').value.trim();if(!no)no=refreshAutoDocumentNumber('receipt',true);
   if(!no||!date||!cust){notify('กรุณากรอกเลขที่, วันที่ และชื่อลูกค้า');return;}const buyerBranch=window.ERPSalesFormAssist?.buyerBranchFromForm?.('r')||{};if(buyerBranch.error){notify(buyerBranch.error);return;}// ADR-021
   const duplicateNumber=documentNumberExistsForWrite('receipt',no,state?.id||''),items=getRItems();try{window.ERPIntegrity.validateItems(items);}catch(e){notify(e.message);return;}
@@ -5729,7 +5261,7 @@ async function saveReceiptUnlocked(){
   const selectedInvoice=getSelectedInvoiceRef(),invNo=document.getElementById('r-inv-no').value.trim()||(selectedInvoice?.no||''),{year,month}=dateToYM(date);
   const result=await runDocumentAction({
     action:state?'receipt_edit':'receipt_create',context:{},
-    validate:()=>{window.ERPGovernance?.assertPeriodOpen?.({branch:b,date,scope:'sales',action:state?'receipt_edit':'receipt_create'});let writeSession=null,d=null;if(!state){writeSession=window.ERP_LOCAL_DEMO?createFinancialDocumentWriteSession():null;d=writeSession?writeSession.get(b,year,month):loadForFinancialDocumentWrite(b,year,month);}const reference=(invNo||selectedInvoice)?locateInvoiceReferenceForWrite(b,invNo,selectedInvoice):null;return{writeSession,d,reference};},
+    validate:()=>{window.ERPGovernance?.assertPeriodOpen?.({branch:b,date,scope:'sales',action:state?'receipt_edit':'receipt_create'});if(state)window.ERPGovernance?.assertPeriodOpen?.({branch:state.branch,date:state.original?.date,scope:'sales',action:'receipt_edit'});let writeSession=null,d=null;if(!state){writeSession=window.ERP_LOCAL_DEMO?createFinancialDocumentWriteSession():null;d=writeSession?writeSession.get(b,year,month):loadForFinancialDocumentWrite(b,year,month);}const reference=(invNo||selectedInvoice)?locateInvoiceReferenceForWrite(b,invNo,selectedInvoice):null;return{writeSession,d,reference};},
     plan:ctx=>{
       let receiptRecord={id:state?.id||Date.now(),no,date:isoDateCEFromValue(date),invNo,invoiceId:selectedInvoice?.id||ctx.reference?.inv?.id||'',invoiceBranch:selectedInvoice?.b||ctx.reference?.b||b,invoiceYear:selectedInvoice?.y??ctx.reference?.y??'',invoiceMonth:selectedInvoice?.m??ctx.reference?.m??'',...getCustomerAgencyFromForm('r'),salesPerson:document.getElementById('r-sales').value.trim(),customer:cust,customerAddress:document.getElementById('r-address')?.value.trim()||'',customerTaxId:document.getElementById('r-tax-id')?.value.trim()||'',customerBranchCode:buyerBranch.customerBranchCode||'',customerBranchName:buyerBranch.customerBranchName||'',contact:document.getElementById('r-contact')?.value.trim()||'',phone:document.getElementById('r-phone')?.value.trim()||'',email:document.getElementById('r-email')?.value.trim()||'',items,itemSaleTotal:vat.itemTotal,subtotal:vat.subtotal,useVat,vatMode:vat.vatMode,vatAmt:vat.vatAmt,total:vat.total,saleTotal:vat.itemTotal,costTotal:ct,commMode,commRate:cr,commAmt:comm,profit:vat.subtotal-ct-comm,whtRate:wht.whtRate,whtBase:wht.whtBase,whtAmount:wht.whtAmount,cashReceived:wht.cashReceived,whtCertNo,whtCertReceived,note:document.getElementById('r-note').value.trim(),attachments:attachedFiles['r-att']||[]};
       receiptRecord=withThaiCalendarMeta({...receiptRecord,branch:b,paymentManaged:true},year,month);const paymentSummary=ctx.reference?window.ERPIntegrity.paymentSummary({...ctx.reference.inv,branch:ctx.reference.b},{excludeReceiptId:state?.id||''}):null;
@@ -5769,7 +5301,7 @@ async function saveExpenseUnlocked(){
       const plan=planExpenseDocumentAction({draft:expenseRecord,duplicateDocument:ctx.duplicateDocument});expenseRecord=plan.record;return{...ctx,expenseRecord,warnings:plan.warnings};
     },
     commit:ctx=>{
-      ctx.d.expenses.push(ctx.expenseRecord);ctx.writeSession.mark(b,ctx.year,ctx.month);try{ctx.writeSession.commit();}catch(error){throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.STORAGE,error?.message||'บันทึกค่าใช้จ่ายในเครื่องไม่สำเร็จ');}window.ERPIntegrity.changed();return ctx;
+      ctx.d.expenses.push(ctx.expenseRecord);ctx.writeSession.mark(b,ctx.year,ctx.month);window.ERPPayerWht?.attachCertificate?.(ctx.writeSession,ctx.expenseRecord,b,ctx.year,ctx.month);try{ctx.writeSession.commit();}catch(error){throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.STORAGE,error?.message||'บันทึกค่าใช้จ่ายในเครื่องไม่สำเร็จ');}window.ERPIntegrity.changed();return ctx;
     },
     afterCommit:ctx=>{saveCloudRecord('saveExpense',ctx.expenseRecord,b,ctx.year,ctx.month,'ค่าใช้จ่าย');clearAttachedFiles('e-att');resetF('expense');onYearChange();renderDash();renderEList();return ctx;}
   });
@@ -5788,7 +5320,7 @@ function resetF(t){
   document.getElementById(f+'-br-ub').className='br-opt';
   document.getElementById(f+'-br-warn').classList.remove('show');if(!isMultiBranchUi())applyBranchUi(f,'ubon');
   if(t==='quote'){['q-cust','q-address','q-tax-id','q-contact','q-phone','q-email','q-sales','q-note'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('q','');document.getElementById('q-date').value=todayStr;document.getElementById('q-items-body').innerHTML='';['q-sub','q-vat-amt','q-total'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('q-att');setDocumentNumberValue('quote','',{manual:false});refreshAutoDocumentNumber('quote',true);}
-  if(t==='invoice'){['i-no','i-cust','i-address','i-tax-id','i-contact','i-phone','i-email','i-sales','i-cr','i-note','i-credit-term','i-due-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');window.ERPSalesFormAssist?.clearBuyerBranch?.('i');const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';window.ERPSalesFormAssist?.setInvoiceTaxForm('full',{restoreVat:false,recalc:false});document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');setDocumentNumberValue('invoice','',{manual:false});refreshAutoDocumentNumber('invoice',true);populateProductionRefs();window.ERPTaxForms?.resetInvoiceVatCategory?.();}
+  if(t==='invoice'){['i-no','i-cust','i-address','i-tax-id','i-contact','i-phone','i-email','i-sales','i-cr','i-note','i-credit-term','i-due-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});applyCustomerAgencyToForm('i','');window.ERPSalesFormAssist?.clearBuyerBranch?.('i');const prodRef=document.getElementById('i-prod-ref');if(prodRef){prodRef.value='';prodRef.disabled=false;}const prodHint=document.getElementById('i-prod-link-hint');if(prodHint)prodHint.textContent='เลือกใบสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชันอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น';document.getElementById('i-comm-mode').value='percent';toggleCommMode('i');document.getElementById('i-vat').value='0';window.ERPSalesFormAssist?.setInvoiceTaxForm('full',{restoreVat:false,recalc:false});document.getElementById('i-date').value=todayStr;updateInvoiceDueDate();document.getElementById('i-items-body').innerHTML='';['i-st','i-vat-amt','i-grand-total','i-ct','i-ca','i-pf'].forEach(id=>document.getElementById(id).value='');clearAttachedFiles('i-att');setDocumentNumberValue('invoice','',{manual:false});refreshAutoDocumentNumber('invoice',true);populateProductionRefs();window.ERPTaxForms?.resetInvoiceVatCategory?.();}
   if(t==='receipt'){['r-no','r-cust','r-address','r-tax-id','r-contact','r-phone','r-email','r-sales','r-inv-no','r-cr','r-note','r-wht-cert-no'].forEach(id=>document.getElementById(id).value='');applyCustomerAgencyToForm('r','');window.ERPSalesFormAssist?.clearBuyerBranch?.('r');const rRef=document.getElementById('r-inv-ref');if(rRef){rRef.value='';rRef.disabled=false;}document.getElementById('r-comm-mode').value='percent';toggleCommMode('r');const rVat=document.getElementById('r-vat');if(rVat)rVat.value='0';const rWhtRate=document.getElementById('r-wht-rate');if(rWhtRate)rWhtRate.value='0';const rWhtCert=document.getElementById('r-wht-cert-received');if(rWhtCert)rWhtCert.checked=false;document.getElementById('r-date').value=todayStr;document.getElementById('r-items-body').innerHTML='';['r-st','r-subtotal','r-vat-amt','r-grand-total','r-ct','r-ca','r-pf','r-wht-amt','r-cash-received'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});clearAttachedFiles('r-att');setDocumentNumberValue('receipt','',{manual:false});refreshAutoDocumentNumber('receipt',true);populateInvRefs();}
   if(t==='expense'){['e-desc','e-by','e-note','e-vendor','e-doc-no'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('e-amount').value='';document.getElementById('e-date').value=todayStr;const cat=document.getElementById('e-cat');if(cat)cat.value='ค่าน้ำมันเชื้อเพลิง';const docType=document.getElementById('e-doc-type');if(docType)docType.value='receipt';const taxStatus=document.getElementById('e-tax-status');if(taxStatus)taxStatus.value='requested';const purpose=document.getElementById('e-purpose');if(purpose)purpose.value='company';clearAttachedFiles('e-att');refreshExpenseEvidenceUi();window.ERPTaxForms?.resetExpense?.();}
 }
@@ -5913,7 +5445,7 @@ function populateProductionRefs(){
   })));
   if([...sel.options].some(o=>o.value===current))sel.value=current;
   const hint=document.getElementById('i-prod-link-hint');
-  if(hint&&!sel.value)hint.textContent=`พบใบสั่งผลิต ${shown} รายการ จากช่วงที่เลือก${filter.search?` (ค้นหา: ${filter.search})`:''} — เลือกรายการเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุน ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ`;
+  if(hint&&!sel.value)hint.textContent=`พบใบสั่งผลิต ${shown} รายการ จากช่วงที่เลือก${filter.search?` (ค้นหา: ${filter.search})`:''} — เลือกรายการเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุน ราคาขาย VAT และค่าคอมมิชชันอัตโนมัติ`;
 }
 function loadProductionRef(ref){
   if(!ref)return null;const d=loadFor(ref.b,Number(ref.y),Number(ref.m));
@@ -5996,8 +5528,8 @@ function populateInvRefs(){
     const d=loadFor(b,y,m);(d.invoices||[]).filter(window.ERPIntegrity.live).forEach(inv=>{
       if(!refTextMatch(inv,filter.search))return;
       shown++;
-      const o=document.createElement('option');o.value=JSON.stringify({b,y,m,id:inv.id,no:inv.no});const paid=isInvoicePaid(inv);
-      o.textContent=`[${BRANCH_TH[b]}] ${inv.no} | ${inv.customer||'-'} | ${inv.salesPerson||'-'} | ${formatThaiDate(inv.date)} | ${paid?(window.ERPIntegrity.paymentSummary({...inv,branch:b}).status==='credited'?'🧾 ลดหนี้เต็มจำนวน':'✅ ชำระแล้ว'):'⏳ รอชำระ'}`;
+      const o=document.createElement('option');o.value=JSON.stringify({b,y,m,id:inv.id,no:inv.no});const paid=isInvoicePaid(inv);const pay=window.ERPIntegrity.paymentSummary({...inv,branch:b});
+      o.textContent=`[${BRANCH_TH[b]}] ${inv.no} | ${inv.customer||'-'} | ${inv.salesPerson||'-'} | ${formatThaiDate(inv.date)} | ฿${fmt(pay.total)}${!paid&&pay.outstanding!==pay.total?` (ค้าง ฿${fmt(pay.outstanding)})`:''} | ${paid?(pay.status==='credited'?'🧾 ลดหนี้เต็มจำนวน':'✅ ชำระแล้ว'):'⏳ รอชำระ'}`;
       o.disabled=paid;sel.appendChild(o);
     });
   })));
@@ -6013,7 +5545,7 @@ function fillFromInv(){
   document.getElementById('r-comm-mode').value=inv.commMode||'percent';document.getElementById('r-cr').value=inv.commRate||'';document.getElementById('r-ca').value=inv.commMode==='manual'?(inv.commAmt||''):'';
   const rVat=document.getElementById('r-vat');if(rVat)rVat.value=String(Number(inv.useVat||0));toggleCommMode('r');
   document.getElementById('r-items-body').innerHTML='';const balance=window.ERPIntegrity.paymentSummary({...inv,branch:ref.b});
-  if(balance.paid>0||balance.credited>0){document.getElementById('r-vat').value=Number(inv.vatAmt)>0?'0':'2';addRItem({product:'รับชำระยอดค้างตามบิล '+inv.no,qty:1,unit:'ครั้ง',priceUnit:balance.outstanding,costUnit:0});document.getElementById('r-cr').value=0;document.getElementById('r-ca').value=0;}else (inv.items||[]).forEach(it=>addRItem(it));calcR();
+  if(balance.paid>0||balance.credited>0||balance.debited>0){document.getElementById('r-vat').value=Number(inv.vatAmt)>0?'0':'2';addRItem({product:'รับชำระยอดค้างตามบิล '+inv.no,qty:1,unit:'ครั้ง',priceUnit:balance.outstanding,costUnit:0});document.getElementById('r-cr').value=0;document.getElementById('r-ca').value=0;}else (inv.items||[]).forEach(it=>addRItem(it));calcR();
 }
 
 // ============================================================
@@ -6041,7 +5573,7 @@ function renderQLList(){
   document.getElementById('qempty').style.display=all.length?'none':'block';const movedOn=quoteMovedOnMatcher(window.ERPOrderFlow?.getStore?.()?.salesOrders||[]); // moved on = invoice/production stamp or a live Sales Order (erp-shared-core.js)
   document.getElementById('qtbl').innerHTML=all.map(q=>`<tr>
     <td><span class="badge b-purple">${escapeHtml(q.no||'-')}</span></td>
-    <td>${bbr(q.branch)}</td><td>${escapeHtml(formatThaiDate(q.date))}</td><td>${escapeHtml(q.customer||'-')}</td><td>${escapeHtml(q.salesPerson||'-')}</td>
+    <td>${bbr(q.branch)}</td><td>${escapeHtml(formatThaiDate(q.date))}</td><td data-no-i18n>${escapeHtml(q.customer||'-')}</td><td data-no-i18n>${escapeHtml(q.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(q.total)}</td>
     <td>${Number(q.vatAmt)>0?'<span class="badge b-blue">มี VAT</span>':'<span class="badge b-gray">ไม่มี</span>'}</td>
     <td><div>${q.approved?'<span class="qs-approved">✅ อนุมัติแล้ว</span>':'<span class="qs-pending">⏳ รออนุมัติ</span>'}</div>${q.productionNo?`<small style="display:block;margin-top:4px">🏭 ${escapeHtml(q.productionNo)}</small>`:''}${q.invoiceNo?`<small style="display:block;margin-top:2px">🚚 ${escapeHtml(q.invoiceNo)}</small>`:''}</td>
@@ -6113,13 +5645,13 @@ function invoiceDueBadge(inv,s){
   return '<span class="badge b-gray">ไม่ระบุ</span>';
 }
 function invoicePaymentText(inv,s=window.ERPIntegrity.paymentSummary(inv)){
-  if(s.status==='cancelled')return `ยกเลิกแล้ว${inv?.voidReason?` — ${inv.voidReason}`:''}`;return (s.status==='credited'?'ลดหนี้เต็มจำนวน':(s.status==='paid'?'ชำระเงินแล้ว':s.status==='partially_paid'?'ชำระบางส่วน · ค้าง '+fmt(s.outstanding):'รอชำระเงิน')+(s.credited>0?` · ลดหนี้ ${fmt(s.credited)}`:''))+(s.refundDue>0?` · ต้องคืนลูกค้า ${fmt(s.refundDue)}`:'');
+  if(s.status==='cancelled')return `ยกเลิกแล้ว${inv?.voidReason?` — ${inv.voidReason}`:''}`;return (s.status==='credited'?'ลดหนี้เต็มจำนวน':(s.status==='paid'?'ชำระเงินแล้ว':s.status==='partially_paid'?'ชำระบางส่วน · ค้าง '+fmt(s.outstanding):'รอชำระเงิน')+(s.credited>0?` · ลดหนี้ ${fmt(s.credited)}`:'')+(s.debited>0?` · เพิ่มหนี้ ${fmt(s.debited)}`:''))+(s.refundDue>0?` · ต้องคืนลูกค้า ${fmt(s.refundDue)}`:'');
 }
 function invoicePaymentBadge(inv,s=window.ERPIntegrity.paymentSummary(inv)){
-  const credit=s.credited>0&&s.status!=='credited'?` <span class="badge b-purple" title="ยอดลดหนี้รวม VAT จากใบลดหนี้ที่ใช้งาน">🧾 ลดหนี้ ฿${fmt(s.credited)}</span>`:'',refund=s.refundDue>0?` <span class="badge b-red" title="ลูกค้าชำระเกินยอดหลังลดหนี้ ต้องคืนเงินหรือตั้งเป็นเครดิตให้ลูกค้า">↩ คืนลูกค้า ฿${fmt(s.refundDue)}</span>`:'';
+  const credit=s.credited>0&&s.status!=='credited'?` <span class="badge b-purple" title="ยอดลดหนี้รวม VAT จากใบลดหนี้ที่ใช้งาน">🧾 ลดหนี้ ฿${fmt(s.credited)}</span>`:'',debit=s.debited>0?` <span class="badge b-blue" title="ยอดเพิ่มหนี้รวม VAT จากใบเพิ่มหนี้ที่ใช้งาน (เก็บเงินพร้อมบิลนี้)">เพิ่มหนี้ ฿${fmt(s.debited)}</span>`:'',refund=s.refundDue>0?` <span class="badge b-red" title="ลูกค้าชำระเกินยอดหลังลดหนี้ ต้องคืนเงินหรือตั้งเป็นเครดิตให้ลูกค้า">↩ คืนลูกค้า ฿${fmt(s.refundDue)}</span>`:'';
   if(s.status==='cancelled')return `<span class="badge b-red erp-cancelled-badge" title="${escapeHtml(inv?.voidReason||'')}">ยกเลิกแล้ว</span>`;return (s.status==='credited'?'<span class="badge b-purple">🧾 ลดหนี้เต็มจำนวน</span>':isInvoicePaid(inv,s)
     ? `<span class="badge b-green">✅ ชำระเงินแล้ว${inv?.paidReceiptNo?` • ${escapeHtml(inv.paidReceiptNo)}`:''}</span>`
-    : '<span class="badge b-amber">⏳ รอชำระเงิน</span>')+credit+refund;
+    : '<span class="badge b-amber">⏳ รอชำระเงิน</span>')+credit+debit+refund;
 }
 function invoicePaymentChecked(inv,s){
   return isInvoicePaid(inv,s) ? 'checked' : '';
@@ -6214,9 +5746,9 @@ function renderIList(){
   body.innerHTML=rows.map(({inv,item})=>{const dueInfo=invoiceDueInfo(inv,sum(inv));return `<tr class="${dueInfo.rowClass}">
     <td>${escapeHtml(formatThaiDate(inv.date))}</td>
     <td><span class="badge ${sum(inv)?.status==='cancelled'?'b-gray':'b-green'}">${escapeHtml(inv.no||'-')}</span>${effectiveTaxInvoiceForm(inv)==='abbreviated'?' <span class="badge b-amber" title="ใบกำกับภาษีอย่างย่อ (มาตรา 86/6)">อย่างย่อ</span>':''}${sum(inv)?.status==='cancelled'?` <span class="badge b-red erp-cancelled-badge" title="${escapeHtml(inv.voidReason||'')}">ยกเลิก</span>`:''}</td>
-    <td>${escapeHtml(inv.salesPerson||'-')}</td>
-    <td>${escapeHtml(inv.customer||'-')}</td>
-    <td>${escapeHtml(item.product)}${item.unit?` <span class="invoice-item-unit">(${escapeHtml(item.unit)})</span>`:''}</td>
+    <td data-no-i18n>${escapeHtml(inv.salesPerson||'-')}</td>
+    <td data-no-i18n>${escapeHtml(inv.customer||'-')}</td>
+    <td data-no-i18n>${escapeHtml(item.product)}${item.unit?` <span class="invoice-item-unit">(${escapeHtml(item.unit)})</span>`:''}</td>
     <td class="tn">${fmt(item.qty)}</td>
     <td>${escapeHtml(item.costModeLabel)}</td>
     <td class="tn">฿${fmt(item.costValue)}</td>
@@ -6233,7 +5765,7 @@ function renderIList(){
     <td>
       ${item.idx===0&&sum(inv)?.status==='cancelled'?invoicePaymentBadge(inv,sum(inv)):''}${item.idx===0&&sum(inv)?.status!=='cancelled'?`<label class="pay-toggle">${invoicePaymentBadge(inv,sum(inv))}<span class="pay-check"><input type="checkbox" ${invoicePaymentChecked(inv,sum(inv))} onchange="toggleInvoicePaid('${inv.branch}',${inv._y},${inv._m},${escapeHtml(JSON.stringify(String(inv.id??'')))},this.checked)"> ชำระแล้ว</span></label>`:''}
     </td>
-    <td class="erp-rowact-cell">${item.idx===0?rowActionsHtml('invoice',{b:inv.branch,y:inv._y,m:inv._m,id:inv.id,no:inv.no||'',settled:isInvoicePaid(inv,sum(inv)),cancelled:sum(inv)?.status==='cancelled',vatNone:resolveVatMode(inv)==='none'}):''}</td>
+    <td class="erp-rowact-cell">${item.idx===0?rowActionsHtml('invoice',{b:inv.branch,y:inv._y,m:inv._m,id:inv.id,no:inv.no||'',settled:isInvoicePaid(inv,sum(inv)),cancelled:sum(inv)?.status==='cancelled',vatNone:resolveVatMode(inv)==='none',abbreviated:effectiveTaxInvoiceForm(inv)==='abbreviated'}):''}</td>
   </tr>`;}).join('');
 }
 
@@ -6419,7 +5951,7 @@ function renderRList(){
   document.getElementById('rempty').style.display=all.length?'none':'block';
   document.getElementById('rtbl').innerHTML=all.map(r=>`<tr>
     <td><span class="badge b-blue">${escapeHtml(r.no||'-')}</span>${window.ERPIntegrity.live(r)?'':` <span class="badge b-red erp-cancelled-badge" title="${escapeHtml(r.voidReason||'')}">ยกเลิก</span>`}</td>
-    <td>${bbr(r.branch)}</td><td>${escapeHtml(formatThaiDate(r.date))}</td><td>${escapeHtml(r.invNo||'-')}</td><td>${escapeHtml(r.customer||'-')}</td><td>${escapeHtml(r.salesPerson||'-')}</td>
+    <td>${bbr(r.branch)}</td><td>${escapeHtml(formatThaiDate(r.date))}</td><td>${escapeHtml(r.invNo||'-')}</td><td data-no-i18n>${escapeHtml(r.customer||'-')}</td><td data-no-i18n>${escapeHtml(r.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(r.total ?? r.saleTotal)}${r.whtAmount>0?`<br><small class="badge b-amber" title="หัก ณ ที่จ่าย ${fmt(r.whtAmount)} บาท · รับเงินสด/โอนจริง ${fmt(r.cashReceived)} บาท">WHT ${escapeHtml(r.whtRate)}%</small>`:''}</td>
     <td class="tn ${r.profit>=0?'pos':'neg'}">฿${fmt(r.profit)}</td>
     <td class="erp-rowact-cell">${rowActionsHtml('receipt',{b:r.branch,y:r._y,m:r._m,id:r.id,no:r.no,voided:!window.ERPIntegrity.live(r)})}</td>
@@ -6453,7 +5985,7 @@ function renderIssuedInvoiceList(){
   body.innerHTML=rows.map(row=>`<tr>
     <td><span class="badge b-green">${escapeHtml(row.no||'-')}</span></td>
     <td>${bbr(row.branch)}</td><td>${escapeHtml(formatThaiDate(row.date))}</td>
-    <td>${escapeHtml(row.customer||'-')}</td><td>${escapeHtml(row.salesPerson||'-')}</td>
+    <td data-no-i18n>${escapeHtml(row.customer||'-')}</td><td data-no-i18n>${escapeHtml(row.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(invoiceNetSales(row))}</td><td class="tn">฿${fmt(row.total??0)}</td>
     <td>${escapeHtml(row.sourceProductionNo||'-')}</td>
     <td class="erp-rowact-cell">${rowActionsHtml('issuedInvoice',{b:row.branch,y:row._y,m:row._m,id:row.id,no:row.no||''})} <span class="badge b-green">ออกแล้ว · ล็อก</span></td>
@@ -6469,7 +6001,7 @@ function renderIssuedReceiptList(){
   body.innerHTML=rows.map(row=>`<tr>
     <td><span class="badge b-blue">${escapeHtml(row.no||'-')}</span></td>
     <td>${bbr(row.branch)}</td><td>${escapeHtml(formatThaiDate(row.date))}</td>
-    <td>${escapeHtml(row.invNo||'-')}</td><td>${escapeHtml(row.customer||'-')}</td><td>${escapeHtml(row.salesPerson||'-')}</td>
+    <td>${escapeHtml(row.invNo||'-')}</td><td data-no-i18n>${escapeHtml(row.customer||'-')}</td><td data-no-i18n>${escapeHtml(row.salesPerson||'-')}</td>
     <td class="tn">฿${fmt(row.total??row.saleTotal??0)}</td>
     <td class="erp-rowact-cell">${rowActionsHtml('issuedReceipt',{b:row.branch,y:row._y,m:row._m,id:row.id,no:row.no||''})} <span class="badge b-blue">ออกแล้ว · ล็อก</span></td>
   </tr>`).join('');
@@ -6479,7 +6011,7 @@ function showIssuedDocumentDetail(type,branch,year,month,id){
   const row=(loadFor(branch,year,month)[type]||[]).find(item=>String(item.id)===String(id));
   if(!row){notify('ไม่พบข้อมูลเอกสาร');return;}
   const isInvoice=type==='issuedInvoices';
-  document.getElementById('modal-title').textContent=isInvoice?'ข้อมูลออกบิลใบส่งของ / ใบกำกับภาษี':'ข้อมูลออกใบเสร็จรับเงิน';
+  document.getElementById('modal-title').textContent=isInvoice?'ข้อมูลออกบิลใบส่งสินค้า / ใบกำกับภาษี':'ข้อมูลออกใบเสร็จรับเงิน';
   const details=[
     ['เลขที่เอกสาร',row.no],['วันที่',formatThaiDate(row.date)],['สาขา',BRANCH_TH[row.branch]],['ลูกค้า',row.customer],
     ['พนักงานขาย',row.salesPerson],['เลขอ้างอิง',isInvoice?(row.sourceProductionNo||'-'):(row.invNo||'-')],
@@ -6505,22 +6037,22 @@ function renderEList(){
     return `<tr>
       <td>${escapeHtml(formatThaiDate(e.date))}</td><td>${bbr(e.branch)}</td>
       <td><span class="badge b-amber">${escapeHtml(e.cat||'-')}</span></td>
-      <td>${escapeHtml(e.vendor||'-')}</td>
-      <td class="expense-desc-cell"><b>${escapeHtml(e.desc||'-')}</b><small>${escapeHtml(expensePurposeLabel(e.purpose))}</small></td>
+      <td data-no-i18n>${escapeHtml(e.vendor||'-')}</td>
+      <td class="expense-desc-cell"><b data-no-i18n>${escapeHtml(e.desc||'-')}</b><small>${escapeHtml(expensePurposeLabel(e.purpose))}</small></td>
       <td><span class="expense-doc-pill">${escapeHtml(expenseDocTypeLabel(e.docType))}</span>${e.docNo?`<small class="expense-doc-no">${escapeHtml(e.docNo)}</small>`:''}</td>
       <td><span class="expense-status-pill ${taxCls}">${escapeHtml(expenseTaxStatusLabel(e.taxStatus||'not_requested'))}</span>${window.ERPTaxForms?.expenseBadgeHtml?.(e)||''}</td>
       <td><span class="expense-evidence-count">📷 ${evidenceCount} ไฟล์</span></td>
-      <td>${escapeHtml(e.by||'-')}</td>
+      <td data-no-i18n>${escapeHtml(e.by||'-')}</td>
       <td class="tn neg">฿${fmt(e.amount)}</td>
-      <td class="erp-rowact-cell">${rowActionsHtml('expense',{b:e.branch,y:e._y,m:e._m,id:String(e.id),no:e.docNo||e.desc||''})}</td>
+      <td class="erp-rowact-cell">${rowActionsHtml('expense',{b:e.branch,y:e._y,m:e._m,id:String(e.id),no:e.docNo||e.desc||'',wht:Number(e.whtAmount)>0})}</td>
     </tr>`;
   }).join('');
 }
 async function delDoc(br,y,m,type,id){
-  if(type==='issuedInvoices'||type==='issuedReceipts'){notify('เอกสารที่ออกแล้วถูกล็อกใน Demo 4.3 และไม่อนุญาตให้ลบแบบทำลายข้อมูล');return;}if(type==='invoices'||type==='receipts'){notify(`${type==='invoices'?'ใบกำกับภาษี':'ใบเสร็จรับเงิน'}ที่ออกแล้วลบไม่ได้ — ใช้เมนู ⋯ › ${type==='invoices'?'ยกเลิกใบกำกับภาษี':'ยกเลิกใบเสร็จ'} (เก็บเอกสารและเลขที่ไว้พร้อมเหตุผล)`,'error',7200);return;}// ADR-021
+  if(type==='issuedInvoices'||type==='issuedReceipts'||ISSUED_TAX_DOCUMENT_COLLECTIONS.includes(type)){notify(ISSUED_TAX_DOCUMENT_COLLECTIONS.includes(type)?'ใบลดหนี้ / ใบเพิ่มหนี้ / หนังสือรับรอง 50 ทวิ ที่ออกแล้วลบไม่ได้ — ใช้การยกเลิก (เก็บเอกสารและเลขที่ไว้)':'เอกสารที่ออกแล้วถูกล็อกใน Demo 4.3 และไม่อนุญาตให้ลบแบบทำลายข้อมูล','error');return;}/* r8fix#B10: CN / DN / 50 ทวิ are cancel-only, even from the console */if(type==='invoices'||type==='receipts'){notify(`${type==='invoices'?'ใบกำกับภาษี':'ใบเสร็จรับเงิน'}ที่ออกแล้วลบไม่ได้ — ใช้เมนู ⋯ › ${type==='invoices'?'ยกเลิกใบกำกับภาษี':'ยกเลิกใบเสร็จ'} (เก็บเอกสารและเลขที่ไว้พร้อมเหตุผล)`,'error',7200);return;}// ADR-021
   const d=loadFor(br,y,m);
   const found=(d[type]||[]).find(x=>String(x.id)===String(id));
-  if(!found)return;const lockRefusal=window.ERPGovernance?.periodLockRefusal?.({type,branch:br,date:found.date,action:`${type}_delete`});if(lockRefusal){notify(lockRefusal,'error',7200);return;} // closed period: refused before any question (ADR-018)
+  if(!found)return;const lockRefusal=window.ERPGovernance?.periodLockRefusal?.({type,branch:br,date:found.date,action:`${type}_delete`})||window.ERPPayerWht?.deleteRefusal?.(type,br,found)||'';if(lockRefusal){notify(lockRefusal,'error',7200);return;} // closed period: refused before any question (ADR-018)
   if(found.paymentId){notify('ใบเสร็จนี้ผูกกับรายการรับเงิน กรุณายกเลิกรับเงินที่หน้าใบวางบิล');return;}
   if((type==='invoices'||type==='issuedInvoices')&&window.ERPIntegrity.paymentSummary({...found,branch:br}).paid>0){notify('บิลนี้มีการรับเงินแล้ว กรุณาจัดการรายการรับเงินก่อนลบ');return;}
   if((type==='invoices'||type==='issuedInvoices')&&window.ERPIntegrity.paymentSummary({...found,branch:br}).credited>0){notify('บิลนี้มีใบลดหนี้อ้างอิงอยู่ กรุณายกเลิกใบลดหนี้ก่อนลบ');return;}
@@ -6593,7 +6125,7 @@ function showDetail(type,doc){
   }
   if(type==='production'){
     title=`สั่งผลิตสินค้า — ${doc.no}`;
-    body=dr('เลขที่',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('ผู้รับผลิต/ผู้สั่งผลิต',doc.maker)+dr('ที่อยู่ผู้ผลิต',doc.makerAddress||'-')+dr('เลขผู้เสียภาษีผู้ผลิต',doc.makerTaxId||'-')+dr('ติดต่อผู้ผลิต',[doc.makerContact,doc.makerPhone,doc.makerEmail].filter(Boolean).join(' · ')||'-')+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('ชื่องาน',doc.job)+dr('ระยะเวลาในการส่งสินค้า',productionDeliveryLeadLabel(doc.deliveryLeadDays||doc.shippingLeadDays))+dr('กำหนดส่งสินค้า',formatThaiDate(getProductionDeliveryDueDate(doc))||'-')+dr('จำนวน',fmt(doc.qty))+dr('รูปแบบต้นทุน',getPCostSummary(doc))+dr('ต้นทุนรวมจากรายการ (ใช้คำนวณกำไร/ส่งบิล)','฿'+fmt(doc.costTotal ?? doc.costRawTotal ?? (doc.schemaVersion===2?0:doc.subtotal)))+dr('ต้นทุนรวม + VAT 7%','฿'+fmt(doc.costGrandTotal ?? ((doc.costTotal ?? doc.costRawTotal ?? 0)+safeNum(doc.costVatAmt))))+dr('รูปแบบ VAT ต้นทุน (ข้อมูลประกอบ)',doc.costUseVat?'รวม VAT 7%':'ไม่รวม VAT 7%')+dr('VAT 7% ต้นทุน (ข้อมูลประกอบ)','฿'+fmt(doc.costVatAmt||0))+dr('เครดิตการชำระผู้ผลิต',productionSupplierCreditLabel(doc.supplierCreditTerm,doc))+dr('วันเริ่มนับเครดิตผู้ผลิต',formatThaiDate(getProductionSupplierCreditBaseDate(doc.date,doc.supplierCreditTerm||'deliveryLead',doc.deliveryLeadDays||doc.shippingLeadDays,getProductionDeliveryDueDate(doc)))||'-')+dr('วิธีคำนวณเครดิตผู้ผลิต',productionSupplierCreditFormulaLabel(doc))+dr('วันครบกำหนดชำระผู้ผลิต',formatThaiDate(getProductionSupplierDueDate(doc))||'-')+dr('การแจ้งเตือนกำหนดชำระ',productionSupplierDueInfo(doc).text)+dr('สถานะชำระผู้ผลิต',productionSupplierPaymentStatusLabel(doc.supplierPaymentStatus))+dr('หมายเหตุการชำระผู้ผลิต',doc.supplierPaymentNote||'-')+dr('ราคาขายต่อหน่วย',getPSaleSummary(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal ?? doc.total))+dr('รูปแบบ VAT ยอดขาย',vatModeLabel(doc))+dr('ยอดขายก่อน VAT','฿'+fmt(doc.subtotal))+dr('VAT 7% ยอดขาย','฿'+fmt(doc.vatAmt))+dr('ยอดขายรวมทั้งสิ้น','฿'+fmt(doc.total))+dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไร',html(`<span class="${safeNum(doc.profit)>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`))+dr('ใบส่งสินค้า / ใบกำกับภาษี',doc.invoiceNo?`✅ ${doc.invoiceNo}`:'ยังไม่ออกบิล')+dr('หมายเหตุ',doc.note);
+    body=dr('เลขที่',doc.no)+dr('วันที่',formatThaiDate(doc.date))+dr('สาขา',BRANCH_TH[doc.branch]||'-')+dr('ผู้รับผลิต',doc.maker)+dr('ที่อยู่ผู้ผลิต',doc.makerAddress||'-')+dr('เลขผู้เสียภาษีผู้ผลิต',doc.makerTaxId||'-')+dr('ติดต่อผู้ผลิต',[doc.makerContact,doc.makerPhone,doc.makerEmail].filter(Boolean).join(' · ')||'-')+dr('ลูกค้า',doc.customer)+agencyDetailRows(doc)+dr('ชื่องาน',doc.job)+dr('ระยะเวลาในการส่งสินค้า',productionDeliveryLeadLabel(doc.deliveryLeadDays||doc.shippingLeadDays))+dr('กำหนดส่งสินค้า',formatThaiDate(getProductionDeliveryDueDate(doc))||'-')+dr('จำนวน',fmt(doc.qty))+dr('รูปแบบต้นทุน',getPCostSummary(doc))+dr('ต้นทุนรวมจากรายการ (ใช้คำนวณกำไร/ส่งบิล)','฿'+fmt(doc.costTotal ?? doc.costRawTotal ?? (doc.schemaVersion===2?0:doc.subtotal)))+dr('ต้นทุนรวม + VAT 7%','฿'+fmt(doc.costGrandTotal ?? ((doc.costTotal ?? doc.costRawTotal ?? 0)+safeNum(doc.costVatAmt))))+dr('รูปแบบ VAT ต้นทุน (ข้อมูลประกอบ)',doc.costUseVat?'รวม VAT 7%':'ไม่รวม VAT 7%')+dr('VAT 7% ต้นทุน (ข้อมูลประกอบ)','฿'+fmt(doc.costVatAmt||0))+dr('เครดิตการชำระผู้ผลิต',productionSupplierCreditLabel(doc.supplierCreditTerm,doc))+dr('วันเริ่มนับเครดิตผู้ผลิต',formatThaiDate(getProductionSupplierCreditBaseDate(doc.date,doc.supplierCreditTerm||'deliveryLead',doc.deliveryLeadDays||doc.shippingLeadDays,getProductionDeliveryDueDate(doc)))||'-')+dr('วิธีคำนวณเครดิตผู้ผลิต',productionSupplierCreditFormulaLabel(doc))+dr('วันครบกำหนดชำระผู้ผลิต',formatThaiDate(getProductionSupplierDueDate(doc))||'-')+dr('การแจ้งเตือนกำหนดชำระ',productionSupplierDueInfo(doc).text)+dr('สถานะชำระผู้ผลิต',productionSupplierPaymentStatusLabel(doc.supplierPaymentStatus))+dr('หมายเหตุการชำระผู้ผลิต',doc.supplierPaymentNote||'-')+dr('ราคาขายต่อหน่วย',getPSaleSummary(doc))+dr('ยอดขายรวมจากรายการ','฿'+fmt(doc.itemSaleTotal ?? doc.saleTotal ?? doc.total))+dr('รูปแบบ VAT ยอดขาย',vatModeLabel(doc))+dr('ยอดขายก่อน VAT','฿'+fmt(doc.subtotal))+dr('VAT 7% ยอดขาย','฿'+fmt(doc.vatAmt))+dr('ยอดขายรวมทั้งสิ้น','฿'+fmt(doc.total))+dr(commLabel(doc),'฿'+fmt(doc.commAmt))+dr('กำไร',html(`<span class="${safeNum(doc.profit)>=0?'pos':'neg'}">฿${fmt(doc.profit)}</span>`))+dr('ใบส่งสินค้า / ใบกำกับภาษี',doc.invoiceNo?`✅ ${doc.invoiceNo}`:'ยังไม่ออกบิล')+dr('หมายเหตุ',doc.note);
   }
   if(type==='invoice'){
     title=`ใบส่งสินค้า / ใบกำกับภาษี — ${doc.no}`;
@@ -6631,7 +6163,7 @@ function showDetail(type,doc){
         <th style="padding:6px 8px;border:1px solid var(--g4);font-size:11px;color:var(--g2)">รวม</th>
       </tr></thead><tbody>
       ${doc.items.map(it=>`<tr>
-        <td style="padding:6px 8px;border:1px solid var(--g4)">${escapeHtml(it.product||'')}</td>
+        <td style="padding:6px 8px;border:1px solid var(--g4)" data-no-i18n>${escapeHtml(it.product||'')}</td>
         <td style="padding:6px 8px;border:1px solid var(--g4);text-align:center">${escapeHtml(it.qty??'')}</td>
         <td style="padding:6px 8px;border:1px solid var(--g4)">${escapeHtml(it.unit||'')}</td>
         ${['invoice','production'].includes(type)?`<td style="padding:6px 8px;border:1px solid var(--g4)">${it.costMode==='lump'?'ราคาเหมา':'ราคาต้นทุนต่อหน่วย'}</td><td style="padding:6px 8px;border:1px solid var(--g4);text-align:right">฿${fmt(it.costMode==='lump'?(it.costLump??it.costValue??it.costTotal):(it.costValue??it.costUnit))}</td>`:''}<td style="padding:6px 8px;border:1px solid var(--g4);text-align:right">฿${fmt(getPSaleUnitValue(it))}</td>
@@ -6785,8 +6317,8 @@ function downloadJSON(payload,filename){
 
 function collectLocalMasterBackup(){
   const snapshot=localMasterSnapshot();
-  const settings={};for(const base of [SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY]){const value=localStorage.getItem(tenantLocalKey(base));if(value!==null)settings[base]=JSON.parse(value);}
-  return {contacts:snapshot.contacts,products:snapshot.products,productionCore:window.ERPProductionCore?.exportData?.()||{},orderFlow:window.ERPOrderFlow?.exportData?.()||{},businessRules:window.BusinessRulesService?.read?.()||{},settings,companyProfile:window.ERPCompanyProfile?.exportBackup?.(),vatReturns:window.ERPTaxReports?.exportBackup?.(),version:4,exportedAt:new Date().toISOString()};
+  const settings={};for(const base of [SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY,UI_LANGUAGE_KEY]){const value=localStorage.getItem(tenantLocalKey(base));if(value!==null)settings[base]=JSON.parse(value);}
+  return {contacts:snapshot.contacts,products:snapshot.products,productionCore:window.ERPProductionCore?.exportData?.()||{},orderFlow:window.ERPOrderFlow?.exportData?.()||{},businessRules:window.BusinessRulesService?.read?.()||{},settings,companyProfile:window.ERPCompanyProfile?.exportBackup?.(),vatReturns:window.ERPTaxReports?.exportBackup?.(),whtFilings:window.ERPPayerWht?.exportBackup?.(),periodLocks:window.ERPGovernance?.exportBackup?.(),costing:window.ERPCosting?.exportBackup?.(),accounting:window.ERPJournal?.exportBackup?.(),promptpay:window.ERPPromptPay?.exportBackup?.(),fx:window.ERPFx?.exportBackup?.(),version:4,exportedAt:new Date().toISOString()};
 }
 function restoreLocalMasterBackup(masterData={},options={}){
   const writes=[],merge=window.ERPIntegrity.mergeRows;let masterChanged=false;
@@ -6794,7 +6326,7 @@ function restoreLocalMasterBackup(masterData={},options={}){
   if(masterData.contacts!==undefined){const prepared=masterDataStore.prepareRowsWrite(CONTACT_MASTER_KEY,merge(snapshot.contacts,masterData.contacts,!!options.replace));writes.push([prepared.resolvedKey,prepared.serialized]);masterChanged=true;}
   if(masterData.products!==undefined){const prepared=masterDataStore.prepareRowsWrite(PRODUCT_MASTER_LOCAL_KEY,merge(snapshot.products,masterData.products,!!options.replace));writes.push([prepared.resolvedKey,prepared.serialized]);masterChanged=true;}
   if(masterData.businessRules&&Object.keys(masterData.businessRules).length){const old=window.BusinessRulesService?.read?.()||{},incoming=masterData.businessRules;if(options.replace||localStorage.getItem(tenantLocalKey(BUSINESS_RULES_KEY))===null||(Date.parse(incoming.updatedAt||'')||0)>=(Date.parse(old.updatedAt||'')||0))writes.push([tenantLocalKey(BUSINESS_RULES_KEY),incoming]);}
-  for(const [base,value] of Object.entries(masterData.settings||{})){if([SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY].includes(base)&&(options.replace||localStorage.getItem(tenantLocalKey(base))===null))writes.push([tenantLocalKey(base),value]);}writes.push(...(window.ERPCompanyProfile?.backupWrites?.(masterData.companyProfile,options)||[]),...(window.ERPTaxReports?.backupWrites?.(masterData.vatReturns,options)||[]));
+  for(const [base,value] of Object.entries(masterData.settings||{})){if([SALES_TARGETS_KEY,DELIVERY_TARGETS_KEY,ORDER_FLOW_PREFERENCES_KEY,UI_LANGUAGE_KEY].includes(base)&&(options.replace||localStorage.getItem(tenantLocalKey(base))===null))writes.push([tenantLocalKey(base),value]);}writes.push(...(window.ERPCompanyProfile?.backupWrites?.(masterData.companyProfile,options)||[]),...(window.ERPTaxReports?.backupWrites?.(masterData.vatReturns,options)||[]),...(window.ERPPayerWht?.backupWrites?.(masterData.whtFilings,options)||[]),...(window.ERPGovernance?.backupWrites?.(masterData.periodLocks)||[]),...(window.ERPCosting?.backupWrites?.(masterData.costing,options)||[]),...(window.ERPJournal?.backupWrites?.(masterData.accounting,options)||[]),...(window.ERPPromptPay?.backupWrites?.(masterData.promptpay,options)||[]),...(window.ERPFx?.backupWrites?.(masterData.fx,options)||[]));// r8fix#B8 locks: append-only · ADR-028 costing · ADR-029 accounting + PromptPay · ADR-031 multi-currency
   window.ERPIntegrity.transaction(writes);
   if(masterChanged)queueMasterCloudSync();
   if(masterData.productionCore)window.ERPProductionCore.importData(masterData.productionCore,options);
@@ -6870,7 +6402,7 @@ function exportXLSX(type,options={}){
     const branches=options.branch?[options.branch]:tenantActiveBranchIds();
 
     if(type==='all'||type==='invoices'){
-      const rows=[['วันที่ขาย','เลขที่บิล','พนักงานขาย','ชื่อลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','เครดิตการชำระ','วันครบกำหนดชำระ','สถานะกำหนดชำระ','สถานะชำระเงิน','รายการสินค้า','จำนวน','รูปแบบราคาต้นทุน','ราคาต้นทุน','รวมต้นทุน','ราคาขายต่อหน่วย','รวมราคาขายพร้อม VAT','ถอด VAT 7%','สวัสดิการหรือค่าคอมมิชชั่น','กำไร','%กำไรต้นทุน','%กำไรยอดขาย']];
+      const rows=[['วันที่ขาย','เลขที่บิล','พนักงานขาย','ชื่อลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','เครดิตการชำระ','วันครบกำหนดชำระ','สถานะกำหนดชำระ','สถานะชำระเงิน','รายการสินค้า','จำนวน','รูปแบบราคาต้นทุน','ราคาต้นทุน','รวมต้นทุน','ราคาขายต่อหน่วย','รวมราคาขายพร้อม VAT','ถอด VAT 7%','สวัสดิการหรือค่าคอมมิชชัน','กำไร','%กำไรต้นทุน','%กำไรยอดขาย']];
       years.forEach(y=>branches.forEach(br=>months.forEach(m=>{
         const d=normalizeDataPack(loadForBackupRead(br,y,m));
         d.invoices.forEach(inv=>{
@@ -6901,7 +6433,7 @@ function exportXLSX(type,options={}){
           ]));
         });
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ใบส่งสินค้า - ใบกำกับภาษี');// ADR-021: Excel sheet names may not contain '/' (SheetJS threw, so this export never worked)
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('ใบส่งสินค้า - ใบกำกับภาษี')??'ใบส่งสินค้า - ใบกำกับภาษี');// ADR-021: Excel sheet names may not contain '/' (SheetJS threw, so this export never worked)
     }
 
     if(type==='all'||type==='quotes'){
@@ -6916,11 +6448,11 @@ function exportXLSX(type,options={}){
           }
         });
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ใบเสนอราคา');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('ใบเสนอราคา')??'ใบเสนอราคา');
     }
 
     if(type==='all'||type==='receipts'){
-      const rows=[['สาขา','ปี','เดือน','เลขที่ใบเสร็จ','วันที่','เลขบิล','ลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','พนักงานขาย','สินค้า','จำนวน','หน่วย','ราคาขาย/หน่วย','ยอดขายรายการ','ยอดก่อน VAT','VAT 7%','ยอดรวมทั้งสิ้น','รูปแบบ VAT','วิธีคิดคอม','%คอม','คอมมิสชัน','กำไรสุทธิ','หมายเหตุ']];
+      const rows=[['สาขา','ปี','เดือน','เลขที่ใบเสร็จ','วันที่','เลขบิล','ลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','พนักงานขาย','สินค้า','จำนวน','หน่วย','ราคาขาย/หน่วย','ยอดขายรายการ','ยอดก่อน VAT','VAT 7%','ยอดรวมทั้งสิ้น','รูปแบบ VAT','วิธีคิดคอม','%คอม','คอมมิชชัน','กำไรสุทธิ','หมายเหตุ']];
       years.forEach(y=>branches.forEach(br=>months.forEach(m=>{
         const d=normalizeDataPack(loadForBackupRead(br,y,m));
         d.receipts.forEach(r=>{
@@ -6931,13 +6463,13 @@ function exportXLSX(type,options={}){
           }
         });
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ใบเสร็จรับเงิน');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('ใบเสร็จรับเงิน')??'ใบเสร็จรับเงิน');
     }
 
     if(type==='all'||type==='creditNotes'){
       const rows=[[...CREDIT_NOTE_EXPORT_HEADER]];
       years.forEach(y=>branches.forEach(br=>months.forEach(m=>rows.push(...creditNoteExportRows(normalizeDataPack(loadForBackupRead(br,y,m)).creditNotes,{branchLabel:BRANCH_TH[br],yearLabel:yearLabelBE(y),monthLabel:MONTHS[m],formatDate:formatThaiDate})))));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ใบลดหนี้');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('ใบลดหนี้')??'ใบลดหนี้');
     }
 
     if(type==='all'||type==='expenses'){
@@ -6946,11 +6478,11 @@ function exportXLSX(type,options={}){
         const d=normalizeDataPack(loadForBackupRead(br,y,m));
         d.expenses.forEach(e=>rows.push([BRANCH_TH[br],yearLabelBE(y),MONTHS[m],formatThaiDate(e.date),e.cat,e.desc,e.by||'',e.amount,e.note||'']));
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'ค่าใช้จ่าย');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('ค่าใช้จ่าย')??'ค่าใช้จ่าย');
     }
 
     if(type==='all'||type==='productions'){
-      const rows=[['สาขา','ปี','เดือน','เลขที่','วันที่','ผู้รับผลิต/ผู้สั่งผลิต','ลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','ชื่องาน','ระยะเวลาส่งสินค้า','กำหนดส่งสินค้า','รายการสินค้า','จำนวน','หน่วย','รูปแบบต้นทุน','ราคาต้นทุน','ต้นทุนรวม','ต้นทุนรวม + VAT 7%','เครดิตชำระผู้ผลิต','วันครบกำหนดชำระผู้ผลิต','สถานะชำระผู้ผลิต','หมายเหตุการชำระผู้ผลิต','ราคาขายต่อหน่วย','ยอดขายรวม','รูปแบบ VAT ยอดขาย','ยอดขายก่อน VAT','VAT 7% ยอดขาย','ยอดขายรวมทั้งสิ้น','รูปแบบ VAT ต้นทุน','ต้นทุนก่อน VAT','VAT 7% ต้นทุน','ต้นทุนรวมทั้งสิ้น','วิธีค่าคอมมิสชัน','อัตราคอมฯ %','ค่าคอมมิสชัน','กำไร','เลขบิลที่เชื่อม','หมายเหตุ']];
+      const rows=[['สาขา','ปี','เดือน','เลขที่','วันที่','ผู้รับผลิต','ลูกค้า','ประเภทหน่วยงาน','ประเภทย่อย','ชื่องาน','ระยะเวลาส่งสินค้า','กำหนดส่งสินค้า','รายการสินค้า','จำนวน','หน่วย','รูปแบบต้นทุน','ราคาต้นทุน','ต้นทุนรวม','ต้นทุนรวม + VAT 7%','เครดิตชำระผู้ผลิต','วันครบกำหนดชำระผู้ผลิต','สถานะชำระผู้ผลิต','หมายเหตุการชำระผู้ผลิต','ราคาขายต่อหน่วย','ยอดขายรวม','รูปแบบ VAT ยอดขาย','ยอดขายก่อน VAT','VAT 7% ยอดขาย','ยอดขายรวมทั้งสิ้น','รูปแบบ VAT ต้นทุน','ต้นทุนก่อน VAT','VAT 7% ต้นทุน','ต้นทุนรวมทั้งสิ้น','วิธีค่าคอมมิชชัน','อัตราคอมฯ %','ค่าคอมมิชชัน','กำไร','เลขบิลที่เชื่อม','หมายเหตุ']];
       years.forEach(y=>branches.forEach(br=>months.forEach(m=>{
         const d=normalizeDataPack(loadForBackupRead(br,y,m));
         d.productions.forEach(p=>{
@@ -6958,7 +6490,7 @@ function exportXLSX(type,options={}){
           items.forEach((it,idx)=>rows.push([BRANCH_TH[br],yearLabelBE(y),MONTHS[m],p.no,formatThaiDate(p.date),p.maker,p.customer,customerAgencyForRecord(p).customerAgencyGroupLabel,customerAgencyForRecord(p).customerAgencyTypeLabel,p.job,idx===0?productionDeliveryLeadLabel(p.deliveryLeadDays||p.shippingLeadDays):'',idx===0?formatThaiDate(getProductionDeliveryDueDate(p)):'',it.product||p.job,it.qty||0,it.unit||'',it.costMode==='lump'?'ราคาเหมา':'ราคาต้นทุนต่อหน่วย',it.costValue??(it.costMode==='lump'?it.costLump:it.costUnit)??0,it.costTotal||0,idx===0?(p.costGrandTotal??((p.costTotal||0)+(p.costVatAmt||0))):'',idx===0?productionSupplierCreditLabel(p.supplierCreditTerm,p):'',idx===0?formatThaiDate(getProductionSupplierDueDate(p)):'',idx===0?productionSupplierPaymentStatusLabel(p.supplierPaymentStatus):'',idx===0?(p.supplierPaymentNote||''):'',getPSaleUnitValue(it),it.saleTotal||0,vatModeLabel(p),idx===0?p.subtotal:'',idx===0?p.vatAmt:'',idx===0?p.total:'',idx===0?(p.costUseVat?'รวม VAT 7%':'ไม่รวม VAT 7%'):'',idx===0?(p.costSubtotal??p.costTotal):'',idx===0?(p.costVatAmt||0):'',idx===0?(p.costGrandTotal??p.costTotal):'',idx===0?(p.commMode==='manual'?'ใส่จำนวนเอง':'คิดเปอร์เซ็นต์'):'',idx===0?(p.commRate||0):'',idx===0?(p.commAmt||0):'',idx===0?(p.profit||0):'',idx===0?(p.invoiceNo||''):'',idx===0?(p.note||''):'']));
         });
       })));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'สั่งผลิตสินค้า');
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(window.ERPI18n?.exportRows?.(rows)??rows),window.ERPI18n?.exportSheetName?.('สั่งผลิตสินค้า')??'สั่งผลิตสินค้า');
     }
 
     const label={all:'ทุกรายการ',invoices:'บิลขาย',quotes:'ใบเสนอราคา',receipts:'ใบเสร็จ',expenses:'ค่าใช้จ่าย',productions:'สั่งผลิตสินค้า',creditNotes:'ใบลดหนี้'}[type]||type;
@@ -7093,27 +6625,27 @@ async function importSalesAnalyticsDataset(raw,options={}){
   };
 }
 
-// Backup รุ่นก่อนมีใบลดหนี้ไม่มี key creditNotes เลย: ห้ามตีความว่า "ไม่มีใบลดหนี้" แล้วลบใบลดหนี้ในเครื่อง
-const packHasCreditNotes=pack=>!!pack&&typeof pack==='object'&&Object.prototype.hasOwnProperty.call(pack,'creditNotes');
-// ใบลดหนี้ในเครื่อง (ใช้งาน/ยกเลิกแล้ว) ที่โหมดแทนที่จะลบทิ้ง — ต้องให้ผู้ใช้ยืนยันก่อน
-function creditNotesRemovedByReplace(branch,year,month,incoming){
-  if(!packHasCreditNotes(incoming))return[];
-  return creditNotesMissingFrom(normalizeDataPack(loadFor(branch,year,month)).creditNotes,normalizeDataPack(incoming).creditNotes).map(cn=>cn.no||String(cn.id??'-'));
+// r8fix#B2/B3 (ADR-025): one month pack of a JSON backup is PLANNED before any write by erp-document-finance-core
+// planBackupPackImport(): issued invoices / receipts follow the credit-note rule on a merge (a live device copy keeps
+// its number/date/money, a cancellation applies one-way, nothing is revived); replace lists every issued document it
+// would remove or change (asked first) and keeps a collection the file does not carry; any added/changed/removed
+// record dated in a closed period refuses the whole import (`locked`). A backup made before ใบลดหนี้/ใบเพิ่มหนี้/
+// 50 ทวิ existed has no such key at all and therefore never deletes them (ADR-024).
+function planBackupPack(branch,year,month,incoming,replace=false){
+  return planBackupPackImport({current:normalizeDataPack(loadFor(branch,year,month)),incoming:normalizeInvoiceTaxFormsInPack(normalizeDataPack(incoming)),
+    incomingKeys:new Set(Object.keys(incoming&&typeof incoming==='object'?incoming:{})),replace,same:sameBusinessDoc,mergeDoc:mergeBusinessDoc,dedupe:dedupeRecords,mergeIssued:mergeCreditNoteCopies,missingIssued:creditNotesMissingFrom,
+    lockRefusal:(type,date)=>window.ERPGovernance?.periodLockRefusal?.({type,branch,date,action:'backup_import'})||''});
 }
-function mergeBackupPack(branch,year,month,incoming,replace=false){
-  const normalized=normalizeInvoiceTaxFormsInPack(normalizeDataPack(incoming));
-  const current=normalizeDataPack(loadFor(branch,year,month));
-  if(replace){saveFor(branch,year,month,packHasCreditNotes(incoming)?normalized:{...normalized,creditNotes:current.creditNotes});return;}
-  const merged=createEmptyBusinessStore();
-  Object.keys(merged).forEach(type=>{
-    // ใบลดหนี้ที่ออกแล้วแก้ไม่ได้: ฉบับในเครื่องเป็นหลัก และการยกเลิกเป็นทางเดียว (ดู mergeCreditNoteCopies)
-    merged[type]=type==='creditNotes'?mergeCreditNoteCopies(current.creditNotes,normalized.creditNotes):dedupeRecords([...(current[type]||[]),...(normalized[type]||[])]);
-  });
-  saveFor(branch,year,month,merged);
+function mergeBackupPack(branch,year,month,incoming,replace=false,planned=null){
+  const plan=planned||planBackupPack(branch,year,month,incoming,replace);// importJSON passes the plan made before any write
+  // (locks a restored masterData adds apply from the NEXT write on); a plan with locked rows is never written.
+  if(plan.locked.length)throw new Error(window.ERPBackup.lockedImportText(plan.locked));
+  saveFor(branch,year,month,plan.next);
+  return plan;
 }
 // หลังนำเข้าครบทุกชุด ตรวจใบลดหนี้ทั้งเครื่องอีกครั้ง: ยอดลดหนี้สะสม (มูลค่า/VAT) ต่อใบกำกับภาษีต้องไม่เกินใบกำกับภาษี และเลขที่ต้องไม่ซ้ำ
 function assertCreditNoteLedgerAfterImport(){
-  const data=window.ERPIntegrity.business(),issues=creditNoteLedgerIssues(data.invoices,data.creditNotes,{matches:window.ERPIntegrity.creditNoteMatches});
+  const data=window.ERPIntegrity.business(),issues=[...creditNoteLedgerIssues(data.invoices,data.creditNotes,{matches:window.ERPIntegrity.creditNoteMatches,debitNotes:data.debitNotes}),...(window.ERPDebitNotes?.ledgerIssues?.(data.debitNotes)||[]),...(window.ERPPayerWht?.ledgerIssues?.()||[])];
   if(issues.length)throw new Error(`ใบลดหนี้หลังนำเข้าขัดกับข้อมูลในเครื่อง ${issues.length} รายการ\n• ${issues.map(issue=>issue.message).join('\n• ')}\n`);
 }
 
@@ -7155,7 +6687,7 @@ async function importJSON(ev){
   const message=(text,ok)=>{if(status){status.textContent=text;status.className='import-json-status '+(ok?'success':'error');}notify(text,ok?'success':'error');};
   try{
     if(status)status.textContent='กำลังตรวจสอบ Backup และไฟล์แนบ...';
-    const raw=JSON.parse(await file.text());await window.ERPBackup.verifyPortable(raw);window.ERPBackup.validate(raw);
+    const raw=JSON.parse(await file.text()),integrity=await window.ERPBackup.verifyPortable(raw);window.ERPBackup.validate(raw);if(integrity.legacy&&!window.ERPBackup.confirmUnverified(raw)){message('ยกเลิกการนำเข้าแล้ว (ไฟล์ไม่มี checksum) ไม่มีข้อมูลใดถูกเปลี่ยน',false);return;}// r8fix#B2
     const sales=isSalesAnalyticsDataset(raw);
     if(sales&&!confirm('นำเข้าฐานข้อมูลยอดขายเพื่อวิเคราะห์ โดยสำรองข้อมูลปัจจุบันก่อนดำเนินการ?'))return;
     const obj=raw.data||raw,specs=[];
@@ -7164,17 +6696,17 @@ async function importJSON(ev){
       else for(const [year,branches] of Object.entries(obj)){if(!/^\d{4}$/.test(year))continue;if(Number(year)<2020||Number(year)>2100)throw new Error('ปีใน Backup ต้องเป็น ค.ศ. 2020–2100');for(const [br,months] of Object.entries(branches||{})){if(!['ubon','khonkaen'].includes(br))throw new Error('สาขาใน Backup ไม่ถูกต้อง');for(const [month,data] of Object.entries(months||{})){const m=monthKeyToIndex(month);if(m<0||m>11||!data||typeof data!=='object'||Array.isArray(data))throw new Error('ชุดข้อมูลรายเดือนไม่ถูกต้อง');specs.push([br,Number(year),m,data]);}}}
       if(!specs.length&&!raw.masterData)throw new Error('ไม่พบข้อมูลที่ระบบรองรับ');
     }
-    const removedCreditNotes=replace&&!sales?specs.flatMap(([b,y,m,data])=>creditNotesRemovedByReplace(b,y,m,data)):[];
-    if(removedCreditNotes.length&&!confirm(`โหมดแทนที่จะลบใบลดหนี้ที่ออกแล้วในเครื่อง ${removedCreditNotes.length} ฉบับ ซึ่งไม่มีในไฟล์ Backup:\n${removedCreditNotes.join(', ')}\n\nใบลดหนี้เป็นเอกสารภาษีที่ออกแล้ว การลบจะเปลี่ยนยอดลดหนี้และภาษีขาย ต้องการแทนที่ต่อหรือไม่?`)){message(`ยกเลิกการนำเข้าแล้ว ไม่มีข้อมูลใดถูกเปลี่ยน · ใบลดหนี้ ${removedCreditNotes.join(', ')} ยังอยู่ในเครื่อง`,false);return;}
+    const plans=sales?[]:specs.map(([b,y,m,data])=>planBackupPack(b,y,m,data,replace)),lockedRows=plans.flatMap(plan=>plan.locked),removedCreditNotes=replace?[...new Set(plans.flatMap(plan=>[...plan.removed,...plan.changed].map(row=>row.no)))]:[];if(lockedRows.length)throw new Error(window.ERPBackup.lockedImportText(lockedRows));// r8fix#B2/B3
+    if(removedCreditNotes.length&&!confirm(`โหมดแทนที่จะลบหรือเปลี่ยนเอกสารที่ออกแล้วในเครื่อง (ใบกำกับภาษี/ใบเสร็จ/ใบลดหนี้/ใบเพิ่มหนี้/หนังสือรับรอง 50 ทวิ) ${removedCreditNotes.length} ฉบับ ซึ่งในไฟล์ Backup ไม่มีหรือยอด/เลขที่/วันที่ต่างกัน:\n${removedCreditNotes.join(', ')}\n\nเอกสารเหล่านี้ออกแล้ว การลบหรือเปลี่ยนจะเปลี่ยนยอดขาย ลูกหนี้ ภาษีขาย หรือภาษีหัก ณ ที่จ่าย ต้องการแทนที่ต่อหรือไม่?`)){message(`ยกเลิกการนำเข้าแล้ว ไม่มีข้อมูลใดถูกเปลี่ยน · เอกสาร ${removedCreditNotes.join(', ')} ยังอยู่ในเครื่อง`,false);return;}
     before=window.ERPBackup.capture();
     if(!createLocalBackupSnapshot(getCurrentSelectedYear(),'before-json-import',getCurrentProfile()))throw new Error('สร้างข้อมูลสำรองก่อนนำเข้าไม่ได้ กรุณา Export และตรวจพื้นที่จัดเก็บก่อน');
     if(raw.localFiles)addedFiles=await window.LocalFileStore.importAttachments(raw.localFiles);
     if(sales){const result=await importSalesAnalyticsDataset(raw,{syncCloud:false});message(`นำเข้ายอดขาย ${result.activeCount} รายการแล้ว`,true);}
     else{
       if(raw.masterData)restoreLocalMasterBackup(raw.masterData,{replace});
-      specs.forEach(([b,y,m,data])=>mergeBackupPack(b,y,m,data,replace));
+      specs.forEach(([b,y,m,data],index)=>mergeBackupPack(b,y,m,data,replace,plans[index]));
       if(specs.length)assertCreditNoteLedgerAfterImport();
-      message(`นำเข้า ${specs.length} ชุดข้อมูล${raw.masterData?' พร้อมข้อมูลหลักและ Workflow':''} · ${replace?'แทนที่ชุดที่อยู่ในไฟล์':'รวมข้อมูลและรักษารายการเดิม'} · ไฟล์แนบ ${raw.localFiles?.length||0} ไฟล์`,true);
+      const keptNos=[...new Set(plans.flatMap(plan=>plan.kept.map(row=>row.no)))];message(`นำเข้า ${specs.length} ชุดข้อมูล${raw.masterData?' พร้อมข้อมูลหลักและ Workflow':''} · ${replace?'แทนที่ชุดที่อยู่ในไฟล์':'รวมข้อมูลและรักษารายการเดิม'} · ไฟล์แนบ ${raw.localFiles?.length||0} ไฟล์${keptNos.length?` · ใช้ฉบับในเครื่อง ${keptNos.length} ฉบับที่ยอด/เลขที่/วันที่ในไฟล์ต่างกัน (เอกสารที่ออกแล้วไม่ถูกแก้ด้วย Backup): ${keptNos.join(', ')}`:''}`,true);
     }
     window.ERPIntegrity.reconcilePayments();onYearChange();initExportControls();renderDash();window.ERPIntegrity.changed();
   }catch(e){
@@ -8072,14 +7604,14 @@ function setupDocumentEntryWorkspace(options){
   const toolbar = document.createElement('div');
   toolbar.className = 'doc-entry-toolbar';
   const tenantCompanyName = window.CurrentUser?.tenantName || window.CurrentUser?.companyName || 'บริษัท';
-  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="${escapeHtml(companyLogoUrl())}" alt="โลโก้บริษัท"><div><small>${escapeHtml(tenantCompanyName)}</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn btn-primary" data-doc-toolbar-action="save">${icon('save')}บันทึก</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="preview">${icon('preview')}ดูตัวอย่าง</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="print">${icon('print')}พิมพ์</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="pdf">${icon('download')}ดาวน์โหลด PDF</button></div>`;
+  toolbar.innerHTML = `<div class="doc-entry-brand"><img src="${escapeHtml(companyLogoUrl())}" alt="โลโก้บริษัท"><div><small data-no-i18n>${escapeHtml(tenantCompanyName)}</small><h2>${options.toolbarTitle}</h2></div></div><div class="doc-entry-toolbar-actions"><button type="button" class="btn btn-primary" data-doc-toolbar-action="save">${icon('save')}บันทึก</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="preview">${icon('preview')}ดูตัวอย่าง</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="print">${icon('print')}พิมพ์</button><button type="button" class="btn btn-secondary" data-doc-toolbar-action="pdf">${icon('download')}ดาวน์โหลด PDF</button></div>`;
   const workspace = document.createElement('div');
   workspace.className = 'doc-entry-workspace';
   const editor = document.createElement('section');
   editor.className = 'doc-entry-editor';
   const preview = document.createElement('section');
   preview.className = 'doc-entry-preview';
-  preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div><div class="doc-entry-zoom"><button type="button" data-zoom="fit" title="พอดีกรอบ" aria-label="ปรับตัวอย่างพอดีกรอบ">พอดี</button><button type="button" data-zoom="out" title="ย่อ" aria-label="ย่อตัวอย่าง">${icon('minus')}</button><button type="button" data-zoom="in" title="ขยาย" aria-label="ขยายตัวอย่าง">${icon('add')}</button></div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-tab-hint" id="${options.prefix}-inline-tab-hint"></div><div class="doc-entry-preview-frame"><div class="doc-preview-stage"><div id="${options.prefix}-inline-preview" class="doc-preview-content">กำลังโหลดตัวอย่างเอกสาร...</div></div></div>`;
+  preview.innerHTML = `<div class="doc-entry-preview-head"><div class="doc-entry-preview-title"><span class="dot"></span>ตัวอย่างเอกสารแบบเรียลไทม์</div><div class="doc-entry-zoom"><button type="button" data-zoom="fit" title="พอดีกรอบ" aria-label="ปรับตัวอย่างพอดีกรอบ">พอดี</button><button type="button" data-zoom="out" title="ย่อ" aria-label="ย่อตัวอย่าง">${icon('minus')}</button><button type="button" data-zoom="in" title="ขยาย" aria-label="ขยายตัวอย่าง">${icon('add')}</button></div></div><div class="doc-entry-tabs" id="${options.prefix}-inline-tabs"></div><div class="doc-entry-tab-hint" id="${options.prefix}-inline-tab-hint"></div><div class="doc-entry-preview-frame"><div class="doc-preview-stage" data-no-i18n="doc"><div id="${options.prefix}-inline-preview" class="doc-preview-content">กำลังโหลดตัวอย่างเอกสาร...</div></div></div>`;
   shell.appendChild(toolbar); shell.appendChild(workspace); workspace.appendChild(editor); workspace.appendChild(preview);
   const nodes = [editBanner,card.querySelector('#i-cost-status'), title, fg, hint, actions].filter(Boolean);
   card.innerHTML = '';
@@ -8210,8 +7742,8 @@ function bootComformApp() {
     initInteractiveScrollAreas();
     initAttachmentPasteZones();
     initDocumentEntryWorkspaces();
-    renderDash();
-    renderDataAnalytics();
+    window.ERPIntegrity.safeRender('dashboard',renderDash);// r8fix#B9
+    window.ERPIntegrity.safeRender('analytics',renderDataAnalytics);
     addQItem();
     addIItem();
     updateInvoiceDueDate();
@@ -8262,6 +7794,6 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 window.addEventListener('comform-auth-ready',async()=>{
   try{await hydrateTenantMasterFromCloud();}catch(error){console.warn('[ERP] best-effort operation failed',error);}
   try{window.renderMasterData?.();}catch(error){console.warn('[ERP] best-effort operation failed',error);}
-  try{renderDashboard?.();}catch(error){console.warn('[ERP] best-effort operation failed',error);}
+  try{window.ERPIntegrity.safeRender('dashboard',renderDash);}catch(error){console.warn('[ERP] best-effort operation failed',error);}// r8fix#C7: called a renderer that does not exist (ReferenceError on every load)
   try{renderDataAnalytics?.();}catch(error){console.warn('[ERP] best-effort operation failed',error);}
 });
