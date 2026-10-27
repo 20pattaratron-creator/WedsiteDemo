@@ -3,10 +3,13 @@ import { resolve, posix } from 'node:path';
 import { defineConfig } from 'vite';
 
 // Third-party PDF libraries (html2canvas, jsPDF) live in ./vendor and are loaded by
-// classic <script> tags, so PDF export works without internet (ADR-013). Vite does not
-// bundle classic scripts, so this build-only plugin copies each file (and its LICENSE)
+// classic <script> tags, so PDF export works without internet (ADR-013). SheetJS (Excel
+// export, ADR-021) lives there too but is loaded on demand: index.html names its URL in
+// <meta name="erp-vendor-xlsx" content="./vendor/…"> (manifest `loading: 'lazy'`). Vite does
+// not bundle classic scripts, so this build-only plugin copies each file (and its LICENSE)
 // unchanged into the build's asset folder — `assets/` for dist, the root for the flat
-// build — and points the <script src> at the copy. Dev server serves ./vendor directly.
+// build — and points the <script src> / <meta content> at the copy. Dev server serves
+// ./vendor directly.
 const VENDOR_DIR = resolve(process.cwd(), 'vendor');
 const VENDOR_LIBS = JSON.parse(readFileSync(resolve(VENDOR_DIR, 'vendor-manifest.json'), 'utf8')).libraries;
 
@@ -22,8 +25,9 @@ function offlineVendorScripts() {
       handler(html) {
         let out = html;
         for (const lib of VENDOR_LIBS) {
-          const from = new RegExp(`(<script\\b[^>]*\\bsrc=["'])(?:\\./)?vendor/${lib.file.replace(/\./g, '\\.')}(["'])`, 'g');
-          if (!from.test(out)) throw new Error(`index.html does not load vendor/${lib.file}`);
+          const tag = lib.loading === 'lazy' ? `<meta\\b[^>]*\\bname=["']${lib.htmlMeta}["'][^>]*\\bcontent=["']` : `<script\\b[^>]*\\bsrc=["']`;
+          const from = new RegExp(`(${tag})(?:\\./)?vendor/${lib.file.replace(/\./g, '\\.')}(["'])`, 'g');
+          if (!from.test(out)) throw new Error(`index.html does not reference vendor/${lib.file}`);
           out = out.replace(from, `$1${config.base}${emittedPath(lib.file)}$2`);
         }
         return out;

@@ -2042,3 +2042,25 @@
 .rcp-document-page .rcp-doc-totals.rcp-doc-totals-wht strong { font-size: 1em; }
 .rcp-document-page .rcp-doc-bottom-area:has(.rcp-doc-totals-wht) .rcp-doc-payment-note { line-height: 1.08; gap: .1em; padding-top: .4%; padding-bottom: .4%; }
 .rcp-document-page .rcp-doc-bottom-area:has(.rcp-doc-totals-wht) .rcp-doc-baht { height: 3em; margin-top: .15em; }
+
+/* r8fix#C6 (ADR-025): 16 line units per A4 page — each unit row is 1.8em of the page font (the JS sets a data row
+   to units × 1.8em; empty filler rows are one unit). Single-line rows get a slimmer padding so 16 fit above the
+   totals box in the print and PDF layouts (checked with Chromium); a long name wraps inside its cell.
+   The document tables use the page font: inside the app the global `table { font-size: 13px }` (style.css) reached
+   the PDF stage and the preview, so their rows were taller than on paper and ran into the totals box. The on-screen
+   preview is an exact miniature of the A4 PDF page: its font scales with the preview width (10.9px per 794px). */
+.rcp-document-page .rcp-doc-items-table tbody tr,
+.rcp-document-page .rcp-doc-items-table tbody tr.empty { height: 1.8em; }
+.rcp-document-page .rcp-doc-items-table tbody tr.rcp-data-row td,
+.rcp-document-page .rcp-doc-items-table tbody tr.empty td { padding-top: .22em; padding-bottom: .18em; }
+.rcp-document-page .rcp-doc-items-table tbody tr.rcp-data-row td.rcp-doc-desc { overflow-wrap: anywhere; word-break: break-word; }
+.rcp-document-page table { font-size: inherit; }
+#rcp-live-preview { container-type: inline-size; }
+#rcp-live-preview .rcp-document-page:not(.rcp-pdf-page) { font-size: calc(100cqi * 10.9 / 794); }
+
+/* r8fix#C5: ≤ 1,250 px the editor and preview stack in ONE column that fits the screen — a later rule set
+   600px 560px columns, so on a phone the editor card ran to x = 616. */
+@media (max-width: 1250px) {
+  .rcp-workspace { grid-template-columns: minmax(0, 1fr); }
+  .rcp-editor-card, .rcp-preview-card { min-width: 0; max-width: 100%; }
+}

@@ -20,9 +20,10 @@ const BRANCH_LABEL=branchLabelMap({ubon:'สำนักงานใหญ่',k
 // The order-flow entry keeps the text erp-order-flow.js gives it (with its badge).
 const PANEL_LABEL={
   'work-home':'งานของฉัน',dashboard:'ภาพรวมผู้บริหาร',analytics:'วิเคราะห์ธุรกิจ','master-data':'ลูกค้า / ผู้จำหน่าย / สินค้า','business-rules':'สูตรและกฎธุรกิจ',
-  'quote-list':'ใบเสนอราคา','invoice-list':'ใบส่งสินค้า / ใบกำกับภาษี','receipt-list':'ใบเสร็จ / รับชำระ','credit-note-list':'ใบลดหนี้','production-list':'สั่งผลิต','purchase-order':'จัดซื้อ / PO',
+  'quote-list':'ใบเสนอราคา','invoice-list':'ใบส่งสินค้า / ใบกำกับภาษี','receipt-list':'ใบเสร็จ / รับชำระ','credit-note-list':'ใบลดหนี้','debit-note-list':'ใบเพิ่มหนี้','production-list':'สั่งผลิต','purchase-order':'จัดซื้อ / PO',
   'goods-receipt':'รับสินค้าเข้าคลัง',inventory:'คลังสินค้า','expense-list':'ค่าใช้จ่าย','linked-flow':'Trace เอกสาร',
-  'approval-center':'ศูนย์อนุมัติ','customer-portal':'พอร์ทัลลูกค้า (Preview)','audit-log':'ศูนย์ควบคุม','saas-admin':'ตั้งค่าบริษัท',files:'สำรอง / นำเข้าข้อมูล'
+  'approval-center':'ศูนย์อนุมัติ','customer-portal':'พอร์ทัลลูกค้า (Preview)','audit-log':'ศูนย์ควบคุม','saas-admin':'ตั้งค่าบริษัท',files:'สำรอง / นำเข้าข้อมูล',
+  'analytics-forecast':'วิเคราะห์และคาดการณ์',accounting:'สมุดบัญชีและปิดเดือน',fx:'หลายสกุลเงิน'
 };
 // Line icons (erp-icons.js, ADR-017) of the entries created by JavaScript, which used emoji
 // before (ADR-015). The static entries in index.html use the same icon set.
@@ -242,9 +243,14 @@ function ensureTopControls(){
   wrap.className='pe-view-controls';
   wrap.innerHTML='<button type="button" id="pe-mode-toggle" class="pe-mode-toggle" aria-pressed="false">โหมดง่าย</button>';
   top.insertBefore(wrap,document.getElementById('topbar-ctx'));
-  wrap.querySelector('#pe-mode-toggle').addEventListener('click',()=>{writeSetting(STORAGE_MODE,isAdvanced()?'simple':'advanced');applyExperience();renderCurrent();});
+  wrap.querySelector('#pe-mode-toggle').addEventListener('click',toggleMode);
 }
 
+// r8fix#C4: the header toggle is hidden on phones (≤ 560 px) — the Demo menu carries the same switch at every width.
+function toggleMode(){writeSetting(STORAGE_MODE,isAdvanced()?'simple':'advanced');applyExperience();renderCurrent();}
+function registerModeMenuItem(advanced=isAdvanced()){
+  window.ERPDemoMenu?.register?.({key:'experience-mode',id:'local-demo-mode-btn',order:45,label:advanced?'สลับเป็นโหมดง่าย (ตอนนี้: โหมดขั้นสูง)':'สลับเป็นโหมดขั้นสูง (ตอนนี้: โหมดง่าย)',title:'โหมดง่ายซ่อนหน้าขั้นสูง — ไม่ใช่การล็อกสิทธิ์',iconSvg:icon('settings'),onSelect:toggleMode});
+}
 function applyExperience(){
   const advanced=isAdvanced();
   document.body.classList.toggle('erp-advanced-mode',advanced);
@@ -261,6 +267,7 @@ function applyExperience(){
     btn.textContent=advanced?'โหมดขั้นสูง':'โหมดง่าย';
     btn.setAttribute('aria-pressed',String(advanced));
   }
+  registerModeMenuItem(advanced);
   document.querySelectorAll('#erp-dashboard-views [data-dashboard-view="forecast"],#erp-dashboard-views [data-dashboard-view="risk"]').forEach(x=>x.hidden=!advanced);
   document.querySelectorAll('#panel-dashboard .target-section').forEach(x=>x.classList.toggle('pe-legacy-target',!advanced));
   document.querySelectorAll('#panel-dashboard .quant-section,#panel-dashboard .forecast-section').forEach(x=>x.classList.toggle('pe-advanced-block',!advanced));
@@ -297,8 +304,11 @@ function renderWorkHome(){
   <section class="pe-kpi-grid">${kpis.map(([l,v])=>`<article><small>${esc(l)}</small><b>${esc(v)}</b></article>`).join('')}</section>
   <section class="pe-quick-actions"><h2>ทางลัด</h2><div>${actions.map(([p,l])=>quickAction(p,l)).join('')}</div></section>
   <section class="pe-work-section"><div class="pe-section-head"><div><h2>งานที่ต้องดำเนินการ</h2><p>เรียงจากความเสี่ยงสูงไปต่ำ</p></div><span>${queue.length} รายการ</span></div>${queue.length?`<div class="pe-work-list">${queue.map(q=>`<article class="pe-work-item is-${q.severity}"><div class="pe-work-icon">${severityIcon(q.severity)}</div><div class="pe-work-copy"><b>${esc(q.title)}</b><span>${esc(q.detail)}</span></div><button type="button" class="btn btn-secondary btn-sm" data-pe-go="${esc(q.panel)}">${esc(q.action)}</button></article>`).join('')}</div>`:'<div class="pe-empty-good">✅ ไม่พบงานค้างระดับสำคัญจากกฎ Operational ปัจจุบัน</div>'}</section>
+  <div id="pe-reorder-slot"></div>
   <section class="pe-value-prop"><div><b>ขาย</b><span>Quote → Sales Order</span></div><i>→</i><div><b>จัดสินค้า</b><span>Stock / ผลิต / ซื้อ</span></div><i>→</i><div><b>ส่ง</b><span>Delivery / Tax Invoice</span></div><i>→</i><div><b>เก็บเงิน</b><span>Billing → Payment → Receipt</span></div></section>`;
   bindCommon(root);
+  // ADR-027: the reorder alerts of "วิเคราะห์และคาดการณ์" (forecast-based) as one compact card; a failure there never blocks this page.
+  try{window.ERPAnalytics?.renderWorkCard?.(document.getElementById('pe-reorder-slot'));}catch(error){console.error('[ProductUX] reorder card failed',error);}
 }
 
 function bindCommon(root=document){
@@ -370,8 +380,10 @@ function renderWorkflowRibbon(panel,subview=activeWorkflowSubview){
   bindCommon(bar);
 }
 
+// r8fix#B9: a page whose data cannot be read shows "อ่านข้อมูลเดือน … ไม่ได้" in its root (never an uncaught error).
+function guardRead(rootId,render){try{render();}catch(error){if(!window.ERPIntegrity?.isReadError?.(error))throw error;const root=document.getElementById(rootId);if(root)root.innerHTML=window.ERPIntegrity.readErrorHtml(error);}}
 function renderCurrent(panel=document.querySelector('.panel.active')?.id?.replace('panel-','')||'',subview=activeWorkflowSubview){
-  if(panel==='work-home')renderWorkHome();if(panel==='approval-center')renderApprovalCenter();if(panel==='customer-portal')renderCustomerPortal();if(panel==='inventory')setTimeout(renderAvailability,40);renderWorkflowRibbon(panel,subview);
+  if(panel==='work-home')guardRead('pe-work-home',renderWorkHome);if(panel==='approval-center')guardRead('pe-approval-center',renderApprovalCenter);if(panel==='customer-portal')guardRead('pe-customer-portal',renderCustomerPortal);if(panel==='inventory')setTimeout(renderAvailability,40);renderWorkflowRibbon(panel,subview);
 }
 
 function patchCopy(){

@@ -23,7 +23,8 @@
 // - afterwards re-renders the page the user is on (through the app's own router).
 // One window global: window.ERPDemoSeed. No inline handlers (event delegation).
 // ============================================================================
-import { ORDER_FLOW_STORE_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY, DEMO_SEED_TARGETS_KEY } from './erp-storage-contracts.js';
+import { ORDER_FLOW_STORE_KEY, STORAGE_WRITTEN_EVENT, notifyStorageWritten, SALES_TARGET_PERIODS_KEY, DELIVERY_TARGET_PERIODS_KEY, DEMO_SEED_TARGETS_KEY, DEMO_SALES_HISTORY_KEY, COSTING_SETTINGS_KEY, JOB_COSTING_KEY, FX_SETTINGS_KEY, FX_RATES_KEY, FX_DOCUMENTS_KEY } from './erp-storage-contracts.js';
+import { normalizeFxRateStore, normalizeFxDocuments, fxRateRow, postedFxClose } from './erp-fx-core.js';
 import { localDateISO } from './erp-shared-core.js';
 import { withDemoWriteLease, SALES_LEDGER_WRITE_LEASE } from './erp-demo-concurrency.js';
 import { assertIdempotentPaymentReceipts, DOCUMENT_PACK_COLLECTIONS } from './erp-document-finance-core.js';
@@ -31,17 +32,19 @@ import { creditNoteLedgerIssues } from './erp-credit-note-core.js';
 import { normalizeProductKey } from './erp-master-data-core.js';
 import { icon } from './erp-icons.js';
 import { liveBranchCount } from './erp-branches-core.js';
-import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPeriods, demoResetStorageKeys, DEMO_SEED_BATCH_ID, buildDemoSeedTargets, mergeSeededTargets, stripSeededTargets } from './erp-demo-seed-core.js';
+import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPeriods, demoResetStorageKeys, DEMO_SEED_BATCH_ID, buildDemoSeedTargets, mergeSeededTargets, stripSeededTargets, buildDemoSalesHistory } from './erp-demo-seed-core.js';
 
 (() => {
   'use strict';
   if (window.ERPDemoSeed) return;
   const BRANCHES = ['ubon', 'khonkaen'];
   const PACK_KEY_PATTERN = /^biz2_(ubon|khonkaen)_(\d{4})_(\d{2})$/;
-  // Purchasing / goods-receipt / stock-movement ledgers of erp-production-core.js: user work
-  // that the sample data must not be mixed with (sample data never writes them).
+  // Purchasing / goods-receipt / stock-movement ledgers of erp-production-core.js: user work that the sample data
+  // must not be mixed with. ADR-028: the sample writes its own rows there (tagged demoSeed: the material purchases,
+  // receipts and job issues of the costing story) — only untagged rows count as the user's.
   const OPERATION_KEYS = ['comform_purchase_orders_v1', 'comform_goods_receipts_v1', 'comform_inventory_movements_v1'];
-  const COLLECTION_LABELS = { quotes: 'ใบเสนอราคา', invoices: 'ใบกำกับภาษี', receipts: 'ใบเสร็จ', creditNotes: 'ใบลดหนี้', expenses: 'ค่าใช้จ่าย' };
+  const [PO_KEY, GR_KEY, MOVEMENT_KEY] = OPERATION_KEYS;
+  const COLLECTION_LABELS = { quotes: 'ใบเสนอราคา', invoices: 'ใบกำกับภาษี', receipts: 'ใบเสร็จ', creditNotes: 'ใบลดหนี้', debitNotes: 'ใบเพิ่มหนี้', expenses: 'ค่าใช้จ่าย', whtCertificates: 'หนังสือรับรอง 50 ทวิ' }; // ADR-024: + DN, 50 ทวิ
   const LOAD_LABEL = 'โหลดข้อมูลตัวอย่างสำหรับสาธิต';
   const RESET_LABEL = 'ล้างข้อมูลสาธิตทั้งหมด (รีเซ็ต)';
   const BACKUP_HINT = 'ถ้าต้องการเก็บข้อมูลไว้ ให้กด “สำรองข้อมูล” ในเมนู Demo ด้านบนก่อน';
@@ -85,12 +88,24 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
       return [{ unreadable: true }];
     }
   }
+  // ADR-028: cost entries of the job costing store (labour, other costs, completions); unreadable = user data.
+  function jobCostRows() {
+    const raw = localStorage.getItem(storageKey(JOB_COSTING_KEY));
+    if (raw === null) return [];
+    try {
+      const value = JSON.parse(raw);
+      return value && Array.isArray(value.entries) ? value.entries : [{ unreadable: true }];
+    } catch (error) {
+      console.warn('[DemoSeed] unreadable job costing store treated as user data', error);
+      return [{ unreadable: true }];
+    }
+  }
   function readSnapshot() {
     const flowKey = storageKey(ORDER_FLOW_STORE_KEY);
     const store = window.ERPOrderFlow?.getStoreForFinancialWrite?.();
     if (!store) throw new Error('โมดูล Billing / Payment ยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่');
     const master = window.MasterDataPersistence?.readSnapshot?.() || { contacts: [], products: [] };
-    const operations = OPERATION_KEYS.flatMap(operationRows);
+    const operations = [...OPERATION_KEYS.flatMap(operationRows), ...jobCostRows()];
     return { packs: readPacks(), flowKey, store, master, operations };
   }
   function rowsOf(snapshot, collection) {
@@ -253,26 +268,63 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
         if (receipts.length !== payment.allocations.length) issues.push(`${payment.no}: ใบเสร็จของการรับชำระไม่ครบ`);
       } catch (error) { issues.push(`${payment.no}: ${error.message}`); }
     });
-    creditNoteLedgerIssues(data.invoices, data.creditNotes, { matches: integrity.creditNoteMatches }).forEach(issue => issues.push(issue.message));
+    creditNoteLedgerIssues(data.invoices, data.creditNotes, { matches: integrity.creditNoteMatches, debitNotes: data.debitNotes || [] }).forEach(issue => issues.push(issue.message));
+    // ADR-024: the debit-note and 50 ทวิ ledgers (one number per establishment) pass the app's own checks.
+    (window.ERPDebitNotes?.ledgerIssues?.(data.debitNotes || []) || []).forEach(issue => issues.push(issue.message || String(issue)));
+    (window.ERPPayerWht?.ledgerIssues?.() || []).forEach(issue => issues.push(issue.message || String(issue)));
     const context = integrity.paymentContext(data, store);
     for (const expected of Object.values(plan.expected.invoices)) {
       const invoice = data.invoices.find(row => isDemoSeedRecord(row) && row.no === expected.no && integrity.branch(row) === expected.branch);
       if (!invoice) { issues.push(`ไม่พบ ${expected.no} หลังบันทึก`); continue; }
       const summary = integrity.paymentSummary(invoice, context);
-      if (Math.abs(summary.outstanding - expected.outstanding) > 0.001 || Math.abs(summary.credited - expected.credited) > 0.001) {
+      if (Math.abs(summary.outstanding - expected.outstanding) > 0.001 || Math.abs(summary.credited - expected.credited) > 0.001 || Math.abs((summary.debited || 0) - (expected.debited || 0)) > 0.001) {
         issues.push(`${expected.no}: ยอดค้างรับ ${summary.outstanding} ไม่ตรงกับที่วางแผนไว้ ${expected.outstanding}`);
       }
     }
-    for (const product of plan.products.filter(row => row.flowType === 'inventory' && row.fulfillmentType === 'stock')) {
+    for (const product of seedProducts(plan).filter(row => row.flowType === 'inventory' && row.fulfillmentType === 'stock')) {
       for (const branch of BRANCHES) {
         const stock = Number(window.productEstimatedStock?.(product, branch));
         if (Number.isFinite(stock) && stock < 0) issues.push(`${product.code}: สต็อกสาขา ${branch} ติดลบ (${stock})`);
+      }
+    }
+    // ADR-028: the page ต้นทุนและกำไรต่องาน, reading the stores back, gives the job costs the plan was built with.
+    const costing = window.ERPCosting;
+    if (costing) {
+      costing.invalidate();
+      const data = costing.dataset();
+      if (data.error) issues.push(`ต้นทุนงาน: ${data.error.message}`);
+      else {
+        for (const [key, expected] of Object.entries(plan.expected.jobs || {})) {
+          const sheet = [...data.sheets.values()].find(row => row.job.no === expected.no && row.job.demoSeed);
+          if (!sheet) { issues.push(`ต้นทุนงาน ${key}: ไม่พบงาน ${expected.no}`); continue; }
+          if (sheet.materials.net !== expected.materials || sheet.labour.amount !== expected.labour || sheet.overhead.amount !== expected.overhead || sheet.other.amount !== expected.other || sheet.total !== expected.total) issues.push(`ต้นทุนงาน ${expected.no}: ${sheet.total / 100} ไม่ตรงกับที่วางแผนไว้ ${expected.total / 100}`);
+        }
+        if (data.costing.negatives.length) issues.push(`ต้นทุนสินค้า: สต็อกติดลบ ${data.costing.negatives.length} รายการ`);
+      }
+    }
+    // ADR-031: the page หลายสกุลเงิน, reading the stores back, finds the export invoice fully received, the payment
+    // abroad made and the month-end close posted, with the figures the plan was built with.
+    const fx = window.ERPFx;
+    if (fx && plan.fx) {
+      fx.invalidate();
+      const fxData = fx.dataset();
+      if (fxData.error) issues.push(`หลายสกุลเงิน: ${fxData.error.message || fxData.error}`);
+      else {
+        const expected = plan.fx.expected;
+        const invoice = fxData.invoices.find(row => isDemoSeedRecord(row) && row.no === expected.invoice.no && row._branch === expected.invoice.branch);
+        if (!invoice || invoice.total !== expected.invoice.total || invoice.amountFx !== expected.invoice.amountFx) issues.push(`หลายสกุลเงิน: ไม่พบ ${expected.invoice.no} ตามแผน`);
+        if (fx.openInvoices().some(row => isDemoSeedRecord(row.invoice))) issues.push('หลายสกุลเงิน: ใบกำกับสินค้าส่งออกตัวอย่างยังมียอดค้าง');
+        const payable = fx.payables().find(row => isDemoSeedRecord(row.record));
+        if (!payable || payable.open.openFx !== 0 || payable.record.fxPayments?.[0]?.cashThb !== expected.payment.cashThb) issues.push('หลายสกุลเงิน: การจ่ายเงินไปต่างประเทศตัวอย่างไม่ตรงตามแผน');
+        if (!fxData.documents.closes.some(row => row.id === expected.close.id && row.status === 'posted')) issues.push(`หลายสกุลเงิน: ไม่พบการปิดเดือน ${expected.close.period}`);
       }
     }
     return issues;
   }
 
   // --------------------------------------------------------------- load
+  // The sample's products: the 12 items it sells + the raw materials of the costing story (ADR-028).
+  const seedProducts = plan => [...plan.products, ...(plan.costing?.products || [])];
   function masterConflicts(snapshot, plan) {
     const conflicts = [];
     const userContacts = snapshot.master.contacts.filter(row => !isDemoSeedRecord(row));
@@ -281,7 +333,7 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     for (const contact of [...plan.contacts, ...(plan.suppliers || [])]) { // ADR-023: + sample suppliers
       if (userContacts.some(row => String(row.id) === contact.id || normalizeProductKey(row.name) === normalizeProductKey(contact.name))) conflicts.push(contact.name);
     }
-    for (const product of plan.products) {
+    for (const product of seedProducts(plan)) {
       const key = normalizeProductKey(product.code);
       if ([...userProducts, ...builtInProducts].some(row => normalizeProductKey(row.code || row.name) === key)) conflicts.push(product.code);
     }
@@ -291,6 +343,8 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     const packs = new Map(snapshot.packs.map(pack => [pack.key, pack]));
     const touched = new Map();
     for (const { collection, branch, year, month, record } of plan.documents) {
+      // A record without its month would land in a key no screen reads (e.g. "…_undefined_NaN"): stop instead.
+      if (!BRANCHES.includes(branch) || !Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11 || !DOCUMENT_PACK_COLLECTIONS.includes(collection)) throw new Error(`ข้อมูลตัวอย่างไม่มีเดือนของเอกสาร ${record?.no || collection}`);
       const key = packKey(branch, year, month);
       if (!touched.has(key)) {
         const pack = packs.get(key)?.data || window.ComformDocumentWriteStore.loadForWrite(branch, year, month);
@@ -304,7 +358,58 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     store.payments.push(...plan.flow.payments);
     // erp-order-flow.js keeps the newest activity first and at most 500 rows.
     store.activity = [...plan.flow.activity, ...(store.activity || [])].slice(0, 500);
-    return [...touched.entries(), [snapshot.flowKey, store], ...targetWrites(plan)];
+    // ADR-027: the summarised monthly sales history before the first sample document (read only by วิเคราะห์และคาดการณ์,
+    // only for branch-months without sales documents) — in the same all-or-nothing transaction as the documents.
+    return [...touched.entries(), [snapshot.flowKey, store], ...targetWrites(plan), [storageKey(DEMO_SALES_HISTORY_KEY), buildDemoSalesHistory(plan)], ...costingWrites(plan), ...fxWrites(plan)];
+  }
+  // ADR-031: the multi-currency stores. The sample's rates join the rate table (append-only: a rate already stored with
+  // the same value is kept as it is; ANOTHER value for the same currency / date / type stops the load — fxConflicts —
+  // because the sample documents carry their own rate). The sample month-end close joins the closes; the settings are
+  // written only when this device has none (settings the user chose stay).
+  function fxStores() {
+    return { rates: normalizeFxRateStore(localStorage.getItem(storageKey(FX_RATES_KEY))), documents: normalizeFxDocuments(localStorage.getItem(storageKey(FX_DOCUMENTS_KEY))) };
+  }
+  function fxConflicts(plan) {
+    if (!plan.fx) return [];
+    let stores;
+    try { stores = fxStores(); } catch (error) { return [`หลายสกุลเงิน: ${error?.message || error}`]; }
+    const conflicts = [];
+    for (const row of plan.fx.rates.rates) {
+      const stored = fxRateRow(stores.rates, row.currency, row.date, row.type);
+      if (stored && (stored.rate !== row.rate || stored.per !== row.per)) conflicts.push(`อัตรา ${row.currency} ${row.date} (${stored.rate})`);
+    }
+    for (const close of plan.fx.documents.closes) if (postedFxClose(stores.documents, close.period)) conflicts.push(`ปิดเดือนสกุลต่างประเทศ ${close.period}`);
+    return conflicts;
+  }
+  function fxWrites(plan) {
+    if (!plan.fx) return [];
+    const stores = fxStores();
+    const ids = new Set(stores.rates.rates.map(row => row.id));
+    const added = plan.fx.rates.rates.filter(row => !ids.has(row.id) && !fxRateRow(stores.rates, row.currency, row.date, row.type));
+    const writes = [
+      [storageKey(FX_RATES_KEY), normalizeFxRateStore({ ...stores.rates, rates: [...stores.rates.rates, ...added] })],
+      [storageKey(FX_DOCUMENTS_KEY), normalizeFxDocuments({ ...stores.documents, closes: [...stores.documents.closes, ...plan.fx.documents.closes] })]
+    ];
+    if (localStorage.getItem(storageKey(FX_SETTINGS_KEY)) === null) writes.push([storageKey(FX_SETTINGS_KEY), plan.fx.settings]);
+    return writes;
+  }
+  // ADR-028: the costing story in the same transaction — purchase orders, goods receipts and stock movements (newest
+  // first, like erp-production-core.js), the job cost entries and budgets, and the costing settings (only when this
+  // device has none: settings the user chose stay). The ledgers hold no user rows here (a store with user rows is
+  // never loaded into); stored sample rows of an earlier load were removed by the reset before.
+  function costingWrites(plan) {
+    const costing = plan.costing;
+    if (!costing) return [];
+    const newestFirst = rows => [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
+    const kept = base => operationRows(base).filter(row => !isDemoSeedRecord(row));
+    const writes = [
+      [storageKey(PO_KEY), [...newestFirst(costing.purchaseOrders), ...kept(PO_KEY)]],
+      [storageKey(GR_KEY), [...newestFirst(costing.goodsReceipts), ...kept(GR_KEY)]],
+      [storageKey(MOVEMENT_KEY), [...newestFirst(costing.movements), ...kept(MOVEMENT_KEY)]],
+      [storageKey(JOB_COSTING_KEY), costing.jobStore]
+    ];
+    if (localStorage.getItem(storageKey(COSTING_SETTINGS_KEY)) === null) writes.push([storageKey(COSTING_SETTINGS_KEY), costing.settings]);
+    return writes;
   }
   function planSummary(plan) {
     const counts = {};
@@ -345,7 +450,9 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     const contents = storeContents(snapshot);
     const empty = contents.userData === 0 && contents.sampleDocuments === 0 && contents.sampleMaster === 0;
     // Built before anything is changed: a generator error stops here with the store untouched.
-    let plan = buildDemoSeedPlan({ today, businessRuleVersion: businessRuleVersion(), branchCount });
+    // ADR-024: the ผู้มีหน้าที่หักภาษี on the sample 50 ทวิ = this company's profile (as a real save would print).
+    const payer = branch => window.ERPPayerWht?.payerInfo?.(branch) || null;
+    let plan = buildDemoSeedPlan({ today, businessRuleVersion: businessRuleVersion(), branchCount, payer });
     if (!empty) {
       const decision = confirmReplace(contents, plan, confirmFn);
       if (decision !== 'replace') return decision;
@@ -356,20 +463,20 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     // Numbers continue after anything still stored (none in practice: documents mean "not empty").
     const allRows = collection => rowsOf(snapshot, collection);
     const numberStart = collectNumberSequences({
-      quotes: allRows('quotes'), invoices: allRows('invoices'), receipts: [...allRows('receipts'), ...allRows('issuedReceipts')], creditNotes: allRows('creditNotes'),
+      quotes: allRows('quotes'), invoices: allRows('invoices'), receipts: [...allRows('receipts'), ...allRows('issuedReceipts')], creditNotes: allRows('creditNotes'), debitNotes: allRows('debitNotes'),
       billingNotes: snapshot.store.billingNotes, payments: snapshot.store.payments
     });
-    plan = buildDemoSeedPlan({ today, numberStart, businessRuleVersion: businessRuleVersion(), branchCount });
+    plan = buildDemoSeedPlan({ today, numberStart, businessRuleVersion: businessRuleVersion(), branchCount, payer });
     const blocked = lockedPeriods(demoSeedPeriods(plan));
     if (blocked.length) { explainLocks(blocked); refreshScreens(); return { status: 'period-locked', blocked }; }
-    const conflicts = masterConflicts(snapshot, plan);
+    const conflicts = [...masterConflicts(snapshot, plan), ...fxConflicts(plan)];
     if (conflicts.length) {
       notifyUser(`โหลดข้อมูลตัวอย่างไม่ได้ เพราะมีลูกค้า/สินค้าชื่อหรือรหัสเดียวกันอยู่แล้ว: ${conflicts.join(', ')} — ระบบจะไม่เขียนทับข้อมูลของคุณ`, 'error', 9000);
       refreshScreens();
       return { status: 'master-conflict', conflicts };
     }
     // Master data first: stock and product lookups of the documents need the sample products.
-    if (!window.BusinessRulesService?.seedMasterData?.({ contacts: [...plan.contacts, ...(plan.suppliers || [])], products: plan.products })) {
+    if (!window.BusinessRulesService?.seedMasterData?.({ contacts: [...plan.contacts, ...(plan.suppliers || [])], products: seedProducts(plan) })) {
       notifyUser('บันทึกลูกค้า/สินค้าตัวอย่างไม่สำเร็จ จึงยังไม่ได้โหลดเอกสารตัวอย่าง', 'error');
       refreshScreens();
       return { status: 'failed', issues: ['master-data'] };
@@ -394,7 +501,10 @@ import { buildDemoSeedPlan, collectNumberSequences, isDemoSeedRecord, demoSeedPe
     }
     window.ERPIntegrity.reconcilePayments();
     window.ERPIntegrity.changed();
-    audit('create', `โหลดข้อมูลตัวอย่าง ณ วันที่ ${plan.today}: ${planSummary(plan)} · ลูกค้า ${plan.contacts.length} · ผู้จำหน่าย ${(plan.suppliers || []).length} · สินค้า ${plan.products.length}`);
+    audit('create', `โหลดข้อมูลตัวอย่าง ณ วันที่ ${plan.today}: ${planSummary(plan)} · ลูกค้า ${plan.contacts.length} · ผู้จำหน่าย ${(plan.suppliers || []).length} · สินค้า ${plan.products.length} · วัตถุดิบ ${(plan.costing?.products || []).length} · งานที่มีต้นทุน ${Object.keys(plan.expected.jobs || {}).length}`);
+    // R9.1: รายงานภาษี opens on the sample's story month (the latest closed month of the load date) — also when the
+    // load date was given explicitly. Best-effort like refreshScreens(): the data is already saved.
+    try { window.ERPTaxReports?.select?.({ period: plan.storyPeriod }); } catch (error) { console.warn('[DemoSeed] tax report month not set', error); }
     refreshScreens();
     notifyUser(`โหลดข้อมูลตัวอย่างแล้ว: ${planSummary(plan)} — ล้างออกได้ด้วยปุ่ม “${RESET_LABEL}”`, 'success', 6000);
     return { status: 'loaded', plan, replaced: !empty };

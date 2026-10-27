@@ -58,7 +58,7 @@ export function cancelReasonText(kind, code, text) {
 }
 
 // Live documents that must be voided first. Inputs are the matching records the controller found
-// with ERPIntegrity's own matchers: {receipts, payments, creditNotes, billingNotes} (each {no}).
+// with ERPIntegrity's own matchers: {receipts, payments, creditNotes, debitNotes, billingNotes} (each {no}).
 // → [] when the document may be cancelled, else one Thai line per blocking group.
 export function cancelBlockers(kind, linked = {}) {
   if (kind !== 'invoices') return [];
@@ -68,6 +68,9 @@ export function cancelBlockers(kind, linked = {}) {
   if (receipts.length) out.push(`ใบเสร็จรับเงินที่ยังใช้งาน: ${receipts.join(', ')} — ยกเลิกใบเสร็จก่อน`);
   if (payments.length) out.push(`รายการรับชำระ: ${payments.join(', ')} — ยกเลิกรายการรับเงินที่หน้าใบวางบิลก่อน`);
   if (creditNotes.length) out.push(`ใบลดหนี้ที่ยังใช้งาน: ${creditNotes.join(', ')} — ยกเลิกใบลดหนี้ก่อน`);
+  // ADR-024: a live debit note (ใบเพิ่มหนี้) prints this invoice as its original tax invoice.
+  const debitNotes = nos(linked.debitNotes);
+  if (debitNotes.length) out.push(`ใบเพิ่มหนี้ที่ยังใช้งาน: ${debitNotes.join(', ')} — ยกเลิกใบเพิ่มหนี้ก่อน`);
   // The demo has no "cancel billing note" action yet, so an invoice on an open billing note is settled with a
   // full credit note instead (a billing line must never point at a cancelled invoice).
   if (billings.length) out.push(`อยู่ในใบวางบิลที่ยังเปิดอยู่: ${billings.join(', ')} — ระบบยังไม่มีการยกเลิกใบวางบิล ให้ออกใบลดหนี้เต็มจำนวนแทนการยกเลิก`);

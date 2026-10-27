@@ -35,6 +35,7 @@
 // ============================================================================
 import { TAX_INVOICE_FORM_ABBREVIATED, TAX_INVOICE_FORM_FULL, ABBREVIATED_TAX_INVOICE_USE_VAT, GENERAL_CUSTOMER_NAME, normalizeTaxInvoiceForm, convertUnitPriceBetweenVatModes, vatModeGrossFactor, BUYER_HEAD_OFFICE_CODE, normalizeBuyerBranchCode, parseBuyerBranchInput, buyerBranchFromContact, isGeneralCustomerName } from './erp-shared-core.js';
 import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefaultPrice } from './erp-master-data-core.js';
+import { abbreviatedInvoiceApproval } from './erp-company-profile-core.js';
 
 (() => {
   'use strict';
@@ -73,7 +74,20 @@ import { findProductMasterRow, planProductDefaultPriceFill, normalizeProductDefa
     }
     const vat = $('i-vat');
     if (vat) vat.title = abbreviated ? 'ใบกำกับภาษีอย่างย่อใช้ราคารวม VAT แล้วเท่านั้น' : '';
+    renderAbbreviatedApproval(abbreviated);
     renderBuyerBranch('i');
+  }
+  // r13#MED-5: an abbreviated tax invoice is for an approved retailer only (ม.86/6, ประกาศฯ ฉบับที่ 46) — a red warning
+  // in the form while the company profile has no ภ.พ.06 approval / POS ID (the print shows the POS ID when it has one).
+  function renderAbbreviatedApproval(abbreviated) {
+    const hint = $('i-tax-form-hint');
+    if (!hint) return;
+    let box = $('i-abbr-approval');
+    if (!box) { box = document.createElement('div'); box.id = 'i-abbr-approval'; box.className = 'tax-note tax-note-danger'; box.setAttribute('role', 'note'); hint.after(box); }
+    const branch = $('i-br-kk')?.classList.contains('kk-sel') ? 'khonkaen' : 'ubon';
+    const status = abbreviated ? abbreviatedInvoiceApproval(window.CurrentUser, branch) : { warnings: [] };
+    box.textContent = status.warnings.join(' · ');
+    box.hidden = !abbreviated || !status.warnings.length;
   }
 
   // --------------------------------------------- buyer establishment (ADR-021)

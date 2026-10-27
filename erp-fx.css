@@ -1,0 +1,36 @@
+/* erp-fx.css — page "หลายสกุลเงิน" (ADR-031) and its card on ตั้งค่าบริษัท. Tabs, cards, tables and stats reuse
+   erp-analytics.css (afc-*) and the forms reuse erp-costing.css (jc-*); this file adds the currency selector, the rate
+   panel and the multi-currency tables. Every control is at least 42 px (ADR-019), 44 px at ≤ 900 px. */
+.fx-root{min-width:0}
+.fx-root .btn,.fx-root .btn.btn-sm,.fx-root select,.fx-root input:not([type=checkbox]):not([type=radio]),.fx-settings-card .btn,.fx-settings-card select,.fx-settings-card input:not([type=checkbox]):not([type=radio]){min-height:var(--erp-control-height,42px)}
+.fx-currency-select{min-width:200px;font-weight:600}
+.fx-form .jc-form-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.fx-form .jc-field-wide{grid-column:span 2}
+.fx-rate-panel{margin:10px 0;line-height:1.55}
+.fx-rate-panel .btn{margin-left:6px}
+.fx-totals{margin:10px 0}
+.fx-table{min-width:760px}
+.fx-lines-table{min-width:620px}
+.fx-lines-table input{width:100%;min-height:42px}
+.fx-table td small,.fx-table th small{display:block;color:#64748b;font-size:12px;font-weight:400;margin-top:2px;white-space:normal}
+.fx-row-old td{color:#94a3b8}
+.fx-warn{color:#92400e;font-weight:600}
+.fx-check{display:flex;align-items:flex-start;gap:8px;min-height:42px;line-height:1.4;padding:6px 0;cursor:pointer}
+.fx-check input{width:20px;height:20px;margin-top:2px;flex:0 0 auto}
+.fx-check small{display:block;color:#64748b;font-size:12px}
+.fx-fieldset{border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px;margin:12px 0}
+.fx-fieldset legend{font-weight:700;padding:0 6px}
+.fx-currency-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px 14px}
+.fx-file{display:inline-flex;align-items:center;gap:6px;min-height:42px;cursor:pointer}
+.fx-csv-preview{margin-top:12px}
+.fx-message{margin:0 0 12px}
+.fx-settings-card details summary{cursor:pointer;min-height:42px;display:flex;align-items:center;font-weight:600}
+.fx-foreign-table{min-width:980px}
+@media (max-width:900px){
+  .fx-root .btn,.fx-root .btn.btn-sm,.fx-root select,.fx-root input:not([type=checkbox]):not([type=radio]),.fx-settings-card .btn,.fx-settings-card select,.fx-settings-card input:not([type=checkbox]):not([type=radio]),.fx-lines-table input{min-height:var(--erp-touch-target,44px)}
+  .fx-form .jc-field-wide{grid-column:auto}
+}
+@media (max-width:560px){
+  .fx-currency-select{min-width:0;width:100%}
+  .fx-rate-panel .btn{margin:8px 0 0;display:flex}
+}

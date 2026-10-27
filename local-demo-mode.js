@@ -192,6 +192,7 @@ function injectDemoSaaSService(){
 
 function ready(){
   applyDemoBranding();
+
   injectDemoSaaSService();
   injectDemoMenu();
   // Fire once now and again after the application modules have attached listeners.

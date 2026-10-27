@@ -26,9 +26,9 @@
 // Every user-visible text of this module is in TAX_CORE_TEXT (the English stage translates it).
 // Top-level names carry a tax / TAX_ prefix: the vm-based tests load several modules into one scope.
 // ============================================================================
-import { roundMoneyValue, calculateVatSummary, parseBusinessDate, businessDateOrdinal, normalizeBuyerBranchCode, effectiveTaxInvoiceForm, isGeneralCustomerName, GENERAL_CUSTOMER_NAME } from './erp-shared-core.js';
+import { roundMoneyValue, calculateVatSummary, parseBusinessDate, businessDateOrdinal, normalizeBuyerBranchCode, effectiveTaxInvoiceForm, isGeneralCustomerName, GENERAL_CUSTOMER_NAME, vatRateNotice } from './erp-shared-core.js';
 import { creditNoteInvoiceBasis, creditNoteVatModeOf, creditNoteInvoiceLive, isCreditNoteLive, summarizeOutputVat } from './erp-credit-note-core.js';
-import { isValidThaiTaxId } from './erp-company-profile-core.js';
+import { isValidThaiTaxId, PLACEHOLDER_TAX_ID } from './erp-company-profile-core.js';
 
 export const TAX_REPORTS_CORE_VERSION = '1.0.0';
 export const VAT_RETURN_SCHEMA_VERSION = 1;
@@ -62,13 +62,23 @@ export const TAX_CORE_TEXT = Object.freeze({
   abbreviatedDayNote: count => `สรุปใบกำกับภาษีอย่างย่อประจำวัน (${count} ฉบับ)`,
   abbreviatedCancelledNote: nos => `ยกเลิกในช่วงเลขที่นี้: ${nos.join(', ')}`,
   cancelledNote: reason => `ยกเลิก – ${reason || 'ไม่ระบุเหตุผล'}`,
+  cancelledShort: 'ยกเลิก',
   creditNoteNote: nos => `ใบลดหนี้ อ้างอิง ${nos.length ? nos.join(', ') : '-'}`,
   debitNoteNote: nos => `ใบเพิ่มหนี้ อ้างอิง ${nos.length ? nos.join(', ') : '-'}`,
   zeroRatedNote: 'อัตราร้อยละ 0',
+  // ADR-031 (rule 4): the value of an export of goods in a currency (ป.132/2548) — fixed by the month-end close.
+  exportValueNote: (currency, amount, basis) => `อัตราร้อยละ 0 · ส่งออก ${currency} ${amount} — มูลค่าตาม ป.132/2548: ${basis}`,
+  exportBasis: Object.freeze({ actual: 'ขายเงินตราได้ในเดือน ใช้ยอดบาทที่ได้จริง', month_end_rate: 'อัตราซื้อถัวเฉลี่ย ธปท. วันทำการสุดท้ายของเดือน', mixed: 'ส่วนที่ขายได้ใช้ยอดบาทจริง ส่วนที่เหลือใช้อัตราซื้อถัวเฉลี่ย ธปท. วันทำการสุดท้ายของเดือน' }),
+  exportPendingNote: 'อัตราร้อยละ 0 · ส่งออก — มูลค่ายังเป็นยอดบาทวันออกใบ (ชั่วคราว)',
+  exportPendingWarning: no => `ใบ ${no} เป็นการส่งออกสินค้าเป็นเงินตราต่างประเทศ — มูลค่าใน ภ.พ.30 ยังเป็นยอดบาทวันออกใบ (ชั่วคราว) ให้ "ปิดเดือนสกุลต่างประเทศ" ที่หน้าหลายสกุลเงินก่อนยื่น ภ.พ.30 (ป.132/2548)`,
+  // ADR-031 (rule 7): input VAT of an imported service self-assessed on ภ.พ.36, claimed the month after the payment.
+  pp36No: no => `ภ.พ.36 ${no}`,
+  pp36Note: (paymentNo, date) => `ภาษีซื้อตามใบเสร็จ ภ.พ.36 — บริการจากต่างประเทศ จ่ายเงิน ${paymentNo} วันที่ ${date}`,
   lateEntryNote: 'ลงรายการเกิน 3 วันทำการ',
   receivedNote: date => `ได้รับ ${date}`,
   invoiceMonthNote: period => `ใบกำกับภาษีเดือน ${period}`,
   creditNoteReceivedNote: 'ใบลดหนี้ที่ได้รับ',
+  goodsReceiptNote: no => `รับสินค้า ${no}`,
   debitNoteReceivedNote: 'ใบเพิ่มหนี้ที่ได้รับ',
   missingBuyerTaxId: 'ไม่มีเลขประจำตัวผู้เสียภาษีของผู้ซื้อ — ต้องระบุเมื่อผู้ซื้อจดทะเบียน VAT (ประกาศฯ ฉบับที่ 202)',
   dateOutsidePeriod: (no, date) => `เอกสาร ${no} ลงวันที่ ${date} แต่เก็บอยู่ในเดือนภาษีนี้ — ตรวจสอบข้อมูลนำเข้า`,
@@ -96,11 +106,16 @@ export const TAX_CORE_TEXT = Object.freeze({
   errReceivedBeforeInvoice: 'วันที่ได้รับใบกำกับภาษีต้องไม่ก่อนวันที่ในใบกำกับภาษี',
   errClaimPeriod: 'กรุณาเลือกเดือนที่ใช้สิทธิ์ภาษีซื้อ (เดือน/ปี)',
   errClaimBeforeReceived: 'เดือนที่ใช้สิทธิ์ต้องไม่ก่อนเดือนที่ได้รับใบกำกับภาษี',
-  errClaimTooLate: (invoicePeriod, lastPeriod) => `เกินกำหนดใช้สิทธิ 6 เดือน — ใบกำกับภาษีเดือน ${invoicePeriod} ใช้สิทธิ์ได้ถึงเดือน ${lastPeriod} เท่านั้น (มาตรา 82/3)`,
+  errClaimTooLate: (invoicePeriod, lastPeriod) => `เกินกำหนดใช้สิทธิ์ 6 เดือน — ใบกำกับภาษีเดือน ${invoicePeriod} ใช้สิทธิ์ได้ถึงเดือน ${lastPeriod} เท่านั้น (มาตรา 82/3)`,
   errReason: 'กรุณาเลือกเหตุผลที่ไม่ขอใช้สิทธิ์ภาษีซื้อ (ภาษีซื้อต้องห้าม มาตรา 82/5)',
   errDuplicateTaxInvoice: (no, taxId) => `ใบกำกับภาษีเลขที่ ${no} ของผู้ขายเลขประจำตัว ${taxId} ถูกบันทึกแล้ว — ใช้สิทธิ์ภาษีซื้อซ้ำไม่ได้`,
   warnVendorTaxIdCheck: taxId => `เลขประจำตัวผู้เสียภาษีของผู้ขาย ${taxId} หลักสุดท้ายไม่ตรงกับเลขตรวจสอบ — ตรวจกับใบกำกับภาษีอีกครั้ง`,
   warnClaimLater: (claim, received) => `ใช้สิทธิ์ภาษีซื้อเดือน ${claim} (ได้รับใบกำกับภาษีเดือน ${received})`,
+  // r13#LOW-3 — ประกาศอธิบดีฯ VAT ฉบับที่ 4 ข้อ 1–2: a later month only for these reasons, and the invoice must be endorsed.
+  lateClaimReasons: Object.freeze({ trade_custom: 'มีเหตุจำเป็นตามประเพณีทางการค้า (เช่น ได้รับใบกำกับภาษีหลังปิดบัญชีของเดือนแล้ว)', force_majeure: 'เหตุสุดวิสัย', other: 'เหตุอื่น (ระบุ — ต้องเป็นเหตุตามประกาศฯ ฉบับที่ 4)' }),
+  errLateClaimReason: 'ใช้สิทธิ์ภาษีซื้อในเดือนหลังเดือนที่ได้รับใบกำกับภาษี — กรุณาเลือกเหตุผล (ประกาศอธิบดีฯ VAT ฉบับที่ 4)',
+  errLateClaimNote: 'เลือก "เหตุอื่น" แล้ว — กรุณาระบุเหตุผลอย่างน้อย 10 ตัวอักษร',
+  lateClaimEndorse: period => `เขียนบนใบกำกับภาษีตัวจริง: "ถือเป็นภาษีซื้อในเดือนภาษี ${period}" (ประกาศอธิบดีฯ VAT ฉบับที่ 4 ข้อ 2)`,
   warnAbbreviated: 'ใบกำกับภาษีอย่างย่อใช้เป็นภาษีซื้อไม่ได้ — VAT ของเอกสารนี้บันทึกเป็นต้นทุนค่าใช้จ่าย',
   warnNonClaimable: 'VAT ของเอกสารนี้เป็นภาษีซื้อต้องห้าม — บันทึกรวมเป็นต้นทุนค่าใช้จ่าย ไม่อยู่ในรายงานภาษีซื้อ',
   incompleteBadge: 'ข้อมูล VAT ไม่ครบ',
@@ -126,7 +141,9 @@ export const TAX_CORE_TEXT = Object.freeze({
   }),
   pp30NotComputed: 'ไม่คำนวณในเดโม',
   efilingCheckLatest: 'พ้นช่วงขยายเวลายื่นทางอินเทอร์เน็ต (ถึง 31 ม.ค. 2570) — ตรวจสอบประกาศกรมสรรพากรล่าสุด',
-  dueDateHolidayNote: 'วันครบกำหนดยื่นทางอินเทอร์เน็ตเลื่อนเฉพาะวันเสาร์-อาทิตย์ ไม่ได้คิดวันหยุดนักขัตฤกษ์ — ตรวจปฏิทินกรมสรรพากรอีกครั้ง',
+  dueDateHolidayNote: 'วันครบกำหนดเลื่อนพ้นวันเสาร์-อาทิตย์และวันหยุดราชการตามตารางในระบบ (ปี 2569 ตามประกาศวันหยุดราชการ · ปี 2570 ตามประกาศ ธปท. ที่ 37/2569 ยังรอมติ ครม.) — ตรวจปฏิทินภาษีของกรมสรรพากรอีกครั้ง',
+  dueDateHolidayUnknown: 'ปีนี้ยังไม่มีตารางวันหยุดราชการในระบบ — วันครบกำหนดเลื่อนเฉพาะวันเสาร์-อาทิตย์ ตรวจปฏิทินภาษีของกรมสรรพากร',
+  dueDateMovedHoliday: names => `เลื่อนเพราะวันหยุด: ${names.join(', ')}`,
   errReturnsStore: 'ข้อมูล ภ.พ.30 ที่บันทึกไว้อ่านไม่ได้หรือไม่ถูกต้อง',
   errReturnField: field => `ข้อมูล ภ.พ.30 ช่อง ${field} ไม่ถูกต้อง`,
   errOverpaidAction: 'มียอดชำระเกิน (บรรทัด 12) — กรุณาเลือก “ขอคืนเป็นเงินสด” หรือ “ขอนำไปชำระในเดือนถัดไป”',
@@ -218,20 +235,69 @@ const taxIsoFromOrdinal = ordinal => {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 };
 const taxWeekday = ordinal => new Date(ordinal * 86400000).getUTCDay(); // 0 = Sunday, 6 = Saturday
-// The date `days` working days (Mon–Fri; public holidays not modelled) after an ISO date.
-export function addTaxWorkingDays(value, days) {
+// r13#LOW-1 — government holidays (วันหยุดราชการ) used by every due-date roll and the 3-working-day entry rule. A config
+// table like TAX_DEADLINES: add the next year when the cabinet announces it (and re-check against the RD tax calendar).
+// - 2569 (2026): the cabinet's government holidays as published (Thaiger 3 พ.ย. 2568, InfoQuest "วันหยุดประจำปี 2569"),
+//   incl. the special holiday 2 ม.ค. 2569 (ครม.). Left out on purpose: 1 พ.ค. (Labour Day — banks / private only),
+//   13 พ.ค. (Ploughing Day, not on every published government list) and 16 ต.ค. 2569 (ครม. 19 พ.ค. 2569: Bangkok
+//   government offices only, IMF / World Bank meetings) — a doubtful day is left OUT, so a due date is never shown
+//   later than the real one.
+// - 2570 (2027): PROVISIONAL — ประกาศธนาคารแห่งประเทศไทย ที่ 37/2569 (17 ส.ค. 2569, ราชกิจจานุเบกษา 25 ส.ค. 2569), the
+//   bank holidays of 2570 without 3 พ.ค. (Labour Day substitute). The cabinet's government list for 2570 is not out yet.
+export const TAX_HOLIDAY_YEARS = Object.freeze({ 2026: 'official', 2027: 'provisional' });
+export const TAX_PUBLIC_HOLIDAYS = Object.freeze([
+  ['2026-01-01', 'วันขึ้นปีใหม่'], ['2026-01-02', 'วันหยุดราชการเพิ่มเป็นกรณีพิเศษ'], ['2026-03-03', 'วันมาฆบูชา'], ['2026-04-06', 'วันจักรี'],
+  ['2026-04-13', 'วันสงกรานต์'], ['2026-04-14', 'วันสงกรานต์'], ['2026-04-15', 'วันสงกรานต์'], ['2026-05-04', 'วันฉัตรมงคล'],
+  ['2026-06-01', 'วันหยุดชดเชยวันวิสาขบูชา'], ['2026-06-03', 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี'], ['2026-07-28', 'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว'],
+  ['2026-07-29', 'วันอาสาฬหบูชา'], ['2026-07-30', 'วันเข้าพรรษา'], ['2026-08-12', 'วันแม่แห่งชาติ'], ['2026-10-13', 'วันนวมินทรมหาราช'],
+  ['2026-10-23', 'วันปิยมหาราช'], ['2026-12-07', 'วันหยุดชดเชยวันพ่อแห่งชาติ'], ['2026-12-10', 'วันรัฐธรรมนูญ'], ['2026-12-31', 'วันสิ้นปี'],
+  ['2027-01-01', 'วันขึ้นปีใหม่'], ['2027-02-22', 'วันหยุดชดเชยวันมาฆบูชา'], ['2027-04-06', 'วันจักรี'], ['2027-04-13', 'วันสงกรานต์'],
+  ['2027-04-14', 'วันสงกรานต์'], ['2027-04-15', 'วันสงกรานต์'], ['2027-05-04', 'วันฉัตรมงคล'], ['2027-05-20', 'วันวิสาขบูชา'],
+  ['2027-06-03', 'วันเฉลิมพระชนมพรรษาสมเด็จพระราชินี'], ['2027-07-19', 'วันหยุดชดเชยวันอาสาฬหบูชา'], ['2027-07-28', 'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว'],
+  ['2027-08-12', 'วันแม่แห่งชาติ'], ['2027-10-13', 'วันนวมินทรมหาราช'], ['2027-10-25', 'วันหยุดชดเชยวันปิยมหาราช'], ['2027-12-06', 'วันหยุดชดเชยวันพ่อแห่งชาติ'],
+  ['2027-12-10', 'วันรัฐธรรมนูญ'], ['2027-12-31', 'วันสิ้นปี']
+].map(([date, name]) => Object.freeze({ date, name })));
+const TAX_HOLIDAY_MAP = new Map(TAX_PUBLIC_HOLIDAYS.map(row => [row.date, row.name]));
+// The holiday name of an ISO date ('' = not a listed holiday).
+export function taxHolidayName(value, holidays = TAX_HOLIDAY_MAP) {
+  const key = taxText(value).slice(0, 10);
+  return holidays instanceof Map ? holidays.get(key) || '' : '';
+}
+// 'official' | 'provisional' | '' (the year is not in the table: weekends only).
+export function taxHolidayYearStatus(value) {
+  const year = Number(taxText(value).slice(0, 4));
+  return TAX_HOLIDAY_YEARS[year] || '';
+}
+const taxIsWorkingOrdinal = (ordinal, holidays) => { const day = taxWeekday(ordinal); return day !== 0 && day !== 6 && !taxHolidayName(taxIsoFromOrdinal(ordinal), holidays); };
+// The date `days` working days (Mon–Fri, not a listed government holiday) after an ISO date.
+export function addTaxWorkingDays(value, days, holidays = TAX_HOLIDAY_MAP) {
   let ordinal = businessDateOrdinal(value);
   if (!Number.isFinite(ordinal)) return '';
   let left = Math.max(0, Math.trunc(taxFinite(days)));
-  while (left > 0) { ordinal += 1; const day = taxWeekday(ordinal); if (day !== 0 && day !== 6) left -= 1; }
+  while (left > 0) { ordinal += 1; if (taxIsWorkingOrdinal(ordinal, holidays)) left -= 1; }
   return taxIsoFromOrdinal(ordinal);
 }
-// Saturday / Sunday → the next Monday (public holidays are not modelled).
+// Saturday / Sunday → the next Monday (weekends only — kept for callers that want exactly that).
 export function rollTaxWeekend(value) {
   let ordinal = businessDateOrdinal(value);
   if (!Number.isFinite(ordinal)) return '';
   while ([0, 6].includes(taxWeekday(ordinal))) ordinal += 1;
   return taxIsoFromOrdinal(ordinal);
+}
+// A due date on a Saturday, Sunday or listed government holiday → the next working day (r13#LOW-1).
+export function rollTaxDueDate(value, holidays = TAX_HOLIDAY_MAP) {
+  let ordinal = businessDateOrdinal(value);
+  if (!Number.isFinite(ordinal)) return '';
+  for (let guard = 0; guard < 40 && !taxIsWorkingOrdinal(ordinal, holidays); guard += 1) ordinal += 1;
+  return taxIsoFromOrdinal(ordinal);
+}
+// The holidays a roll passed over (names), for the "เลื่อนเพราะ…" note.
+export function taxRolledHolidays(from, to, holidays = TAX_HOLIDAY_MAP) {
+  const start = businessDateOrdinal(from), end = businessDateOrdinal(to);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return [];
+  const names = [];
+  for (let ordinal = start; ordinal < end; ordinal += 1) { const name = taxHolidayName(taxIsoFromOrdinal(ordinal), holidays); if (name) names.push(name); }
+  return [...new Set(names)];
 }
 // The local calendar date a record was entered: createdAt (ISO instant) or a Date.now() style id;
 // '' when unknown (the sample data's reserved 1e12 ids → 2001 never count as late).
@@ -261,6 +327,19 @@ export function isThirteenDigitTaxId(value) {
 // Check digit (the company-profile validator, ADR-020).
 export function taxIdCheckDigitOk(value) {
   return isValidThaiTaxId(normalizeTaxIdText(value));
+}
+// The seller's / payer's own tax ID on a report or certificate (ADR-024, D3 item 4): '' = a usable 13-digit ID;
+// 'sample' = still the sample number 0000000000000 (the untouched sample profile, or a saved one that kept it — a calm
+// notice, the demo stays honest that it is a placeholder); 'invalid' = a number somebody entered that is not a valid
+// 13-digit ID (a warning).
+export function companyTaxIdNotice(taxId, customProfileSaved) {
+  const id = normalizeTaxIdText(taxId);
+  const usable = /^\d{13}$/.test(id) && id !== PLACEHOLDER_TAX_ID && isValidThaiTaxId(id);
+  if (usable) return '';
+  // Still the sample number (also in a saved profile that kept it) → the calm notice; a number somebody typed
+  // that fails the 13-digit / check-digit rule → the warning. (`customProfileSaved` kept for the callers' context.)
+  if (!id || id === PLACEHOLDER_TAX_ID || !customProfileSaved && !/^\d{13}$/.test(id)) return 'sample';
+  return 'invalid';
 }
 // Establishment code from a stored code or a printed label ("สำนักงานใหญ่", "สาขาที่ 00003 (…)").
 export function establishmentCodeOf(code, label) {
@@ -296,6 +375,48 @@ export function expenseTaxInvoiceKey(vendorTaxId, taxInvoiceNo) {
   return /^\d{13}$/.test(taxId) && no ? `${taxId}|${no}` : '';
 }
 
+// ---------------------------------------------------------------- tax point of services at payment (r13#MED-6)
+// มาตรา 78/1(1): for a service the VAT liability arises when the price is RECEIVED — unless a tax invoice is issued
+// earlier (78/1(2)). An invoice saved with taxPoint 'payment' is a ใบแจ้งหนี้ (not a tax invoice): nothing goes into
+// รายงานภาษีขาย on its date; each receipt against it is the ใบเสร็จรับเงิน/ใบกำกับภาษี and reports its VAT share on
+// the RECEIPT date. Only for a full-form invoice of services only, with VAT (planInvoiceDocumentAction enforces it).
+export const TAX_POINT_TEXT = Object.freeze({
+  receiptRowNote: invoiceNo => `ใบเสร็จรับเงิน/ใบกำกับภาษี (บริการ ม.78/1) ตามใบแจ้งหนี้ ${invoiceNo}`,
+  deferredInvoice: (no, date) => `ใบแจ้งหนี้ค่าบริการ ${no} (${date}) ยังไม่ใช่ใบกำกับภาษี — ภาษีขายเกิดเมื่อได้รับชำระ (ม.78/1) จึงยังไม่อยู่ในรายงานเดือนนี้`,
+  errGoodsLine: 'ออกใบกำกับภาษีเมื่อรับเงินได้เฉพาะค่าบริการ (มาตรา 78/1) — ใบนี้มีรายการสินค้า ให้ใช้ใบกำกับภาษีตามปกติ',
+  errNeedsVat: 'ออกใบกำกับภาษีเมื่อรับเงินใช้กับค่าบริการที่มี VAT เท่านั้น',
+  errAbbreviated: 'ใบกำกับภาษีอย่างย่อออกพร้อมรับเงินอยู่แล้ว — ไม่ต้องเลือกออกใบกำกับภาษีเมื่อรับเงิน',
+  errHasPayments: 'ใบนี้มีการรับเงินหรือใบลด/เพิ่มหนี้แล้ว จึงเปลี่ยนจุดความรับผิดทางภาษีไม่ได้'
+});
+export function invoiceTaxPointAtPayment(invoice = {}) {
+  return invoice?.taxPoint === 'payment' && creditNoteVatModeOf(invoice) !== 'none' && effectiveTaxInvoiceForm(invoice) !== 'abbreviated';
+}
+const taxReceiptLive = row => !!row && typeof row === 'object' && !row.voided && !row.cancelled && row.status !== 'cancelled' && row.status !== 'voided';
+// The VAT share of every live receipt of a tax-point-at-payment invoice, in receipt order: cumulative rounding in satang
+// (share k = round(VAT × paid up to k ÷ total) − round(VAT × paid up to k−1 ÷ total)), so the shares add up EXACTLY to the
+// invoice VAT when it is paid in full. Amounts above the invoice total are ignored. → [{ receipt, date, total, vat, value }]
+export function paymentTaxPoints(invoice = {}, receipts = []) {
+  const basis = creditNoteInvoiceBasis(invoice);
+  const totalSatang = Math.round(taxMoney(basis.total) * 100), vatSatang = Math.round(taxMoney(basis.vat) * 100);
+  if (!(totalSatang > 0)) return [];
+  const list = (Array.isArray(receipts) ? receipts : []).filter(taxReceiptLive)
+    .map(receipt => ({ receipt, date: taxText(receipt.date).slice(0, 10), amount: Math.round(taxMoney(receipt.total ?? receipt.saleTotal ?? receipt.subtotal ?? 0) * 100) }))
+    .filter(row => row.amount > 0 && parseBusinessDate(row.date))
+    .sort((a, b) => (businessDateOrdinal(a.date) || 0) - (businessDateOrdinal(b.date) || 0) || taxText(a.receipt.no).localeCompare(taxText(b.receipt.no), 'en', { numeric: true }));
+  const out = [];
+  let paid = 0, vatSoFar = 0;
+  for (const row of list) {
+    if (paid >= totalSatang) break;
+    const amount = Math.min(row.amount, totalSatang - paid);
+    paid += amount;
+    const vatCum = paid >= totalSatang ? vatSatang : Math.round(vatSatang * paid / totalSatang);
+    const vat = vatCum - vatSoFar;
+    vatSoFar = vatCum;
+    out.push({ receipt: row.receipt, date: row.date, total: amount / 100, vat: vat / 100, value: (amount - vat) / 100 });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- VAT category (G4)
 // 'standard' for any VAT invoice; for a no-VAT invoice the stored choice 'zero' (0 %, export) or
 // 'exempt' — legacy no-VAT invoices without a choice are treated as exempt and flagged (§1c rule 6).
@@ -314,7 +435,17 @@ export function normalizeInvoiceVatCategory(vatMode, chosen) {
 }
 
 // ---------------------------------------------------------------- expense purchase-tax fields (G11)
-export const EXPENSE_VAT_FIELD_KEYS = Object.freeze(['vendorId', 'vendorTaxId', 'vendorBranchCode', 'vendorAddress', 'vatMode', 'subtotal', 'vatAmt', 'taxInvoiceNo', 'taxInvoiceDate', 'taxInvoiceReceivedDate', 'claimPeriod', 'inputVatClaimable', 'nonClaimableReason', 'vatCategory']);
+export const EXPENSE_VAT_FIELD_KEYS = Object.freeze(['vendorId', 'vendorTaxId', 'vendorBranchCode', 'vendorAddress', 'vatMode', 'subtotal', 'vatAmt', 'taxInvoiceNo', 'taxInvoiceDate', 'taxInvoiceReceivedDate', 'claimPeriod', 'inputVatClaimable', 'nonClaimableReason', 'vatCategory', 'lateClaimReason', 'lateClaimNote']);
+export const LATE_CLAIM_REASON_CODES = Object.freeze(Object.keys(TAX_CORE_TEXT.lateClaimReasons));
+// r13#LOW-3: the reason a claim month later than the received month needs ('' + no error when not late).
+function taxLateClaimCheck(draft, claimPeriod, receivedPeriod) {
+  if (!claimPeriod || claimPeriod === receivedPeriod) return { ok: true, reason: '', note: '' };
+  const reason = taxText(draft.lateClaimReason);
+  if (!LATE_CLAIM_REASON_CODES.includes(reason)) return { ok: false, error: TAX_CORE_TEXT.errLateClaimReason };
+  const note = taxText(draft.lateClaimNote).replace(/\s+/g, ' ').slice(0, 200);
+  if (reason === 'other' && note.length < 10) return { ok: false, error: TAX_CORE_TEXT.errLateClaimNote };
+  return { ok: true, reason, note };
+}
 
 // Does a stored expense carry the purchase-VAT split (§2d)? Older expenses only have `amount`.
 export function expenseHasVatData(expense = {}) {
@@ -365,6 +496,7 @@ export function planExpenseVatFields(draft = {}) {
   if (vendorTaxId && !isValidThaiTaxId(vendorTaxId)) warnings.push(TAX_CORE_TEXT.warnVendorTaxIdCheck(vendorTaxId));
   if (taxText(draft.vendorBranchCode) && !vendorBranchCode) return { ok: false, error: TAX_CORE_TEXT.errVendorBranch };
   let claimPeriod = '';
+  let late = { reason: '', note: '' };
   if (claimable) {
     if (taxText(draft.taxStatus) !== 'received') return { ok: false, error: TAX_CORE_TEXT.errNeedsReceived };
     if (!vendor) return { ok: false, error: TAX_CORE_TEXT.errVendorName };
@@ -381,6 +513,9 @@ export function planExpenseVatFields(draft = {}) {
       return { ok: false, error: TAX_CORE_TEXT.errClaimTooLate(taxPeriodShort(invoicePeriod), taxPeriodShort(addTaxPeriods(invoicePeriod, TAX_CLAIM_WINDOW_MONTHS))) };
     }
     if (claimPeriod !== receivedPeriod) warnings.push(TAX_CORE_TEXT.warnClaimLater(taxPeriodShort(claimPeriod), taxPeriodShort(receivedPeriod)));
+    late = taxLateClaimCheck(draft, claimPeriod, receivedPeriod);
+    if (!late.ok) return { ok: false, error: late.error };
+    if (late.reason) warnings.push(TAX_CORE_TEXT.lateClaimEndorse(taxPeriodShort(claimPeriod)));
   }
   const fields = {
     vendorId: taxText(draft.vendorId),
@@ -397,9 +532,105 @@ export function planExpenseVatFields(draft = {}) {
     claimPeriod,
     inputVatClaimable: claimable,
     nonClaimableReason: reason,
-    vatCategory: vatMode === 'none' ? 'exempt' : 'standard'
+    vatCategory: vatMode === 'none' ? 'exempt' : 'standard',
+    lateClaimReason: late.reason,
+    lateClaimNote: late.note
   };
   return { ok: true, fields, warnings };
+}
+
+// ---------------------------------------------------------------- goods-receipt purchase VAT (r13#HIGH-2, G15)
+// A purchase order / goods receipt stores the PRE-VAT value of the goods (`subtotal` = Σ qty × unit cost — the cost the
+// costing engine uses, unchanged). The supplier's VAT is planned here, with the same rules as an expense tax invoice
+// (planExpenseVatFields: seller TIN / establishment, ม.82/3 6-month claim limit, ประกาศฯ ฉบับที่ 4 late-claim reason, the
+// duplicate guard on seller TIN + number across expenses AND goods receipts):
+//   vatMode 'add'  — the supplier is VAT-registered: VAT = round(subtotal × 7 %), AP = subtotal + VAT;
+//   vatMode 'none' — the supplier is not VAT-registered (no VAT, AP = subtotal) — the receipt is as before r13.
+//   taxStatus 'received' — the tax invoice is in hand: claimed in `claimPeriod` (default: the received month);
+//   taxStatus 'pending'  — goods arrived before the tax invoice: the VAT is "not yet claimable" (GL 1155) until the
+//                          invoice is recorded (recordGoodsReceiptTaxInvoice), then claimed in its claim month.
+// A goods receipt cannot decline the claim (ภาษีซื้อต้องห้าม would change the stock cost the engine already used):
+// a defective tax invoice stays pending until the supplier issues a correct one.
+export const GOODS_RECEIPT_VAT_MODES = Object.freeze(['add', 'none']);
+export const GOODS_RECEIPT_TAX_STATUSES = Object.freeze(['received', 'pending']);
+export const GOODS_RECEIPT_VAT_FIELD_KEYS = Object.freeze(['vatMode', 'vatAmt', 'total', 'vendorTaxId', 'vendorBranchCode', 'vendorAddress', 'taxStatus', 'taxInvoiceNo', 'taxInvoiceDate', 'taxInvoiceReceivedDate', 'claimPeriod', 'inputVatClaimable', 'lateClaimReason', 'lateClaimNote', 'taxInvoiceRecordedAt']);
+export const GR_TAX_TEXT = Object.freeze({
+  vatModes: Object.freeze({ add: 'ผู้ขายจด VAT — ราคาในใบสั่งซื้อยังไม่รวม VAT (บวก VAT 7%)', none: 'ผู้ขายไม่ได้จด VAT — ไม่มี VAT' }),
+  statuses: Object.freeze({ received: 'ได้รับใบกำกับภาษีพร้อมสินค้าแล้ว', pending: 'ยังไม่ได้รับใบกำกับภาษี (รอผู้ขายส่งตามมา)' }),
+  errVatMode: 'กรุณาเลือกว่าผู้ขายจด VAT หรือไม่ (ใบสั่งซื้อ / ใบรับสินค้า)',
+  errStatus: 'กรุณาเลือกสถานะใบกำกับภาษีของผู้ขาย',
+  errValue: 'มูลค่าสินค้าที่รับต้องมากกว่า 0',
+  pendingNote: 'ยังไม่ได้รับใบกำกับภาษี — VAT บันทึกเป็น "ภาษีซื้อยังไม่ถึงกำหนดใช้สิทธิ" และยังไม่อยู่ในรายงานภาษีซื้อ จนกว่าจะบันทึกใบกำกับภาษีที่ได้รับ',
+  pendingBadge: 'รอใบกำกับภาษี',
+  claimBadge: period => `ภาษีซื้อ ${period}`,
+  noVatBadge: 'ไม่มี VAT',
+  monthEndPending: (no, date, vat) => `ใบรับสินค้า ${no} (${date}) ยังไม่ได้รับใบกำกับภาษี — ภาษีซื้อ ${vat} บาทยังใช้สิทธิ์ไม่ได้ ตามใบกำกับภาษีจากผู้ขาย`,
+  errAlreadyRecorded: no => `ใบรับสินค้า ${no} บันทึกใบกำกับภาษีแล้ว`,
+  errNotPending: no => `ใบรับสินค้า ${no} ไม่มี VAT ที่รอใบกำกับภาษี`,
+  errReceivedBeforeGoods: 'วันที่ได้รับใบกำกับภาษีต้องไม่ก่อนวันที่ในใบกำกับภาษี'
+});
+// The VAT part of a goods-receipt draft. Never throws: { ok, fields, warnings } | { ok: false, error }.
+//   draft: { date (GR date), subtotal (pre-VAT goods value), supplier (name), vatMode, taxStatus, vendorTaxId, vendorBranchCode,
+//            vendorAddress, taxInvoiceNo, taxInvoiceDate, taxInvoiceReceivedDate, claimPeriod, lateClaimReason, lateClaimNote }
+export function planGoodsReceiptVatFields(draft = {}) {
+  const vatMode = taxText(draft.vatMode);
+  if (!GOODS_RECEIPT_VAT_MODES.includes(vatMode)) return { ok: false, error: GR_TAX_TEXT.errVatMode };
+  const subtotal = taxMoney(draft.subtotal);
+  if (!(subtotal > 0)) return { ok: false, error: GR_TAX_TEXT.errValue };
+  const split = calculateVatSummary(subtotal, vatMode);
+  const warnings = [];
+  const notice = vatRateNotice(draft.taxInvoiceDate || draft.date);
+  if (notice) warnings.push(notice);
+  const base = { vatMode, vatAmt: split.vatAmt, total: split.total, vendorTaxId: '', vendorBranchCode: '', vendorAddress: taxText(draft.vendorAddress).slice(0, 300), taxStatus: '', taxInvoiceNo: '', taxInvoiceDate: '', taxInvoiceReceivedDate: '', claimPeriod: '', inputVatClaimable: false, lateClaimReason: '', lateClaimNote: '' };
+  if (vatMode === 'none') return { ok: true, fields: base, warnings };
+  const status = taxText(draft.taxStatus);
+  if (!GOODS_RECEIPT_TAX_STATUSES.includes(status)) return { ok: false, error: GR_TAX_TEXT.errStatus };
+  const vendorTaxId = normalizeTaxIdText(draft.vendorTaxId);
+  if (vendorTaxId && !/^\d{13}$/.test(vendorTaxId)) return { ok: false, error: TAX_CORE_TEXT.errVendorTaxId };
+  if (vendorTaxId && !isValidThaiTaxId(vendorTaxId)) warnings.push(TAX_CORE_TEXT.warnVendorTaxIdCheck(vendorTaxId));
+  const vendorBranchCode = normalizeBuyerBranchCode(draft.vendorBranchCode);
+  if (taxText(draft.vendorBranchCode) && !vendorBranchCode) return { ok: false, error: TAX_CORE_TEXT.errVendorBranch };
+  Object.assign(base, { vendorTaxId, vendorBranchCode, taxStatus: status });
+  if (status === 'pending') { warnings.push(GR_TAX_TEXT.pendingNote); return { ok: true, fields: base, warnings }; }
+  const claim = planGoodsReceiptTaxInvoice({ ...draft, vendorTaxId, vendorBranchCode });
+  if (!claim.ok) return claim;
+  return { ok: true, fields: { ...base, ...claim.fields }, warnings: [...warnings, ...claim.warnings] };
+}
+// The tax-invoice part of a goods receipt (at the receipt, or later for a pending one).
+export function planGoodsReceiptTaxInvoice(draft = {}) {
+  const warnings = [];
+  const vendor = taxText(draft.supplier || draft.vendor);
+  const vendorTaxId = normalizeTaxIdText(draft.vendorTaxId);
+  const vendorBranchCode = normalizeBuyerBranchCode(draft.vendorBranchCode);
+  const taxInvoiceNo = taxText(draft.taxInvoiceNo);
+  const taxInvoiceDate = taxText(draft.taxInvoiceDate).slice(0, 10);
+  const receivedDate = taxText(draft.taxInvoiceReceivedDate).slice(0, 10) || taxInvoiceDate;
+  if (!vendor) return { ok: false, error: TAX_CORE_TEXT.errVendorName };
+  if (!/^\d{13}$/.test(vendorTaxId)) return { ok: false, error: TAX_CORE_TEXT.errVendorTaxId };
+  if (!vendorBranchCode) return { ok: false, error: TAX_CORE_TEXT.errVendorBranch };
+  if (!taxInvoiceNo) return { ok: false, error: TAX_CORE_TEXT.errTaxInvoiceNo };
+  if (!parseBusinessDate(taxInvoiceDate)) return { ok: false, error: TAX_CORE_TEXT.errTaxInvoiceDate };
+  if (!parseBusinessDate(receivedDate)) return { ok: false, error: TAX_CORE_TEXT.errReceivedDate };
+  if (businessDateOrdinal(receivedDate) < businessDateOrdinal(taxInvoiceDate)) return { ok: false, error: GR_TAX_TEXT.errReceivedBeforeGoods };
+  const receivedPeriod = taxPeriodOfDate(receivedDate), invoicePeriod = taxPeriodOfDate(taxInvoiceDate);
+  const claimPeriod = taxText(draft.claimPeriod) || receivedPeriod;
+  if (!parseTaxPeriod(claimPeriod)) return { ok: false, error: TAX_CORE_TEXT.errClaimPeriod };
+  if (taxPeriodIndex(claimPeriod) < taxPeriodIndex(receivedPeriod)) return { ok: false, error: TAX_CORE_TEXT.errClaimBeforeReceived };
+  if (taxPeriodIndex(claimPeriod) - taxPeriodIndex(invoicePeriod) > TAX_CLAIM_WINDOW_MONTHS) {
+    return { ok: false, error: TAX_CORE_TEXT.errClaimTooLate(taxPeriodShort(invoicePeriod), taxPeriodShort(addTaxPeriods(invoicePeriod, TAX_CLAIM_WINDOW_MONTHS))) };
+  }
+  const late = taxLateClaimCheck(draft, claimPeriod, receivedPeriod);
+  if (!late.ok) return { ok: false, error: late.error };
+  if (claimPeriod !== receivedPeriod) warnings.push(TAX_CORE_TEXT.warnClaimLater(taxPeriodShort(claimPeriod), taxPeriodShort(receivedPeriod)), TAX_CORE_TEXT.lateClaimEndorse(taxPeriodShort(claimPeriod)));
+  if (!isValidThaiTaxId(vendorTaxId)) warnings.push(TAX_CORE_TEXT.warnVendorTaxIdCheck(vendorTaxId));
+  return { ok: true, warnings, fields: { vendorTaxId, vendorBranchCode, taxStatus: 'received', taxInvoiceNo, taxInvoiceDate, taxInvoiceReceivedDate: receivedDate, claimPeriod, inputVatClaimable: true, lateClaimReason: late.reason, lateClaimNote: late.note } };
+}
+// Does a stored goods receipt carry claimable / pending VAT?
+export function goodsReceiptVatOf(gr = {}) {
+  const vat = taxMoney(gr?.vatAmt);
+  if (gr?.vatMode !== 'add' || !(vat > 0) || gr?.reversed === true) return { vat: 0, pending: false, claimable: false, claimPeriod: '' };
+  const claimable = gr.taxStatus === 'received' && gr.inputVatClaimable === true && !!parseTaxPeriod(gr.claimPeriod);
+  return { vat, value: taxMoney(gr.subtotal), pending: !claimable, claimable, claimPeriod: claimable ? gr.claimPeriod : '' };
 }
 
 // ---------------------------------------------------------------- column definitions (§1b / §2b)
@@ -460,6 +691,19 @@ function taxAdjustmentCategory(note, branch, invoiceLookup) {
   return categories.includes('zero') ? 'zero' : 'exempt';
 }
 
+// ADR-031 (rule 4): an export of GOODS invoiced in a currency is reported at its ป.132/2548 value — the actual baht when
+// the currency was sold in the month, else the BOT average buying rate of the month's last business day — stored on the
+// invoice by the month-end close (`exportVat`). Until then the invoice-day baht is used and the report says so. The
+// books keep the invoice-day baht (the month-end checks show the difference). → { invoice (as reported), fixed, pending }
+export function taxExportValueOf(invoice = {}) {
+  const code = taxText(invoice?.currency).toUpperCase();
+  if (!code || code === 'THB' || invoiceVatCategoryOf(invoice) !== 'zero' || invoice.exportKind !== 'goods') return { invoice, fixed: null, pending: false };
+  const fixed = taxIsObject(invoice.exportVat) && Number.isFinite(Number(invoice.exportVat.thb)) ? invoice.exportVat : null;
+  if (!fixed) return { invoice, fixed: null, pending: true };
+  const thb = taxMoney(fixed.thb);
+  return { invoice: { ...invoice, subtotal: thb, total: thb, vatAmt: 0, itemSaleTotal: thb, saleTotal: thb }, fixed, pending: false };
+}
+const taxGroup = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 // input: { period: 'YYYY-MM', sources: [{ branch, invoices, creditNotes, debitNotes }] (the stored pack
 //   of that tax month per establishment; one source = one establishment, several = combined view),
 //   invoiceLookup(branch, invoiceNo) → invoice | null (no-VAT credit notes), abbreviatedMode 'daily' |
@@ -472,20 +716,24 @@ export function buildSalesTaxReport(input = {}) {
   const included = { invoices: [], creditNotes: [], debitNotes: [] };
   const exempt = { invoices: [], creditNotes: [], debitNotes: [] };
   const zero = { invoices: [], creditNotes: [], debitNotes: [] };
-  const warnings = { legacyNoVat: [], exemptSales: [], missingBuyerTaxId: [], lateEntries: [], outsidePeriod: [], integrity: [] };
+  const warnings = { legacyNoVat: [], exemptSales: [], missingBuyerTaxId: [], lateEntries: [], outsidePeriod: [], integrity: [], deferredService: [], exportPending: [] };
   let skippedCopies = 0;
   const abbreviatedDays = new Map();
   const sources = Array.isArray(input.sources) ? input.sources : [];
   for (const source of sources) {
     const branch = taxText(source?.branch);
-    for (const invoice of Array.isArray(source?.invoices) ? source.invoices : []) {
-      if (!invoice || typeof invoice !== 'object') continue;
+    for (const storedInvoice of Array.isArray(source?.invoices) ? source.invoices : []) {
+      if (!storedInvoice || typeof storedInvoice !== 'object') continue;
       // §1c rule 10: a printed copy kept in the invoice pack (old data) is the same tax invoice.
-      if (invoice.documentKind === 'delivery-tax-invoice') { skippedCopies += 1; continue; }
+      if (storedInvoice.documentKind === 'delivery-tax-invoice') { skippedCopies += 1; continue; }
+      const exportView = taxExportValueOf(storedInvoice); // ADR-031: an export of goods in a currency at its ป.132/2548 value
+      const invoice = exportView.invoice;
       const live = creditNoteInvoiceLive(invoice);
       const category = invoiceVatCategoryOf(invoice);
       const basis = creditNoteInvoiceBasis(invoice);
       if (period && taxPeriodOfDate(invoice.date) && taxPeriodOfDate(invoice.date) !== period) warnings.outsidePeriod.push(TAX_CORE_TEXT.dateOutsidePeriod(taxText(invoice.no), taxThaiDate(invoice.date)));
+      // r13#MED-6: a ใบแจ้งหนี้ of services with the tax point at payment is not a tax invoice — its receipts report it.
+      if (invoiceTaxPointAtPayment(invoice)) { if (live) warnings.deferredService.push({ branch, no: taxText(invoice.no), date: taxText(invoice.date).slice(0, 10), message: TAX_POINT_TEXT.deferredInvoice(taxText(invoice.no), taxThaiDate(invoice.date)) }); continue; }
       if (category === 'exempt') {
         if (!live) continue; // not a tax invoice: a cancelled no-VAT invoice is not reported anywhere
         exempt.invoices.push(invoice);
@@ -505,9 +753,14 @@ export function buildSalesTaxReport(input = {}) {
       const row = taxRowBase(invoice, { kind: live ? 'invoice' : 'cancelled', branch, party, taxId: abbreviated ? '' : normalizeTaxIdText(invoice.customerTaxId), branchCode: abbreviated ? '' : establishmentCodeOf(invoice.customerBranchCode, invoice.customerBranchName), refs: [taxText(invoice.no)] });
       if (live) {
         Object.assign(row, { value: basis.value, vat: basis.vat, total: basis.total, note: category === 'zero' ? TAX_CORE_TEXT.zeroRatedNote : '' });
-        if (!abbreviated && !row.taxId) { row.flags.push('missingBuyerTaxId'); warnings.missingBuyerTaxId.push({ branch, no: row.no, customer: row.party }); }
+        if (exportView.fixed) row.note = TAX_CORE_TEXT.exportValueNote(taxText(invoice.currency).toUpperCase(), taxGroup.format(taxFinite(exportView.fixed.totalFx)), TAX_CORE_TEXT.exportBasis[exportView.fixed.basis] || TAX_CORE_TEXT.exportBasis.month_end_rate);
+        else if (exportView.pending) { row.note = TAX_CORE_TEXT.exportPendingNote; row.flags.push('exportPending'); warnings.exportPending.push({ branch, no: row.no, message: TAX_CORE_TEXT.exportPendingWarning(row.no) }); }
+        // ADR-031: a foreign buyer of an export (0 %) has no Thai tax ID — not a missing detail.
+        if (!abbreviated && !row.taxId && !(category === 'zero' && invoice.exportKind)) { row.flags.push('missingBuyerTaxId'); warnings.missingBuyerTaxId.push({ branch, no: row.no, customer: row.party }); }
       } else {
-        row.note = TAX_CORE_TEXT.cancelledNote(taxText(invoice.voidReason || invoice.cancelReason));
+        // ADR-024 (D3 item 3): "ยกเลิก – <reason>" in the name column (the usual way to enter a cancelled tax invoice,
+        // and visible without scrolling); the note column only repeats "ยกเลิก", so the row keeps a normal height.
+        Object.assign(row, { party: TAX_CORE_TEXT.cancelledNote(taxText(invoice.voidReason || invoice.cancelReason)), taxId: '', branchCode: '', note: TAX_CORE_TEXT.cancelledShort });
       }
       if (live && isLateTaxEntry(row.date, entryDate(invoice))) { row.flags.push('lateEntry'); warnings.lateEntries.push({ branch, no: row.no }); }
       rows.push(row);
@@ -546,11 +799,46 @@ export function buildSalesTaxReport(input = {}) {
       party: TAX_CORE_TEXT.abbreviatedParty, value, vat, total, note: notes.join(' · '), refs: nos
     }));
   }
+  // r13#MED-6: receipts of tax-point-at-payment service invoices, on their receipt date (input.serviceReceipts: every live
+  // receipt of the establishments, any month — the VAT share of each depends on the payments before it).
+  const branchesInView = new Set(sources.map(source => taxText(source?.branch)));
+  const pointTotals = { value: 0, vat: 0 };
+  {
+    const byInvoice = new Map();
+    const lookup = typeof input.invoiceLookup === 'function' ? input.invoiceLookup : () => null;
+    for (const receipt of Array.isArray(input.serviceReceipts) ? input.serviceReceipts : []) {
+      if (!taxReceiptLive(receipt)) continue;
+      const receiptBranch = taxText(receipt._branch || receipt.branch);
+      const invoiceNo = taxText(receipt.invNo || receipt.sourceInvoiceNo || receipt.invoiceNo);
+      if (!invoiceNo) continue;
+      const invoiceBranch = taxText(receipt.invoiceBranch) || receiptBranch;
+      if (!branchesInView.has(invoiceBranch)) continue;
+      const invoice = lookup(invoiceBranch, invoiceNo);
+      if (!invoice || !invoiceTaxPointAtPayment(invoice) || !creditNoteInvoiceLive(invoice)) continue;
+      const key = `${invoiceBranch}|${invoiceNo}`;
+      if (!byInvoice.has(key)) byInvoice.set(key, { branch: invoiceBranch, invoice, receipts: [] });
+      byInvoice.get(key).receipts.push(receipt);
+    }
+    for (const group of byInvoice.values()) {
+      for (const point of paymentTaxPoints(group.invoice, group.receipts)) {
+        if (taxPeriodOfDate(point.date) !== period) continue;
+        const row = taxRowBase(point.receipt, {
+          kind: 'payment_tax_invoice', branch: group.branch, party: taxText(group.invoice.customer), taxId: normalizeTaxIdText(group.invoice.customerTaxId),
+          branchCode: establishmentCodeOf(group.invoice.customerBranchCode, group.invoice.customerBranchName), value: taxMoney(point.value), vat: taxMoney(point.vat), total: taxMoney(point.total),
+          note: TAX_POINT_TEXT.receiptRowNote(taxText(group.invoice.no)), refs: [taxText(point.receipt.no), taxText(group.invoice.no)]
+        });
+        if (!row.taxId) { row.flags.push('missingBuyerTaxId'); warnings.missingBuyerTaxId.push({ branch: group.branch, no: row.no, customer: row.party }); }
+        pointTotals.value += row.value; pointTotals.vat += row.vat;
+        rows.push(row);
+      }
+    }
+  }
   taxSortRows(rows);
   rows.forEach((row, index) => { row.seq = index + 1; });
-  // Footer through the one output-VAT engine (summarizeOutputVat); the rows must add up to it.
+  // Footer through the one output-VAT engine (summarizeOutputVat) + the payment tax points; the rows must add up to it.
   const engine = summarizeOutputVat({ invoices: included.invoices, creditNotes: included.creditNotes, debitNotes: included.debitNotes });
-  const totals = { value: engine.netSalesValue, vat: engine.netOutputVat, total: taxMoney(engine.netSalesValue + engine.netOutputVat) };
+  const totalValue = taxMoney(engine.netSalesValue + pointTotals.value), totalVat = taxMoney(engine.netOutputVat + pointTotals.vat);
+  const totals = { value: totalValue, vat: totalVat, total: taxMoney(totalValue + totalVat) };
   const rowSum = { value: taxMoney(rows.reduce((s, r) => s + r.value, 0)), vat: taxMoney(rows.reduce((s, r) => s + r.vat, 0)) };
   if (Math.abs(rowSum.value - totals.value) > 0.001 || Math.abs(rowSum.vat - totals.vat) > 0.001) warnings.integrity.push(TAX_CORE_TEXT.footerMismatch);
   const zeroSum = summarizeOutputVat(zero);
@@ -571,12 +859,12 @@ export function expenseTaxMonth(expense = {}) {
   return taxText(expense.claimPeriod) || taxPeriodOfDate(expense.taxInvoiceDate) || taxPeriodOfDate(expense.date);
 }
 
-// input: { period, sources: [{ branch, expenses }] — every stored expense of the establishment (a claim
-//   may sit in an earlier pack than its claim month), entryDate(record) }
+// input: { period, sources: [{ branch, expenses, goodsReceipts }] — every stored expense of the establishment (a claim
+//   may sit in an earlier pack than its claim month) and every goods receipt of it (r13#HIGH-2), entryDate(record) }
 export function buildPurchaseTaxReport(input = {}) {
   const period = taxText(input.period);
   const entryDate = typeof input.entryDate === 'function' ? input.entryDate : record => taxEntryDateOf(record);
-  const rows = [], forbidden = [], incomplete = [], deferred = [];
+  const rows = [], forbidden = [], incomplete = [], deferred = [], pendingReceipts = [];
   const lateEntries = [];
   for (const source of Array.isArray(input.sources) ? input.sources : []) {
     const branch = taxText(source?.branch);
@@ -615,6 +903,42 @@ export function buildPurchaseTaxReport(input = {}) {
       if (isLateTaxEntry(base.receivedDate, entryDate(expense))) { row.flags.push('lateEntry'); row.note += ` · ${TAX_CORE_TEXT.lateEntryNote}`; lateEntries.push({ branch, no: row.no }); }
       rows.push(row);
     }
+    // ADR-031 (rule 7): ภ.พ.36 of imported services paid in a currency — input VAT of the claim month (the month after the
+    // payment), one row per live payment of a live foreign expense of this establishment.
+    for (const expense of Array.isArray(source?.expenses) ? source.expenses : []) {
+      if (!expense || typeof expense !== 'object' || expense.voided === true || expense.deleted === true || !taxText(expense.currency) || taxText(expense.currency).toUpperCase() === 'THB') continue;
+      for (const payment of Array.isArray(expense.fxPayments) ? expense.fxPayments : []) {
+        if (!payment || payment.status === 'voided' || !taxIsObject(payment.pp36) || taxText(payment.pp36.claimPeriod) !== period) continue;
+        const date = taxText(payment.date).slice(0, 10);
+        rows.push({ branch, id: payment.id, date, no: TAX_CORE_TEXT.pp36No(taxText(payment.no)), party: taxText(payment.wht?.payeeName || expense.vendor), taxId: '', branchCode: '', receivedDate: date, flags: [], source: 'pp36', kind: 'pp36', value: taxMoney(payment.pp36.baseThb), vat: taxMoney(payment.pp36.vatThb), note: TAX_CORE_TEXT.pp36Note(taxText(payment.no), taxThaiDate(date)) });
+      }
+    }
+    // r13#HIGH-2: the supplier tax invoices of goods receipts (stock purchases) — claimed in their claim month like an
+    // expense; a receipt still waiting for its tax invoice is listed apart (it is NOT input tax yet).
+    for (const gr of Array.isArray(source?.goodsReceipts) ? source.goodsReceipts : []) {
+      if (!gr || typeof gr !== 'object') continue;
+      const info = goodsReceiptVatOf(gr);
+      if (!(info.vat > 0)) continue;
+      const base = {
+        branch, id: gr.id, date: taxText(gr.taxInvoiceDate || gr.date).slice(0, 10), no: taxText(gr.taxInvoiceNo || gr.no),
+        party: taxText(gr.supplier), taxId: normalizeTaxIdText(gr.vendorTaxId), branchCode: normalizeBuyerBranchCode(gr.vendorBranchCode),
+        receivedDate: taxText(gr.taxInvoiceReceivedDate || gr.date).slice(0, 10), flags: [], source: 'goods_receipt', receiptNo: taxText(gr.no)
+      };
+      if (info.pending) {
+        if (taxPeriodOfDate(gr.date) && taxPeriodOfDate(gr.date) <= period) pendingReceipts.push({ ...base, date: taxText(gr.date).slice(0, 10), value: info.value, vat: info.vat });
+        continue;
+      }
+      if (info.claimPeriod !== period) {
+        if (taxPeriodOfDate(gr.taxInvoiceDate) === period || taxPeriodOfDate(gr.taxInvoiceReceivedDate) === period) deferred.push({ ...base, value: info.value, vat: info.vat, claimPeriod: info.claimPeriod });
+        continue;
+      }
+      const notes = [TAX_CORE_TEXT.receivedNote(taxThaiDate(base.receivedDate)), TAX_CORE_TEXT.goodsReceiptNote(base.receiptNo)];
+      const invoicePeriod = taxPeriodOfDate(gr.taxInvoiceDate);
+      if (invoicePeriod && invoicePeriod !== period) notes.push(TAX_CORE_TEXT.invoiceMonthNote(taxPeriodShort(invoicePeriod)));
+      const row = { ...base, kind: 'purchase', value: info.value, vat: info.vat, note: notes.join(' · ') };
+      if (isLateTaxEntry(base.receivedDate, entryDate({ id: gr.id, createdAt: gr.taxInvoiceRecordedAt || gr.createdAt }))) { row.flags.push('lateEntry'); row.note += ` · ${TAX_CORE_TEXT.lateEntryNote}`; lateEntries.push({ branch, no: row.no }); }
+      rows.push(row);
+    }
   }
   // §2c rule 7: in the order the tax invoices were received.
   rows.sort((a, b) => (businessDateOrdinal(a.receivedDate) || 0) - (businessDateOrdinal(b.receivedDate) || 0) || (businessDateOrdinal(a.date) || 0) - (businessDateOrdinal(b.date) || 0) || a.no.localeCompare(b.no, 'en', { numeric: true }));
@@ -626,7 +950,7 @@ export function buildPurchaseTaxReport(input = {}) {
     kind: 'purchase', period, rows,
     totals: { value: sum(rows, 'value'), vat: sum(rows, 'vat') },
     forbidden, forbiddenTotals: { value: sum(forbidden, 'value'), vat: sum(forbidden, 'vat') },
-    incomplete, deferred, warnings: { lateEntries }
+    incomplete, deferred, pendingReceipts, pendingTotals: { value: sum(pendingReceipts, 'value'), vat: sum(pendingReceipts, 'vat') }, warnings: { lateEntries }
   };
 }
 
@@ -697,16 +1021,28 @@ export function buildPp30Summary(input = {}) {
 }
 
 // Due dates of a tax month (§0.2): paper the 15th of the next month; e-filing the 23rd while the
-// extension lasts (else the 15th + "check the latest announcement"), moved past Saturday / Sunday.
+// extension lasts (else the 15th + "check the latest announcement"); BOTH moved past Saturday / Sunday.
 export function pp30DueDates(period, deadlines = TAX_DEADLINES) {
   const next = addTaxPeriods(period, 1);
   if (!next) return null;
   const day = value => `${next}-${String(value).padStart(2, '0')}`;
-  const paper = day(deadlines.pp30.paper);
+  const paperBase = day(deadlines.pp30.paper);
   const extended = day(deadlines.pp30.efiling);
   const withinExtension = businessDateOrdinal(extended) <= businessDateOrdinal(deadlines.efilingExtensionUntil);
-  const efilingBase = withinExtension ? extended : paper;
-  return { paper, efiling: rollTaxWeekend(efilingBase), efilingRolled: rollTaxWeekend(efilingBase) !== efilingBase, efilingExtended: withinExtension, checkLatest: !withinExtension };
+  const efilingBase = withinExtension ? extended : paperBase;
+  // r8fix#A4: the paper date is moved past a weekend too (the same rule as ภ.ง.ด.3/53 whtDueDates) — the
+  // overdue warning and a filed snapshot's dueDate use the moved date. r13#LOW-1: and past a listed government holiday
+  // (ภ.พ.30 ก.ย. 2569 e-filing: Fri 23 ต.ค. = วันปิยมหาราช → Mon 26 ต.ค. 2569).
+  return taxDueDatePair(paperBase, efilingBase, withinExtension);
+}
+// Both due dates of a return, rolled past weekends and holidays, with what moved them (shared by ภ.พ.30 and ภ.ง.ด.3/53).
+export function taxDueDatePair(paperBase, efilingBase, withinExtension) {
+  const paper = rollTaxDueDate(paperBase), efiling = rollTaxDueDate(efilingBase);
+  return {
+    paper, efiling, paperRolled: paper !== paperBase, efilingRolled: efiling !== efilingBase, efilingExtended: withinExtension, checkLatest: !withinExtension,
+    paperHolidays: taxRolledHolidays(paperBase, paper), efilingHolidays: taxRolledHolidays(efilingBase, efiling),
+    holidayStatus: taxHolidayYearStatus(efiling) && taxHolidayYearStatus(paper) ? (taxHolidayYearStatus(efiling) === 'official' && taxHolidayYearStatus(paper) === 'official' ? 'official' : 'provisional') : 'unknown'
+  };
 }
 
 // ---------------------------------------------------------------- vatReturns snapshots (G6)
@@ -829,9 +1165,11 @@ export function buildVatReturnSnapshot(input = {}) {
 // Backup merge (ADR-003 / ADR-020 style): a filed return is an immutable record — the device copy of
 // the same id wins, rows only in the backup are added; replace = the backup's list. Both are fully
 // validated (normalizeVatReturnsStore throws) before anything is written.
-export function mergeVatReturnsStores(current, incoming, { replace = false } = {}) {
+// r8fix#B4: filing history is append-only under BOTH import modes — a "replace" restore never drops a filed ภ.พ.30
+// (a filed month must stay filed: it guards edits, cancels and deletes). The option is accepted and ignored.
+export function mergeVatReturnsStores(current, incoming, options = {}) {
+  void options;
   const next = normalizeVatReturnsStore(incoming);
-  if (replace) return next;
   const base = normalizeVatReturnsStore(current);
   const ids = new Set(base.returns.map(row => row.id));
   const slots = new Set(base.returns.map(row => `${row.branchKey}|${row.period}|${row.amendment}`));

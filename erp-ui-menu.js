@@ -490,6 +490,40 @@ export function getMenu(name) {
   return namedMenus.get(String(name)) || null;
 }
 
+// r8fix#C3 — modal document viewers (credit / debit note, 50 ทวิ): the erp-cancel-dialog behaviour in one place.
+// `dialog` gets role="dialog" + aria-modal; focus moves into it (the `focus` element or its first control), Tab /
+// Shift+Tab stay inside, Escape calls onClose, and release() puts focus back where it was before opening.
+// → { release } (call it from the viewer's own close()).
+const DIALOG_FOCUSABLE = 'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+export function trapDialog(dialog, options = {}) {
+  if (!dialog) return { release() {} };
+  const returnFocus = document.activeElement;
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
+  const items = () => [...dialog.querySelectorAll(DIALOG_FOCUSABLE)].filter(el => !el.closest('[hidden]'));
+  const onKey = event => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); options.onClose?.(); return; }
+    if (event.key !== 'Tab') return;
+    const list = items();
+    if (!list.length) { event.preventDefault(); dialog.focus(); return; }
+    const first = list[0], last = list[list.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+  };
+  dialog.addEventListener('keydown', onKey);
+  (options.focus || items()[0] || dialog).focus?.();
+  let released = false;
+  return {
+    release() {
+      if (released) return;
+      released = true;
+      dialog.removeEventListener('keydown', onKey);
+      if (returnFocus && typeof returnFocus.focus === 'function' && document.contains(returnFocus)) returnFocus.focus();
+    }
+  };
+}
+
 export const ERPUiMenu = Object.freeze({
   VERSION: UI_MENU_VERSION,
   attachMenu,
@@ -498,7 +532,8 @@ export const ERPUiMenu = Object.freeze({
   normalizeMenuItems,
   menuRows,
   nextEnabledIndex,
-  menuPosition
+  menuPosition,
+  trapDialog
 });
 
 if (hasDom && !window.ERPUiMenu) window.ERPUiMenu = ERPUiMenu;

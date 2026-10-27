@@ -2,14 +2,15 @@
   "release": "4.3.1",
   "purpose": "Guard against silent over-engineering. Exceeding a hard limit requires deliberate refactor or ADR, not automatic suppression.",
   "limits": {
-    "runtimeJsFilesMax": 52,
-    "runtimeLinesMax": 29400,
-    "rootJsFilesMax": 53,
+    "runtimeJsFilesMax": 85,
+    "runtimeLinesMax": 54000,
+    "rootJsFilesMax": 73,
     "appJsLinesMax": 8350,
     "devDependenciesMax": 3,
-    "windowAssignmentsMax": 75,
+    "windowAssignmentsMax": 84,
     "inlineHandlerFunctionsMax": 110
   },
+  "budgetNotes": "4.3.1 round 11 (ADR-028): +4 runtime files (erp-costing-core.js, erp-job-costing-core.js, erp-costing.js, i18n/en-costing.js; 3 at the root), +3,528 lines, +1 window assignment (window.ERPCosting). app.js unchanged. | 4.3.1 round 12 (ADR-029): +6 runtime files (erp-journal-core.js, erp-journal.js, erp-promptpay-core.js, erp-promptpay.js, erp-qr-core.js at the root; i18n/en-journal.js), +3,992 lines (48,527), +2 window assignments (window.ERPJournal, window.ERPPromptPay). app.js line-neutral (two backup lines extended). | 4.3.1 round 13A (ADR-030): no new runtime file or window assignment; +1,571 lines (50,098) for the audit fixes — goods-receipt VAT (core + PO/GR forms + journal), payment tax point, WHT condition 3 / contract threshold / payment date, holidays and VAT-rate schedule, VAT close / WHT remittance entries, the abbreviated-invoice approval, ~170 English dictionary entries and the print agency labels. app.js line-neutral (7,799). | 4.3.1 round 13B (ADR-031, multi-currency): +3 runtime files (erp-fx-core.js and erp-fx.js at the root; i18n/en-fx.js), +1 window assignment (window.ERPFx), ~+3,700 lines (≈53,800; limit 54,000) — the pure FX core (currencies, rate table, rate-date rule, conversion once, receipts / payments abroad, ภ.ง.ด.54 / ภ.พ.36, month end), the page หลายสกุลเงิน, ~415 TH/EN keys, the FX journal / tax-report / print / aging / seed hooks. app.js line-neutral (7,799).",
   "baselineFile": "QUALITY_BASELINE.json",
   "deltaLimits": {
     "appJsLinesMaxDelta": 0

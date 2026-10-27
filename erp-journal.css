@@ -1,0 +1,61 @@
+/* erp-journal.css — page "สมุดบัญชีและปิดเดือน" (ADR-029) + the cards "ผังบัญชีและการลงบัญชีอัตโนมัติ" and "QR พร้อมเพย์บน
+   เอกสาร" on ตั้งค่าบริษัท. Tables, tabs, cards and stats reuse erp-analytics.css (afc-*), forms reuse erp-costing.css
+   (jc-*); this file adds the journal table, the integrity checks and the settings cards. Controls follow the ADR-019
+   size tokens: 42 px desktop, 44 px at ≤ 900 px. */
+.acc-root{min-width:0}
+/* As on the costing page: the row buttons are .btn-sm elsewhere (36 px); here every control is at least 42 px (ADR-019). */
+.acc-root .btn,.acc-root .btn.btn-sm,.acc-settings-cards .btn.btn-sm,.acc-root select,.acc-root input:not([type=checkbox]):not([type=radio]),.acc-settings-cards .btn,.acc-settings-cards select,.acc-settings-cards input:not([type=checkbox]):not([type=radio]){min-height:var(--erp-control-height,42px)}
+.acc-table{min-width:720px}
+.acc-journal-table{min-width:900px}
+.acc-root .afc-table th small,.acc-root .afc-table td small{display:block;color:#64748b;font-size:12px;font-weight:400;margin-top:2px;white-space:normal}
+.acc-table tr.acc-entry-first td{border-top:2px solid #cbd5e1}
+.acc-code{display:inline-block;min-width:3.2em;font-variant-numeric:tabular-nums;font-weight:700;color:#155886}
+.acc-desc{min-width:220px;max-width:420px;white-space:normal;overflow-wrap:anywhere}
+.acc-flags{display:flex!important;flex-wrap:wrap;gap:4px;margin-top:4px}
+.acc-integrity{border-width:2px}
+.acc-integrity ul{margin:6px 0 0;padding-left:20px}
+.acc-checks{list-style:none;margin:10px 0;padding:0;display:grid;gap:6px}
+.acc-check{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;font-size:15px;line-height:1.45}
+.acc-check-mark{flex:0 0 26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;background:#e2e8f0;color:#334155}
+.acc-check-ok .acc-check-mark{background:#dcfce7;color:#166534}
+.acc-check-fail{border-color:#fecaca;background:#fef2f2}
+.acc-check-fail .acc-check-mark{background:#b91c1c;color:#fff}
+.acc-check-diff{border-color:#fde68a;background:#fffbeb}
+.acc-check-diff .acc-check-mark{background:#f59e0b;color:#fff}
+.acc-cogs-option{margin-top:12px}
+.acc-cogs-explain{margin:4px 0 12px 30px}
+.acc-peak-table{min-width:560px}
+.acc-peak-table input,.acc-peak-table select{width:100%;min-height:42px}
+.acc-peak-actions{white-space:nowrap}
+.acc-peak-actions .btn{min-width:42px;min-height:42px}
+.acc-doc-list,.acc-flag-list{margin:10px 0 0;padding-left:20px;line-height:1.6}
+.acc-flag-list{max-height:420px;overflow:auto}
+.acc-manual-table{min-width:680px}
+.acc-manual-table select,.acc-manual-table input{width:100%;min-height:42px}
+.acc-manual-table td:nth-child(2),.acc-manual-table td:nth-child(3){width:150px}
+.acc-open-item{display:flex;flex-direction:column;gap:2px;margin-top:6px;font-size:13px;color:#475569}
+.acc-opening-table{min-width:1100px}
+/* Settings cards (in the wrapper div, so the simple-mode rule that hides the other ตั้งค่าบริษัท cards leaves them visible). */
+.acc-settings-cards{display:grid;gap:16px;margin-bottom:16px;min-width:0}
+.acc-settings-cards>.card{margin:0;min-width:0}
+.acc-coa-table{min-width:560px}
+.acc-coa-table input,.acc-coa-table select{width:100%;min-height:42px}
+.acc-coa-table th small{display:block;color:#64748b;font-size:12px;font-weight:400}
+.pp-enable{margin:8px 0 12px;font-size:16px}
+.pp-banks{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px}
+.pp-preview-wrap{display:grid;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0}
+.pp-amount{max-width:260px}
+.pp-preview{display:grid;gap:10px;min-width:0}
+.pp-preview .erp-ppqr{font-size:15px;max-width:520px}
+.pp-payload{display:grid;gap:4px;min-width:0;font-size:13px}
+.pp-payload code{display:block;padding:8px;border-radius:8px;background:#f1f5f9;color:#0f172a;overflow-wrap:anywhere;word-break:break-all;font-size:12px}
+@media (max-width:900px){
+  .acc-root .btn,.acc-root .btn.btn-sm,.acc-settings-cards .btn.btn-sm,.acc-root select,.acc-root input:not([type=checkbox]):not([type=radio]),.acc-settings-cards .btn,.acc-settings-cards select,.acc-settings-cards input:not([type=checkbox]):not([type=radio]){min-height:var(--erp-touch-target,44px)}
+  .acc-peak-table input,.acc-peak-table select,.acc-manual-table select,.acc-manual-table input,.acc-coa-table input,.acc-coa-table select{min-height:44px}
+  .acc-peak-actions .btn{min-width:44px;min-height:44px}
+}
+@media (max-width:560px){
+  .acc-check{font-size:14px}
+  .acc-cogs-explain{margin-left:0}
+  .pp-preview .erp-ppqr{font-size:13px}
+}

@@ -17,7 +17,7 @@ import { branchLabelMap } from './erp-branches-core.js';
   const VERSION = '4.3.1';
   const STORE_BASE_KEY = ORDER_FLOW_STORE_KEY;
   const PREF_BASE_KEY = ORDER_FLOW_PREFERENCES_KEY;
-  const BRANCH_LABEL = branchLabelMap({ khonkaen: 'สาขาที่ 00001', ubon: 'สาขาสำนักงานใหญ่' }); // ADR-022: live labels, both data ids
+  const BRANCH_LABEL = branchLabelMap({ khonkaen: 'สาขาที่ 00001', ubon: 'สำนักงานใหญ่' }); // ADR-022: live labels, both data ids
   const VALID_BRANCHES = new Set(Object.keys(BRANCH_LABEL));
   const STATUS_LABEL = {
     confirmed: 'ยืนยันคำสั่งซื้อ',
@@ -339,7 +339,9 @@ import { branchLabelMap } from './erp-branches-core.js';
   function renderDashboardQueue() {
     const box = document.getElementById('erp-flow-dashboard-queue');
     if (!box) return;
-    const business = scanBusinessData();
+    let business;
+    try { business = scanBusinessData(); }
+    catch (error) { if (!window.ERPIntegrity?.isReadError?.(error)) throw error; box.innerHTML = window.ERPIntegrity.readErrorHtml(error); return; } // r8fix#B9
     const branch = window.ERPReceivables?.selectedBranch?.() || '';
     const q = computeWorkQueue(business, branch);
     const badge = document.getElementById('erp-flow-nav-badge');
@@ -737,7 +739,7 @@ import { branchLabelMap } from './erp-branches-core.js';
         if(p?.flowType==='inventory'&&p?.fulfillmentType==='stock')requests.set(k,{p,qty:(requests.get(k)?.qty||0)+Math.max(0,Math.max(i.stockQty,i.readyQty)-old.deliveredQty)});
         i.stockCheckedAt=nowIso();delete i.onHandSnapshot;
       });
-      requests.forEach(({p,qty})=>{if(qty>window.ERPIntegrity.availableStock(p,order.branch,order.id)+0.000001)throw new Error('สต๊อกพร้อมใช้เปลี่ยนแปลงหรือไม่เพียงพอ กรุณาเปิดแผนใหม่');});
+      requests.forEach(({p,qty})=>{if(qty>window.ERPIntegrity.availableStock(p,order.branch,order.id)+0.000001)throw new Error('สต็อกพร้อมใช้เปลี่ยนแปลงหรือไม่เพียงพอ กรุณาเปิดแผนใหม่');});
       order.updatedAt=nowIso();order.status='planning';
       store.reservations=store.reservations.filter(r=>r.orderId!==orderId);
       order.items.forEach(i=>{if(i.stockQty>0)store.reservations.push({id:uid('res'),orderId,branch:order.branch,product:i.product,productCode:i.productCode,qty:i.stockQty,status:'reserved'});});
@@ -814,7 +816,7 @@ import { branchLabelMap } from './erp-branches-core.js';
       const p=productForItem(i),k=window.ERPIntegrity.productKey(i);
       if(p?.flowType==='inventory'&&p?.fulfillmentType==='stock')requests.set(k,{p,qty:(requests.get(k)?.qty||0)+i.remainingQty});
     }
-    for(const {p,qty} of requests.values())if(qty>window.ERPIntegrity.availableStock(p,order.branch,order.id)+0.000001)return notify('สต๊อกยังไม่ครบ กรุณารับสินค้าหรือผลิตและรับเข้าคลังก่อน','error');
+    for(const {p,qty} of requests.values())if(qty>window.ERPIntegrity.availableStock(p,order.branch,order.id)+0.000001)return notify('สต็อกยังไม่ครบ กรุณารับสินค้าหรือผลิตและรับเข้าคลังก่อน','error');
     if(!confirm('ยืนยันว่าสินค้าผ่านการตรวจรับ/ผลิตเสร็จ และพร้อมส่งครบตามใบสั่งขายแล้ว?'))return;
     order.items.forEach(i=>i.readyQty=num(i.qty));order.updatedAt=nowIso();order.status='ready';saveStore(store);closeModal();render('sales-orders');
   }
@@ -952,7 +954,7 @@ import { branchLabelMap } from './erp-branches-core.js';
     const b = getBilling(billingId); if (!b) return;
     const popup = window.open('', '_blank', 'width=980,height=760');
     if (!popup) return notify('Browser บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต Pop-up', 'error');
-    popup.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(b.no)}</title><style>body{font-family:Tahoma,sans-serif;color:#1f2937;margin:32px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #6b21a8;padding-bottom:12px}.head h1{margin:0;color:#6b21a8}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:20px 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d1d5db;padding:9px}th{background:#f5f3ff}.num{text-align:right}.total{font-size:20px;font-weight:bold;text-align:right;margin-top:18px}.note{margin-top:24px;padding:12px;background:#f8fafc}@media print{button{display:none}}</style></head><body><div class="head"><div><small>EXAMPLE COMPANY ERP · DEMO</small><h1>ใบวางบิล / BILLING NOTE</h1></div><div><b>${esc(b.no)}</b><br>${dateTh(b.billingDate)}</div></div><div class="meta"><div><b>ลูกค้า:</b> ${esc(b.customer)}</div><div><b>กำหนดชำระ:</b> ${dateTh(b.dueDate)}</div><div><b>ผู้รับเอกสาร:</b> ${esc(b.recipient||'-')}</div><div><b>วันนัดวางบิล:</b> ${dateTh(b.appointmentDate)}</div></div><table><thead><tr><th>Invoice</th><th>วันที่</th><th>ยอดเดิม</th><th>ยอดวางบิล</th></tr></thead><tbody>${(b.lines||[]).map(l=>`<tr><td>${esc(l.invoiceNo)}</td><td>${dateTh(l.invoiceDate)}</td><td class="num">${money(l.originalAmount)}</td><td class="num">${money(l.billedAmount)}</td></tr>`).join('')}</tbody></table><div class="total">รวมยอดวางบิล ฿${money(b.totalBilled)}</div><div class="note">หมายเหตุ: ${esc(b.note||'-')}<br><small>เอกสารนี้เป็น Demo Billing Note และไม่เพิ่มยอดขาย/VAT/Stock</small></div><p><button onclick="window.print()">พิมพ์</button></p></body></html>`);
+    popup.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(b.no)}</title><style>body{font-family:Tahoma,sans-serif;color:#1f2937;margin:32px}.head{display:flex;justify-content:space-between;border-bottom:3px solid #6b21a8;padding-bottom:12px}.head h1{margin:0;color:#6b21a8}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:20px 0}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d1d5db;padding:9px}th{background:#f5f3ff}.num{text-align:right}.total{font-size:20px;font-weight:bold;text-align:right;margin-top:18px}.note{margin-top:24px;padding:12px;background:#f8fafc}@media print{button{display:none}}</style></head><body><div class="head"><div><small>EXAMPLE COMPANY ERP · DEMO</small><h1>ใบวางบิล / BILLING NOTE</h1></div><div><b>${esc(b.no)}</b><br>${dateTh(b.billingDate)}</div></div><div class="meta"><div><b>ลูกค้า:</b> ${esc(b.customer)}</div><div><b>กำหนดชำระ:</b> ${dateTh(b.dueDate)}</div><div><b>ผู้รับเอกสาร:</b> ${esc(b.recipient||'-')}</div><div><b>วันนัดวางบิล:</b> ${dateTh(b.appointmentDate)}</div></div><table><thead><tr><th>Invoice</th><th>วันที่</th><th>ยอดเดิม</th><th>ยอดวางบิล</th></tr></thead><tbody>${(b.lines||[]).map(l=>`<tr><td>${esc(l.invoiceNo)}</td><td>${dateTh(l.invoiceDate)}</td><td class="num">${money(l.originalAmount)}</td><td class="num">${money(l.billedAmount)}</td></tr>`).join('')}</tbody></table><div class="total">รวมยอดวางบิล ฿${money(b.totalBilled)}</div>${window.ERPPromptPay?.billingBoxHtml?.(b)||''}<div class="note">หมายเหตุ: ${esc(b.note||'-')}<br><small>เอกสารนี้เป็น Demo Billing Note และไม่เพิ่มยอดขาย/VAT/Stock</small></div><p><button onclick="window.print()">พิมพ์</button></p></body></html>`);
     popup.document.close();
   }
 

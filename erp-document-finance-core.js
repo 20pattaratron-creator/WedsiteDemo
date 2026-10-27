@@ -1,4 +1,7 @@
-import { planExpenseVatFields, normalizeInvoiceVatCategory, EXPENSE_VAT_FIELD_KEYS, TAX_CORE_TEXT } from './erp-tax-reports-core.js';
+import { planExpenseVatFields, normalizeInvoiceVatCategory, EXPENSE_VAT_FIELD_KEYS, TAX_CORE_TEXT, TAX_POINT_TEXT } from './erp-tax-reports-core.js';
+import { vatRateNotice } from './erp-shared-core.js';
+import { planExpenseWhtFields, EXPENSE_WHT_FIELD_KEYS } from './erp-payer-wht-core.js';
+import { isFxDocument, applyFxToSalesDraft, FX_DOC_FIELDS, SALES_RATE_TYPES, fxText } from './erp-fx-core.js';
 // ============================================================================
 // finance action core — pure Billing / Payment / Receipt action plans
 // ERP DEMO 4.3.1 — Document / Finance Action Core
@@ -22,6 +25,44 @@ export class FinanceActionError extends Error {
     this.code = code || FINANCE_ACTION_ERROR_CODES.VALIDATION;
     this.details = details;
   }
+}
+
+// ADR-031: a multi-currency rule (FxError of erp-fx-core.js) is a validation error of the action; its message key and
+// parameters stay in `details` so a screen can show it in its own language.
+function financeFxGuard(run) {
+  try { return run(); }
+  catch (error) {
+    if (error?.name === 'FxError') throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, error.message, { fxKey: error.key, fxParams: error.params });
+    throw error;
+  }
+}
+const financeFxRefusal = (key, params) => new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, fxText(key, params), { fxKey: key, fxParams: params });
+// A sales draft in baht keeps its exact shape: stray multi-currency fields (THB or empty currency) are dropped.
+function financeStripFxFields(record) {
+  if (isFxDocument(record)) return record;
+  if (!FX_DOC_FIELDS.some(key => Object.prototype.hasOwnProperty.call(record, key))) return record;
+  const out = { ...record };
+  for (const key of FX_DOC_FIELDS) delete out[key];
+  return out;
+}
+// The baht of a foreign-currency sales draft, computed once here (erp-fx-core.js applyFxToSalesDraft) from the currency
+// lines and the rate the screen looked up — `fx` = { allowedCurrencies, approval } (the company's settings at issue).
+function financeApplyFx(draft, fx, kind) {
+  if (!isFxDocument(draft)) return financeStripFxFields(draft);
+  const allowed = Array.isArray(fx?.allowedCurrencies) ? fx.allowedCurrencies : [];
+  const code = String(draft.currency).trim().toUpperCase();
+  if (!allowed.includes(code)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, fxText('currency.notAllowed', { currency: code }), { fxKey: 'currency.notAllowed', fxParams: { currency: code } });
+  const record = financeFxGuard(() => applyFxToSalesDraft(draft, { rateTypes: SALES_RATE_TYPES, approval: fx?.approval || null, kind }));
+  // Commission and profit in baht, the same (unrounded) arithmetic as the invoice form.
+  if (kind === 'invoice') {
+    const costTotal = (record.items || []).reduce((sum, item) => sum + financeNum(item.costTotal), 0);
+    if (record.commMode !== 'manual') record.commAmt = record.subtotal * financeNum(record.commRate) / 100;
+    record.costTotal = costTotal;
+    record.profit = record.subtotal - costTotal - financeNum(record.commAmt);
+  } else {
+    record.items = record.items.map(item => ({ ...item, total: item.amountThb }));
+  }
+  return record;
 }
 
 const financeActionKnownCodes = new Set(Object.values(FINANCE_ACTION_ERROR_CODES));
@@ -209,6 +250,9 @@ export function buildBillingAction(input = {}) {
   if (!invoices.length) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'กรุณาเลือก Invoice อย่างน้อย 1 ใบ');
   if (invoices.some(row => !financeLive(row))) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'มี Invoice ที่ยกเลิกหรือไม่พร้อมใช้งาน');
   financeAssertSingleBranchCustomer(invoices);
+  // ADR-031: a billing note collects baht; a foreign-currency invoice is collected in its currency (multi-currency page).
+  const foreign = invoices.find(row => isFxDocument(row));
+  if (foreign) throw financeFxRefusal('billing.fx', { no: financeNoOf(foreign) || financeIdOf(foreign) });
 
   const seen = [];
   for (const invoice of invoices) {
@@ -434,9 +478,98 @@ export function assertIdempotentPaymentReceipts(payment, existingReceipts = []) 
 // These helpers are pure and deliberately do not touch browser persistence or cloud.
 // ============================================================================
 
+// ADR-024: + debitNotes (ใบเพิ่มหนี้, the month issued) and whtCertificates (หนังสือรับรองการหักภาษี ณ ที่จ่าย
+// 50 ทวิ, the month paid). A pack stored before ADR-024 simply has no such list (read as empty).
 export const DOCUMENT_PACK_COLLECTIONS = Object.freeze([
-  'quotes','invoices','receipts','issuedInvoices','issuedReceipts','expenses','productions','creditNotes'
+  'quotes','invoices','receipts','issuedInvoices','issuedReceipts','expenses','productions','creditNotes','debitNotes','whtCertificates'
 ]);
+
+// Issued tax documents of a pack that are never edited after issue and only ever voided (one-way):
+// ใบลดหนี้, ใบเพิ่มหนี้, หนังสือรับรอง 50 ทวิ. A backup merge keeps the device copy (mergeCreditNoteCopies);
+// a backup made before such a list existed (no key at all) never deletes the device's documents.
+export const ISSUED_TAX_DOCUMENT_COLLECTIONS = Object.freeze(['creditNotes', 'debitNotes', 'whtCertificates']);
+
+// ---------------------------------------------------------------------------------------------------------------
+// r8fix#B2 / B3 — JSON-backup import of ONE month pack, planned before anything is written (pure; the caller
+// passes its own record matcher / merger, the credit-note copy rules and the period-lock question).
+// * Issued sales records (invoices, receipts and their printed copies) follow the credit-note copy rule on a
+//   MERGE: a live device copy keeps its number / date / customer / items / money (the file's differing copy is
+//   reported in `kept`, never silently applied); a cancellation in the file applies one-way; a file can never
+//   revive a cancelled record. Other fields of an unchanged record follow the caller's merger as before.
+// * REPLACE lists every issued record (sales + ใบลดหนี้ / ใบเพิ่มหนี้ / 50 ทวิ) the file would remove or change
+//   (`removed`, `changed`) so the caller asks first; a collection the file does not carry at all is kept.
+// * `locked`: every added / changed / removed record of a period-scoped collection whose date (old or new) falls
+//   in a closed period — the caller refuses the whole import with this list before any write.
+// input: { current, incoming (both normalized packs), incomingKeys: collections present in the raw file pack,
+//          replace, same(a, b), mergeDoc(a, b), dedupe(rows), lockRefusal(type, date) → '' | text,
+//          mergeIssued(device, file) and missingIssued(device, file) = mergeCreditNoteCopies / creditNotesMissingFrom }
+export const ISSUED_SALES_DOCUMENT_COLLECTIONS = Object.freeze(['invoices', 'issuedInvoices', 'receipts', 'issuedReceipts']);
+export const PERIOD_SCOPED_PACK_COLLECTIONS = Object.freeze(['invoices', 'issuedInvoices', 'receipts', 'issuedReceipts', 'expenses', 'creditNotes', 'debitNotes', 'whtCertificates']);
+const BACKUP_CANCEL_FIELDS = Object.freeze(['voided', 'cancelled', 'status', 'documentStatus', 'voidedAt', 'voidedBy', 'voidReason', 'voidReasonCode', 'updatedAt']);
+export function issuedSalesFingerprint(record = {}) {
+  return JSON.stringify([invoiceFinancialFingerprint(record), roundFinanceMoney(record.whtAmount), String(record.invNo || '').trim(), String(record.invoiceId ?? '').trim()]);
+}
+const financeCanonical = value => (value === null || typeof value !== 'object' ? value : Array.isArray(value) ? value.map(financeCanonical) : Object.fromEntries(Object.keys(value).filter(key => value[key] !== undefined).sort().map(key => [key, financeCanonical(value[key])])));
+const financeSameJson = (a, b) => JSON.stringify(financeCanonical(a)) === JSON.stringify(financeCanonical(b));
+const financeDocLabel = record => String(record?.no || record?.docNo || record?.invNo || record?.id || '-').trim();
+export function planBackupPackImport(input = {}) {
+  const current = input.current || {}, incoming = input.incoming || {}, replace = !!input.replace;
+  const keys = input.incomingKeys instanceof Set ? input.incomingKeys : new Set(Object.keys(input.incomingKeys || incoming));
+  const same = typeof input.same === 'function' ? input.same : (a, b) => financeIdOf(a) !== '' && financeIdOf(a) === financeIdOf(b);
+  const mergeDoc = typeof input.mergeDoc === 'function' ? input.mergeDoc : (a, b) => ({ ...a, ...b });
+  const dedupe = typeof input.dedupe === 'function' ? input.dedupe : rows => rows;
+  const lockRefusal = typeof input.lockRefusal === 'function' ? input.lockRefusal : () => '';
+  if (typeof input.mergeIssued !== 'function' || typeof input.missingIssued !== 'function') throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.DEPENDENCY, 'planBackupPackImport needs mergeIssued / missingIssued');
+  const rows = (pack, type) => (Array.isArray(pack?.[type]) ? pack[type] : []);
+  const next = {}, removed = [], changed = [], kept = [], locked = [];
+  for (const type of new Set([...Object.keys(current), ...Object.keys(incoming)])) {
+    const mine = rows(current, type), theirs = rows(incoming, type);
+    if (replace) {
+      if (!keys.has(type)) { next[type] = mine.slice(); continue; } // not in the file → kept as it is
+      next[type] = theirs.slice();
+      if (ISSUED_TAX_DOCUMENT_COLLECTIONS.includes(type)) removed.push(...input.missingIssued(mine, theirs).map(row => ({ type, no: financeDocLabel(row) })));
+      if (ISSUED_SALES_DOCUMENT_COLLECTIONS.includes(type)) {
+        for (const row of mine) {
+          const match = theirs.find(other => same(row, other));
+          if (!match) removed.push({ type, no: financeDocLabel(row) });
+          else if ((!financeLive(row) && financeLive(match)) || (financeLive(row) && issuedSalesFingerprint(row) !== issuedSalesFingerprint(match))) changed.push({ type, no: financeDocLabel(row) });
+        }
+      }
+      continue;
+    }
+    if (ISSUED_TAX_DOCUMENT_COLLECTIONS.includes(type)) { next[type] = input.mergeIssued(mine, theirs); continue; }
+    if (!ISSUED_SALES_DOCUMENT_COLLECTIONS.includes(type)) { next[type] = dedupe([...mine, ...theirs]); continue; }
+    const result = dedupe(mine.slice());
+    for (const row of theirs) {
+      const index = result.findIndex(other => same(other, row));
+      if (index < 0) { result.push(row); continue; }
+      const device = result[index];
+      if (!financeLive(device)) continue; // cancellation is one-way: the file never revives it
+      if (!financeLive(row)) { result[index] = { ...device, ...Object.fromEntries(BACKUP_CANCEL_FIELDS.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]])) }; continue; }
+      if (issuedSalesFingerprint(device) !== issuedSalesFingerprint(row)) { kept.push({ type, no: financeDocLabel(device) }); continue; }
+      result[index] = mergeDoc(device, row);
+    }
+    next[type] = result;
+  }
+  for (const type of PERIOD_SCOPED_PACK_COLLECTIONS) {
+    const before = rows(current, type), after = rows(next, type), seen = new Set();
+    const check = (oldRow, newRow, change) => {
+      for (const date of [oldRow?.date, newRow?.date]) {
+        if (!date) continue;
+        const text = lockRefusal(type, date);
+        if (text) { locked.push({ type, no: financeDocLabel(oldRow || newRow), date: String(date), change, text }); return; }
+      }
+    };
+    after.forEach(row => {
+      const oldIndex = before.findIndex((other, i) => !seen.has(i) && same(other, row));
+      if (oldIndex < 0) { check(null, row, 'add'); return; }
+      seen.add(oldIndex);
+      if (!financeSameJson(before[oldIndex], row)) check(before[oldIndex], row, 'change');
+    });
+    before.forEach((row, index) => { if (!seen.has(index)) check(row, null, 'remove'); });
+  }
+  return { next, removed, changed, kept, locked };
+}
 
 export function emptyFinancialDocumentPack() {
   return Object.fromEntries(DOCUMENT_PACK_COLLECTIONS.map(key => [key, []]));
@@ -566,7 +699,7 @@ const QUOTE_LINEAGE_FIELDS = Object.freeze([
 ]);
 
 export function planQuoteDocumentAction(input = {}) {
-  const draft = input.draft && typeof input.draft === 'object' ? { ...input.draft } : {};
+  let draft = input.draft && typeof input.draft === 'object' ? { ...input.draft } : {};
   financeRequireText(draft.no, 'กรุณาระบุเลขที่ใบเสนอราคา');
   financeRequireText(draft.date, 'กรุณาระบุวันที่ใบเสนอราคา');
   financeRequireText(draft.customer, 'กรุณาระบุชื่อลูกค้า');
@@ -575,6 +708,10 @@ export function planQuoteDocumentAction(input = {}) {
   if (input.duplicateNumber) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `เลขที่ใบเสนอราคา ${draft.no} มีอยู่แล้ว`);
 
   const original = input.original && typeof input.original === 'object' ? input.original : null;
+  // ADR-031: a quotation / proforma may be fully in a currency; its baht (pipeline figures) is computed here. A quotation
+  // keeps its currency on edit (a baht form cannot overwrite a foreign one and vice versa).
+  if (original && isFxDocument(original) !== isFxDocument(draft)) throw financeFxRefusal('edit.fx', { no: String(original.no || draft.no || '') });
+  draft = financeApplyFx(draft, input.fx, 'quote');
   const locked = !!(original?.approved || input.linkedDownstream);
   if (original && locked && quoteCommercialFingerprint(original) !== quoteCommercialFingerprint(draft)) {
     const reason = original.approved ? 'ใบเสนอราคานี้อนุมัติแล้ว' : 'ใบเสนอราคานี้มีเอกสารต่อเนื่องแล้ว';
@@ -720,6 +857,14 @@ export function planExpenseDocumentAction(input = {}) {
   // Tax fields are stored only for a tax-invoice expense (never half a set from a hidden form section).
   for (const key of EXPENSE_VAT_FIELD_KEYS) delete record[key];
   if (vat.fields) { Object.assign(record, vat.fields); warnings.push(...vat.warnings); }
+  // ADR-024: payer-side withholding (50 ทวิ, ภ.ง.ด.3 / 53) on this payment — base = the pre-VAT amount of the
+  // split above (or the amount itself); only a complete, valid set is stored; the form's input-only keys never are.
+  // `record` (not the raw draft): VAT keys of a non-tax-invoice expense were removed above and must not feed the base.
+  const wht = planExpenseWhtFields(record);
+  if (!wht.ok) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, wht.error);
+  for (const key of [...EXPENSE_WHT_FIELD_KEYS, 'whtIncomeText', 'whtBaseInput']) delete record[key];
+  if (wht.fields) Object.assign(record, wht.fields);
+  warnings.push(...wht.warnings);
   return { kind: 'expense', mode: 'create', record, warnings };
 }
 
@@ -763,8 +908,10 @@ function preserveFields(target, source, fields) {
   return out;
 }
 
+// r13#LOW-5: the soft warning of a multi-month service period (shown with the save message; the seed accepts it).
+export const SERVICE_PERIOD_WARNING = 'ค่าบริการนี้ครอบคลุมหลายเดือน — ตามมาตรฐาน TFRS for NPAEs ควรทยอยรับรู้รายได้ตามระยะเวลาให้บริการ ชุดปิดเดือนจะแสดงยอดรายได้รับล่วงหน้าที่ควรตั้ง (ให้นักบัญชีปรับ — ระบบไม่ลงบัญชีให้อัตโนมัติ)';
 export function planInvoiceDocumentAction(input = {}) {
-  const draft = input.draft && typeof input.draft === 'object' ? { ...input.draft } : {};
+  let draft = input.draft && typeof input.draft === 'object' ? { ...input.draft } : {};
   financeRequireText(draft.no, 'กรุณาระบุเลขที่ใบส่งสินค้า / ใบกำกับภาษี');
   financeRequireText(draft.date, 'กรุณาระบุวันที่เอกสาร');
   financeRequireText(draft.customer, 'กรุณาระบุชื่อลูกค้า');
@@ -772,6 +919,10 @@ export function planInvoiceDocumentAction(input = {}) {
   if (!Array.isArray(draft.items) || !draft.items.length) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'กรุณาเพิ่มรายการสินค้า');
   if (input.duplicateNumber) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `เลขที่ใบส่งสินค้า / ใบกำกับภาษี ${draft.no} มีอยู่แล้ว`);
   if (draft.items.some(row => row?.costAllocation?.conflict)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'ต้นทุนต้นทางต่ำกว่าที่จัดสรรไปแล้ว กรุณาตรวจงานผลิตก่อนบันทึก');
+  // ADR-031: a foreign-currency tax invoice is never edited (its baht were stored when issued — cancel and issue a new
+  // one); a new one gets its baht here, once, from the currency lines and the looked-up rate.
+  if (input.original && typeof input.original === 'object' && (isFxDocument(input.original) || isFxDocument(draft))) throw financeFxRefusal('edit.fx', { no: String(input.original.no || draft.no || '') });
+  draft = financeApplyFx(draft, input.fx, 'invoice');
   // §86/6: an abbreviated tax invoice must state "ราคารวมภาษีมูลค่าเพิ่มแล้ว",
   // so it can only be priced VAT-inclusive (never VAT-added or non-VAT).
   if (financeTaxInvoiceForm(draft) === 'abbreviated' && financeVatModeOf(draft) !== 'extract') {
@@ -802,9 +953,36 @@ export function planInvoiceDocumentAction(input = {}) {
   if (original && credited > 0.001 && invoiceFinancialFingerprint(original) !== invoiceFinancialFingerprint(draft)) {
     throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'Invoice นี้มีใบลดหนี้อ้างอิงแล้ว จึงไม่อนุญาตให้แก้เลขที่ วันที่ ลูกค้า รายการสินค้า หรือยอดทางการเงิน กรุณายกเลิกใบลดหนี้ที่อ้างอิงก่อน');
   }
+  // ADR-024: the same for a debit note (ใบเพิ่มหนี้) — it prints this invoice's number, date and original value.
+  const debited = roundFinanceMoney(input.paymentSummary?.debited);
+  if (original && debited > 0.001 && invoiceFinancialFingerprint(original) !== invoiceFinancialFingerprint(draft)) {
+    throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'Invoice นี้มีใบเพิ่มหนี้อ้างอิงแล้ว จึงไม่อนุญาตให้แก้เลขที่ วันที่ ลูกค้า รายการสินค้า หรือยอดทางการเงิน กรุณายกเลิกใบเพิ่มหนี้ที่อ้างอิงก่อน');
+  }
 
+  // r13#MED-6: "ออกใบกำกับภาษีเมื่อได้รับชำระ" (ม.78/1) — services only, full form, with VAT; never changed once money,
+  // a credit note or a debit note refers to the invoice (the tax report would move between months).
+  const taxPoint = draft.taxPoint === 'payment' ? 'payment' : '';
+  if (taxPoint) {
+    if (financeTaxInvoiceForm(draft) === 'abbreviated') throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, TAX_POINT_TEXT.errAbbreviated);
+    if (financeVatModeOf(draft) === 'none') throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, TAX_POINT_TEXT.errNeedsVat);
+    if (draft.items.some(row => !(row?.flowType === 'service' || row?.fulfillmentType === 'service'))) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, TAX_POINT_TEXT.errGoodsLine);
+  }
+  if (original && (original.taxPoint === 'payment' ? 'payment' : '') !== taxPoint && (paid > 0.001 || credited > 0.001 || debited > 0.001)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, TAX_POINT_TEXT.errHasPayments);
   // ADR-023 (G4): 'standard' for VAT invoices; a no-VAT invoice keeps 'zero' (0 %, export) or 'exempt'.
   let record = { ...draft, vatCategory: normalizeInvoiceVatCategory(financeVatModeOf(draft), draft.vatCategory) };
+  // r13: optional tax fields of the invoice, stored only when used (older invoices keep their exact shape).
+  const optionalText = (key, max) => { const value = String(record[key] ?? '').replace(/\s+/g, ' ').trim().slice(0, max); if (value) record[key] = value; else delete record[key]; };
+  if (taxPoint) record.taxPoint = taxPoint; else delete record.taxPoint;
+  optionalText('replacesNo', 40); optionalText('replacesId', 80); optionalText('replacesDate', 10); // MED-3 (ข้อหารือ 0702/1041)
+  if (record.replacesDate && !/^\d{4}-\d{2}-\d{2}$/.test(record.replacesDate)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'วันที่ของใบกำกับภาษีฉบับเดิมไม่ถูกต้อง');
+  if (record.replacesNo && financeNorm(record.replacesNo) === financeNorm(record.no)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'ฉบับใหม่ต้องใช้เลขที่ต่างจากฉบับที่ยกเลิก');
+  if (record.vatCategory === 'zero') optionalText('exportDeclarationNo', 40); else delete record.exportDeclarationNo; // MED-4
+  // LOW-5: the service period (straight-line deferred-revenue suggestion in the month-end pack; never posted automatically).
+  optionalText('servicePeriodFrom', 10); optionalText('servicePeriodTo', 10);
+  if (record.servicePeriodFrom || record.servicePeriodTo) {
+    const from = record.servicePeriodFrom, to = record.servicePeriodTo;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from || '') || !/^\d{4}-\d{2}-\d{2}$/.test(to || '') || to < from) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.VALIDATION, 'ระยะเวลาให้บริการไม่ถูกต้อง — กรอกวันเริ่มและวันสิ้นสุด (วันสิ้นสุดต้องไม่ก่อนวันเริ่ม)');
+  }
   if (original) {
     record = preserveFields(record, original, INVOICE_SETTLEMENT_FIELDS);
     record = preserveFields(record, original, INVOICE_LINEAGE_FIELDS);
@@ -814,7 +992,11 @@ export function planInvoiceDocumentAction(input = {}) {
       paidAmount: 0, outstandingAmount: roundFinanceMoney(record.total), paymentManaged: record.paymentManaged ?? true
     });
   }
-  return { kind: 'invoice', mode: original ? 'edit' : 'create', record, warnings: invoiceTaxFormWarnings(record) };
+  const warnings = invoiceTaxFormWarnings(record);
+  const rateNotice = financeVatModeOf(record) === 'none' ? '' : vatRateNotice(record.date); // r13#LOW-2
+  if (rateNotice) warnings.push(rateNotice);
+  if (record.servicePeriodTo && String(record.servicePeriodTo).slice(0, 7) > String(record.date).slice(0, 7)) warnings.push(SERVICE_PERIOD_WARNING);
+  return { kind: 'invoice', mode: original ? 'edit' : 'create', record, warnings };
 }
 
 // Soft (non-blocking) tax-form checks shown after an invoice is saved, like
@@ -877,6 +1059,11 @@ export function planReceiptDocumentAction(input = {}) {
     if (requestedRef.id && String(invoice.id || '') && requestedRef.id !== String(invoice.id)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'Invoice ID ไม่ตรงกับบิลที่เลือกอ้างอิง');
     if (requestedRef.no && financeNoOf(invoice) && requestedRef.no !== financeNoOf(invoice)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'เลขบิลไม่ตรงกับบิลที่เลือกอ้างอิง');
     if (financeNorm(invoice.customer) !== financeNorm(draft.customer)) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, 'ลูกค้าในใบเสร็จไม่ตรงกับบิลอ้างอิง');
+    // ADR-031: a foreign-currency invoice is paid in its currency through the multi-currency page (the receipt carries the
+    // currency, the receivable baht it settles and the realised exchange difference); a baht receipt would leave the
+    // currency balance open and post no exchange difference.
+    if (isFxDocument(invoice) && String(draft.currency || '').trim().toUpperCase() !== String(invoice.currency).trim().toUpperCase()) throw financeFxRefusal('receipt.noFx', { no: financeNoOf(invoice), currency: String(invoice.currency).trim().toUpperCase() });
+    if (!isFxDocument(invoice) && isFxDocument(draft)) throw financeFxRefusal('receipt.notFx', {});
     const outstanding = roundFinanceMoney(input.paymentSummary?.outstanding);
     const received = roundFinanceMoney(draft.total ?? draft.saleTotal ?? draft.subtotal);
     if (received > outstanding + FINANCE_RECONCILE_TOLERANCE) throw new FinanceActionError(FINANCE_ACTION_ERROR_CODES.CONFLICT, `ยอดรับเงินเกินยอดค้างรับ ${outstanding.toFixed(2)} บาท — เกินยอดคงค้างเกินกว่าค่าความคลาดเคลื่อนที่ยอมรับได้ (±${FINANCE_RECONCILE_TOLERANCE.toFixed(2)} บาท) กรุณาตรวจสอบยอดหรือใบแจ้งหนี้อ้างอิง`);

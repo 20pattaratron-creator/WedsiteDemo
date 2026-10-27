@@ -73,12 +73,16 @@
 <link rel="stylesheet" href="erp-receivables.css">
 <link rel="stylesheet" href="erp-company-profile.css">
 <link rel="stylesheet" href="erp-tax-reports.css">
+<link rel="stylesheet" href="erp-analytics.css">
+<link rel="stylesheet" href="erp-costing.css">
+<link rel="stylesheet" href="erp-journal.css">
+<link rel="stylesheet" href="erp-fx.css">
 <link rel="stylesheet" href="erp-ui.css">
 </head>
 <body>
 <!-- The one Local Demo notice (ADR-015): one slim line that scrolls away with the page, on every screen. Styled inline so it
      shows even when a stylesheet fails to load. Phones (erp-ui.css, ≤560 px) show the short wording, which keeps both warnings. -->
-<div id="erp-trial-safety-banner" class="erp-demo-notice" role="note" title="DEMO 4.3.1 · ข้อมูลทดลองเก็บในเบราว์เซอร์นี้เท่านั้น · ยังไม่ใช่ระบบ Production หลายผู้ใช้" style="padding:3px 12px;background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;font-size:12px;line-height:1.5;text-align:center"><span class="erp-demo-notice-long"><b>DEMO 4.3.1</b> · ข้อมูลทดลองเก็บในเบราว์เซอร์นี้เท่านั้น · ยังไม่ใช่ระบบ Production หลายผู้ใช้</span><span class="erp-demo-notice-short" hidden><b>DEMO</b> · ข้อมูลอยู่ในเบราว์เซอร์นี้ · ยังไม่ใช่ Production</span></div>
+<div id="erp-trial-safety-banner" class="erp-demo-notice" role="note" title="DEMO 4.3.1 · ข้อมูลทดลองเก็บในเบราว์เซอร์นี้เท่านั้น · ยังไม่ใช่ระบบ Production หลายผู้ใช้" style="padding:3px 12px;background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;font-size:12px;line-height:1.5;text-align:center"><span class="erp-demo-notice-long"><b>DEMO 4.3.1</b> · ข้อมูลอยู่ในเบราว์เซอร์เครื่องนี้เท่านั้น — สำรองข้อมูล (JSON) ทุกสัปดาห์และเก็บไว้นอกเครื่อง · กฎหมายให้เก็บเอกสารและรายงานภาษีไม่น้อยกว่า 5 ปี (มาตรา 87/3) · ยังไม่ใช่ระบบ Production หลายผู้ใช้</span><span class="erp-backup-reminder" id="erp-backup-reminder" hidden></span><span class="erp-demo-notice-short" hidden><b>DEMO</b> · ข้อมูลอยู่ในเบราว์เซอร์นี้ · ยังไม่ใช่ Production</span></div>
 
 <div id="app-content">
 <div class="topbar comform-topbar">
@@ -109,13 +113,18 @@
   <div class="nav-item" onclick="go('invoice-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-truck"></use></svg>ใบส่งสินค้า / ใบกำกับภาษี</div>
   <div class="nav-item" onclick="go('receipt-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-receipt"></use></svg>ใบเสร็จ / รับชำระ</div>
   <div class="nav-item" onclick="go('credit-note-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-credit-note"></use></svg>ใบลดหนี้</div>
+  <div class="nav-item" onclick="go('debit-note-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-debit-note"></use></svg>ใบเพิ่มหนี้</div>
   <div class="nav-item" onclick="go('production-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-factory"></use></svg>สั่งผลิต</div>
   <div class="nav-item" onclick="go('purchase-order',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-cart"></use></svg>จัดซื้อ / PO</div>
   <div class="nav-item" onclick="go('goods-receipt',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-box"></use></svg>รับสินค้าเข้าคลัง</div>
   <div class="nav-item" onclick="go('inventory',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-inventory"></use></svg>คลังสินค้า</div>
+  <div class="nav-item" onclick="go('job-costing',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-factory"></use></svg>ต้นทุนและกำไรต่องาน</div>
   <div class="nav-item" onclick="go('expense-list',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-wallet"></use></svg>ค่าใช้จ่าย</div>
   <div class="nav-item" onclick="go('audit-log',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-shield"></use></svg>ศูนย์ควบคุม</div>
   <div class="nav-item" onclick="go('tax-reports',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-tax"></use></svg>รายงานภาษี</div>
+  <div class="nav-item" onclick="go('accounting',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-table"></use></svg>สมุดบัญชีและปิดเดือน</div>
+  <div class="nav-item" onclick="go('fx',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-globe"></use></svg>หลายสกุลเงิน</div>
+  <div class="nav-item" onclick="go('analytics-forecast',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-chart"></use></svg>วิเคราะห์และคาดการณ์</div>
   <div class="nav-item" onclick="go('linked-flow',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-trace"></use></svg>Trace เอกสาร</div>
   <div class="nav-item" onclick="go('master-data',this)"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-contacts"></use></svg>ลูกค้า / ผู้จำหน่าย / สินค้า</div>
   <div class="nav-item" onclick="go('business-rules',this);window.BusinessRulesService?.render?.()"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-rules"></use></svg>สูตรและกฎธุรกิจ</div>
@@ -133,7 +142,7 @@
   <div class="erp-dash-controls">
   <div class="dash-tabs" role="group" aria-label="สาขาที่แสดง">
     <button class="dtab active" id="dt-all" onclick="switchDashTab('all')">รวมทั้ง 2 สาขา</button>
-    <button class="dtab ub" id="dt-ub" onclick="switchDashTab('ubon')"><i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</button>
+    <button class="dtab ub" id="dt-ub" onclick="switchDashTab('ubon')"><i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</button>
     <button class="dtab kk" id="dt-kk" onclick="switchDashTab('khonkaen')"><i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</button>
   </div>
 
@@ -159,7 +168,7 @@
   <div id="dash-combined">
     <div class="metrics" id="metrics-total"></div>
     <div class="compare-grid">
-      <div class="bc ub"><div class="bname"><i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</div><div id="dash-ub-rows"></div></div>
+      <div class="bc ub"><div class="bname"><i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</div><div id="dash-ub-rows"></div></div>
       <div class="bc kk"><div class="bname"><i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</div><div id="dash-kk-rows"></div></div>
     </div>
   </div>
@@ -167,6 +176,8 @@
     <div class="metrics" id="metrics-single"></div>
   </div>
   <div class="metrics dash-ar-kpis" id="dash-ar-kpis" aria-live="polite"></div>
+  <!-- ADR-028: gross profit of the shown months where the cost is known + its coverage (erp-costing.js) -->
+  <div class="dash-gp" id="dash-gp" aria-live="polite"></div>
   </div>
 
   <!-- ภาพรวม: "สิ่งที่ต้องทำ" (the order-flow work queue, erp-order-flow.js, and the Decision Review top
@@ -353,54 +364,15 @@
     </div>
   </section>
 
-  <!-- SALES FORECAST -->
+  <!-- SALES FORECAST (ADR-027): the same forecast as "วิเคราะห์และคาดการณ์" — one engine (erp-forecast-core.js), drawn by erp-analytics.js -->
   <div class="forecast-section">
     <div class="forecast-heading">
       <div>
-        <h3>Sales Forecast แบบมาตรฐาน</h3>
-        <p>ใช้ Time-series Forecasting และเลือกโมเดลจากความแม่นยำย้อนหลังด้วย Rolling-origin Cross-validation; Pipeline แสดงแยกเป็น Scenario ไม่ปนกับค่าพยากรณ์สถิติ</p>
-      </div>
-      <div class="forecast-controls">
-        <label><span>ข้อมูลย้อนหลัง</span><select id="forecast-history" onchange="renderSalesForecast()" aria-label="จำนวนเดือนย้อนหลังที่ใช้คาดการณ์">
-          <option value="6">6 เดือน</option>
-          <option value="12" selected>12 เดือน</option>
-          <option value="24">24 เดือน</option>
-          <option value="36">36 เดือน</option>
-        </select></label>
-        <label><span>วิธีพยากรณ์</span><select id="forecast-method" onchange="renderSalesForecast()" aria-label="วิธีพยากรณ์ยอดขาย">
-          <option value="auto" selected>Auto — เลือก RMSE ต่ำสุด</option>
-          <option value="naive">ยอดเดือนล่าสุด (Naive baseline)</option>
-          <option value="sma">Moving Average 3 เดือน</option>
-          <option value="ses">Simple Exponential Smoothing</option>
-          <option value="holt">Holt Trend (Damped)</option>
-          <option value="hw">Holt-Winters Additive (12 เดือน)</option>
-          <option value="linear">Linear Regression (Benchmark)</option>
-        </select></label>
+        <h3>คาดการณ์ยอดขาย</h3>
+        <p>ผลเดียวกับหน้า "วิเคราะห์และคาดการณ์" — เลือกวิธีอัตโนมัติจากจำนวนเดือนที่มีและผลทดสอบย้อนหลัง พร้อมช่วงที่น่าจะเป็น ~80%</p>
       </div>
     </div>
-    <div id="forecast-model-banner" class="forecast-model-banner"></div>
-    <div id="forecast-metrics" class="forecast-metrics"></div>
-    <div class="forecast-grid">
-      <div class="card forecast-card">
-        <div class="card-title chart-title-row"><span>ยอดจริงและยอดคาดการณ์ 6 เดือนข้างหน้า</span><span class="analytics-mini-label">Base Forecast</span></div>
-        <div id="forecast-chart" class="forecast-chart"></div>
-        <div id="forecast-note" class="chart-summary"></div>
-        <div id="forecast-future-table" class="forecast-table-slot"></div>
-      </div>
-      <div class="card forecast-card">
-        <div class="card-title">ภาพรวมปีถัดไป</div>
-        <div id="forecast-year-summary"></div>
-        <div class="forecast-divider"></div>
-        <div class="card-title forecast-subtitle">สิ่งที่ควรติดตาม</div>
-        <div id="forecast-alerts" class="forecast-alerts"></div>
-      </div>
-    </div>
-    <div class="card forecast-card forecast-model-card">
-      <div class="card-title chart-title-row"><span>เปรียบเทียบความแม่นยำของโมเดล</span><span class="analytics-mini-label">Rolling-origin CV · RMSE / WAPE / Bias / Tracking Signal</span></div>
-      <div id="forecast-accuracy-table"></div>
-      <div id="forecast-diagnostic-summary" class="forecast-diagnostic-summary"></div>
-      <div id="forecast-method-note" class="chart-summary"></div>
-    </div>
+    <div id="forecast-unified" class="afc-embed" aria-live="polite"></div>
   </div>
 
 
@@ -569,15 +541,13 @@
       <span>Action Plan: สิ่งที่ควรติดตาม</span>
     </div>
     <div class="analytics-filter-grid">
-      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></label>
+      <label><span>สาขา</span><select id="analytics-branch" onchange="renderDataAnalytics()"><option value="">รวมทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></label>
       <label><span>ปี</span><select id="analytics-year" onchange="renderDataAnalytics()"></select></label>
       <label><span>เดือน</span><select id="analytics-month" onchange="renderDataAnalytics()"><option value="">ทุกเดือน</option></select></label>
       <label><span>สินค้า (วิเคราะห์สินค้า)</span><select id="analytics-product" onchange="renderDataAnalytics()"><option value="">สินค้าทั้งหมด</option></select></label>
       <label><span>มุมมองหลัก</span><select id="analytics-focus" onchange="renderDataAnalytics()"><option value="sales">ภาพรวมธุรกิจ / กำไร</option><option value="delivery">ส่งสินค้า / เครดิต / รับเงิน</option><option value="quality">คุณภาพข้อมูล / ความเสี่ยง</option></select></label>
       <label><span>ประเภทหน่วยงาน</span><select id="analytics-agency-group" onchange="populateAnalyticsAgencyTypeOptions(true)"><option value="">ทุกประเภทหน่วยงาน</option></select></label>
       <label><span>ประเภทย่อย</span><select id="analytics-agency-type" onchange="renderDataAnalytics()"><option value="">ทุกประเภทย่อย</option></select></label>
-      <label><span>สูตรพยากรณ์</span><select id="analytics-forecast-method" onchange="renderDataAnalytics()"><option value="auto">Auto — เลือก RMSE ต่ำสุด</option><option value="naive">ยอดเดือนล่าสุด (Naive baseline)</option>
-          <option value="sma">Moving Average 3 เดือน</option><option value="ses">Simple Exponential Smoothing</option><option value="holt">Holt Trend (Damped)</option><option value="hw">Holt-Winters Additive</option><option value="linear">Linear Regression (Benchmark)</option></select></label>
     </div>
   </div>
 
@@ -622,14 +592,8 @@
 
   <div class="analytics-detail-grid">
     <div class="card analytics-card">
-      <div class="card-title chart-title-row"><span>รายละเอียดการคาดการณ์ธุรกิจ</span><span class="analytics-mini-label">Forecast Model</span></div>
-      <div id="analytics-forecast-summary"></div>
-      <div id="analytics-method-summary" class="chart-summary"></div>
-      <div class="analytics-forecast-subtitle">ความแม่นยำย้อนหลังของแต่ละโมเดล</div>
-      <div id="analytics-forecast-accuracy-table"></div>
-      <div id="analytics-forecast-diagnostic-summary" class="forecast-diagnostic-summary"></div>
-      <div class="analytics-forecast-subtitle">พยากรณ์ 6 เดือนข้างหน้า</div>
-      <div id="analytics-forecast-future-table"></div>
+      <div class="card-title chart-title-row"><span>คาดการณ์ยอดขาย</span><span class="analytics-mini-label">วิธีเดียวกับหน้าวิเคราะห์และคาดการณ์</span></div>
+      <div id="analytics-forecast-summary" class="afc-embed" aria-live="polite"></div>
     </div>
     <div class="card analytics-card">
       <div class="card-title chart-title-row"><span>Business Funnel: ผลิต → ส่ง → รับเงิน</span><span class="analytics-mini-label">Conversion</span></div>
@@ -840,6 +804,7 @@
         <label><span>ยอดตั้งต้น · สำนักงานใหญ่</span><input id="md-p-opening-ub" type="number" min="0" step="0.01" placeholder="0"></label>
         <label><span>ยอดตั้งต้น · สาขาที่ 00001</span><input id="md-p-opening-kk" type="number" min="0" step="0.01" placeholder="0"></label>
         <label><span>จุดสั่งซื้อซ้ำ</span><input id="md-p-reorder" type="number" min="0" step="0.01" placeholder="0"></label>
+        <label><span>ระยะเวลารอสินค้า (วัน)</span><input id="md-p-lead" type="number" min="1" max="365" step="1" inputmode="numeric" placeholder="7" title="จำนวนวันตั้งแต่สั่งซื้อจนได้รับสินค้า ใช้คำนวณจุดสั่งซื้อในหน้า วิเคราะห์และคาดการณ์ — เว้นว่าง = 7 วัน"></label>
         <label><span>ต้นทุนมาตรฐาน / หน่วย</span><input id="md-p-standard-cost" type="number" min="0" step="0.01" placeholder="0.00"></label>
         <label><span>ราคาขายมาตรฐาน / หน่วย (ก่อน VAT)</span><input id="md-p-default-price" type="text" inputmode="decimal" autocomplete="off" placeholder="เว้นว่าง = ไม่เติมราคาอัตโนมัติ (เช่น 25,900.00)" title="ระบบจะเติมราคานี้ในใบเสนอราคา/ใบส่งสินค้าเมื่อเลือกสินค้าและช่องราคายังว่าง — แปลงเป็นราคารวม VAT ให้อัตโนมัติเมื่อเอกสารเลือก “ราคารวม VAT แล้ว”"></label>
         <label class="master-span-2"><span>ผู้จำหน่ายหลัก</span><input id="md-p-supplier" list="supplier-master-list" placeholder="เลือกหรือพิมพ์ชื่อผู้จำหน่าย"></label>
@@ -1020,7 +985,7 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="q-br-ub" onclick="selBr('q','ubon')"><input type="radio" name="q-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="q-br-ub" onclick="selBr('q','ubon')"><input type="radio" name="q-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="q-br-kk" onclick="selBr('q','khonkaen')"><input type="radio" name="q-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="q-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1086,7 +1051,7 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="i-br-ub" onclick="selBr('i','ubon')"><input type="radio" name="i-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="i-br-ub" onclick="selBr('i','ubon')"><input type="radio" name="i-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="i-br-kk" onclick="selBr('i','khonkaen')"><input type="radio" name="i-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="i-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1100,7 +1065,7 @@
         <span id="i-prod-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
       </div>
       <div class="linked-source-filter-row">
-        <label><span>ปี</span><input id="i-prod-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateProductionRefs()"></label>
+        <label><span>ปี</span><input id="i-prod-filter-year" type="number" min="2020" max="2100" oninput="populateProductionRefs()"></label>
         <label><span>เดือน</span><select id="i-prod-filter-month" onchange="populateProductionRefs()"><option value="">ทุกเดือน</option></select></label>
         <label class="linked-source-search"><span>ค้นหา</span><input id="i-prod-filter-search" type="search" placeholder="เลขที่ / ลูกค้า / งาน / สินค้า" oninput="populateProductionRefs()"></label>
         <button type="button" class="btn btn-secondary" onclick="populateProductionRefs()"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-refresh"></use></svg>รีเฟรช</button>
@@ -1111,7 +1076,7 @@
         </select>
         <button type="button" class="btn btn-secondary" onclick="fillFromProduction()">ดึงข้อมูลมาสร้างบิล</button>
       </div>
-      <small id="i-prod-link-hint">เลือกรายการสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชั่นอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น</small>
+      <small id="i-prod-link-hint">เลือกรายการสั่งผลิตเพื่อเติมลูกค้า รายการสินค้า ราคาต้นทุนจากรายการ ราคาขาย VAT และค่าคอมมิชชันอัตโนมัติ โดยไม่ใช้ยอดต้นทุนรวมทั้งสิ้น</small>
     </div>
     <div class="fg-row-break" aria-hidden="true"></div>
     <div class="ff"><label>ชื่อพนักงานขาย *</label><input type="text" id="i-sales" placeholder="ชื่อพนักงาน"></div>
@@ -1156,9 +1121,9 @@
     <div class="ff"><label>ยอดรวมทั้งสิ้น (บาท)</label><input id="i-grand-total" class="ro" readonly></div>
     <div class="ff"><label>ต้นทุนรวม (บาท)</label><input id="i-ct" class="ro" readonly></div>
     <div class="fg-row-break" aria-hidden="true"></div>
-    <div class="ff"><label>วิธีคิดค่าคอมมิสชัน</label><select id="i-comm-mode" onchange="toggleCommMode('i');calcI()"><option value="percent">คิดตามเปอร์เซ็นต์</option><option value="manual">ใส่จำนวนเงินเอง</option></select></div>
-    <div class="ff"><label>อัตราค่าคอมมิสชัน (%)</label><input type="number" id="i-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcI()"></div>
-    <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="i-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcI()"></div>
+    <div class="ff"><label>วิธีคิดค่าคอมมิชชัน</label><select id="i-comm-mode" onchange="toggleCommMode('i');calcI()"><option value="percent">คิดตามเปอร์เซ็นต์</option><option value="manual">ใส่จำนวนเงินเอง</option></select></div>
+    <div class="ff"><label>อัตราค่าคอมมิชชัน (%)</label><input type="number" id="i-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcI()"></div>
+    <div class="ff"><label>ค่าคอมมิชชัน (บาท)</label><input id="i-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcI()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="i-pf" class="ro" readonly></div>
     <div class="fdiv"></div><div class="fsec">หลักฐานใบส่งสินค้า / เอกสารเพิ่มเติม</div>
     <div class="ff-full">
@@ -1191,7 +1156,7 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="r-br-ub" onclick="selBr('r','ubon')"><input type="radio" name="r-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="r-br-ub" onclick="selBr('r','ubon')"><input type="radio" name="r-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="r-br-kk" onclick="selBr('r','khonkaen')"><input type="radio" name="r-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="r-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1205,7 +1170,7 @@
         <span id="r-inv-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
       </div>
       <div class="linked-source-filter-row">
-        <label><span>ปี</span><input id="r-inv-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateInvRefs()"></label>
+        <label><span>ปี</span><input id="r-inv-filter-year" type="number" min="2020" max="2100" oninput="populateInvRefs()"></label>
         <label><span>เดือน</span><select id="r-inv-filter-month" onchange="populateInvRefs()"><option value="">ทุกเดือน</option></select></label>
         <label class="linked-source-search"><span>ค้นหา</span><input id="r-inv-filter-search" type="search" placeholder="เลขที่บิล / ลูกค้า / พนักงานขาย / สินค้า" oninput="populateInvRefs()"></label>
         <button type="button" class="btn btn-secondary" onclick="populateInvRefs()"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-refresh"></use></svg>รีเฟรช</button>
@@ -1214,7 +1179,7 @@
         <select id="r-inv-ref" onchange="fillFromInv()"><option value="">-- เลือกจากบิลที่มี --</option></select>
         <button type="button" class="btn btn-secondary" onclick="fillFromInv()">ดึงข้อมูลจากบิล</button>
       </div>
-      <small id="r-inv-link-hint">เลือกใบส่งสินค้า / ใบกำกับภาษีเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชั่นอัตโนมัติ</small>
+      <small id="r-inv-link-hint">เลือกใบส่งสินค้า / ใบกำกับภาษีเพื่อเติมเลขบิล ลูกค้า พนักงานขาย รายการสินค้า VAT และค่าคอมมิชชันอัตโนมัติ</small>
     </div>
     <div class="ff"><label>หรือกรอกเลขใบส่งสินค้า / ใบกำกับภาษีเอง</label><input type="text" id="r-inv-no" placeholder="เลขใบส่งสินค้า / ใบกำกับภาษีอ้างอิง"></div>
     <div class="fg-row-break" aria-hidden="true"></div>
@@ -1262,12 +1227,12 @@
     </div>
     <div class="ff"><label>ยอดหัก ณ ที่จ่าย (บาท)</label><input id="r-wht-amt" class="ro" readonly></div>
     <div class="ff"><label>ยอดรับเงินสด/โอนจริง (บาท)</label><input id="r-cash-received" class="ro" readonly></div>
-    <div class="ff"><label>เลขที่หนังสือรับรองหัก ณ ที่จ่าย</label><input type="text" id="r-wht-cert-no" placeholder="(ถ้ามี)"></div>
-    <div class="ff"><label class="checkbox-inline"><input type="checkbox" id="r-wht-cert-received"> ได้รับหนังสือรับรองหัก ณ ที่จ่ายจากลูกค้าแล้ว</label></div>
+    <div class="ff"><label>เลขที่หนังสือรับรองการหักภาษี ณ ที่จ่าย</label><input type="text" id="r-wht-cert-no" placeholder="(ถ้ามี)"></div>
+    <div class="ff"><label class="checkbox-inline"><input type="checkbox" id="r-wht-cert-received"> ได้รับหนังสือรับรองการหักภาษี ณ ที่จ่ายจากลูกค้าแล้ว</label></div>
     <div class="fg-row-break" aria-hidden="true"></div>
-    <div class="ff"><label>วิธีคิดค่าคอมมิสชัน</label><select id="r-comm-mode" onchange="toggleCommMode('r');calcR()"><option value="percent">คิดตามเปอร์เซ็นต์</option><option value="manual">ใส่จำนวนเงินเอง</option></select></div>
-    <div class="ff"><label>ค่าคอมมิสชัน (%)</label><input type="number" id="r-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcR()"></div>
-    <div class="ff"><label>ค่าคอมมิสชัน (บาท)</label><input id="r-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcR()"></div>
+    <div class="ff"><label>วิธีคิดค่าคอมมิชชัน</label><select id="r-comm-mode" onchange="toggleCommMode('r');calcR()"><option value="percent">คิดตามเปอร์เซ็นต์</option><option value="manual">ใส่จำนวนเงินเอง</option></select></div>
+    <div class="ff"><label>ค่าคอมมิชชัน (%)</label><input type="number" id="r-cr" placeholder="0" min="0" max="100" step="0.1" oninput="calcR()"></div>
+    <div class="ff"><label>ค่าคอมมิชชัน (บาท)</label><input id="r-ca" class="ro" readonly inputmode="decimal" placeholder="0.00" oninput="calcR()"></div>
     <div class="ff"><label>กำไรสุทธิ (บาท)</label><input id="r-pf" class="ro" readonly></div>
     <div class="fdiv"></div><div class="fsec">หลักฐานใบเสร็จรับเงิน / เอกสารเพิ่มเติม</div>
     <div class="ff-full proof-upload-field">
@@ -1302,7 +1267,7 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— ต้องเป็นสาขาเดียวกับใบกำกับภาษีเดิม</span></label>
       <div class="br-row">
-        <label class="br-opt" id="cn-br-ub" data-cn-action="branch" data-branch="ubon"><input type="radio" name="cn-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="cn-br-ub" data-cn-action="branch" data-branch="ubon"><input type="radio" name="cn-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="cn-br-kk" data-cn-action="branch" data-branch="khonkaen"><input type="radio" name="cn-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="cn-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1316,7 +1281,7 @@
         <span id="cn-inv-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
       </div>
       <div class="linked-source-filter-row">
-        <label><span>ปี</span><input id="cn-inv-filter-year" type="number" min="2020" max="2100" data-cn-refresh="refs"></label>
+        <label><span>ปี (พ.ศ.)</span><input id="cn-inv-filter-year" type="number" min="2563" max="2643" data-cn-refresh="refs"></label>
         <label><span>เดือน</span><select id="cn-inv-filter-month" data-cn-refresh="refs"><option value="">ทุกเดือน</option></select></label>
         <label class="linked-source-search"><span>ค้นหา</span><input id="cn-inv-filter-search" type="search" placeholder="เลขที่ / ลูกค้า / สินค้า" data-cn-refresh="refs"></label>
         <button type="button" class="btn btn-secondary" data-cn-action="refresh-refs"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-refresh"></use></svg>รีเฟรช</button>
@@ -1329,14 +1294,14 @@
       <small id="cn-inv-link-hint"></small>
     </div>
     <div class="fg-row-break" aria-hidden="true"></div>
-    <div class="ff"><label>ชื่อผู้ซื้อ (ลูกค้า) *</label><input type="text" id="cn-cust" class="ro" readonly placeholder="ดึงจากใบกำกับภาษีเดิม"></div>
+    <div class="ff ff-full"><label for="cn-cust">ชื่อผู้ซื้อ (ลูกค้า) *</label><input type="text" id="cn-cust" class="ro" readonly placeholder="ดึงจากใบกำกับภาษีเดิม"></div><!-- r8fix#C9: full row — long company names were cut -->
     <div class="ff"><label>เลขประจำตัวผู้เสียภาษีผู้ซื้อ</label><input id="cn-tax-id" placeholder="0000000000000"></div>
     <div class="ff"><label>สำนักงานใหญ่ / สาขาของผู้ซื้อ</label><input id="cn-buyer-branch" placeholder="เช่น สำนักงานใหญ่ หรือ สาขาที่ 00001 (ถ้ามี)"></div>
     <div class="ff ff-full"><label>ที่อยู่ผู้ซื้อ</label><textarea id="cn-address" rows="2" placeholder="ที่อยู่ตามใบกำกับภาษีเดิม"></textarea></div>
     <div class="fdiv"></div><div class="fsec">มูลค่าตามใบกำกับภาษีเดิม / มูลค่าที่ถูกต้อง / ผลต่าง</div>
     <div class="ff-full">
       <div class="tbl-wrap"><table class="items-table cn-lines-table"><thead><tr>
-        <th style="min-width:120px">ใบกำกับภาษีเดิม</th><th style="min-width:90px">ลงวันที่</th><th class="tn">มูลค่าตามใบกำกับ</th><th class="tn">ลดหนี้ไปแล้ว</th><th class="tn">มูลค่าก่อนครั้งนี้</th>
+        <th style="min-width:120px">ใบกำกับภาษีเดิม</th><th style="min-width:90px">ลงวันที่</th><th class="tn">มูลค่าตามใบกำกับ</th><th class="tn">ลด/เพิ่มหนี้ก่อนหน้า</th><th class="tn">มูลค่าก่อนครั้งนี้</th>
         <th style="min-width:130px">มูลค่าที่ถูกต้อง</th><th style="min-width:150px">ยอดที่ลดลง (ผลต่าง)</th><th style="width:28px"></th>
       </tr></thead><tbody id="cn-lines-body"></tbody></table></div>
       <small id="cn-basis-hint" class="section-hint">ตัวเลขในตารางใช้ฐานราคาเดียวกับใบกำกับภาษีเดิม</small>
@@ -1380,7 +1345,7 @@
     <div class="ff-full">
       <label style="font-size:14px;color:var(--g2);font-weight:700;display:block;margin-bottom:8px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="p-br-ub" onclick="selBr('p','ubon')"><input type="radio" name="p-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="p-br-kk" onclick="selBr('p','khonkaen')"><input type="radio" name="p-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="p-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1395,7 +1360,7 @@
         <span id="p-quote-source-branch" class="linked-source-branch-badge">กรุณาเลือกสาขา</span>
       </div>
       <div class="linked-source-filter-row">
-        <label><span>ปี</span><input id="p-quote-filter-year" type="number" min="2020" max="2100" value="2026" oninput="populateQuoteRefs('p')"></label>
+        <label><span>ปี</span><input id="p-quote-filter-year" type="number" min="2020" max="2100" oninput="populateQuoteRefs('p')"></label>
         <label><span>เดือน</span><select id="p-quote-filter-month" onchange="populateQuoteRefs('p')"><option value="">ทุกเดือน</option></select></label>
         <label class="linked-source-search"><span>ค้นหา</span><input id="p-quote-filter-search" type="search" placeholder="เลขที่ใบเสนอราคา / ลูกค้า / สินค้า" oninput="populateQuoteRefs('p')"></label>
         <button type="button" class="btn btn-secondary" onclick="populateQuoteRefs('p')"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-refresh"></use></svg>รีเฟรช</button>
@@ -1406,7 +1371,7 @@
       </div>
       <small id="p-quote-link-hint">แนะนำให้เลือกใบเสนอราคาที่อนุมัติแล้ว เพื่อให้สายเอกสารติดตามได้ครบตั้งแต่เสนอราคา → ผลิต → ส่งสินค้า → รับชำระ</small>
     </div>
-    <div class="ff"><label>ผู้รับผลิต / ผู้สั่งผลิต *</label><input type="text" id="p-maker" list="production-maker-options" placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้ผลิตเอง" oninput="handleProductionMakerChange()" onchange="handleProductionMakerChange()"><datalist id="production-maker-options"><option value="คอมฟอร์มกรุงเทพ"></option><option value="จันชนา"></option><option value="68 computer"></option><option value="สุเทพการพิมพ์"></option><option value="PK"></option><option value="วิทยา"></option><option value="เมดิแคร์พลัส"></option><option value="เจ้าพระยา 41"></option><option value="โพรดิวส์ลาเบล"></option><option value="PW IT"></option><option value="ยูนิ - สมาร์ท"></option></datalist><small id="p-maker-preset-hint" class="section-hint">เลือกรายชื่อผู้ผลิตเพื่อให้ระบบจำกัดระยะเวลาส่งสินค้าและตั้งเครดิตผู้ผลิตให้อัตโนมัติ หรือพิมพ์ชื่ออื่นเองได้</small></div>
+    <div class="ff"><label>ผู้รับผลิต *</label><input type="text" id="p-maker" list="production-maker-options" placeholder="เลือกจากรายชื่อ หรือพิมพ์ชื่อผู้ผลิตเอง" oninput="handleProductionMakerChange()" onchange="handleProductionMakerChange()"><datalist id="production-maker-options"><option value="คอมฟอร์มกรุงเทพ"></option><option value="จันชนา"></option><option value="68 computer"></option><option value="สุเทพการพิมพ์"></option><option value="PK"></option><option value="วิทยา"></option><option value="เมดิแคร์พลัส"></option><option value="เจ้าพระยา 41"></option><option value="โพรดิวส์ลาเบล"></option><option value="PW IT"></option><option value="ยูนิ - สมาร์ท"></option></datalist><small id="p-maker-preset-hint" class="section-hint">เลือกรายชื่อผู้ผลิตเพื่อให้ระบบจำกัดระยะเวลาส่งสินค้าและตั้งเครดิตผู้ผลิตให้อัตโนมัติ หรือพิมพ์ชื่ออื่นเองได้</small></div>
     <div class="ff ff-full supplier-address-card"><label>ที่อยู่ผู้ผลิต / ผู้จำหน่าย</label><textarea id="p-maker-address" rows="2" placeholder="เลือกผู้ผลิตที่เคยบันทึก ระบบจะเติมที่อยู่อัตโนมัติ"></textarea></div>
     <div class="ff"><label>เลขประจำตัวผู้เสียภาษีผู้ผลิต</label><input id="p-maker-tax-id" placeholder="0000000000000"></div>
     <div class="ff"><label>ผู้ติดต่อผู้ผลิต</label><input id="p-maker-contact" placeholder="ชื่อผู้ประสานงาน"></div>
@@ -1488,12 +1453,12 @@
           <div class="summary-panel-head">
             <div>
               <div class="summary-panel-title">2. รวมยอดขาย</div>
-              <div class="summary-panel-subtitle">สรุปยอดขาย, VAT, สวัสดิการ/คอมมิชชั่น และกำไรในโซนเดียวกัน</div>
+              <div class="summary-panel-subtitle">สรุปยอดขาย, VAT, สวัสดิการ/คอมมิชชัน และกำไรในโซนเดียวกัน</div>
             </div>
           </div>
           <div class="vat-choice summary-choice">
-            <label><input type="radio" name="p-vat" value="1" checked onchange="calcP()"> รวม VAT 7% (บวก VAT เพิ่มจากยอดขายรวม)</label>
-            <label><input type="radio" name="p-vat" value="0" onchange="calcP()"> ไม่รวม VAT 7% (ถอด VAT จากยอดขายรวม × 100 ÷ 107)</label>
+            <label><input type="radio" name="p-vat" value="1" checked onchange="calcP()"> บวก VAT 7% (ยอดขายรวมยังไม่รวม VAT)</label>
+            <label><input type="radio" name="p-vat" value="0" onchange="calcP()"> รวม VAT 7% แล้ว (ถอด VAT จากยอดขายรวม × 100 ÷ 107)</label>
             <label><input type="radio" name="p-vat" value="2" onchange="calcP()"> ไม่มี VAT</label>
           </div>
           <div class="summary-field-grid">
@@ -1504,14 +1469,14 @@
           </div>
           <div class="summary-field-grid commission-grid">
             <div class="ff">
-              <label>วิธีคิดสวัสดิการหรือค่าคอมมิชชั่น</label>
+              <label>วิธีคิดสวัสดิการหรือค่าคอมมิชชัน</label>
               <select id="p-comm-mode" onchange="toggleCommMode('p');calcP()">
                 <option value="percent">คิดตามเปอร์เซ็นต์</option>
                 <option value="manual">ใส่จำนวนเอง</option>
               </select>
             </div>
-            <div class="ff"><label>อัตราค่าคอมมิชชั่น (%)</label><input type="number" id="p-cr" min="0" step="0.01" placeholder="0" oninput="calcP()"></div>
-            <div class="ff"><label>สวัสดิการหรือค่าคอมมิชชั่น (บาท)</label><input id="p-ca" class="ro readonly-big" readonly placeholder="0.00" oninput="calcP()"></div>
+            <div class="ff"><label>อัตราค่าคอมมิชชัน (%)</label><input type="number" id="p-cr" min="0" step="0.01" placeholder="0" oninput="calcP()"></div>
+            <div class="ff"><label>สวัสดิการหรือค่าคอมมิชชัน (บาท)</label><input id="p-ca" class="ro readonly-big" readonly placeholder="0.00" oninput="calcP()"></div>
             <div class="ff"><label>กำไร (ยอดขายก่อน VAT − ยอดต้นทุนรวม) (บาท)</label><input id="p-profit" class="ro readonly-big" readonly style="font-size:18px;color:var(--green)"></div>
           </div>
         </section>
@@ -1580,7 +1545,7 @@
     <div class="list-toolbar-actions"><button class="btn btn-tertiary btn-sm" onclick="exportXLSX('productions')"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-download"></use></svg>Excel</button><button type="button" class="btn btn-primary btn-sm" onclick="go('production-form')">+ สั่งผลิตสินค้า</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
+    <div><label>สาขา</label><select id="pl-br" onchange="renderPList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="pl-month" onchange="renderPList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="pl-year" onchange="renderPList()"></select></div>
     <div><label>สถานะชำระผู้ผลิต</label>
@@ -1596,7 +1561,7 @@
     </div>
     <div><label>ค้นหาเลขที่ / งาน</label><input type="text" id="pl-search" placeholder="พิมพ์ค้นหา..." oninput="renderPList()" style="min-width:160px"></div>
   </div>
-  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>ผู้รับผลิต/ผู้สั่งผลิต</th><th>ลูกค้า</th><th>ชื่องาน</th><th>ระยะเวลาส่งสินค้า</th><th>กำหนดส่งสินค้า</th><th class="tn">ต้นทุนรวมทั้งสิ้น</th><th class="tn">ต้นทุนรวม + VAT 7%</th><th>เครดิตผู้ผลิต</th><th>วันครบกำหนดชำระ</th><th>สถานะชำระผู้ผลิต</th><th class="tn">ยอดขายก่อน VAT</th><th class="tn">VAT ยอดขาย</th><th class="tn">ยอดขายรวมทั้งสิ้น</th><th class="tn">สวัสดิการ/คอมมิชชั่น</th><th class="tn">กำไร</th><th>รูปแบบ VAT ยอดขาย</th><th>สถานะบิล</th><th>จัดการ</th></tr></thead><tbody id="ptbl"></tbody></table></div>
+  <div class="tbl-wrap"><table><thead><tr><th>เลขที่</th><th>สาขา</th><th>วันที่</th><th>ผู้รับผลิต</th><th>ลูกค้า</th><th>ชื่องาน</th><th>ระยะเวลาส่งสินค้า</th><th>กำหนดส่งสินค้า</th><th class="tn">ต้นทุนรวมทั้งสิ้น</th><th class="tn">ต้นทุนรวม + VAT 7%</th><th>เครดิตผู้ผลิต</th><th>วันครบกำหนดชำระ</th><th>สถานะชำระผู้ผลิต</th><th class="tn">ยอดขายก่อน VAT</th><th class="tn">VAT ยอดขาย</th><th class="tn">ยอดขายรวมทั้งสิ้น</th><th class="tn">สวัสดิการ/คอมมิชชัน</th><th class="tn">กำไร</th><th>รูปแบบ VAT ยอดขาย</th><th>สถานะบิล</th><th>จัดการ</th></tr></thead><tbody id="ptbl"></tbody></table></div>
   <div id="pempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
 
@@ -1617,7 +1582,7 @@
     <div class="ff-full">
       <label style="font-size:12px;color:var(--g2);font-weight:500;display:block;margin-bottom:6px">สาขา * <span style="color:var(--red)">— กรุณาเลือกสาขา</span></label>
       <div class="br-row">
-        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon');refreshExpenseEvidenceUi()"><input type="radio" name="e-br"> <i class="branch-dot ub" aria-hidden="true"></i>สาขาสำนักงานใหญ่</label>
+        <label class="br-opt" id="e-br-ub" onclick="selBr('e','ubon');refreshExpenseEvidenceUi()"><input type="radio" name="e-br"> <i class="branch-dot ub" aria-hidden="true"></i>สำนักงานใหญ่</label>
         <label class="br-opt" id="e-br-kk" onclick="selBr('e','khonkaen');refreshExpenseEvidenceUi()"><input type="radio" name="e-br"> <i class="branch-dot kk" aria-hidden="true"></i>สาขาที่ 00001</label>
       </div>
       <div class="br-warn" id="e-br-warn">⚠️ กรุณาเลือกสาขาก่อนบันทึก</div>
@@ -1710,7 +1675,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
+      <select id="ql-br" onchange="renderQLList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="ql-month" onchange="renderQLList()"><option value="">ทุกเดือน</option></select>
@@ -1733,7 +1698,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
+      <select id="il-br" onchange="renderIList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="il-month" onchange="renderIList()"><option value="">ทุกเดือน</option></select>
@@ -1769,7 +1734,7 @@
     <th class="tn">ราคาขายต่อหน่วย</th>
     <th class="tn">รวมราคาขายพร้อม VAT</th>
     <th class="tn">ถอด VAT 7%</th>
-    <th class="tn">สวัสดิการหรือค่าคอมมิชชั่น</th>
+    <th class="tn">สวัสดิการหรือค่าคอมมิชชัน</th>
     <th class="tn">กำไร</th>
     <th class="tn">%กำไรต้นทุน</th>
     <th class="tn">%กำไรยอดขาย</th>
@@ -1788,7 +1753,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
+      <select id="rl-br" onchange="renderRList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="rl-month" onchange="renderRList()"><option value="">ทุกเดือน</option></select>
@@ -1810,7 +1775,7 @@
     <div class="list-toolbar-actions"><button class="btn btn-tertiary btn-sm" onclick="exportXLSX('creditNotes')"><svg class="erp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="#erp-i-download"></use></svg>Excel</button><button type="button" class="btn btn-primary btn-sm" data-cn-action="new">+ ออกใบลดหนี้</button></div>
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="cnl-br" data-cn-refresh="list"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
+    <div><label>สาขา</label><select id="cnl-br" data-cn-refresh="list"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="cnl-month" data-cn-refresh="list"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="cnl-year" data-cn-refresh="list"></select></div>
     <div><label>สถานะ</label><select id="cnl-status" data-cn-refresh="list"><option value="">ทุกสถานะ</option><option value="active">ใช้งาน</option><option value="voided">ยกเลิกแล้ว</option></select></div>
@@ -1821,14 +1786,27 @@
   <div id="cnlempty" class="empty" style="display:none">ไม่พบรายการ</div>
 </div></div>
 
-<!-- TAX REPORTS: รายงานภาษีขาย / ภาษีซื้อ / ภ.พ.30 (ADR-023, rendered by erp-tax-reports.js) -->
+<!-- DEBIT NOTES: ใบเพิ่มหนี้ มาตรา 86/9 (ADR-024, form and list rendered by erp-debit-note.js) -->
+<div id="panel-debit-note-form" class="panel"><div class="card" id="dn-form-root"></div></div>
+<div id="panel-debit-note-list" class="panel"><div class="card" id="dn-list-root"></div></div>
+
+<!-- TAX REPORTS: รายงานภาษีขาย / ภาษีซื้อ / ภ.พ.30 / ภ.ง.ด.3 / ภ.ง.ด.53 / 50 ทวิ (ADR-023, ADR-024; erp-tax-reports.js + erp-payer-wht.js) -->
 <div id="panel-tax-reports" class="panel"><div id="tax-reports-root" class="card tax-rpt-root" aria-live="polite"></div></div>
+
+<!-- ANALYSIS & FORECAST: comparisons / ABC / sales forecast / reorder points (ADR-027; erp-analytics.js) -->
+<div id="panel-analytics-forecast" class="panel"><div id="afc-root" class="card afc-root"></div></div>
+<!-- INVENTORY & JOB COSTING: job cost sheets, profit per job / customer / product / month, stock card, valuation + NRV, overhead (ADR-028; erp-costing.js) -->
+<div id="panel-job-costing" class="panel"><div id="jc-root" class="card afc-root jc-root"></div></div>
+<!-- BOOKS & MONTH-END: general journal, ledger, trial balance, month-end pack, manual entries, opening balances (ADR-029; erp-journal.js) -->
+<div id="panel-accounting" class="panel"><div id="acc-root" class="card afc-root acc-root"></div></div>
+<!-- MULTI-CURRENCY: exchange-rate table, sales documents, receipts, payables abroad (PND.54 / PP.36), credit / debit notes, month end (ADR-031; erp-fx.js) -->
+<div id="panel-fx" class="panel"><div id="fx-root" class="card afc-root fx-root"></div></div>
 
 <!-- ISSUED DELIVERY/TAX DOCUMENT LIST -->
 <div id="panel-issued-invoice-list" class="panel"><div class="card">
-  <div class="card-title"><span>ข้อมูลออกบิลใบส่งของ / ใบกำกับภาษี</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
+  <div class="card-title"><span>ข้อมูลออกบิลใบส่งสินค้า / ใบกำกับภาษี</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
+    <div><label>สาขา</label><select id="oil-br" onchange="renderIssuedInvoiceList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="oil-month" onchange="renderIssuedInvoiceList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="oil-year" onchange="renderIssuedInvoiceList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="oil-search" placeholder="เลขที่ / ลูกค้า / พนักงาน" oninput="renderIssuedInvoiceList()"></div>
@@ -1841,7 +1819,7 @@
 <div id="panel-issued-receipt-list" class="panel"><div class="card">
   <div class="card-title"><span>ข้อมูลออกใบเสร็จรับเงิน</span><span class="section-hint">ข้อมูลเอกสารที่ออกจริง แยกจากหลักฐานที่ใช้คำนวณแดชบอร์ด</span></div>
   <div class="filter-bar" style="margin-bottom:.75rem">
-    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
+    <div><label>สาขา</label><select id="orl-br" onchange="renderIssuedReceiptList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select></div>
     <div><label>เดือน</label><select id="orl-month" onchange="renderIssuedReceiptList()"><option value="">ทุกเดือน</option></select></div>
     <div><label>ปี</label><select id="orl-year" onchange="renderIssuedReceiptList()"></select></div>
     <div><label>ค้นหา</label><input type="text" id="orl-search" placeholder="เลขที่ / เลขบิล / ลูกค้า" oninput="renderIssuedReceiptList()"></div>
@@ -1857,7 +1835,7 @@
   </div>
   <div class="filter-bar" style="margin-bottom:.75rem">
     <div><label>สาขา</label>
-      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="ubon">สาขาสำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
+      <select id="el-br" onchange="renderEList()"><option value="">ทุกสาขา</option><option value="ubon">สำนักงานใหญ่</option><option value="khonkaen">สาขาที่ 00001</option></select>
     </div>
     <div><label>เดือน</label>
       <select id="el-month" onchange="renderEList()"><option value="">ทุกเดือน</option></select>
@@ -1884,7 +1862,7 @@
   <div class="linked-filter-card">
     <div class="linked-branch-switch" role="group" aria-label="เลือกสาขา">
       <button type="button" data-linked-branch="" class="active" onclick="setLinkedBranch('',this)">รวมทุกสาขา</button>
-      <button type="button" data-linked-branch="ubon" onclick="setLinkedBranch('ubon',this)"><span class="branch-dot ub"></span>สาขาสำนักงานใหญ่</button>
+      <button type="button" data-linked-branch="ubon" onclick="setLinkedBranch('ubon',this)"><span class="branch-dot ub"></span>สำนักงานใหญ่</button>
       <button type="button" data-linked-branch="khonkaen" onclick="setLinkedBranch('khonkaen',this)"><span class="branch-dot kk"></span>สาขาที่ 00001</button>
     </div>
     <div class="linked-filter-grid">
@@ -1941,7 +1919,7 @@
           <label>สาขา</label>
           <select id="ex-branch">
             <option value="">รวมทั้งสองสาขา</option>
-            <option value="ubon">สาขาสำนักงานใหญ่</option>
+            <option value="ubon">สำนักงานใหญ่</option>
             <option value="khonkaen">สาขาที่ 00001</option>
           </select>
         </div>
@@ -2061,6 +2039,7 @@
 <script type="module" src="boot-status.js"></script>
 <script type="module" src="tenant-context.js"></script>
 <script type="module" src="local-demo-mode.js"></script>
+<script type="module" src="erp-i18n.js"></script>
 <script type="module" src="local-file-store.js"></script>
 <script type="module" src="erp-integrity.js"></script>
 <script type="module" src="erp-governance.js"></script>
@@ -2075,6 +2054,7 @@
 <script type="module" src="app.js"></script>
 <script type="module" src="credit-note-document.js"></script>
 <script type="module" src="erp-credit-note.js"></script>
+<script type="module" src="erp-debit-note.js"></script>
 <!-- ADR-021: ยกเลิกใบกำกับภาษี / ใบเสร็จ (cancel, never delete) — row "⋯" action + reason dialog. -->
 <script type="module" src="erp-document-cancel.js"></script>
 <script type="module" src="erp-receivables.js"></script>
@@ -2091,7 +2071,15 @@
 <!-- ADR-020: ตั้งค่าบริษัท › ข้อมูลบริษัทและโลโก้ (the saved profile itself is merged at boot by local-demo-mode.js). -->
 <script type="module" src="erp-company-profile.js"></script>
 <script type="module" src="erp-tax-forms.js"></script>
+<script type="module" src="erp-payer-wht.js"></script>
 <script type="module" src="erp-tax-reports.js"></script>
+<script type="module" src="erp-analytics.js"></script>
+<script type="module" src="erp-costing.js"></script>
+<!-- ADR-029: สมุดบัญชีและปิดเดือน + ผังบัญชี card, and QR พร้อมเพย์บนเอกสาร (settings card + print hook) -->
+<script type="module" src="erp-journal.js"></script>
+<!-- ADR-031: หลายสกุลเงิน (rate table, FX documents, month end) + the currencies card on ตั้งค่าบริษัท -->
+<script type="module" src="erp-fx.js"></script>
+<script type="module" src="erp-promptpay.js"></script>
 <datalist id="customer-master-list"></datalist>
 <datalist id="supplier-master-list"></datalist>
 </body>

@@ -10,19 +10,26 @@
 // All money comes from erp-tax-reports-core.js (one engine; lines 5 / 7 = the report footers).
 // Reads are strict (a damaged month stops the page instead of showing wrong totals).
 // Every user value is escaped; every text is in TAX_REPORTS_TEXT.
+// ADR-024 (stage D): + tabs ภ.ง.ด.3 / ภ.ง.ด.53 (ใบแนบ columns of §5b2, cover summary, due dates, print / Excel / CSV,
+// filed snapshots through window.ERPPayerWht) and the 50 ทวิ register (view / print / cancel). WHT that customers
+// deducted from us (receipts) never appears here. The seller's sample tax ID is a calm notice; an invalid saved one
+// stays a warning (D3 item 4). Columns fit a ≥ 1,280 px screen; phones scroll inside the card (D3 item 2).
 // ============================================================================
 import { escapeHtml, fmt, localDateISO } from './erp-shared-core.js';
-import { TAX_CORE_TEXT, TAX_COMBINED_KEY, PP30_COMPUTED_LINES, PP30_OUT_OF_SCOPE_LINES, VAT_OVERPAID_ACTIONS, buildSalesTaxReport, buildPurchaseTaxReport, buildPp30Summary, pp30DueDates, taxReportTable, taxCsvText, taxSafeSheetName, taxPeriodLabel, taxPeriodShort, taxPeriodLastDay, taxPeriodOfDate, addTaxPeriods, parseTaxPeriod, taxThaiDate, taxEntryDateOf, normalizeTaxIdText, parseVatReturnsStore, vatReturnsFor, resolveCarryForward, buildVatReturnSnapshot, mergeVatReturnsStores, normalizeVatReturnsStore } from './erp-tax-reports-core.js';
+import { WHT_TEXT, whtReportTable, whtDueDates, whtFilingsFor, whtReportDiffersFromFiling, whtCertificateDisplayNo, isWhtCertificateLive } from './erp-payer-wht-core.js';
+import { vatRateNotice } from './erp-shared-core.js';
+import { GR_TAX_TEXT } from './erp-tax-reports-core.js';
+import { TAX_CORE_TEXT, TAX_COMBINED_KEY, PP30_COMPUTED_LINES, PP30_OUT_OF_SCOPE_LINES, VAT_OVERPAID_ACTIONS, buildSalesTaxReport, buildPurchaseTaxReport, buildPp30Summary, pp30DueDates, taxReportTable, taxCsvText, taxSafeSheetName, taxPeriodLabel, taxPeriodShort, taxPeriodLastDay, taxPeriodOfDate, addTaxPeriods, parseTaxPeriod, taxThaiDate, taxEntryDateOf, normalizeTaxIdText, companyTaxIdNotice, parseVatReturnsStore, vatReturnsFor, resolveCarryForward, buildVatReturnSnapshot, mergeVatReturnsStores, normalizeVatReturnsStore } from './erp-tax-reports-core.js';
 import { VAT_RETURNS_KEY, STORAGE_WRITTEN_EVENT, COMPANY_PROFILE_CHANGED_EVENT } from './erp-storage-contracts.js';
 import { savedProfileOf, liveBranchState, liveBranchCode, liveBranchLabel, HEAD_OFFICE_BRANCH_ID } from './erp-branches-core.js';
-import { PLACEHOLDER_TAX_ID, isValidThaiTaxId } from './erp-company-profile-core.js';
 import { withDemoWriteLease } from './erp-demo-concurrency.js';
 import { icon } from './erp-icons.js';
 
 const TAX_REPORTS_TEXT = Object.freeze({
   pageTitle: 'รายงานภาษี',
   pageIntro: 'รายงานภาษีขาย รายงานภาษีซื้อ และสรุป ภ.พ.30 จากเอกสารที่บันทึกในระบบ — รายสถานประกอบการและเดือนภาษี (มาตรา 87)',
-  tabs: Object.freeze({ sales: 'รายงานภาษีขาย', purchase: 'รายงานภาษีซื้อ', forbidden: 'ภาษีซื้อต้องห้าม', pp30: 'ภ.พ.30' }),
+  tabs: Object.freeze({ sales: 'รายงานภาษีขาย', purchase: 'รายงานภาษีซื้อ', forbidden: 'ภาษีซื้อต้องห้าม', pp30: 'ภ.พ.30', pnd3: 'ภ.ง.ด.3', pnd53: 'ภ.ง.ด.53', wht: 'หนังสือรับรอง 50 ทวิ', pnd54: 'ภ.ง.ด.54', pp36: 'ภ.พ.36' }),
+  fxUnavailable: 'ยังเปิดหน้าหลายสกุลเงินไม่ได้ — โหลดหน้าเว็บใหม่',
   establishment: 'สถานประกอบการ',
   combinedOption: 'รวมทุกสถานประกอบการ (ข้อมูลประกอบ)',
   combinedFiling: 'ยื่นรวมกัน (ทุกสถานประกอบการ)',
@@ -30,6 +37,8 @@ const TAX_REPORTS_TEXT = Object.freeze({
   combinedNote: 'มุมมองรวมทุกสถานประกอบการเป็นข้อมูลประกอบ — รายงานตามแบบต้องแยกรายสถานประกอบการ',
   month: 'เดือนภาษี',
   year: 'ปี (พ.ศ.)',
+  // R9.1: said under the selectors while they show the month the page opens on (the latest closed month).
+  latestClosedNote: 'เดือนภาษีล่าสุดที่ปิดแล้ว (เดือนก่อน) — หน้านี้เปิดที่เดือนนี้ให้อัตโนมัติ เลือกเดือน/ปีอื่นได้',
   abbreviatedMode: 'ใบกำกับภาษีอย่างย่อ',
   abbreviatedDaily: 'สรุปวันละ 1 บรรทัด',
   abbreviatedEach: 'ลงรายการแยกรายใบ',
@@ -47,7 +56,37 @@ const TAX_REPORTS_TEXT = Object.freeze({
   totalRow: 'รวม',
   readError: detail => `อ่านข้อมูลเอกสารบางเดือนไม่ได้ จึงยังไม่แสดงตัวเลขภาษี (ป้องกันยอดผิด): ${detail} — กู้ข้อมูลจาก Backup หรือแจ้งผู้ดูแลระบบ`,
   returnsReadError: 'ข้อมูล ภ.พ.30 ที่บันทึกไว้อ่านไม่ได้ — ยังบันทึกการยื่นเพิ่มไม่ได้จนกว่าจะกู้ข้อมูลจาก Backup',
-  placeholderTaxId: 'เลขประจำตัวผู้เสียภาษีของบริษัทยังเป็นค่าตัวอย่าง (0000000000000) หรือไม่ถูกต้อง — แก้ที่ ตั้งค่า › ตั้งค่าบริษัท ก่อนใช้รายงานจริง',
+  placeholderTaxId: 'เลขประจำตัวผู้เสียภาษีของบริษัทยังเป็นค่าตัวอย่าง (0000000000000) ของข้อมูลบริษัทสาธิต — แก้ที่ ตั้งค่า › ตั้งค่าบริษัท ก่อนใช้รายงานจริง',
+  invalidTaxId: taxId => `เลขประจำตัวผู้เสียภาษีของบริษัท (${taxId || '-'}) ไม่ถูกต้อง — แก้ที่ ตั้งค่า › ตั้งค่าบริษัท ก่อนใช้รายงานจริง`,
+  // ADR-024 — ภ.ง.ด.3 / ภ.ง.ด.53 / 50 ทวิ tabs
+  whtIntro: form => `ใบแนบ ${form}: หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ที่ออกในเดือนที่จ่ายเงินนี้ เรียงตามวันที่จ่ายและเลขที่ — ภาษีที่ "เราหักจากผู้ขาย" เท่านั้น (ไม่รวมภาษีที่ลูกค้าหักเรา)`,
+  whtCoverTitle: form => `สรุปรายการ ${form} (ใบปะหน้า)`,
+  whtCoverPayees: 'จำนวนราย (ผู้มีเงินได้)',
+  whtCoverRows: 'จำนวนรายการ',
+  whtCoverPaid: 'รวมเงินได้ที่จ่าย',
+  whtCoverTax: 'รวมภาษีที่หักและนำส่ง',
+  whtSection: 'ยื่นตามมาตรา 3 เตรส แห่งประมวลรัษฎากร',
+  whtDuePaper: date => `ยื่นแบบกระดาษ ภายใน ${date}`,
+  whtDueEfiling: date => `ยื่นทางอินเทอร์เน็ต ภายใน ${date}`,
+  whtNoRows: 'ไม่มีการหักภาษี ณ ที่จ่ายในเดือนนี้ — ไม่ต้องยื่นแบบนี้ (ยื่นเฉพาะเดือนที่มีการหัก)',
+  whtFile: 'บันทึกว่ายื่นแล้ว',
+  whtFileAmendment: n => `บันทึกว่ายื่นเพิ่มเติมครั้งที่ ${n} แล้ว`,
+  whtNotSubmitted: 'เดโมนี้ไม่ได้ยื่นแบบหรือส่งข้อมูลไปกรมสรรพากร — ใช้ใบแนบนี้กรอกแบบเองที่ efiling.rd.go.th หรือสำนักงานสรรพากร',
+  whtHistoryRow: (label, at, channel, tax) => `${label} · บันทึกเมื่อ ${at} · ${channel} · ภาษี ${tax} บาท`,
+  whtDiffers: 'รายการปัจจุบันต่างจากที่ยื่นไว้ล่าสุด — ถ้ามีการจ่าย/ยกเลิกหลังยื่น ให้ยื่นเพิ่มเติมและบันทึกอีกครั้ง',
+  whtReadError: detail => `อ่านข้อมูลหนังสือรับรองบางเดือนไม่ได้ จึงยังไม่แสดง ภ.ง.ด. (ป้องกันยอดผิด): ${detail}`,
+  whtFilingsError: 'ข้อมูลการยื่น ภ.ง.ด.3/53 ที่บันทึกไว้อ่านไม่ได้ — ยังบันทึกการยื่นเพิ่มไม่ได้จนกว่าจะกู้ข้อมูลจาก Backup',
+  whtSign: 'ลงชื่อ ................................................ ผู้จ่ายเงิน · ตำแหน่ง ........................ · ยื่นวันที่ ........................',
+  whtRegisterIntro: 'หนังสือรับรองการหักภาษี ณ ที่จ่ายที่ออกในเดือนนี้ — ดู/พิมพ์ฉบับที่ 1 และ 2 หรือยกเลิก (เก็บเลขที่ไว้พร้อมเหตุผล)',
+  whtRegisterHead: Object.freeze(['เล่มที่ / เลขที่', 'วันที่จ่าย', 'ผู้ถูกหักภาษี', 'แบบ', 'ประเภทเงินได้', 'เงินได้ที่จ่าย', 'ภาษีที่หัก', 'สถานะ', '']),
+  whtRegisterEmpty: 'ยังไม่มีหนังสือรับรอง 50 ทวิ ในเดือนนี้ — ออกได้จากหน้า "บันทึกค่าใช้จ่าย" › หักภาษี ณ ที่จ่าย',
+  whtLive: 'ใช้งาน',
+  whtVoided: 'ยกเลิกแล้ว',
+  whtOpen: 'ดู / พิมพ์',
+  whtVoid: 'ยกเลิก',
+  whtUnavailable: 'โมดูลหัก ณ ที่จ่ายยังไม่พร้อม กรุณาโหลดหน้าเว็บใหม่',
+  sheetWht: (form, period) => `${form} ${period}`,
+  whtWithholder: 'ชื่อผู้มีหน้าที่หักภาษี ณ ที่จ่าย',
   openSettings: 'ไปที่ตั้งค่าบริษัท',
   warnTitle: 'ควรตรวจสอบ',
   infoTitle: 'ข้อมูลเพิ่มเติม',
@@ -59,6 +98,12 @@ const TAX_REPORTS_TEXT = Object.freeze({
   skippedCopies: count => `ไม่นับสำเนาเอกสารพิมพ์ ${count} รายการ (นับเฉพาะใบกำกับภาษีต้นทาง)`,
   incompleteTitle: `${TAX_CORE_TEXT.incompleteBadge} — ไม่อยู่ในรายงานภาษีซื้อ`,
   deferredTitle: 'ใบกำกับภาษีเดือนนี้ที่เลือกใช้สิทธิ์เดือนอื่น',
+  pendingGrTitle: 'สินค้ารับเข้าแล้วแต่ยังไม่ได้รับใบกำกับภาษี (ยังใช้สิทธิ์ภาษีซื้อไม่ได้)',
+  grStoreError: 'ข้อมูลใบรับสินค้าอ่านไม่ได้ — กู้ข้อมูลจาก Backup ก่อน',
+  forbiddenNoteTitle: 'ตรวจกับนักบัญชี',
+  forbiddenIncomeTaxNote: 'ภาษีซื้อต้องห้ามบางประเภทอาจเป็นรายจ่ายต้องห้ามทางภาษีเงินได้ (มาตรา 65 ตรี) ด้วย — นักบัญชีต้องปรับตอนทำ ภ.ง.ด.50',
+  numberingNote: 'เลขที่ใบกำกับภาษีของเดโมใช้ชุดเดียวทั้งบริษัท (สำนักงานใหญ่และสาขาสลับกัน) — ถามผู้สอบบัญชีว่าต้องแยกชุดต่อสถานประกอบการหรือไม่',
+  dueHolidays: names => `เลื่อนเพราะวันหยุด: ${names.join(', ')}`,
   deferredItem: period => `ใช้สิทธิ์เดือน ${period}`,
   forbiddenIntro: 'VAT ของเอกสารเหล่านี้ใช้หักเป็นภาษีซื้อไม่ได้ (มาตรา 82/5) — บันทึกเป็นต้นทุนค่าใช้จ่าย ไม่อยู่ในรายงานภาษีซื้อ',
   forbiddenEmpty: 'ไม่มีภาษีซื้อต้องห้ามในเดือนนี้',
@@ -88,6 +133,7 @@ const TAX_REPORTS_TEXT = Object.freeze({
   duePaper: date => `ยื่นแบบกระดาษ ภายใน ${date}`,
   dueEfiling: date => `ยื่นทางอินเทอร์เน็ต ภายใน ${date}`,
   dueRolled: '(เลื่อนจากวันเสาร์-อาทิตย์)',
+  dueRolledHoliday: '(เลื่อนพ้นวันหยุด)', // r13#LOW-1: a government holiday moved the date (its name is shown below)
   overdue: 'เลยกำหนดยื่นแล้ว — มีเงินเพิ่ม/เบี้ยปรับ (บรรทัด 13–14 ไม่คำนวณในเดโม)',
   payable: amount => `ต้องชำระ ${amount} บาท`,
   overpaidResult: amount => `ชำระเกิน ${amount} บาท`,
@@ -118,7 +164,7 @@ const TAX_REPORTS_TEXT = Object.freeze({
   sheetSales: period => `ภาษีขาย ${period}`,
   sheetPurchase: period => `ภาษีซื้อ ${period}`,
   sheetForbidden: period => `ภาษีซื้อต้องห้าม ${period}`,
-  sheetPp30: period => `ภพ30 ${period}`,
+  sheetPp30: period => `ภ.พ.30 ${period}`,
   pp30Line: 'บรรทัด',
   combinedFilingNote: 'ยื่นรวมกัน — รวมทุกสถานประกอบการ',
   checked: '☑',
@@ -129,6 +175,12 @@ const PANEL_ID = 'tax-reports';
 const ROWS_PER_PRINT_PAGE = 18;
 const $ = id => document.getElementById(id);
 const ui = { tab: 'sales', branch: HEAD_OFFICE_BRANCH_ID, period: '', abbreviatedMode: 'daily', channel: 'paper', overpaidAction: '', carryManual: '' };
+// ADR-024: the payer-side WHT tabs → the form they show (the register tab lists every certificate of the month).
+const WHT_TABS = Object.freeze({ pnd3: 'PND3', pnd53: 'PND53', wht: '' });
+const isWhtTab = tab => Object.prototype.hasOwnProperty.call(WHT_TABS, tab);
+// ADR-031: ภ.ง.ด.54 / ภ.พ.36 (payments abroad) come from the multi-currency page (erp-fx.js), per payer establishment.
+const FX_TABS = Object.freeze(['pnd54', 'pp36']);
+const isFxTab = tab => FX_TABS.includes(tab);
 let current = null; // the last computed view (also what print / export use)
 const storageKey = base => window.ComformTenant?.storageKey?.(base) || base;
 const say = (message, type = 'info', ms) => (typeof window.notify === 'function' ? window.notify(message, type, ms) : console.info('[TaxReports]', message));
@@ -149,6 +201,8 @@ function branchesOf(key) {
 }
 function branchOptions(tab) {
   const ids = uiBranchIds();
+  // ภ.ง.ด.3 / 53 are filed per payer establishment (its branch number is on the form): no combined view.
+  if (isWhtTab(tab) || isFxTab(tab)) return ids.map(id => ({ value: id, label: liveBranchLabel(id, undefined, window) }));
   if (tab === 'pp30') {
     if (filingModeSetting() === 'combined') return [{ value: TAX_COMBINED_KEY, label: TAX_REPORTS_TEXT.combinedFiling }];
     return ids.map(id => ({ value: id, label: liveBranchLabel(id, undefined, window) }));
@@ -163,13 +217,15 @@ function sellerInfo(key) {
   const profile = user.companyProfile || {};
   const name = String(saved?.nameTh || profile.nameTh || profile.companyNameTh || user.companyName || '').trim();
   const taxId = normalizeTaxIdText(saved?.taxId || profile.taxId || '');
-  const placeholder = !/^\d{13}$/.test(taxId) || taxId === PLACEHOLDER_TAX_ID || !isValidThaiTaxId(taxId);
-  if (key === TAX_COMBINED_KEY) return { name, taxId, placeholder, combined: true, branchCode: '', establishment: `${name} — ${TAX_REPORTS_TEXT.combinedEstablishment}` };
+  // D3 item 4: 'sample' (the untouched sample profile → a calm notice) or 'invalid' (a saved wrong ID → a warning).
+  const notice = companyTaxIdNotice(taxId, !!saved);
+  const placeholder = notice !== '';
+  if (key === TAX_COMBINED_KEY) return { name, taxId, placeholder, notice, combined: true, branchCode: '', establishment: `${name} — ${TAX_REPORTS_TEXT.combinedEstablishment}` };
   // The form's wording: "สำนักงานใหญ่" / "สาขาที่ 00001", plus the saved branch name when there is one.
   const branchCode = liveBranchCode(key, window);
   const legal = branchCode === '00000' ? TAX_REPORTS_TEXT.formHeadOffice : `${TAX_REPORTS_TEXT.formBranch} ${branchCode}`;
   const label = saved ? liveBranchLabel(key, undefined, window) : '';
-  return { name, taxId, placeholder, combined: false, branchCode, establishment: `${name} (${label && label.includes(legal) ? label : legal})` };
+  return { name, taxId, placeholder, notice, combined: false, branchCode, establishment: `${name} (${label && label.includes(legal) ? label : legal})` };
 }
 
 // ---------------------------------------------------------------- data (strict reads)
@@ -184,9 +240,10 @@ function readPack(branch, year, month) {
 // (a claim may be moved forward) and no-VAT credit notes look up their invoice.
 function collectSources(branches, period) {
   const target = parseTaxPeriod(period);
-  const out = { packs: new Map(), expenses: new Map(), invoices: new Map() };
+  const out = { packs: new Map(), expenses: new Map(), invoices: new Map(), receipts: [], goodsReceipts: new Map() };
   for (const branch of branches) {
     out.expenses.set(branch, []);
+    out.goodsReceipts.set(branch, readGoodsReceipts().filter(row => row && row.branch === branch));
     for (const year of knownYears()) for (let month = 0; month < 12; month += 1) {
       let pack;
       try { pack = readPack(branch, year, month); }
@@ -196,11 +253,23 @@ function collectSources(branches, period) {
       }
       if (target && target.year === year && target.month === month + 1) out.packs.set(branch, pack);
       (pack.expenses || []).forEach(row => out.expenses.get(branch).push(row));
+      (pack.receipts || []).forEach(row => { if (row && typeof row === 'object') out.receipts.push({ ...row, _branch: branch }); }); // r13#MED-6
       (pack.invoices || []).forEach(row => { if (row?.documentKind !== 'delivery-tax-invoice') out.invoices.set(`${branch}|${String(row?.no || '').trim()}`, row); });
     }
     if (!out.packs.has(branch) && target) out.packs.set(branch, readPack(branch, target.year, target.month - 1));
   }
   return out;
+}
+// r13#HIGH-2: the goods receipts (strict: a damaged store stops the report, never a silent zero).
+function readGoodsReceipts() {
+  const key = window.ERPProductionCore?.KEYS?.goodsReceipts;
+  if (!key) return [];
+  const raw = localStorage.getItem(storageKey(key));
+  if (raw === null || raw === undefined || raw === '') return [];
+  let rows;
+  try { rows = JSON.parse(raw); } catch { rows = null; }
+  if (!Array.isArray(rows)) { const error = new Error(TAX_REPORTS_TEXT.grStoreError); error.code = 'storage_error'; throw error; }
+  return rows;
 }
 function readReturns() {
   return parseVatReturnsStore(localStorage.getItem(storageKey(VAT_RETURNS_KEY)));
@@ -215,9 +284,11 @@ function computeView(key, period) {
     view.sales = buildSalesTaxReport({
       period, abbreviatedMode: ui.abbreviatedMode, entryDate,
       sources: branches.map(branch => { const pack = data.packs.get(branch) || {}; return { branch, invoices: pack.invoices || [], creditNotes: pack.creditNotes || [], debitNotes: Array.isArray(pack.debitNotes) ? pack.debitNotes : [] }; }),
-      invoiceLookup: (branch, no) => data.invoices.get(`${branch}|${no}`) || null
+      invoiceLookup: (branch, no) => data.invoices.get(`${branch}|${no}`) || null,
+      serviceReceipts: data.receipts
     });
-    view.purchases = buildPurchaseTaxReport({ period, entryDate, sources: branches.map(branch => ({ branch, expenses: data.expenses.get(branch) || [] })) });
+    view.purchases = buildPurchaseTaxReport({ period, entryDate, sources: branches.map(branch => ({ branch, expenses: data.expenses.get(branch) || [], goodsReceipts: data.goodsReceipts.get(branch) || [] })) });
+    view.rateNotice = vatRateNotice(taxPeriodLastDay(period)); // r13#LOW-2
   } catch (error) {
     console.warn('[TaxReports] read failed — shown on the page, no figures', error);
     view.error = TAX_REPORTS_TEXT.readError(error?.message || String(error));
@@ -232,7 +303,24 @@ function computeView(key, period) {
   const carryIn = view.carry.editable ? (Number.isFinite(manual) && manual > 0 ? manual : 0) : view.carry.amount;
   view.pp30 = buildPp30Summary({ period, sales: view.sales, purchases: view.purchases, carryForwardIn: carryIn });
   view.due = pp30DueDates(period);
+  if (key !== TAX_COMBINED_KEY) computeWht(view);
   return view;
+}
+// ADR-024: ภ.ง.ด.3 / ภ.ง.ด.53 (strict reads through ERPPayerWht) and the month's 50 ทวิ register of one establishment.
+function computeWht(view) {
+  const api = window.ERPPayerWht;
+  view.wht = { error: '', filingsError: '', reports: {}, filings: [], certificates: [], due: whtDueDates(view.period) };
+  if (!api) { view.wht.error = TAX_REPORTS_TEXT.whtUnavailable; return; }
+  try {
+    for (const form of ['PND3', 'PND53']) view.wht.reports[form] = api.reportFor(view.key, view.period, form, { strict: true });
+    view.wht.certificates = api.certificatesFor(view.key, view.period);
+  } catch (error) {
+    console.warn('[TaxReports] WHT read failed — shown on the page, no figures', error);
+    view.wht.error = TAX_REPORTS_TEXT.whtReadError(error?.message || String(error));
+    return;
+  }
+  try { view.wht.filings = api.readFilings().filings; }
+  catch (error) { console.warn('[TaxReports] WHT filings unreadable — filing disabled', error); view.wht.filingsError = TAX_REPORTS_TEXT.whtFilingsError; }
 }
 
 // ---------------------------------------------------------------- HTML pieces
@@ -244,7 +332,18 @@ function periodParts(period) {
   return parsed ? { month: TAX_CORE_TEXT.monthNames[parsed.month - 1], year: String(parsed.year + 543) } : { month: '', year: '' };
 }
 // The header of the official form: เดือนภาษี … ปี … · ชื่อผู้ประกอบการ · TIN · สถานประกอบการ ☑/☐.
-function formHeaderHtml(title, view, pageText = '') {
+function sellerNoticeHtml(seller) {
+  if (seller.notice === 'sample') return `<div class="tax-form-note tax-form-note-sample" role="note">${esc(TAX_REPORTS_TEXT.placeholderTaxId)}</div>`;
+  if (seller.notice === 'invalid') return `<div class="tax-form-note tax-form-note-warn" role="alert">${esc(TAX_REPORTS_TEXT.invalidTaxId(seller.taxId))}</div>`;
+  return '';
+}
+// ADR-026: the company name (user data) is never translated; the "(สาขาที่ 00001)" / "— ยื่นรวม…" after it is UI text.
+function establishmentHtml(seller) {
+  const text = String(seller.establishment || '');
+  const name = String(seller.name || '');
+  return name && text.startsWith(name) ? `<span data-no-i18n>${esc(name)}</span>${esc(text.slice(name.length))}` : esc(text);
+}
+function formHeaderHtml(title, view, pageText = '', options = {}) {
   const { month, year } = periodParts(view.period);
   const seller = view.seller;
   const hq = !seller.combined && seller.branchCode === '00000';
@@ -253,24 +352,38 @@ function formHeaderHtml(title, view, pageText = '') {
     <div class="tax-form-title"><h3>${esc(title)}</h3>${pageText ? `<span class="tax-form-page">${esc(pageText)}</span>` : ''}</div>
     <div class="tax-form-month">${esc(TAX_REPORTS_TEXT.formTaxMonth(month, year))}</div>
     <div class="tax-form-grid">
-      <div><span>${esc(TAX_REPORTS_TEXT.formOperator)}</span><b>${esc(seller.name || '-')}</b></div>
+      <div><span>${esc(options.withholder ? TAX_REPORTS_TEXT.whtWithholder : TAX_REPORTS_TEXT.formOperator)}</span><b data-no-i18n>${esc(seller.name || '-')}</b></div>
       <div><span>${esc(TAX_REPORTS_TEXT.formTaxId)}</span><b class="tax-mono">${esc(seller.taxId || '-')}</b></div>
-      <div><span>${esc(TAX_REPORTS_TEXT.formEstablishment)}</span><b>${esc(seller.establishment)}</b></div>
+      <div><span>${esc(TAX_REPORTS_TEXT.formEstablishment)}</span><b>${establishmentHtml(seller)}</b></div>
       <div class="tax-form-checks"><span>${hq ? TAX_REPORTS_TEXT.checked : TAX_REPORTS_TEXT.unchecked} ${esc(TAX_REPORTS_TEXT.formHeadOffice)}</span><span>${branch ? TAX_REPORTS_TEXT.checked : TAX_REPORTS_TEXT.unchecked} ${esc(TAX_REPORTS_TEXT.formBranch)} <b class="tax-mono">${branch ? esc(seller.branchCode) : '.....'}</b></span></div>
     </div>
     ${seller.combined ? `<div class="tax-form-note">${esc(TAX_REPORTS_TEXT.combinedNote)}</div>` : ''}
-    ${seller.placeholder ? `<div class="tax-form-note tax-form-note-warn">${esc(TAX_REPORTS_TEXT.placeholderTaxId)}</div>` : ''}
+    ${sellerNoticeHtml(seller)}
   </div>`;
 }
 // Table of the official columns (2-row header), used on screen and in print.
-function tableHtml(table, { includeFooter = true, rows = table.body, className = 'tax-rpt-table' } = {}) {
+// rowClass(index) → a class for the <tr> (screen only): a cancelled invoice keeps "ยกเลิก – reason" readable in the
+// name column but clamped to the height of a normal row, the whole reason in its tooltip (D3 item 3).
+function tableHtml(table, { includeFooter = true, rows = table.body, className = 'tax-rpt-table', rowClass = null } = {}) {
   // Every cell carries its column key (col-…) so widths are set per column in CSS (no content-driven layout).
   const top = table.groups.map(group => (group.grouped ? `<th colspan="${group.span}" scope="colgroup">${esc(group.label)}</th>` : `<th rowspan="2" scope="col" class="col-${table.columns[group.from].key}">${esc(group.label)}</th>`)).join('');
   const sub = table.columns.filter(column => column.group).map(column => `<th scope="col" class="col-${column.key}">${esc(column.label)}</th>`).join('');
-  const cell = (value, column) => (column.money ? `<td class="tn col-${column.key}${Number(value) < 0 ? ' neg' : ''}">${esc(money(value))}</td>` : `<td class="col-${column.key}${['headOffice', 'branchNo', 'seq'].includes(column.key) ? ' tc' : ''}">${esc(value)}</td>`);
-  const body = rows.length ? rows.map(row => `<tr>${row.map((value, index) => cell(value, table.columns[index])).join('')}</tr>`).join('') : `<tr><td colspan="${table.columns.length}" class="tc tax-empty">${esc(TAX_REPORTS_TEXT.emptyRows)}</td></tr>`;
+  const cell = (value, column) => (column.money ? `<td class="tn col-${column.key}${Number(value) < 0 ? ' neg' : ''}">${esc(money(value))}</td>` : `<td class="col-${column.key}${['headOffice', 'branchNo', 'seq', 'payeeBranchCode', 'rate', 'condition'].includes(column.key) ? ' tc' : ''}">${esc(value).replace(/\n/g, '<br>')}</td>`);
+  const clamp = (value, column) => `<td class="col-${column.key}"><span class="tax-clamp" title="${esc(value)}">${esc(value)}</span></td>`;
+  const body = rows.length ? rows.map((row, rowIndex) => {
+    const extra = typeof rowClass === 'function' ? rowClass(rowIndex) : '';
+    return `<tr${extra ? ` class="${esc(extra)}"` : ''}>${row.map((value, index) => (extra === 'tax-row-cancelled' && table.columns[index].key === 'party' ? clamp(value, table.columns[index]) : cell(value, table.columns[index]))).join('')}</tr>`;
+  }).join('') : `<tr><td colspan="${table.columns.length}" class="tc tax-empty">${esc(TAX_REPORTS_TEXT.emptyRows)}</td></tr>`;
   const footer = includeFooter ? `<tfoot><tr>${table.footer.map((value, index) => (table.columns[index].money ? `<td class="tn col-${table.columns[index].key}"><b>${esc(money(value))}</b></td>` : `<td class="col-${table.columns[index].key}${index === 0 ? ' tc' : ''}">${index === 0 ? `<b>${esc(value)}</b>` : ''}</td>`)).join('')}</tr></tfoot>` : '';
-  return `<table class="${className}"><thead><tr>${top}</tr>${sub ? `<tr>${sub}</tr>` : ''}</thead><tbody>${body}</tbody>${footer}</table>`;
+  // <colgroup>: with table-layout:fixed the widths come from the columns, not from the grouped two-row header.
+  const cols = `<colgroup>${table.columns.map(column => `<col class="col-${column.key}">`).join('')}</colgroup>`;
+  return `<table class="${className}"${table.kind ? ` data-tax-table="${esc(table.kind)}"` : ''}>${cols}<thead><tr>${top}</tr>${sub ? `<tr>${sub}</tr>` : ''}</thead><tbody>${body}</tbody>${footer}</table>`;
+}
+// "(เลื่อนพ้นวันหยุด)" + the holidays that moved the date (r13#LOW-1).
+function rolledNote(due, channel) {
+  if (!due?.[`${channel}Rolled`]) return '';
+  const names = due[`${channel}Holidays`] || [];
+  return ` ${esc(names.length ? TAX_REPORTS_TEXT.dueRolledHoliday : TAX_REPORTS_TEXT.dueRolled)}${names.length ? ` <small data-due-holidays>${esc(TAX_REPORTS_TEXT.dueHolidays(names))}</small>` : ''}`;
 }
 function salesWarnings(view) {
   const report = view.sales;
@@ -280,8 +393,10 @@ function salesWarnings(view) {
   if (w.outsidePeriod.length) warn.push(...w.outsidePeriod.map(esc));
   if (w.missingBuyerTaxId.length) warn.push(`${esc(TAX_REPORTS_TEXT.missingBuyerTaxId(w.missingBuyerTaxId.length))}: ${w.missingBuyerTaxId.map(row => esc(row.no)).join(', ')}`);
   const info = [];
+  if (w.deferredService?.length) info.push(...w.deferredService.map(row => esc(row.message)));
   if (w.lateEntries.length) info.push(esc(TAX_REPORTS_TEXT.lateEntries(w.lateEntries.length)));
   if (report.skippedCopies) info.push(esc(TAX_REPORTS_TEXT.skippedCopies(report.skippedCopies)));
+  if (view.branches?.length > 1 || report.rows?.length) info.push(esc(TAX_REPORTS_TEXT.numberingNote));
   return box(TAX_REPORTS_TEXT.warnTitle, warn)
     + (w.legacyNoVat.length ? `<div class="tax-rpt-box tax-rpt-box-warn" data-tax-legacy-box role="note"><b>${esc(TAX_REPORTS_TEXT.legacyNoVatTitle)}</b><p>${esc(TAX_REPORTS_TEXT.legacyNoVatHint)}</p><ul>${w.legacyNoVat.map(row => `<li>${docItem(row)}</li>`).join('')}</ul></div>` : '')
     + box(TAX_REPORTS_TEXT.exemptTitle, w.exemptSales.map(docItem), 'info')
@@ -291,6 +406,8 @@ function purchaseWarnings(view) {
   const report = view.purchases;
   return box(TAX_REPORTS_TEXT.incompleteTitle, report.incomplete.map(row => `${docItem({ ...row, no: row.docNo || row.desc })} <small>${esc(TAX_CORE_TEXT.incompleteHint)}</small>`))
     + box(TAX_REPORTS_TEXT.deferredTitle, report.deferred.map(row => `${docItem(row)} · ${esc(TAX_REPORTS_TEXT.deferredItem(taxPeriodShort(row.claimPeriod)))}`), 'info')
+    + box(TAX_REPORTS_TEXT.pendingGrTitle, (report.pendingReceipts || []).map(row => esc(GR_TAX_TEXT.monthEndPending(row.receiptNo, taxThaiDate(row.date), money(row.vat)))))
+    + box(TAX_REPORTS_TEXT.forbiddenNoteTitle, report.forbidden?.length ? [esc(TAX_REPORTS_TEXT.forbiddenIncomeTaxNote)] : [], 'info')
     + box(TAX_REPORTS_TEXT.infoTitle, report.warnings.lateEntries.length ? [esc(TAX_REPORTS_TEXT.lateEntries(report.warnings.lateEntries.length))] : [], 'info');
 }
 
@@ -335,7 +452,7 @@ function pp30Html(view) {
   const history = view.returns.length
     ? `<ul class="tax-history">${view.returns.map(row => `<li><span>${esc(TAX_REPORTS_TEXT.historyRow(filingLabel(row.amendment), taxThaiDate(row.filedAt.slice(0, 10)), TAX_REPORTS_TEXT.channels[row.channel]))} · ${esc(row.lines[11] > 0 ? TAX_REPORTS_TEXT.payable(money(row.lines[11])) : row.lines[12] > 0 ? TAX_REPORTS_TEXT.overpaidResult(money(row.lines[12])) : TAX_REPORTS_TEXT.nothingDue)}</span><button type="button" class="btn btn-tertiary" data-tax-action="print-return" data-return-id="${esc(row.id)}">${icon('print')}${esc(TAX_REPORTS_TEXT.print)}</button></li>`).join('')}</ul>${differs ? `<div class="tax-rpt-box tax-rpt-box-warn" role="note">${esc(TAX_REPORTS_TEXT.historyDiffers)}</div>` : ''}`
     : `<p class="tax-muted">${esc(TAX_REPORTS_TEXT.historyEmpty)}</p>`;
-  const due = view.due ? `<ul class="tax-due"><li>${esc(TAX_REPORTS_TEXT.duePaper(taxThaiDate(view.due.paper)))}</li><li>${esc(TAX_REPORTS_TEXT.dueEfiling(taxThaiDate(view.due.efiling)))}${view.due.efilingRolled ? ` ${esc(TAX_REPORTS_TEXT.dueRolled)}` : ''}</li>${view.due.checkLatest ? `<li class="tax-hint-warn">${esc(TAX_CORE_TEXT.efilingCheckLatest)}</li>` : ''}<li class="tax-muted">${esc(TAX_CORE_TEXT.dueDateHolidayNote)}</li>${overdue ? `<li class="tax-hint-warn">${esc(TAX_REPORTS_TEXT.overdue)}</li>` : ''}</ul>` : '';
+  const due = view.due ? `<ul class="tax-due"><li>${esc(TAX_REPORTS_TEXT.duePaper(taxThaiDate(view.due.paper)))}${rolledNote(view.due, 'paper')}</li><li>${esc(TAX_REPORTS_TEXT.dueEfiling(taxThaiDate(view.due.efiling)))}${rolledNote(view.due, 'efiling')}</li>${view.due.checkLatest ? `<li class="tax-hint-warn">${esc(TAX_CORE_TEXT.efilingCheckLatest)}</li>` : ''}<li class="tax-muted">${esc(view.due.holidayStatus === 'unknown' ? TAX_CORE_TEXT.dueDateHolidayUnknown : TAX_CORE_TEXT.dueDateHolidayNote)}</li>${view.rateNotice ? `<li class="tax-hint-warn">${esc(view.rateNotice)}</li>` : ''}${overdue ? `<li class="tax-hint-warn">${esc(TAX_REPORTS_TEXT.overdue)}</li>` : ''}</ul>` : '';
   const canFile = !view.returnsError && ended;
   return `<div class="tax-pp30">
     <div class="tax-rpt-box tax-rpt-box-info" role="note">${esc(TAX_REPORTS_TEXT.pp30NotSubmitted)}</div>
@@ -352,12 +469,75 @@ function pp30Html(view) {
   </div>`;
 }
 
+// ---------------------------------------------------------------- ภ.ง.ด.3 / ภ.ง.ด.53 / 50 ทวิ (ADR-024)
+function whtTable(view, form) {
+  return { ...whtReportTable(view.wht.reports[form], '\n'), kind: form };
+}
+function whtCoverHtml(view, form) {
+  const report = view.wht.reports[form], due = view.wht.due;
+  const formLabel = WHT_TEXT.forms[form];
+  const items = [[TAX_REPORTS_TEXT.whtCoverPayees, String(report.totals.payees)], [TAX_REPORTS_TEXT.whtCoverRows, String(report.totals.count)], [TAX_REPORTS_TEXT.whtCoverPaid, money(report.totals.amountPaid)], [TAX_REPORTS_TEXT.whtCoverTax, money(report.totals.taxWithheld)]];
+  return `<div class="tax-wht-cover" data-wht-cover="${esc(form)}"><b>${esc(TAX_REPORTS_TEXT.whtCoverTitle(formLabel))}</b>
+    <dl>${items.map(([label, amount], index) => `<div><dt>${esc(label)}</dt><dd data-wht-total="${['payees', 'count', 'amountPaid', 'taxWithheld'][index]}">${esc(amount)}</dd></div>`).join('')}</dl>
+    <small>${esc(TAX_REPORTS_TEXT.whtSection)} · ${esc(WHT_TEXT.conditionKey)}</small>
+    ${due ? `<ul class="tax-due"><li>${esc(TAX_REPORTS_TEXT.whtDuePaper(taxThaiDate(due.paper)))}${rolledNote(due, 'paper')}</li><li>${esc(TAX_REPORTS_TEXT.whtDueEfiling(taxThaiDate(due.efiling)))}${rolledNote(due, 'efiling')}</li>${due.checkLatest ? `<li class="tax-hint-warn">${esc(WHT_TEXT.efilingCheckLatest)}</li>` : ''}<li class="tax-muted">${esc(due.holidayStatus === 'unknown' ? TAX_CORE_TEXT.dueDateHolidayUnknown : WHT_TEXT.dueDateNote)}</li></ul><div class="tax-rpt-box tax-rpt-box-info" role="note"><b>${esc(TAX_REPORTS_TEXT.forbiddenNoteTitle)}</b><ul>${WHT_TEXT.expertNotes.map(note => `<li>${esc(note)}</li>`).join('')}</ul></div>` : ''}
+  </div>`;
+}
+function whtFilingHtml(view, form) {
+  const report = view.wht.reports[form];
+  const filed = whtFilingsFor(view.wht.filings, view.key, view.period, form);
+  const latest = filed[filed.length - 1];
+  const ended = view.period && taxPeriodLastDay(view.period) < localDateISO();
+  const canFile = ended && report.rows.length > 0 && !view.wht.filingsError;
+  const history = filed.length
+    ? `<ul class="tax-history">${filed.map(row => `<li><span>${esc(TAX_REPORTS_TEXT.whtHistoryRow(filingLabel(row.amendment), taxThaiDate(row.filedAt.slice(0, 10)), TAX_REPORTS_TEXT.channels[row.channel], money(row.totals.taxWithheld)))}</span></li>`).join('')}</ul>${whtReportDiffersFromFiling(report, latest) ? `<div class="tax-rpt-box tax-rpt-box-warn" role="note">${esc(TAX_REPORTS_TEXT.whtDiffers)}</div>` : ''}`
+    : `<p class="tax-muted">${esc(TAX_REPORTS_TEXT.historyEmpty)}</p>`;
+  return `<div class="tax-pp30-row"><div class="ff"><label for="tax-wht-channel">${esc(TAX_REPORTS_TEXT.channel)}</label><select id="tax-wht-channel">${Object.entries(TAX_REPORTS_TEXT.channels).map(([value, label]) => `<option value="${value}"${ui.channel === value ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select></div>
+      <div class="tax-pp30-status"><span class="tax-badge">${esc(filed.length ? filingLabel(filed.length) : TAX_REPORTS_TEXT.filingNormal)}</span></div></div>
+    ${view.wht.filingsError ? box(TAX_REPORTS_TEXT.warnTitle, [esc(view.wht.filingsError)], 'error') : ''}
+    ${!ended ? `<div class="tax-rpt-box tax-rpt-box-info" role="note">${esc(TAX_REPORTS_TEXT.periodNotEnded)}</div>` : ''}
+    <div class="tax-rpt-actions"><button type="button" class="btn btn-primary" data-tax-action="file-wht"${canFile ? '' : ' disabled'}>${icon('save')}${esc(filed.length ? TAX_REPORTS_TEXT.whtFileAmendment(filed.length) : TAX_REPORTS_TEXT.whtFile)}</button></div>
+    <div class="tax-rpt-box tax-rpt-box-info" role="note">${esc(TAX_REPORTS_TEXT.whtNotSubmitted)}</div>
+    <h4 class="tax-sub">${esc(TAX_REPORTS_TEXT.history)}</h4>${history}`;
+}
+function whtFormHtml(view, form) {
+  const formLabel = WHT_TEXT.forms[form];
+  const report = view.wht.reports[form];
+  const title = WHT_TEXT.attachTitle(form);
+  return `<div class="tax-rpt-actions"><button type="button" class="btn btn-secondary" data-tax-action="print">${icon('print')}${esc(TAX_REPORTS_TEXT.print)}</button><button type="button" class="btn btn-tertiary" data-tax-action="excel">${icon('download')}${esc(TAX_REPORTS_TEXT.excel)}</button><button type="button" class="btn btn-tertiary" data-tax-action="csv">${icon('table')}${esc(TAX_REPORTS_TEXT.csv)}</button></div>
+    <p class="tax-muted">${esc(TAX_REPORTS_TEXT.whtIntro(formLabel))}</p>
+    ${report.rows.length ? '' : `<div class="tax-rpt-box tax-rpt-box-info" role="note">${esc(TAX_REPORTS_TEXT.whtNoRows)}</div>`}
+    ${whtCoverHtml(view, form)}
+    ${formHeaderHtml(title, view, '', { withholder: true })}
+    <div class="tbl-wrap tax-rpt-scroll" tabindex="0" role="region" aria-label="${esc(title)}">${tableHtml(whtTable(view, form))}</div>
+    ${whtFilingHtml(view, form)}`;
+}
+function whtRegisterHtml(view) {
+  const rows = view.wht.certificates;
+  const body = rows.length ? rows.map(cert => {
+    const live = isWhtCertificateLive(cert);
+    const ids = `data-branch="${esc(cert._branch || view.key)}" data-year="${esc(String(cert._year))}" data-month="${esc(String(cert._month))}" data-cert-id="${esc(String(cert.id))}"`;
+    return `<tr class="${live ? '' : 'tax-row-voided'}"><td><b>${esc(whtCertificateDisplayNo(cert))}</b></td><td class="col-date">${esc(taxThaiDate(cert.date))}</td><td>${esc(cert.payee?.name || '-')}<small class="tax-cell-sub">${esc(cert.payee?.taxId || '')}</small></td><td>${esc(WHT_TEXT.forms[cert.form] || '')}</td><td>${esc(cert.incomeLabel || '')} ${esc(String(cert.rate))}%</td><td class="tn">${esc(money(cert.amountPaid))}</td><td class="tn">${esc(money(cert.taxWithheld))}</td>
+      <td>${live ? `<span class="tax-badge tax-badge-ok">${esc(TAX_REPORTS_TEXT.whtLive)}</span>` : `<span class="tax-badge tax-badge-bad" title="${esc(cert.voidReason || '')}">${esc(TAX_REPORTS_TEXT.whtVoided)}</span>`}</td>
+      <td class="tax-wht-actions"><button type="button" class="btn btn-tertiary" data-tax-action="wht-open" ${ids}>${icon('certificate')}${esc(TAX_REPORTS_TEXT.whtOpen)}</button>${live ? `<button type="button" class="btn btn-danger" data-tax-action="wht-void" ${ids}>${icon('cancel')}${esc(TAX_REPORTS_TEXT.whtVoid)}</button>` : ''}</td></tr>`;
+  }).join('') : `<tr><td colspan="9" class="tc tax-empty">${esc(TAX_REPORTS_TEXT.whtRegisterEmpty)}</td></tr>`;
+  return `<p class="tax-muted">${esc(TAX_REPORTS_TEXT.whtRegisterIntro)}</p>
+    <div class="tbl-wrap tax-rpt-scroll" tabindex="0" role="region" aria-label="${esc(TAX_REPORTS_TEXT.tabs.wht)}"><table class="tax-rpt-table tax-wht-register"><thead><tr>${TAX_REPORTS_TEXT.whtRegisterHead.map(label => `<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function whtTabHtml(view, tab) {
+  if (!view.wht) return box(TAX_REPORTS_TEXT.warnTitle, [esc(view.error || TAX_REPORTS_TEXT.whtUnavailable)], 'error');
+  if (view.wht.error) return box(TAX_REPORTS_TEXT.warnTitle, [esc(view.wht.error)], 'error');
+  return tab === 'wht' ? whtRegisterHtml(view) : whtFormHtml(view, WHT_TABS[tab]);
+}
+
 // ---------------------------------------------------------------- page
 function yearOptions(selected) {
   const years = knownYears();
   if (!years.includes(selected)) years.push(selected);
   return years.sort((a, b) => b - a).map(year => `<option value="${year}"${year === selected ? ' selected' : ''}>${year + 543}</option>`).join('');
 }
+// The month the page opens on: the latest fully closed tax month (the month before today; in January, December of the
+// year before) — the ภ.พ.30 / ภ.ง.ด. due now. The sample data's story month is the same month (R9.1, ADR-013).
 function defaultPeriod() {
   return addTaxPeriods(taxPeriodOfDate(localDateISO()), -1);
 }
@@ -367,34 +547,43 @@ function normalizeUi() {
   if (!options.some(option => option.value === ui.branch)) ui.branch = options[0].value;
   return options;
 }
+// ADR-026: in English only, "?" explanations of the tab's Thai tax concepts and the Thai tax calendar (the due dates of
+// the selected month, from the same cores the reports use). Thai output is unchanged (both return '').
+const TAB_HELP = Object.freeze({ sales: ['vat', 'taxInvoiceForms', 'branchCodes', 'creditNote', 'debitNote'], purchase: ['vat', 'claimWindow', 'nonClaimable'], forbidden: ['nonClaimable'], pp30: ['pp30', 'vat', 'periodLock'], pnd3: ['wht', 'periodLock'], pnd53: ['wht', 'periodLock'], wht: ['wht'], pnd54: ['wht'], pp36: ['vat'] });
+// ADR-026: in English a tab names the Thai form in Latin letters with a short explanation ("PP.30 (monthly VAT return)"); Thai: unchanged.
+const englishTabLabel = (id, label) => (window.ERPI18n?.isEnglish?.() ? window.ERPI18n.t(`tax.tab.${id}`) : label);
+const englishTaxHelp = tab => (window.ERPI18n?.isEnglish?.() ? window.ERPI18n.taxHelpRowHtml(TAB_HELP[tab] || []) : '');
+const englishTaxCalendar = period => (window.ERPI18n?.isEnglish?.() ? window.ERPI18n.taxCalendarHtml({ period, pp30: pp30DueDates(period), wht: whtDueDates(period) }) : '');
 function render() {
   const root = $('tax-reports-root');
   if (!root) return;
   const options = normalizeUi();
   const period = parseTaxPeriod(ui.period);
   current = computeView(ui.branch, ui.period);
-  const tabs = Object.entries(TAX_REPORTS_TEXT.tabs).map(([id, label]) => `<button type="button" role="tab" class="tax-tab${ui.tab === id ? ' active' : ''}" aria-selected="${ui.tab === id}" data-tax-tab="${id}">${esc(label)}</button>`).join('');
+  const tabs = Object.entries(TAX_REPORTS_TEXT.tabs).map(([id, label]) => `<button type="button" role="tab" class="tax-tab${ui.tab === id ? ' active' : ''}" aria-selected="${ui.tab === id}" data-tax-tab="${id}">${esc(englishTabLabel(id, label))}</button>`).join('');
   const filters = `<div class="filter-bar tax-rpt-filters">
     <div><label for="tax-rpt-branch">${esc(TAX_REPORTS_TEXT.establishment)}</label><select id="tax-rpt-branch">${options.map(option => `<option value="${esc(option.value)}"${option.value === ui.branch ? ' selected' : ''}>${esc(option.label)}</option>`).join('')}</select></div>
     <div><label for="tax-rpt-month">${esc(TAX_REPORTS_TEXT.month)}</label><select id="tax-rpt-month">${TAX_CORE_TEXT.monthNames.map((name, index) => `<option value="${index + 1}"${period.month === index + 1 ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></div>
     <div><label for="tax-rpt-year">${esc(TAX_REPORTS_TEXT.year)}</label><select id="tax-rpt-year">${yearOptions(period.year)}</select></div>
     ${ui.tab === 'sales' ? `<div><label for="tax-rpt-abbr">${esc(TAX_REPORTS_TEXT.abbreviatedMode)}</label><select id="tax-rpt-abbr"><option value="daily"${ui.abbreviatedMode === 'daily' ? ' selected' : ''}>${esc(TAX_REPORTS_TEXT.abbreviatedDaily)}</option><option value="each"${ui.abbreviatedMode === 'each' ? ' selected' : ''}>${esc(TAX_REPORTS_TEXT.abbreviatedEach)}</option></select></div>` : ''}
-  </div>`;
+  </div>${ui.period === defaultPeriod() ? `<p class="tax-muted tax-rpt-period-note" data-tax-period-note>${esc(TAX_REPORTS_TEXT.latestClosedNote)}</p>` : ''}`;
   let body;
-  if (current.error) body = box(TAX_REPORTS_TEXT.warnTitle, [esc(current.error)], 'error');
+  if (isFxTab(ui.tab)) body = window.ERPFx?.foreignTabHtml ? window.ERPFx.foreignTabHtml(ui.tab, ui.branch, ui.period) : box(TAX_REPORTS_TEXT.warnTitle, [esc(TAX_REPORTS_TEXT.fxUnavailable)], 'error');
+  else if (isWhtTab(ui.tab)) body = whtTabHtml(current, ui.tab);
+  else if (current.error) body = box(TAX_REPORTS_TEXT.warnTitle, [esc(current.error)], 'error');
   else if (ui.tab === 'pp30') body = pp30Html(current);
   else {
     const kind = ui.tab;
     const report = kind === 'sales' ? current.sales : current.purchases;
     const title = kind === 'sales' ? TAX_CORE_TEXT.salesTitle : kind === 'purchase' ? TAX_CORE_TEXT.purchaseTitle : TAX_CORE_TEXT.forbiddenTitle;
-    const table = taxReportTable(report, kind);
+    const table = { ...taxReportTable(report, kind), kind };
     body = `<div class="tax-rpt-actions"><button type="button" class="btn btn-secondary" data-tax-action="print">${icon('print')}${esc(TAX_REPORTS_TEXT.print)}</button><button type="button" class="btn btn-tertiary" data-tax-action="excel">${icon('download')}${esc(TAX_REPORTS_TEXT.excel)}</button><button type="button" class="btn btn-tertiary" data-tax-action="csv">${icon('table')}${esc(TAX_REPORTS_TEXT.csv)}</button></div>
       ${kind === 'sales' ? salesWarnings(current) : kind === 'purchase' ? purchaseWarnings(current) : `<p class="tax-muted">${esc(TAX_REPORTS_TEXT.forbiddenIntro)}</p>`}
       ${formHeaderHtml(title, current)}
-      <div class="tbl-wrap tax-rpt-scroll" tabindex="0" role="region" aria-label="${esc(title)}">${tableHtml(table)}</div>`;
+      <div class="tbl-wrap tax-rpt-scroll" tabindex="0" role="region" aria-label="${esc(title)}">${tableHtml(table, { rowClass: kind === 'sales' ? index => (report.rows[index]?.kind === 'cancelled' ? 'tax-row-cancelled' : '') : null })}</div>`;
   }
-  root.innerHTML = `<div class="tax-rpt-head"><h2 class="card-title">${icon('tax')}${esc(TAX_REPORTS_TEXT.pageTitle)}</h2><p>${esc(TAX_REPORTS_TEXT.pageIntro)}</p></div>
-    <div class="tax-tabs" role="tablist" aria-label="${esc(TAX_REPORTS_TEXT.pageTitle)}">${tabs}</div>${filters}<div class="tax-rpt-body" data-tax-tab-body="${esc(ui.tab)}">${body}</div>`;
+  root.innerHTML = `<div class="tax-rpt-head"><h2 class="card-title">${icon('tax')}${esc(TAX_REPORTS_TEXT.pageTitle)}</h2><p>${esc(TAX_REPORTS_TEXT.pageIntro)}</p>${englishTaxHelp(ui.tab)}</div>
+    <div class="tax-tabs" role="tablist" aria-label="${esc(TAX_REPORTS_TEXT.pageTitle)}">${tabs}</div>${filters}${englishTaxCalendar(ui.period)}<div class="tax-rpt-body" data-tax-tab-body="${esc(ui.tab)}">${body}</div>`;
 }
 
 // ---------------------------------------------------------------- print
@@ -404,7 +593,8 @@ const PRINT_CSS = `@page{size:A4 landscape;margin:9mm}*{box-sizing:border-box}bo
 .tax-form-checks{gap:18px!important}.tax-form-note{margin-top:4px;font-size:11px;color:#444}.tax-form-note-warn{color:#b42318;font-weight:700}.tax-mono{font-variant-numeric:tabular-nums;letter-spacing:.04em}
 table{width:100%;border-collapse:collapse;table-layout:auto}th,td{border:1px solid #444;padding:3px 5px;vertical-align:top}th{background:#f1f3f5;font-weight:700;text-align:center;font-size:11.5px}td.tn{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}td.tc{text-align:center}
 .neg{color:#b42318}tfoot td{background:#f8f9fa}.foot{margin-top:6px;font-size:10.5px;color:#555;display:flex;justify-content:space-between;gap:12px}.tax-muted{color:#666}.tax-pp30-key td{background:#fffbe6}.tax-empty{color:#666}
-.col-party{width:21%}.col-note{width:19%}.col-taxId{width:13%}.col-date{white-space:nowrap}.pp30{max-width:190mm;margin:0 auto}.pp30 table td:nth-child(1){width:14mm}.pp30 table td:nth-child(3){width:42mm}.pp30-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin:6px 0}.pp30-meta div{display:flex;gap:6px;flex-wrap:wrap}`;
+.col-party{width:21%}.col-note{width:19%}.col-taxId{width:13%}.col-date{white-space:nowrap}.col-nameAddress{width:28%}.col-payeeTaxId{width:12%}.col-incomeLabel{width:13%}.tax-form-note-sample{color:#92400e;font-weight:600}
+.wht-cover{border:1px solid #444;padding:6px 8px;margin:0 0 8px}.wht-cover dl{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 12px;margin:6px 0}.wht-cover dt{color:#333;font-size:11px}.wht-cover dd{margin:0;font-weight:700;font-size:14px}.wht-sign{margin-top:14px;font-size:12px}.pp30{max-width:190mm;margin:0 auto}.pp30 table td:nth-child(1){width:14mm}.pp30 table td:nth-child(3){width:42mm}.pp30-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin:6px 0}.pp30-meta div{display:flex;gap:6px;flex-wrap:wrap}`;
 function printDocument(title, pagesHtml, { portrait = false } = {}) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) { say(TAX_REPORTS_TEXT.popupBlocked, 'error'); return false; }
@@ -445,7 +635,27 @@ function pp30PrintHtml(view, snapshot = null) {
     <div class="foot"><span>${esc(TAX_REPORTS_TEXT.printPp30Note)} · ${esc(TAX_REPORTS_TEXT.pp30NotSubmitted)}</span></div>
     <div class="foot"><span>${esc(TAX_REPORTS_TEXT.printedAt(taxThaiDate(localDateISO())))}</span></div></section>`;
 }
+// ใบแนบ ภ.ง.ด.3 / 53 pages (+ the cover summary on the first page and the signature line on the last).
+function whtPrintHtml(view, form) {
+  const table = whtTable(view, form);
+  const report = view.wht.reports[form];
+  const title = WHT_TEXT.attachTitle(form);
+  const chunks = [];
+  for (let i = 0; i < table.body.length; i += ROWS_PER_PRINT_PAGE) chunks.push(table.body.slice(i, i + ROWS_PER_PRINT_PAGE));
+  if (!chunks.length) chunks.push([]);
+  const printed = TAX_REPORTS_TEXT.printedAt(taxThaiDate(localDateISO()));
+  const due = view.wht.due;
+  const cover = `<div class="wht-cover"><b>${esc(TAX_REPORTS_TEXT.whtCoverTitle(WHT_TEXT.forms[form]))}</b><dl><div><dt>${esc(TAX_REPORTS_TEXT.whtCoverPayees)}</dt><dd>${esc(String(report.totals.payees))}</dd></div><div><dt>${esc(TAX_REPORTS_TEXT.whtCoverRows)}</dt><dd>${esc(String(report.totals.count))}</dd></div><div><dt>${esc(TAX_REPORTS_TEXT.whtCoverPaid)}</dt><dd>${esc(money(report.totals.amountPaid))}</dd></div><div><dt>${esc(TAX_REPORTS_TEXT.whtCoverTax)}</dt><dd>${esc(money(report.totals.taxWithheld))}</dd></div></dl>
+    <div class="tax-form-note">${esc(TAX_REPORTS_TEXT.whtSection)} · ${esc(WHT_TEXT.conditionKey)}${due ? ` · ${esc(TAX_REPORTS_TEXT.whtDuePaper(taxThaiDate(due.paper)))} · ${esc(TAX_REPORTS_TEXT.whtDueEfiling(taxThaiDate(due.efiling)))}` : ''}</div></div>`;
+  const pages = chunks.map((rows, index) => `<section class="page" data-page="${index + 1}">${formHeaderHtml(title, view, TAX_REPORTS_TEXT.formPage(index + 1, chunks.length), { withholder: true })}${index === 0 ? cover : ''}${tableHtml(table, { rows, includeFooter: index === chunks.length - 1, className: 'print-table' })}${index === chunks.length - 1 ? `<div class="wht-sign">${esc(TAX_REPORTS_TEXT.whtSign)}</div>` : ''}<div class="foot"><span>${esc(printed)} · ${esc(TAX_REPORTS_TEXT.whtNotSubmitted)}</span><span>${esc(TAX_REPORTS_TEXT.formPage(index + 1, chunks.length))}</span></div></section>`).join('');
+  return { title: `${title} ${taxPeriodShort(view.period)}`, html: pages };
+}
 function printCurrent(snapshotId = '') {
+  if (isWhtTab(ui.tab)) {
+    if (!current?.wht || current.wht.error || ui.tab === 'wht') { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return false; }
+    const page = whtPrintHtml(current, WHT_TABS[ui.tab]);
+    return printDocument(page.title, page.html);
+  }
   if (!current || current.error) { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return false; }
   if (ui.tab === 'pp30') {
     const snapshot = snapshotId ? current.returns.find(row => row.id === snapshotId) : null;
@@ -468,9 +678,25 @@ function exportBase(view) {
   const p = parseTaxPeriod(view.period);
   return `${code}_${p.year + 543}-${String(p.month).padStart(2, '0')}`;
 }
+// The sheet of a two-row-header table (groups merged like the official form) under `head` rows.
+function tableSheet(XLSX, head, table) {
+  const top = table.columns.map((column, index) => (column.group ? (index > 0 && table.columns[index - 1].group === column.group ? '' : column.group) : column.label));
+  const sub = table.columns.map(column => (column.group ? column.label : ''));
+  const ws = XLSX.utils.aoa_to_sheet([...head, top, sub, ...table.body, table.footer]);
+  const headerRow = head.length;
+  ws['!merges'] = table.groups.map(group => (group.grouped ? { s: { r: headerRow, c: group.from }, e: { r: headerRow, c: group.from + group.span - 1 } } : { s: { r: headerRow, c: group.from }, e: { r: headerRow + 1, c: group.from } }));
+  ws['!cols'] = table.columns.map(column => ({ wch: column.money ? 16 : ['party', 'note', 'nameAddress'].includes(column.key) ? 40 : ['taxId', 'payeeTaxId', 'incomeLabel'].includes(column.key) ? 20 : 12 }));
+  return ws;
+}
 function workbookFor(view, tab) {
   const XLSX = window.XLSX;
   const wb = XLSX.utils.book_new();
+  if (WHT_TABS[tab]) {
+    const form = WHT_TABS[tab], report = view.wht.reports[form];
+    const head = [...headerRows(view, WHT_TEXT.attachTitle(form)), [TAX_REPORTS_TEXT.whtCoverPayees, report.totals.payees, TAX_REPORTS_TEXT.whtCoverPaid, report.totals.amountPaid, TAX_REPORTS_TEXT.whtCoverTax, report.totals.taxWithheld], [WHT_TEXT.conditionKey], []];
+    XLSX.utils.book_append_sheet(wb, tableSheet(XLSX, head, whtReportTable(report, ' / ')), taxSafeSheetName(TAX_REPORTS_TEXT.sheetWht(WHT_TEXT.forms[form].replace(/\./g, ''), taxPeriodShort(view.period).replace('/', '-'))));
+    return { wb, name: `${form}_${exportBase(view)}.xlsx` };
+  }
   if (tab === 'pp30') {
     const rows = [...headerRows(view, TAX_REPORTS_TEXT.pp30Worksheet), [TAX_REPORTS_TEXT.pp30Line, TAX_REPORTS_TEXT.itemCol, TAX_REPORTS_TEXT.amountCol]];
     PP30_COMPUTED_LINES.forEach(line => rows.push([line, TAX_CORE_TEXT.pp30Lines[line], view.pp30.lines[line]]));
@@ -483,28 +709,20 @@ function workbookFor(view, tab) {
   }
   const report = tab === 'sales' ? view.sales : view.purchases;
   const title = tab === 'sales' ? TAX_CORE_TEXT.salesTitle : tab === 'purchase' ? TAX_CORE_TEXT.purchaseTitle : TAX_CORE_TEXT.forbiddenTitle;
-  const table = taxReportTable(report, tab);
-  const head = headerRows(view, title);
   // Two header rows like the form: a group label once over its merged cells, the other columns span both rows.
-  const top = table.columns.map((column, index) => (column.group ? (index > 0 && table.columns[index - 1].group === column.group ? '' : column.group) : column.label));
-  const sub = table.columns.map(column => (column.group ? column.label : ''));
-  const rows = [...head, top, sub, ...table.body, table.footer];
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const headerRow = head.length;
-  const merges = [];
-  table.groups.forEach(group => {
-    if (group.grouped) merges.push({ s: { r: headerRow, c: group.from }, e: { r: headerRow, c: group.from + group.span - 1 } });
-    else merges.push({ s: { r: headerRow, c: group.from }, e: { r: headerRow + 1, c: group.from } });
-  });
-  ws['!merges'] = merges;
-  ws['!cols'] = table.columns.map(column => ({ wch: column.money ? 16 : column.key === 'party' || column.key === 'note' ? 36 : column.key === 'taxId' ? 18 : 12 }));
+  const ws = tableSheet(XLSX, headerRows(view, title), taxReportTable(report, tab));
   const sheet = tab === 'sales' ? TAX_REPORTS_TEXT.sheetSales : tab === 'purchase' ? TAX_REPORTS_TEXT.sheetPurchase : TAX_REPORTS_TEXT.sheetForbidden;
   XLSX.utils.book_append_sheet(wb, ws, taxSafeSheetName(sheet(taxPeriodShort(view.period).replace('/', '-'))));
   const prefix = tab === 'sales' ? 'VAT-sales-report' : tab === 'purchase' ? 'VAT-purchase-report' : 'VAT-input-disallowed';
   return { wb, name: `${prefix}_${exportBase(view)}.xlsx` };
 }
+function exportBlocked(view, tab) {
+  if (!view || isFxTab(tab)) return true;
+  if (isWhtTab(tab)) return tab === 'wht' || !view.wht || !!view.wht.error;
+  return !!view.error;
+}
 function exportExcel() {
-  if (!current || current.error) { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return; }
+  if (exportBlocked(current, ui.tab)) { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return; }
   const view = current, tab = ui.tab;
   const run = () => {
     if (!window.XLSX) { say(TAX_REPORTS_TEXT.excelMissing, 'error'); return; }
@@ -516,12 +734,12 @@ function exportExcel() {
   else say(TAX_REPORTS_TEXT.excelMissing, 'error');
 }
 function exportCsv() {
-  if (!current || current.error || ui.tab === 'pp30') { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return; }
-  const report = ui.tab === 'sales' ? current.sales : current.purchases;
-  const table = taxReportTable(report, ui.tab);
-  const header = table.columns.map(column => (column.group ? `${column.group} - ${column.label}` : column.label));
+  if (exportBlocked(current, ui.tab) || ui.tab === 'pp30') { say(TAX_REPORTS_TEXT.exportBlocked, 'error'); return; }
+  const form = WHT_TABS[ui.tab];
+  const table = form ? whtReportTable(current.wht.reports[form], ' / ') : taxReportTable(ui.tab === 'sales' ? current.sales : current.purchases, ui.tab);
+  const header = table.columns.map(column => (column.group && column.group !== column.label ? `${column.group} - ${column.label}` : column.label));
   const text = taxCsvText([header, ...table.body, table.footer]);
-  const prefix = ui.tab === 'sales' ? 'VAT-sales-report' : ui.tab === 'purchase' ? 'VAT-purchase-report' : 'VAT-input-disallowed';
+  const prefix = form || (ui.tab === 'sales' ? 'VAT-sales-report' : ui.tab === 'purchase' ? 'VAT-purchase-report' : 'VAT-input-disallowed');
   const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
@@ -604,6 +822,23 @@ async function fileReturn() {
   }
 }
 
+// ---------------------------------------------------------------- ภ.ง.ด.3 / 53 filing and 50 ทวิ actions (ERPPayerWht)
+async function fileWhtReturn() {
+  const form = WHT_TABS[ui.tab];
+  if (!form || !window.ERPPayerWht) { say(TAX_REPORTS_TEXT.whtUnavailable, 'error'); return null; }
+  const snapshot = await window.ERPPayerWht.fileReturn({ branch: ui.branch, period: ui.period, form, channel: ui.channel });
+  render();
+  return snapshot;
+}
+async function whtCertificateAction(name, data) {
+  const api = window.ERPPayerWht;
+  if (!api) { say(TAX_REPORTS_TEXT.whtUnavailable, 'error'); return; }
+  const cert = (current?.wht?.certificates || []).find(row => String(row.id) === String(data.certId));
+  if (name === 'wht-open') { api.openCertificate(cert ? { ...cert, branch: data.branch } : null); return; }
+  await api.askVoidCertificate(data.branch, Number(data.year), Number(data.month), data.certId);
+  render();
+}
+
 // ---------------------------------------------------------------- backup hooks (app.js JSON backup)
 function exportBackup() {
   return readReturns(); // throws on a damaged store: the backup export then fails instead of dropping it
@@ -618,6 +853,8 @@ function backupWrites(value, options = {}) {
 function onClick(event) {
   const tab = event.target.closest?.('[data-tax-tab]');
   if (tab) { ui.tab = tab.dataset.taxTab; render(); $('tax-reports-root')?.querySelector(`[data-tax-tab="${ui.tab}"]`)?.focus(); return; }
+  const fxExport = event.target.closest?.('[data-fx-foreign-export]');
+  if (fxExport) { window.ERPFx?.exportForeign?.(fxExport.dataset.fxForeignKind, ui.branch, ui.period, fxExport.dataset.fxForeignExport); return; }
   const action = event.target.closest?.('[data-tax-action]');
   if (!action || action.disabled) return;
   const name = action.dataset.taxAction;
@@ -626,6 +863,8 @@ function onClick(event) {
   else if (name === 'excel') exportExcel();
   else if (name === 'csv') exportCsv();
   else if (name === 'file') fileReturn();
+  else if (name === 'file-wht') fileWhtReturn();
+  else if (name === 'wht-open' || name === 'wht-void') whtCertificateAction(name, action.dataset);
   else if (name === 'settings') { if (typeof window.ERPCompanyProfile?.open === 'function') window.ERPCompanyProfile.open(); else window.go?.('saas-admin'); }
 }
 function onChange(event) {
@@ -633,7 +872,7 @@ function onChange(event) {
   if (id === 'tax-rpt-branch') { ui.branch = event.target.value; ui.carryManual = ''; ui.overpaidAction = ''; }
   else if (id === 'tax-rpt-month' || id === 'tax-rpt-year') { const year = Number($('tax-rpt-year')?.value), month = Number($('tax-rpt-month')?.value); ui.period = `${year}-${String(month).padStart(2, '0')}`; ui.carryManual = ''; ui.overpaidAction = ''; }
   else if (id === 'tax-rpt-abbr') ui.abbreviatedMode = event.target.value === 'each' ? 'each' : 'daily';
-  else if (id === 'tax-pp30-channel') ui.channel = event.target.value === 'efiling' ? 'efiling' : 'paper';
+  else if (id === 'tax-pp30-channel' || id === 'tax-wht-channel') ui.channel = event.target.value === 'efiling' ? 'efiling' : 'paper';
   else if (id === 'tax-pp30-carry') ui.carryManual = String(event.target.value || '').trim();
   else if (event.target?.name === 'tax-pp30-overpaid') ui.overpaidAction = event.target.value;
   else return;
@@ -649,7 +888,12 @@ window.ERPTaxReports = Object.freeze({
   render, fileReturn, exportBackup, backupWrites,
   select: (options = {}) => { Object.assign(ui, Object.fromEntries(Object.entries(options).filter(([key]) => key in ui))); render(); return { ...ui }; },
   view: () => current,
-  printHtml: () => (current && !current.error ? (ui.tab === 'pp30' ? pp30PrintHtml(current) : reportPrintHtml(current, ui.tab).html) : ''),
+  printHtml: () => {
+    if (isFxTab(ui.tab)) return '';
+    if (isWhtTab(ui.tab)) return current?.wht && !current.wht.error && WHT_TABS[ui.tab] ? whtPrintHtml(current, WHT_TABS[ui.tab]).html : '';
+    return current && !current.error ? (ui.tab === 'pp30' ? pp30PrintHtml(current) : reportPrintHtml(current, ui.tab).html) : '';
+  },
+  fileWhtReturn,
   TEXT: TAX_REPORTS_TEXT
 });
 function boot() {
@@ -659,6 +903,8 @@ function boot() {
   root.addEventListener('change', onChange);
   document.addEventListener('erp:navigation', event => { if (event.detail?.id === PANEL_ID) { try { render(); } catch (error) { console.error('[TaxReports] render failed', error); } } });
   window.addEventListener(STORAGE_WRITTEN_EVENT, scheduleRender);
+  // ADR-026: the English tab labels, help and calendar come and go with the language — also on a hidden page already drawn.
+  window.addEventListener('erp:language-changed', () => { if (!root.childElementCount) return; try { render(); } catch (error) { console.error('[TaxReports] render failed', error); } });
   window.addEventListener(COMPANY_PROFILE_CHANGED_EVENT, scheduleRender);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });

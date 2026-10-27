@@ -276,6 +276,9 @@ export function validateProductMasterRecord(record = {}) {
   }
   const priceError = parseProductDefaultPrice(record.defaultPrice).error;
   if (priceError) errors.push(priceError);
+  // ADR-027: optional lead time in whole days (1–365); blank / null = not set (the reorder point then uses 7 days).
+  const lead = record.leadTimeDays;
+  if (lead !== undefined && lead !== null && lead !== '' && !(Number.isInteger(Number(lead)) && Number(lead) >= 1 && Number(lead) <= 365)) errors.push('invalid_leadTimeDays');
   return { valid: errors.length === 0, errors };
 }
 
@@ -284,6 +287,7 @@ export function productMasterValidationMessage(errors = []) {
   if (list.includes('code_required') || list.includes('name_required')) return 'กรุณากรอกรหัสสินค้าและชื่อสินค้า';
   if (list.includes('invalid_defaultPrice')) return 'ราคาขายมาตรฐานต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป (หรือเว้นว่าง)';
   if (list.includes('invalid_defaultPrice_decimals')) return 'ราคาขายมาตรฐานมีทศนิยมได้ไม่เกิน 2 ตำแหน่ง (สตางค์) กรุณาแก้ไขตัวเลข';
+  if (list.includes('invalid_leadTimeDays')) return 'ระยะเวลารอสินค้าต้องเป็นจำนวนวันเต็ม 1–365 วัน (เว้นว่าง = ใช้ 7 วัน)';
   return list.length ? 'ข้อมูลสินค้าไม่ถูกต้อง กรุณาตรวจตัวเลขที่กรอก' : '';
 }
 
